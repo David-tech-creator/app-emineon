@@ -3,6 +3,9 @@ import { auth } from '@clerk/nextjs';
 import { aiEmailTemplateSchema } from '@/lib/validation';
 import { openaiService } from '@/lib/openai';
 
+export const runtime = 'nodejs';
+export const maxDuration = 30;
+
 export async function POST(request: NextRequest) {
   try {
     const { userId } = auth();

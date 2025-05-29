@@ -10,7 +10,8 @@ async function main() {
     where: { email: 'john.doe@example.com' },
     update: {},
     create: {
-      name: 'John Doe',
+      firstName: 'John',
+      lastName: 'Doe',
       email: 'john.doe@example.com',
       skills: ['JavaScript', 'TypeScript', 'React', 'Node.js'],
       experience: 5
@@ -21,7 +22,8 @@ async function main() {
     where: { email: 'jane.smith@example.com' },
     update: {},
     create: {
-      name: 'Jane Smith',
+      firstName: 'Jane',
+      lastName: 'Smith',
       email: 'jane.smith@example.com',
       skills: ['Python', 'Django', 'PostgreSQL', 'AWS'],
       experience: 7
@@ -29,8 +31,8 @@ async function main() {
   });
 
   console.log('✅ Created sample candidates:');
-  console.log('  -', candidate1.name, '(', candidate1.email, ')');
-  console.log('  -', candidate2.name, '(', candidate2.email, ')');
+  console.log('  -', `${candidate1.firstName} ${candidate1.lastName}`, '(', candidate1.email, ')');
+  console.log('  -', `${candidate2.firstName} ${candidate2.lastName}`, '(', candidate2.email, ')');
 
   console.log('🎉 Database seeding completed successfully!');
 }

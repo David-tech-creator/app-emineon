@@ -4,7 +4,7 @@
   "description": "Emineon ATS - Full-stack application with Next.js + Prisma + PostgreSQL",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate --no-engine && next build",
     "start": "next start",
     "lint": "next lint",
     "setup": "node scripts/setup-database.js",
@@ -12,7 +12,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "db:seed": "ts-node prisma/seed.ts",
+    "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:push": "prisma db push",
     "postinstall": "prisma generate"

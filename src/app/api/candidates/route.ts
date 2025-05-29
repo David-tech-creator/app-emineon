@@ -1,37 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs';
-import { prisma } from '@/utils/database';
+import { PrismaClient } from '@prisma/client';
 import { candidateSchema, transformCandidateFormData } from '@/lib/validation';
+
+const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
   try {
     const { userId } = auth();
     
-    // For now, return mock data since we don't have a real database connection
-    const mockCandidates = [
-      {
-        id: '1',
-        name: 'John Smith',
-        email: 'john.smith@example.com',
-        skills: ['JavaScript', 'React', 'Node.js'],
-        experience: 5,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: '2',
-        name: 'Sarah Johnson',
-        email: 'sarah.johnson@example.com',
-        skills: ['Python', 'Django', 'PostgreSQL'],
-        experience: 3,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ];
+    // Fetch candidates from database
+    const candidates = await prisma.candidate.findMany({
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
 
     return NextResponse.json({
       success: true,
-      data: mockCandidates,
+      data: candidates,
       authenticated: !!userId,
     });
   } catch (error) {
@@ -62,20 +49,17 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
-    // Validate the data
-    const validatedData = candidateSchema.parse(body);
+    // Transform and validate the data
+    const validatedData = transformCandidateFormData(body);
     
-    // For now, return a mock response since we don't have a real database
-    const mockCandidate = {
-      id: Math.random().toString(36).substr(2, 9),
-      ...validatedData,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    // Create candidate in database
+    const candidate = await prisma.candidate.create({
+      data: validatedData
+    });
 
     return NextResponse.json({
       success: true,
-      data: mockCandidate,
+      data: candidate,
       message: 'Candidate created successfully',
     }, { status: 201 });
   } catch (error) {

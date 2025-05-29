@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs';
 import { openaiService } from '@/lib/openai';
 
+export const runtime = 'nodejs';
+export const maxDuration = 30;
+
 // Mock candidates data for AI matching
 const mockCandidates = [
   {

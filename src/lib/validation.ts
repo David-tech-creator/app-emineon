@@ -75,17 +75,55 @@ export const candidateSchema = z.object({
   recruiterNotes: z.string().optional(),
 });
 
-// Form schema for CV/LinkedIn parsing input
-export const candidateParsingSchema = z.object({
-  // Manual input fields (these will be auto-filled from parsing)
+// Simplified form schema for react-hook-form compatibility
+export const candidateFormSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   email: z.string().email('Invalid email address'),
+  experience: z.number().min(0).max(50),
   phone: z.string().optional(),
   currentTitle: z.string().optional(),
   currentCompany: z.string().optional(),
   summary: z.string().optional(),
+  skills: z.string().optional(),
+  city: z.string().optional(),
+  country: z.string().optional(),
+  highestEducation: EducationLevelEnum.optional(),
+  university: z.string().optional(),
+  degree: z.string().optional(),
+  graduationYear: z.number().min(1950).max(2030).optional(),
+  expectedSalary: z.string().optional(),
+  noticePeriod: NoticePeriodEnum.optional(),
+  portfolioUrl: z.string().optional(),
+  githubUrl: z.string().optional(),
+  websiteUrl: z.string().optional(),
+  linkedinUrl: z.string().optional(),
+  recruiterNotes: z.string().optional(),
+  currency: z.string().optional(),
+  preferredEmployment: z.array(EmploymentTypeEnum).optional(),
+  remoteWork: z.boolean().optional(),
+  willingToRelocate: z.boolean().optional(),
+  source: z.string().optional(),
+});
+
+// Form schema for CV/LinkedIn parsing input
+export const candidateParsingSchema = z.object({
+  // Required fields
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Invalid email address'),
   experience: z.number().min(0).max(50),
+  currency: z.string().default('USD'),
+  preferredEmployment: z.array(EmploymentTypeEnum).default([]),
+  remoteWork: z.boolean().default(false),
+  willingToRelocate: z.boolean().default(false),
+  source: z.string().default('Manual Entry'),
+  
+  // Optional fields
+  phone: z.string().optional(),
+  currentTitle: z.string().optional(),
+  currentCompany: z.string().optional(),
+  summary: z.string().optional(),
   skills: z.string().optional(), // Will be converted to array
   
   // Location
@@ -100,11 +138,7 @@ export const candidateParsingSchema = z.object({
   
   // Preferences
   expectedSalary: z.string().optional(), // Will be converted to number
-  currency: z.string().default('USD'),
   noticePeriod: NoticePeriodEnum.optional(),
-  preferredEmployment: z.array(EmploymentTypeEnum).default([]),
-  remoteWork: z.boolean().default(false),
-  willingToRelocate: z.boolean().default(false),
   
   // Links
   portfolioUrl: z.string().url().optional().or(z.literal('')),
@@ -113,7 +147,6 @@ export const candidateParsingSchema = z.object({
   linkedinUrl: z.string().url().optional().or(z.literal('')),
   
   // Internal
-  source: z.string().default('Manual Entry'),
   recruiterNotes: z.string().optional(),
 });
 
@@ -274,6 +307,7 @@ export function transformCandidateFormData(data: any) {
 
 // Type exports
 export type CandidateInput = z.infer<typeof candidateSchema>;
+export type CandidateFormInput = z.infer<typeof candidateFormSchema>;
 export type CandidateParsingInput = z.infer<typeof candidateParsingSchema>;
 export type LinkedinParsingInput = z.infer<typeof linkedinParsingSchema>;
 export type CVParsingResponse = z.infer<typeof cvParsingResponseSchema>;

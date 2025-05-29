@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs';
-import { aiJobDescriptionSchema } from '@/lib/validation';
 import { openaiService } from '@/lib/openai';
+import { aiJobDescriptionSchema } from '@/lib/validation';
+
+export const runtime = 'nodejs';
+export const maxDuration = 30;
 
 export async function POST(request: NextRequest) {
   try {

@@ -3,6 +3,9 @@ import { auth } from '@clerk/nextjs';
 import { linkedinParsingSchema } from '@/lib/validation';
 import { cvParserService } from '@/lib/services/cv-parser';
 
+export const runtime = 'nodejs';
+export const maxDuration = 30;
+
 export async function POST(request: NextRequest) {
   try {
     const { userId } = auth();

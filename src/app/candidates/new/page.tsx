@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
-import { candidateParsingSchema, transformCandidateFormData, type CandidateParsingInput } from '@/lib/validation';
+import { candidateFormSchema, transformCandidateFormData, type CandidateFormInput } from '@/lib/validation';
 import { api } from '@/lib/api';
 import { useAuth } from '@clerk/nextjs';
 import { 
@@ -51,15 +51,15 @@ interface ParsedData {
 }
 
 // Fix the form schema to make experience required with default
-const formDefaultValues: Partial<CandidateParsingInput> = {
+const formDefaultValues: Partial<CandidateFormInput> = {
   firstName: '',
   lastName: '',
   email: '',
   experience: 0,
+  currency: 'USD',
   preferredEmployment: [],
   remoteWork: false,
   willingToRelocate: false,
-  currency: 'USD',
   source: 'Manual Entry',
 };
 
@@ -81,8 +81,8 @@ export default function NewCandidatePage() {
     reset,
     setValue,
     watch,
-  } = useForm<CandidateParsingInput>({
-    resolver: zodResolver(candidateParsingSchema),
+  } = useForm<CandidateFormInput>({
+    resolver: zodResolver(candidateFormSchema),
     defaultValues: formDefaultValues,
   });
 
@@ -218,7 +218,7 @@ export default function NewCandidatePage() {
     setValue('source', parseMethod === 'linkedin' ? 'LinkedIn' : 'CV Upload');
   };
 
-  const onSubmit = async (data: CandidateParsingInput) => {
+  const onSubmit = async (data: CandidateFormInput) => {
     setIsSubmitting(true);
     try {
       const token = await getToken();

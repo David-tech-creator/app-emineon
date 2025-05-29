@@ -1,212 +1,249 @@
-# Emineon ATS Frontend
+# 🏢 Emineon ATS - Applicant Tracking System
 
-A modern, full-featured frontend application for the Emineon ATS (AI-First Recruitment Platform) built with Next.js, TypeScript, TailwindCSS, and Clerk authentication.
+A modern, AI-powered Applicant Tracking System built with Next.js, featuring enhanced candidate management, CV parsing, and intelligent job matching.
 
-## 🚀 Features
+## ✨ Features
 
-- **Modern Stack**: Next.js 15 with App Router, TypeScript, TailwindCSS
-- **Authentication**: Clerk.dev integration with sign-in/sign-up/user management
-- **API Integration**: SWR for data fetching from external backend API
-- **Form Validation**: Zod schemas with React Hook Form
-- **UI Components**: Custom component library with Emineon design system
-- **Responsive Design**: Mobile-first approach with Tailwind CSS
-- **Professional UX**: Clean, modern design matching https://emineon.com/product
+### 🎯 **Enhanced Candidate Management**
+- **40+ Comprehensive Fields**: Complete candidate profiles with personal info, contact details, education, experience, skills, and more
+- **CV Upload & Parsing**: Drag & drop CV upload with AI-powered data extraction
+- **LinkedIn Integration**: Parse LinkedIn profiles automatically
+- **Skills Assessment**: Track technical and soft skills with proficiency levels
+- **Document Management**: Upload and manage resumes, cover letters, portfolios
 
-## 📱 Pages
+### 🤖 **AI-Powered Features**
+- **CV Parsing**: Extract candidate information from uploaded CVs
+- **Job Description Generation**: AI-generated job descriptions
+- **Candidate Matching**: Intelligent candidate-job matching algorithms
+- **Email Templates**: AI-assisted recruitment email generation
 
-- **Dashboard** (`/`) - Welcome screen with stats and recent activity
-- **Candidates** (`/candidates`) - List and manage candidates
-- **Add Candidate** (`/candidates/new`) - Form to add new candidates
-- **Clients** (`/clients`) - Client management with dummy data
-- **Jobs** (`/jobs`) - Job listings with dummy data
-- **User Profile** (`/user`) - Clerk user profile management
-- **Authentication** (`/sign-in`, `/sign-up`) - Clerk auth pages
+### 🔐 **Authentication & Security**
+- **Clerk Integration**: Secure authentication with multi-provider support
+- **Protected Routes**: API and page-level authentication
+- **User Management**: Role-based access control
 
-## 🎨 Design System
+### 📊 **Database & Performance**
+- **Railway PostgreSQL**: Cloud-hosted database
+- **Prisma ORM**: Type-safe database operations
+- **Prisma Accelerate**: Connection pooling and query optimization
 
-### Colors
-- **Primary**: Deep Navy (#0A2F5A) - Emineon brand color
-- **Secondary**: Light grays and whites
-- **Accent**: Blue tones for highlights
-- **Success**: Green for positive actions
-- **Warning**: Amber for cautions
-- **Error**: Red for errors
+## 🚀 Quick Start
 
-### Components
-- `Card` - Flexible card component with variants
-- `Sidebar` - Navigation with active states
-- `TopBar` - Header with user info
-- `Layout` - Main application layout
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+- Railway account (for database)
+- Clerk account (for authentication)
+- OpenAI API key (for AI features)
 
-## 🛠 Quick Start
+### Installation
 
-### 1. Install Dependencies
-```bash
-npm install
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd app-emineon
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Environment Setup**
+   ```bash
+   cp env.example .env
+   ```
+   
+   Update `.env` with your credentials:
+   ```env
+   # Database - Railway PostgreSQL with Prisma Accelerate
+   DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/?api_key=YOUR_PRISMA_ACCELERATE_KEY"
+   
+   # Clerk Authentication
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_..."
+   CLERK_SECRET_KEY="sk_test_..."
+   CLERK_JWT_KEY="-----BEGIN PUBLIC KEY-----..."
+   
+   # OpenAI API
+   OPENAI_API_KEY="sk-..."
+   ```
+
+4. **Database Setup**
+   ```bash
+   npx prisma db push
+   npx prisma db seed
+   ```
+
+5. **Run Development Server**
+   ```bash
+   npm run dev
+   ```
+
+## 🏗️ Architecture
+
+### Tech Stack
+- **Frontend**: Next.js 14, React, TailwindCSS
+- **Backend**: Next.js API Routes
+- **Database**: PostgreSQL (Railway) + Prisma
+- **Authentication**: Clerk
+- **AI**: OpenAI GPT
+- **UI Components**: Radix UI, Lucide Icons
+- **Form Management**: React Hook Form + Zod
+
+### Project Structure
+```
+├── src/
+│   ├── app/                    # Next.js App Router
+│   │   ├── api/               # API endpoints
+│   │   ├── candidates/        # Candidate management
+│   │   ├── jobs/             # Job management
+│   │   └── ...               # Other pages
+│   ├── components/           # Reusable UI components
+│   ├── lib/                 # Utilities and configurations
+│   └── types/               # TypeScript type definitions
+├── prisma/                   # Database schema and migrations
+└── public/                   # Static assets
 ```
 
-### 2. Environment Setup
-```bash
-# Copy the example environment file
-cp .env.example .env.local
+## 🌐 Deployment
 
-# Update .env.local with your credentials:
-# - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-# - CLERK_SECRET_KEY  
-# - NEXT_PUBLIC_API_BASE
-```
+### Vercel Deployment (Recommended)
 
-### 3. Run Development Server
+1. **Push to GitHub**
+   ```bash
+   git add .
+   git commit -m "Ready for deployment"
+   git push
+   ```
+
+2. **Deploy to Vercel**
+   - Connect your GitHub repository to Vercel
+   - Add environment variables in Vercel dashboard
+   - Deploy automatically
+
+3. **Environment Variables for Vercel**
+   ```
+   DATABASE_URL
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+   CLERK_SECRET_KEY
+   CLERK_JWT_KEY
+   OPENAI_API_KEY
+   ```
+
+### Manual Deployment
+
+1. **Build Production**
+   ```bash
+   npm run build
+   npm start
+   ```
+
+2. **Docker Deployment** (Optional)
+   ```dockerfile
+   FROM node:18-alpine
+   WORKDIR /app
+   COPY package*.json ./
+   RUN npm ci --only=production
+   COPY . .
+   RUN npm run build
+   EXPOSE 3000
+   CMD ["npm", "start"]
+   ```
+
+## 📝 API Endpoints
+
+### Candidates
+- `GET /api/candidates` - List all candidates
+- `POST /api/candidates` - Create new candidate
+- `GET /api/candidates/[id]` - Get candidate details
+- `PUT /api/candidates/[id]` - Update candidate
+- `DELETE /api/candidates/[id]` - Delete candidate
+- `POST /api/candidates/parse-cv` - Parse CV file
+- `POST /api/candidates/parse-linkedin` - Parse LinkedIn profile
+
+### AI Features
+- `POST /api/ai/job-description` - Generate job description
+- `POST /api/ai/candidate-matching` - Match candidates to jobs
+- `POST /api/ai/email-template` - Generate email templates
+
+### Jobs
+- `GET /api/jobs` - List all jobs
+- `POST /api/jobs` - Create new job
+- `GET /api/public/jobs.json` - Public job listings
+
+## 🧪 Testing
+
 ```bash
+# Run development server
 npm run dev
+
+# Build for production
+npm run build
+
+# Run production server
+npm start
+
+# Database operations
+npx prisma studio
+npx prisma db push
+npx prisma generate
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the application.
+## 🔧 Configuration
 
-## 🔧 Environment Variables
+### Database Schema
+The application uses a comprehensive candidate schema with 40+ fields organized into:
+- Personal Information
+- Contact Details
+- Professional Experience
+- Education & Certifications
+- Skills & Competencies
+- Preferences & Availability
+- Documents & References
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key | `pk_test_...` |
-| `CLERK_SECRET_KEY` | Clerk secret key | `sk_test_...` |
-| `NEXT_PUBLIC_API_BASE` | Backend API URL | `https://api.example.com/api` |
+### Authentication Flow
+1. Users land on protected routes
+2. Clerk middleware redirects to sign-in
+3. After authentication, users access the dashboard
+4. API routes are protected with Clerk authentication
 
-## 📁 Project Structure
+## 🚨 Troubleshooting
 
-```
-src/
-├── app/                    # Next.js App Router pages
-│   ├── page.tsx           # Dashboard
-│   ├── candidates/        # Candidate pages
-│   ├── clients/           # Client pages
-│   ├── jobs/              # Job pages
-│   ├── user/              # User profile
-│   ├── sign-in/           # Authentication
-│   └── sign-up/           
-├── components/            # React components
-│   ├── layout/            # Layout components
-│   │   ├── Layout.tsx     # Main layout
-│   │   ├── Sidebar.tsx    # Navigation
-│   │   └── TopBar.tsx     # Header
-│   └── ui/                # UI components
-│       └── Card.tsx       # Card component
-├── hooks/                 # Custom hooks
-│   └── useCandidates.ts   # SWR hooks
-├── lib/                   # Utility functions
-│   ├── api.ts             # API client
-│   ├── utils.ts           # Utility functions
-│   └── validation.ts      # Zod schemas
-└── middleware.ts          # Clerk middleware
-```
+### Common Issues
 
-## 🔌 API Integration
+1. **Clerk Authentication Error**
+   ```
+   Missing publishableKey
+   ```
+   **Solution**: Ensure `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is set in `.env`
 
-The frontend connects to the backend API at:
-- **Production**: `https://expressjs-prisma-production-307d.up.railway.app/api`
-- **Local**: `http://localhost:3001/api`
+2. **Database Connection Error**
+   ```
+   Can't reach database server
+   ```
+   **Solution**: Verify `DATABASE_URL` and Railway database status
 
-### API Endpoints Used:
-- `GET /health` - Health check
-- `GET /candidates` - List candidates
-- `POST /candidates` - Create candidate
-- `GET /candidates/:id` - Get candidate
-- `DELETE /candidates/:id` - Delete candidate
+3. **Build Warnings**
+   ```
+   Node.js API is used which is not supported in Edge Runtime
+   ```
+   **Solution**: These are warnings from dependencies and don't affect functionality
 
-## 🛡 Authentication
+## 📄 License
 
-Authentication is handled by Clerk with the following features:
-- User sign-up and sign-in
-- Organization support
-- User profile management
-- Protected routes
-- JWT token handling for API requests
-
-## 🎯 Key Features
-
-### Dashboard
-- Welcome message with user name
-- Organization information
-- Statistics cards with hover effects
-- Recent activity feed
-- Quick action buttons
-
-### Candidates Management
-- Responsive card layout
-- Search and filtering (ready for implementation)
-- Add new candidates with form validation
-- Skills display with truncation
-- Experience and contact information
-
-### Form Validation
-- Zod schemas for type-safe validation
-- React Hook Form integration
-- Real-time validation feedback
-- Error handling and display
-
-### UI/UX
-- Consistent design language
-- Hover effects and transitions
-- Loading states and error handling
-- Responsive design for all screen sizes
-- Accessibility considerations
-
-## 🚀 Deployment
-
-### Vercel (Recommended)
-1. Connect your GitHub repository to Vercel
-2. Set environment variables in Vercel dashboard
-3. Deploy automatically on push to main
-
-### Environment Variables for Production
-```bash
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
-CLERK_SECRET_KEY=your_clerk_secret_key
-NEXT_PUBLIC_API_BASE=https://your-backend-api.com/api
-```
-
-## 📊 Performance
-
-- **Next.js 15** with App Router for optimal performance
-- **SWR** for efficient data fetching with caching
-- **TailwindCSS** for optimized CSS bundle
-- **TypeScript** for type safety and better DX
-- **Responsive images** and optimized assets
-
-## 🧪 Development
-
-### Available Scripts
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-
-### Code Style
-- TypeScript strict mode enabled
-- ESLint configuration with Next.js rules
-- Consistent component structure
-- Custom hooks for data fetching
-- Utility-first CSS with Tailwind
+MIT License - see LICENSE file for details
 
 ## 🤝 Contributing
 
-1. Follow the established component patterns
-2. Use TypeScript for all new files
-3. Implement proper error handling
-4. Add proper loading states
-5. Follow the design system guidelines
-6. Test on multiple screen sizes
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
-## 📝 Notes
+## 📞 Support
 
-- The current implementation includes dummy data for Clients and Jobs pages
-- Backend integration is fully configured for Candidates
-- Design system matches Emineon branding
-- Ready for production deployment
-- All major features are implemented and functional
+For issues and questions, please create an issue in the repository or contact the development team.
 
-## 🔗 Related
+---
 
-- **Backend API**: Located in `../app-emineon/` directory
-- **Design Reference**: https://emineon.com/product
-- **Authentication**: Clerk.dev documentation
-- **UI Framework**: TailwindCSS documentation 
+**Built with ❤️ by the Emineon Team** 

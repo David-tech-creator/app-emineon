@@ -1,6 +1,26 @@
 {
-  "buildCommand": "next build",
-  "devCommand": "next dev",
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
   "installCommand": "npm install",
-  "framework": "nextjs"
+  "devCommand": "npm run dev",
+  "env": {
+    "PRISMA_GENERATE_DATAPROXY": "true"
+  },
+  "functions": {
+    "app/api/**/*.js": {
+      "maxDuration": 30
+    },
+    "app/api/candidates/parse-cv/route.js": {
+      "maxDuration": 60
+    },
+    "app/api/candidates/parse-linkedin/route.js": {
+      "maxDuration": 60
+    },
+    "app/api/ai/**/*.js": {
+      "maxDuration": 45
+    }
+  },
+  "crons": [],
+  "regions": ["iad1"]
 } 
