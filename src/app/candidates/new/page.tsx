@@ -6,11 +6,22 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
-import { candidateFormSchema, transformCandidateFormData, type CandidateFormData } from '@/lib/validation';
+import { candidateSchema, type CandidateInput } from '@/lib/validation';
 import { api } from '@/lib/api';
 import { useAuth } from '@clerk/nextjs';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { z } from 'zod';
+
+// Form schema for raw input (skills as string)
+const candidateFormSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.string().email('Invalid email address'),
+  skills: z.string().min(1, 'Skills are required'),
+  experience: z.number().min(0).max(50),
+});
+
+type CandidateFormData = z.infer<typeof candidateFormSchema>;
 
 export default function NewCandidatePage() {
   const router = useRouter();
@@ -32,7 +43,12 @@ export default function NewCandidatePage() {
       const token = await getToken();
       
       // Transform the form data to match API expectations
-      const candidateData = transformCandidateFormData(data);
+      const candidateData: CandidateInput = {
+        name: data.name,
+        email: data.email,
+        skills: data.skills.split(',').map(skill => skill.trim()).filter(Boolean),
+        experience: Number(data.experience),
+      };
 
       const response = await api.candidates.create(candidateData, token || undefined);
       
@@ -130,7 +146,7 @@ export default function NewCandidatePage() {
                   Years of Experience *
                 </label>
                 <input
-                  {...register('experience')}
+                  {...register('experience', { valueAsNumber: true })}
                   type="number"
                   id="experience"
                   min="0"

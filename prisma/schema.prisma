@@ -10,14 +10,199 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Enums
+enum JobStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CLOSED
+  ARCHIVED
+}
+
+enum Language {
+  EN
+  ES
+  FR
+  DE
+  PT
+  IT
+  NL
+  PL
+  RU
+  ZH
+  JA
+  KO
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWING
+  INTERVIEW_SCHEDULED
+  INTERVIEWED
+  OFFER_EXTENDED
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+enum InterviewType {
+  PHONE_SCREENING
+  TECHNICAL
+  BEHAVIORAL
+  FINAL
+  VIDEO_ONE_WAY
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+}
+
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+  DEBUG
+}
+
+// Core Models
 model Candidate {
-  id         String   @id @default(cuid())
-  name       String
-  email      String   @unique
-  skills     String[] // Array of skills
-  experience Int      // Years of experience
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  skills          String[] // Array of skills
+  experience      Int      // Years of experience
+  assessmentScore Float?   // Assessment score
+  assessmentComments String?
+  profileToken    String?  @unique // For public profile sharing
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  applications    Application[]
+  referrals       Referral[]
+  evaluations     Evaluation[]
+  interviews      Interview[]
 
   @@map("candidates")
+}
+
+model Job {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  department  String
+  location    String
+  language    Language  @default(EN)
+  status      JobStatus @default(DRAFT)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  applications Application[]
+  interviews   Interview[]
+
+  @@map("jobs")
+}
+
+model Application {
+  id           String            @id @default(cuid())
+  candidateId  String
+  jobId        String
+  status       ApplicationStatus @default(PENDING)
+  coverLetter  String?
+  cvUrl        String?
+  referralCode String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  // Relations
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job       Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([candidateId, jobId])
+  @@map("applications")
+}
+
+model Referral {
+  id          String   @id @default(cuid())
+  candidateId String
+  referrerId  String   // User ID from Clerk
+  referrerName String
+  code        String   @unique
+  isUsed      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@map("referrals")
+}
+
+model Evaluation {
+  id          String   @id @default(cuid())
+  candidateId String
+  evaluatorId String   // User ID from Clerk
+  rating      Float    // 1-5 scale
+  notes       String?
+  criteria    Json?    // Flexible criteria scoring
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@map("evaluations")
+}
+
+model Interview {
+  id               String          @id @default(cuid())
+  candidateId      String
+  jobId            String
+  interviewerId    String          // User ID from Clerk
+  type             InterviewType
+  status           InterviewStatus @default(SCHEDULED)
+  scheduledAt      DateTime
+  duration         Int             // Duration in minutes
+  location         String?         // Physical location or video link
+  videoInterviewUrl String?        // One-way video interview link
+  notes            String?
+  rating           Float?          // 1-5 scale
+  calendarEventId  String?         // External calendar event ID
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  // Relations
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job       Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@map("interviews")
+}
+
+model WorkflowRule {
+  id          String   @id @default(cuid())
+  name        String
+  trigger     String   // Event that triggers the rule
+  conditions  Json     // Rule conditions
+  actions     Json     // Actions to perform
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("workflow_rules")
+}
+
+model Log {
+  id        String   @id @default(cuid())
+  actor     String?  // User ID or system
+  action    String   // Action performed
+  resource  String   // Resource affected
+  details   Json?    // Additional details
+  level     LogLevel @default(INFO)
+  timestamp DateTime @default(now())
+
+  @@map("logs")
 } 
