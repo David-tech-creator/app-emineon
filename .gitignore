@@ -112,3 +112,4 @@ logs
 # Prisma
 # Keep migrations but ignore generated client temporarily during development
 # /prisma/migrations/ 
+.vercel

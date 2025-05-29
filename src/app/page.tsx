@@ -27,8 +27,8 @@ export default function Dashboard() {
     {
       name: 'Clients',
       value: '12',
-      change: '+1',
-      changeType: 'increase' as const,
+      change: '-1',
+      changeType: 'decrease' as const,
       icon: Building2,
     },
     {
@@ -93,7 +93,9 @@ export default function Dashboard() {
         {/* Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card variant="elevated">
-            <CardHeader title="Recent Candidates" />
+            <CardHeader title="Recent Candidates">
+              <div></div>
+            </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center space-x-4 p-4 bg-secondary-50 rounded-lg">
@@ -122,7 +124,9 @@ export default function Dashboard() {
           </Card>
 
           <Card variant="elevated">
-            <CardHeader title="Quick Actions" />
+            <CardHeader title="Quick Actions">
+              <div></div>
+            </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <button className="w-full btn-primary flex items-center justify-center space-x-2">

@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
-import { candidateFormSchema, type CandidateFormData } from '@/lib/validation';
+import { candidateFormSchema, transformCandidateFormData, type CandidateFormData } from '@/lib/validation';
 import { api } from '@/lib/api';
 import { useAuth } from '@clerk/nextjs';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
@@ -32,12 +32,7 @@ export default function NewCandidatePage() {
       const token = await getToken();
       
       // Transform the form data to match API expectations
-      const candidateData = {
-        name: data.name,
-        email: data.email,
-        skills: data.skills, // Already transformed by Zod
-        experience: data.experience, // Already transformed by Zod
-      };
+      const candidateData = transformCandidateFormData(data);
 
       const response = await api.candidates.create(candidateData, token || undefined);
       
@@ -74,7 +69,9 @@ export default function NewCandidatePage() {
         </div>
 
         <Card variant="elevated">
-          <CardHeader title="Candidate Information" />
+          <CardHeader title="Candidate Information">
+            <div></div>
+          </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div>

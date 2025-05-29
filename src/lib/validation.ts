@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// Candidate validation schema
+// Candidate data schema (for API)
 export const candidateSchema = z.object({
   name: z
     .string()
@@ -20,7 +20,7 @@ export const candidateSchema = z.object({
     .max(50, 'Experience cannot exceed 50 years'),
 });
 
-// Form data schema (for string inputs)
+// Form input schema (raw form inputs)
 export const candidateFormSchema = z.object({
   name: z
     .string()
@@ -32,18 +32,24 @@ export const candidateFormSchema = z.object({
     .email('Invalid email format'),
   skills: z
     .string()
-    .min(1, 'Skills are required')
-    .transform((val) => val.split(',').map(skill => skill.trim()).filter(skill => skill.length > 0))
-    .refine((skills) => skills.length > 0, 'At least one skill is required')
-    .refine((skills) => skills.length <= 20, 'Maximum 20 skills allowed'),
+    .min(1, 'Skills are required'),
   experience: z
     .string()
     .min(1, 'Experience is required')
-    .transform((val) => parseInt(val, 10))
-    .refine((val) => !isNaN(val), 'Experience must be a number')
-    .refine((val) => val >= 0, 'Experience must be a non-negative number')
-    .refine((val) => val <= 50, 'Experience cannot exceed 50 years'),
+    .refine((val) => !isNaN(parseInt(val, 10)), 'Experience must be a number')
+    .refine((val) => parseInt(val, 10) >= 0, 'Experience must be a non-negative number')
+    .refine((val) => parseInt(val, 10) <= 50, 'Experience cannot exceed 50 years'),
 });
+
+// Transform function to convert form data to API data
+export const transformCandidateFormData = (formData: CandidateFormData): CandidateData => {
+  return {
+    name: formData.name,
+    email: formData.email,
+    skills: formData.skills.split(',').map(skill => skill.trim()).filter(skill => skill.length > 0),
+    experience: parseInt(formData.experience, 10),
+  };
+};
 
 export type CandidateFormData = z.infer<typeof candidateFormSchema>;
 export type CandidateData = z.infer<typeof candidateSchema>; 
