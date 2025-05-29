@@ -1,4 +1,5 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001/api';
+// Use Next.js API routes instead of external API
+const API_BASE = '/api';
 
 export interface Candidate {
   id: string;
@@ -41,9 +42,8 @@ async function apiRequest<T>(
     Object.assign(headers, options.headers);
   }
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
+  // For Next.js API routes, we don't need to manually add Authorization header
+  // as Clerk handles authentication automatically
 
   try {
     const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -51,13 +51,17 @@ async function apiRequest<T>(
       headers,
     });
 
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     const data = await response.json() as ApiResponse<T>;
     return data;
   } catch (error) {
     console.error('API Request Error:', error);
     return {
       success: false,
-      error: 'Network error occurred',
+      error: error instanceof Error ? error.message : 'Network error occurred',
     };
   }
 }
@@ -69,16 +73,16 @@ export const api = {
 
   // Candidates
   candidates: {
-    list: (token?: string) => apiRequest<Candidate[]>('/candidates', {}, token),
-    get: (id: string, token?: string) => apiRequest<Candidate>(`/candidates/${id}`, {}, token),
+    list: (token?: string) => apiRequest<Candidate[]>('/candidates'),
+    get: (id: string, token?: string) => apiRequest<Candidate>(`/candidates/${id}`),
     create: (data: CreateCandidateData, token?: string) =>
       apiRequest<Candidate>('/candidates', {
         method: 'POST',
         body: JSON.stringify(data),
-      }, token),
+      }),
     delete: (id: string, token?: string) =>
       apiRequest(`/candidates/${id}`, {
         method: 'DELETE',
-      }, token),
+      }),
   },
 }; 
