@@ -333,6 +333,53 @@ Reasoning: [brief explanation]`;
       };
     }
   }
+
+  async parseCV(prompt: string): Promise<string> {
+    if (!this.checkApiKey()) {
+      // Return mock JSON response for CV parsing
+      return JSON.stringify({
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john.doe@email.com',
+        phone: '+1 (555) 123-4567',
+        currentTitle: 'Software Engineer',
+        currentCompany: 'Tech Corp',
+        summary: 'Experienced software engineer with expertise in full-stack development.',
+        skills: ['JavaScript', 'React', 'Node.js', 'Python'],
+        experience: 5,
+        education: [{
+          degree: 'Bachelor of Computer Science',
+          university: 'State University',
+          year: 2018
+        }],
+        workHistory: [{
+          title: 'Software Engineer',
+          company: 'Tech Corp',
+          startDate: '01/2020',
+          endDate: 'Present',
+          description: 'Developed web applications using modern technologies.'
+        }],
+        location: {
+          city: 'San Francisco',
+          country: 'United States'
+        }
+      });
+    }
+
+    try {
+      const completion = await openai!.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 1500,
+        temperature: 0.1,
+      });
+
+      return completion.choices[0]?.message?.content || '{}';
+    } catch (error) {
+      console.error('OpenAI CV parsing error:', error);
+      return '{}';
+    }
+  }
 }
 
 export const openaiService = new OpenAIService(); 

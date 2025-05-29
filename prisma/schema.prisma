@@ -67,24 +67,129 @@ enum LogLevel {
   DEBUG
 }
 
+enum CandidateStatus {
+  NEW
+  ACTIVE
+  PASSIVE
+  DO_NOT_CONTACT
+  BLACKLISTED
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  FREELANCE
+  INTERNSHIP
+  TEMPORARY
+}
+
+enum NoticePeriod {
+  IMMEDIATE
+  ONE_WEEK
+  TWO_WEEKS
+  ONE_MONTH
+  TWO_MONTHS
+  THREE_MONTHS
+  SIX_MONTHS
+  OTHER
+}
+
+enum SalaryType {
+  ANNUAL
+  MONTHLY
+  DAILY
+  HOURLY
+}
+
+enum EducationLevel {
+  HIGH_SCHOOL
+  ASSOCIATE
+  BACHELOR
+  MASTER
+  PHD
+  CERTIFICATION
+  BOOTCAMP
+  SELF_TAUGHT
+}
+
 // Core Models
 model Candidate {
   id              String   @id @default(cuid())
-  name            String
+  
+  // Basic Information (Mandatory)
+  firstName       String
+  lastName        String
   email           String   @unique
+  phone           String?
+  
+  // Location Information
+  country         String?
+  city            String?
+  state           String?
+  postalCode      String?
+  timezone        String?
+  
+  // Professional Information
+  currentTitle    String?
+  summary         String?  // Professional summary
   skills          String[] // Array of skills
-  experience      Int      // Years of experience
-  assessmentScore Float?   // Assessment score
-  assessmentComments String?
-  profileToken    String?  @unique // For public profile sharing
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
+  experience      Int      // Total years of experience
+  
+  // Employment Details
+  currentCompany     String?
+  currentSalary      Float?
+  currentSalaryType  SalaryType?
+  expectedSalary     Float?
+  expectedSalaryType SalaryType?
+  currency           String? @default("USD")
+  noticePeriod       NoticePeriod?
+  
+  // Availability & Preferences
+  status                CandidateStatus @default(NEW)
+  availableStartDate    DateTime?
+  preferredEmployment   EmploymentType[]
+  willingToRelocate     Boolean? @default(false)
+  remoteWork            Boolean? @default(false)
+  
+  // Education
+  highestEducation      EducationLevel?
+  university            String?
+  degree                String?
+  graduationYear        Int?
+  
+  // Documents & Links
+  resumeUrl             String?
+  portfolioUrl          String?
+  linkedinUrl           String?
+  githubUrl             String?
+  websiteUrl            String?
+  
+  // Assessment & Scoring
+  assessmentScore       Float?   // Overall assessment score
+  assessmentComments    String?
+  techScore            Float?   // Technical skills score
+  communicationScore   Float?   // Communication skills score
+  culturalFitScore     Float?   // Cultural fit score
+  
+  // Source & Attribution
+  source               String?  // How they were found (LinkedIn, Referral, etc.)
+  referredBy           String?  // User ID who referred them
+  recruiterNotes       String?  // Internal recruiter notes
+  
+  // Profile & Sharing
+  profileToken         String?  @unique // For public profile sharing
+  
+  // System Fields
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  lastContactedAt      DateTime?
+  
   // Relations
-  applications    Application[]
-  referrals       Referral[]
-  evaluations     Evaluation[]
-  interviews      Interview[]
+  applications         Application[]
+  referrals            Referral[]
+  evaluations          Evaluation[]
+  interviews           Interview[]
 
   @@map("candidates")
 }
