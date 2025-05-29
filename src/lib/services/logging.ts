@@ -1,32 +1,49 @@
+import { prisma } from '@/lib/prisma';
+
 export interface LogEntry {
   actor?: string;
   action: string;
   resource: string;
-  details?: any;
+  details?: Record<string, any>;
   level?: 'INFO' | 'WARN' | 'ERROR' | 'DEBUG';
 }
 
-export class Logger {
-  async log(entry: LogEntry) {
+export class LoggingService {
+  async log(entry: LogEntry): Promise<void> {
     try {
-      // For now, just log to console - would integrate with database when Prisma models are available
-      const logData = {
-        timestamp: new Date().toISOString(),
-        actor: entry.actor || 'SYSTEM',
-        action: entry.action,
-        resource: entry.resource,
-        details: entry.details,
-        level: entry.level || 'INFO'
-      };
+      await prisma.log.create({
+        data: {
+          actor: entry.actor,
+          action: entry.action,
+          resource: entry.resource,
+          details: entry.details,
+          level: entry.level || 'INFO',
+        },
+      });
 
-      console.log(`[${logData.level}] ${logData.timestamp} - ${logData.actor}: ${logData.action} on ${logData.resource}`, logData.details);
-      
-      // Would store in database:
-      // await prisma.log.create({ data: logData });
-      
-      return logData;
+      // Also log to console in development
+      if (process.env.NODE_ENV === 'development') {
+        const message = `[${entry.level || 'INFO'}] ${entry.action} on ${entry.resource}`;
+        const details = entry.details ? JSON.stringify(entry.details, null, 2) : '';
+        
+        switch (entry.level) {
+          case 'ERROR':
+            console.error(message, details);
+            break;
+          case 'WARN':
+            console.warn(message, details);
+            break;
+          case 'DEBUG':
+            console.debug(message, details);
+            break;
+          default:
+            console.log(message, details);
+        }
+      }
     } catch (error) {
-      console.error('Logging error:', error);
+      // Fallback to console if database logging fails
+      console.error('Failed to log to database:', error);
+      console.log('Original log entry:', entry);
     }
   }
 
@@ -35,12 +52,96 @@ export class Logger {
     action?: string;
     resource?: string;
     level?: string;
+    startDate?: Date;
+    endDate?: Date;
     limit?: number;
   }) {
-    // Mock implementation - would query database
-    console.log('Getting logs with filters:', filters);
-    return [];
+    const where: any = {};
+    
+    if (filters?.actor) where.actor = { contains: filters.actor, mode: 'insensitive' };
+    if (filters?.action) where.action = { contains: filters.action, mode: 'insensitive' };
+    if (filters?.resource) where.resource = { contains: filters.resource, mode: 'insensitive' };
+    if (filters?.level) where.level = filters.level;
+    
+    if (filters?.startDate || filters?.endDate) {
+      where.timestamp = {};
+      if (filters.startDate) where.timestamp.gte = filters.startDate;
+      if (filters.endDate) where.timestamp.lte = filters.endDate;
+    }
+
+    return prisma.log.findMany({
+      where,
+      orderBy: { timestamp: 'desc' },
+      take: filters?.limit || 100,
+    });
+  }
+
+  async getOperationalMetrics(timeframe: 'hour' | 'day' | 'week' | 'month' = 'day') {
+    const now = new Date();
+    let startDate: Date;
+
+    switch (timeframe) {
+      case 'hour':
+        startDate = new Date(now.getTime() - 60 * 60 * 1000);
+        break;
+      case 'week':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    }
+
+    const [totalLogs, errorLogs, warningLogs, actionCounts] = await Promise.all([
+      // Total logs count
+      prisma.log.count({
+        where: { timestamp: { gte: startDate } },
+      }),
+      
+      // Error logs count
+      prisma.log.count({
+        where: { 
+          timestamp: { gte: startDate },
+          level: 'ERROR',
+        },
+      }),
+      
+      // Warning logs count
+      prisma.log.count({
+        where: { 
+          timestamp: { gte: startDate },
+          level: 'WARN',
+        },
+      }),
+      
+      // Action breakdown
+      prisma.log.groupBy({
+        by: ['action'],
+        where: { timestamp: { gte: startDate } },
+        _count: { action: true },
+        orderBy: { _count: { action: 'desc' } },
+        take: 10,
+      }),
+    ]);
+
+    return {
+      timeframe,
+      startDate,
+      endDate: now,
+      summary: {
+        totalLogs,
+        errorLogs,
+        warningLogs,
+        errorRate: totalLogs > 0 ? (errorLogs / totalLogs) * 100 : 0,
+      },
+      topActions: actionCounts.map(item => ({
+        action: item.action,
+        count: item._count.action,
+      })),
+    };
   }
 }
 
-export const logger = new Logger(); 
+export const loggingService = new LoggingService(); 

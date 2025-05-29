@@ -3,7 +3,7 @@
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { useUser, useOrganization } from '@clerk/nextjs';
-import { Users, UserPlus, Building2, Briefcase, TrendingUp, Clock } from 'lucide-react';
+import { Users, UserPlus, Building2, Briefcase, TrendingUp, Clock, ClipboardList, Video, Workflow } from 'lucide-react';
 
 export default function Dashboard() {
   const { user } = useUser();
@@ -139,10 +139,35 @@ export default function Dashboard() {
                   <span>Post New Job</span>
                 </button>
                 
-                <button className="w-full btn-secondary flex items-center justify-center space-x-2">
+                <a href="/ai-tools" className="w-full btn-secondary flex items-center justify-center space-x-2">
+                  <TrendingUp className="h-4 w-4" />
+                  <span>AI Tools</span>
+                </a>
+                
+                <a href="/job-distribution" className="w-full btn-secondary flex items-center justify-center space-x-2">
                   <Building2 className="h-4 w-4" />
-                  <span>Add Client</span>
-                </button>
+                  <span>Job Distribution</span>
+                </a>
+                
+                <a href="/clients" className="w-full btn-secondary flex items-center justify-center space-x-2">
+                  <Building2 className="h-4 w-4" />
+                  <span>Client Management</span>
+                </a>
+                
+                <a href="/assessments" className="w-full btn-secondary flex items-center justify-center space-x-2">
+                  <ClipboardList className="h-4 w-4" />
+                  <span>Assessments</span>
+                </a>
+                
+                <a href="/video-interviews" className="w-full btn-secondary flex items-center justify-center space-x-2">
+                  <Video className="h-4 w-4" />
+                  <span>Video Interviews</span>
+                </a>
+                
+                <a href="/workflows" className="w-full btn-secondary flex items-center justify-center space-x-2">
+                  <Workflow className="h-4 w-4" />
+                  <span>Workflow Automation</span>
+                </a>
               </div>
             </CardContent>
           </Card>

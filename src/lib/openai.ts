@@ -335,17 +335,20 @@ Reasoning: [brief explanation]`;
   }
 
   async parseCV(prompt: string): Promise<string> {
+    console.log('OpenAI parseCV called with prompt length:', prompt.length);
+    
     if (!this.checkApiKey()) {
-      // Return mock JSON response for CV parsing
-      return JSON.stringify({
+      console.log('Using mock CV parsing data (no OpenAI API key)');
+      // Return mock JSON response for CV parsing with more detailed data
+      const mockData = {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john.doe@email.com',
         phone: '+1 (555) 123-4567',
         currentTitle: 'Software Engineer',
         currentCompany: 'Tech Corp',
-        summary: 'Experienced software engineer with expertise in full-stack development.',
-        skills: ['JavaScript', 'React', 'Node.js', 'Python'],
+        summary: 'Experienced software engineer with expertise in full-stack development, specializing in React, Node.js, and cloud technologies.',
+        skills: ['JavaScript', 'React', 'Node.js', 'Python', 'AWS', 'Docker'],
         experience: 5,
         education: [{
           degree: 'Bachelor of Computer Science',
@@ -363,10 +366,14 @@ Reasoning: [brief explanation]`;
           city: 'San Francisco',
           country: 'United States'
         }
-      });
+      };
+      
+      console.log('Returning mock data:', mockData);
+      return JSON.stringify(mockData);
     }
 
     try {
+      console.log('Making OpenAI API call for CV parsing');
       const completion = await openai!.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [{ role: "user", content: prompt }],
@@ -374,7 +381,9 @@ Reasoning: [brief explanation]`;
         temperature: 0.1,
       });
 
-      return completion.choices[0]?.message?.content || '{}';
+      const result = completion.choices[0]?.message?.content || '{}';
+      console.log('OpenAI API response:', result);
+      return result;
     } catch (error) {
       console.error('OpenAI CV parsing error:', error);
       return '{}';

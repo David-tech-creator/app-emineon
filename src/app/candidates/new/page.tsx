@@ -24,11 +24,14 @@ import {
   Calendar,
   Link as LinkIcon,
   X,
-  CheckCircle
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { useDropzone } from 'react-dropzone';
+import { z } from 'zod';
 
+// Updated interface to match the CV parser service
 interface ParsedData {
   firstName?: string;
   lastName?: string;
@@ -39,8 +42,18 @@ interface ParsedData {
   summary?: string;
   skills?: string[];
   experience?: number;
-  education?: any[];
-  workHistory?: any[];
+  education?: {
+    degree?: string;
+    university?: string;
+    year?: number;
+  }[];
+  workHistory?: {
+    title?: string;
+    company?: string;
+    startDate?: string;
+    endDate?: string;
+    description?: string;
+  }[];
   location?: {
     city?: string;
     country?: string;
@@ -81,6 +94,8 @@ export default function NewCandidatePage() {
     reset,
     setValue,
     watch,
+    getValues,
+    trigger,
   } = useForm<CandidateFormInput>({
     resolver: zodResolver(candidateFormSchema),
     defaultValues: formDefaultValues,
@@ -114,12 +129,13 @@ export default function NewCandidatePage() {
     
     setIsParsing(true);
     setParseError(null);
+    setParseSuccess(false);
     
     try {
-      const token = await getToken();
       const formData = new FormData();
       formData.append('cv', uploadedFile);
       
+      const token = await getToken();
       const response = await fetch('/api/candidates/parse-cv', {
         method: 'POST',
         headers: {
@@ -129,12 +145,15 @@ export default function NewCandidatePage() {
       });
       
       const result = await response.json();
+      console.log('CV parsing API response:', result);
       
-      if (result.success) {
+      if (result.success && result.data) {
+        console.log('Parsed CV data received:', result.data);
         fillFormWithParsedData(result.data);
         setParseSuccess(true);
-        setTimeout(() => setParseSuccess(false), 3000);
+        setTimeout(() => setParseSuccess(false), 5000);
       } else {
+        console.error('CV parsing failed:', result.error);
         setParseError(result.error || 'Failed to parse CV');
       }
     } catch (error) {
@@ -150,6 +169,7 @@ export default function NewCandidatePage() {
     
     setIsParsing(true);
     setParseError(null);
+    setParseSuccess(false);
     
     try {
       const token = await getToken();
@@ -163,12 +183,15 @@ export default function NewCandidatePage() {
       });
       
       const result = await response.json();
+      console.log('LinkedIn parsing API response:', result);
       
-      if (result.success) {
+      if (result.success && result.data) {
+        console.log('Parsed LinkedIn data received:', result.data);
         fillFormWithParsedData(result.data);
         setParseSuccess(true);
-        setTimeout(() => setParseSuccess(false), 3000);
+        setTimeout(() => setParseSuccess(false), 5000);
       } else {
+        console.error('LinkedIn parsing failed:', result.error);
         setParseError(result.error || 'Failed to parse LinkedIn profile');
       }
     } catch (error) {
@@ -180,42 +203,102 @@ export default function NewCandidatePage() {
   };
 
   const fillFormWithParsedData = (data: ParsedData) => {
+    console.log('Filling form with parsed data:', data);
+    
     // Fill basic information
-    if (data.firstName) setValue('firstName', data.firstName);
-    if (data.lastName) setValue('lastName', data.lastName);
-    if (data.email) setValue('email', data.email);
-    if (data.phone) setValue('phone', data.phone);
+    if (data.firstName) {
+      console.log('Setting firstName:', data.firstName);
+      setValue('firstName', data.firstName);
+    }
+    if (data.lastName) {
+      console.log('Setting lastName:', data.lastName);
+      setValue('lastName', data.lastName);
+    }
+    if (data.email) {
+      console.log('Setting email:', data.email);
+      setValue('email', data.email);
+    }
+    if (data.phone) {
+      console.log('Setting phone:', data.phone);
+      setValue('phone', data.phone);
+    }
     
     // Professional information
-    if (data.currentTitle) setValue('currentTitle', data.currentTitle);
-    if (data.currentCompany) setValue('currentCompany', data.currentCompany);
-    if (data.summary) setValue('summary', data.summary);
-    if (data.experience) setValue('experience', data.experience);
+    if (data.currentTitle) {
+      console.log('Setting currentTitle:', data.currentTitle);
+      setValue('currentTitle', data.currentTitle);
+    }
+    if (data.currentCompany) {
+      console.log('Setting currentCompany:', data.currentCompany);
+      setValue('currentCompany', data.currentCompany);
+    }
+    if (data.summary) {
+      console.log('Setting summary:', data.summary);
+      setValue('summary', data.summary);
+    }
+    if (typeof data.experience === 'number') {
+      console.log('Setting experience:', data.experience);
+      setValue('experience', data.experience);
+    }
     
-    // Skills
+    // Skills - convert array to comma-separated string
     if (data.skills && data.skills.length > 0) {
-      setValue('skills', data.skills.join(', '));
+      const skillsString = data.skills.join(', ');
+      console.log('Setting skills:', skillsString);
+      setValue('skills', skillsString);
     }
     
     // Location
-    if (data.location?.city) setValue('city', data.location.city);
-    if (data.location?.country) setValue('country', data.location.country);
+    if (data.location?.city) {
+      console.log('Setting city:', data.location.city);
+      setValue('city', data.location.city);
+    }
+    if (data.location?.country) {
+      console.log('Setting country:', data.location.country);
+      setValue('country', data.location.country);
+    }
     
     // Education (use first education entry)
     if (data.education && data.education.length > 0) {
       const edu = data.education[0];
-      if (edu.degree) setValue('degree', edu.degree);
-      if (edu.university) setValue('university', edu.university);
-      if (edu.year) setValue('graduationYear', edu.year);
+      if (edu.degree) {
+        console.log('Setting degree:', edu.degree);
+        setValue('degree', edu.degree);
+      }
+      if (edu.university) {
+        console.log('Setting university:', edu.university);
+        setValue('university', edu.university);
+      }
+      if (edu.year) {
+        console.log('Setting graduationYear:', edu.year);
+        setValue('graduationYear', edu.year);
+      }
     }
     
     // URLs
-    if (data.linkedinUrl) setValue('linkedinUrl', data.linkedinUrl);
-    if (data.portfolioUrl) setValue('portfolioUrl', data.portfolioUrl);
-    if (data.githubUrl) setValue('githubUrl', data.githubUrl);
+    if (data.linkedinUrl) {
+      console.log('Setting linkedinUrl:', data.linkedinUrl);
+      setValue('linkedinUrl', data.linkedinUrl);
+    }
+    if (data.portfolioUrl) {
+      console.log('Setting portfolioUrl:', data.portfolioUrl);
+      setValue('portfolioUrl', data.portfolioUrl);
+    }
+    if (data.githubUrl) {
+      console.log('Setting githubUrl:', data.githubUrl);
+      setValue('githubUrl', data.githubUrl);
+    }
     
-    // Set source
-    setValue('source', parseMethod === 'linkedin' ? 'LinkedIn' : 'CV Upload');
+    // Set source based on parsing method
+    const sourceValue = parseMethod === 'linkedin' ? 'LinkedIn' : 'CV Upload';
+    console.log('Setting source:', sourceValue);
+    setValue('source', sourceValue);
+    
+    // Force form validation and re-rendering
+    trigger();
+    
+    // Log form data after setting values
+    console.log('Form data after setting values:', getValues());
   };
 
   const onSubmit = async (data: CandidateFormInput) => {

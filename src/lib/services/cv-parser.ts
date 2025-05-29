@@ -34,6 +34,8 @@ export interface ParsedCandidateData {
 
 export class CVParserService {
   async parseCV(file: File): Promise<ParsedCandidateData> {
+    console.log('CV Parser: parseCV called with file:', file.name, file.type, file.size);
+    
     try {
       let extractedText = '';
       
@@ -50,11 +52,15 @@ export class CVParserService {
         throw new Error('Unsupported file format. Please upload PDF, Word, or text documents.');
       }
 
+      console.log('CV Parser: extracted text length:', extractedText.length);
+      
       if (!extractedText.trim()) {
         throw new Error('Could not extract text from the document. Please try copying and pasting the content.');
       }
 
-      return await this.parseTextWithAI(extractedText);
+      const result = await this.parseTextWithAI(extractedText);
+      console.log('CV Parser: final parsed result:', result);
+      return result;
     } catch (error) {
       console.error('CV parsing error:', error);
       throw new Error('Failed to parse CV. Please check the file format and try again.');
@@ -62,10 +68,13 @@ export class CVParserService {
   }
 
   async parseLinkedInProfile(linkedinUrl: string): Promise<ParsedCandidateData> {
+    console.log('CV Parser: parseLinkedInProfile called with URL:', linkedinUrl);
+    
     try {
       // Note: In production, you'd need to use LinkedIn API or web scraping
       // For now, we'll provide a mock response with guidance
       const mockData = await this.mockLinkedInParsing(linkedinUrl);
+      console.log('CV Parser: LinkedIn parsing result:', mockData);
       return mockData;
     } catch (error) {
       console.error('LinkedIn parsing error:', error);
@@ -148,21 +157,40 @@ JSON Response:`;
   }
 
   private async mockLinkedInParsing(linkedinUrl: string): Promise<ParsedCandidateData> {
+    console.log('Mock LinkedIn parsing for URL:', linkedinUrl);
+    
     // Mock LinkedIn parsing - in production, integrate with LinkedIn API
-    return {
-      firstName: 'John',
-      lastName: 'Doe',
-      currentTitle: 'Software Engineer',
-      currentCompany: 'Tech Company',
-      summary: 'Experienced software engineer with expertise in web development.',
-      skills: ['JavaScript', 'React', 'Node.js', 'TypeScript'],
-      experience: 5,
+    const mockData = {
+      firstName: 'Sarah',
+      lastName: 'Johnson',
+      email: 'sarah.johnson@email.com',
+      phone: '+1 (555) 987-6543',
+      currentTitle: 'Senior Frontend Developer',
+      currentCompany: 'Innovation Labs',
+      summary: 'Passionate frontend developer with 7 years of experience building modern web applications. Expert in React, TypeScript, and user experience design.',
+      skills: ['JavaScript', 'TypeScript', 'React', 'Vue.js', 'CSS3', 'HTML5', 'Figma', 'GraphQL'],
+      experience: 7,
+      education: [{
+        degree: 'Master of Computer Science',
+        university: 'MIT',
+        year: 2017
+      }],
+      workHistory: [{
+        title: 'Senior Frontend Developer',
+        company: 'Innovation Labs',
+        startDate: '03/2022',
+        endDate: 'Present',
+        description: 'Lead frontend development team and architected scalable web applications.'
+      }],
       linkedinUrl,
       location: {
-        city: 'San Francisco',
+        city: 'New York',
         country: 'United States'
       }
     };
+    
+    console.log('Returning mock LinkedIn data:', mockData);
+    return mockData;
   }
 
   private validateAndCleanParsedData(data: any): ParsedCandidateData {

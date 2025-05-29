@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Card } from '@/components/ui/Card';
-import { Upload, Briefcase, MapPin, Building } from 'lucide-react';
+import { Card, CardContent, CardHeader } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
+import { Briefcase, MapPin, Clock, DollarSign, Users, CheckCircle } from 'lucide-react';
 
 interface Job {
   id: string;
@@ -11,73 +14,87 @@ interface Job {
   description: string;
   department: string;
   location: string;
-  language: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  salaryCurrency?: string;
+  employmentType?: string[];
+  benefits?: string[];
+  requirements?: string[];
+  responsibilities?: string[];
+  isRemote: boolean;
+  publishedAt: string;
 }
 
 export default function JobApplicationPage() {
   const params = useParams();
   const jobId = params.jobId as string;
+  
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
+
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
+    phone: '',
     coverLetter: '',
     referralCode: '',
+    cvUrl: '',
   });
 
   useEffect(() => {
-    // Mock job data - in real implementation would fetch from API
-    const mockJobs: Record<string, Job> = {
-      '1': {
-        id: '1',
-        title: 'Senior Software Engineer',
-        description: 'We are looking for a senior software engineer with experience in React, Node.js, and TypeScript. You will be working on cutting-edge projects with a talented team.',
-        department: 'Engineering',
-        location: 'San Francisco, CA',
-        language: 'EN',
-      },
-      '2': {
-        id: '2',
-        title: 'Product Manager',
-        description: 'Product manager to lead our mobile app development team. Drive product strategy and work closely with engineering and design teams.',
-        department: 'Product',
-        location: 'New York, NY',
-        language: 'EN',
-      },
-    };
-
-    const foundJob = mockJobs[jobId];
-    setJob(foundJob || null);
-    setLoading(false);
+    fetchJob();
   }, [jobId]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const fetchJob = async () => {
+    try {
+      const response = await fetch(`/api/public/jobs?id=${jobId}`);
+      const data = await response.json();
+      
+      if (data.success && data.data.length > 0) {
+        setJob(data.data[0]);
+      } else {
+        setError('Job not found or no longer available');
+      }
+    } catch (err) {
+      setError('Failed to load job details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!job) return;
+
     setSubmitting(true);
+    setError('');
 
     try {
-      const response = await fetch('/api/applications', {
+      const response = await fetch('/api/apply', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          jobId: job.id,
           ...formData,
-          jobId,
+          source: 'direct_application',
         }),
       });
 
-      if (response.ok) {
+      const data = await response.json();
+
+      if (data.success) {
         setSubmitted(true);
       } else {
-        alert('Failed to submit application. Please try again.');
+        setError(data.error || 'Failed to submit application');
       }
-    } catch (error) {
-      console.error('Error submitting application:', error);
-      alert('Failed to submit application. Please try again.');
+    } catch (err) {
+      setError('Failed to submit application. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -91,21 +108,23 @@ export default function JobApplicationPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Loading job details...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading job details...</p>
         </div>
       </div>
     );
   }
 
-  if (!job) {
+  if (error && !job) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <div className="text-center py-8 px-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Job Not Found</h1>
-            <p className="text-gray-600">The job posting you're looking for doesn't exist or has been removed.</p>
-          </div>
+        <Card className="max-w-md mx-auto">
+          <CardContent className="text-center py-8">
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button onClick={() => window.history.back()} className="btn-secondary">
+              Go Back
+            </Button>
+          </CardContent>
         </Card>
       </div>
     );
@@ -114,140 +133,219 @@ export default function JobApplicationPage() {
   if (submitted) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <div className="text-center py-8 px-6">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Application Submitted!</h1>
-            <p className="text-gray-600">
-              Thank you for your interest in the {job.title} position. We'll review your application and get back to you soon.
+        <Card className="max-w-md mx-auto">
+          <CardContent className="text-center py-8">
+            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold mb-2">Application Submitted!</h1>
+            <p className="text-gray-600 mb-6">
+              Thank you for your interest in the {job?.title} position. 
+              We'll review your application and get back to you soon.
             </p>
-          </div>
+            <Button onClick={() => window.location.href = '/'} className="btn-primary">
+              View More Jobs
+            </Button>
+          </CardContent>
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="max-w-4xl mx-auto">
         {/* Job Details */}
         <Card className="mb-8">
-          <div className="p-6">
-            <h1 className="text-2xl font-bold text-blue-600 mb-4">{job.title}</h1>
-            <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-4">
-              <div className="flex items-center gap-1">
-                <Building className="h-4 w-4" />
-                {job.department}
+          <CardHeader>
+            <div className="flex items-start justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">{job?.title}</h1>
+                <div className="flex items-center space-x-6 text-gray-600">
+                  <div className="flex items-center">
+                    <Users className="h-4 w-4 mr-1" />
+                    {job?.department}
+                  </div>
+                  <div className="flex items-center">
+                    <MapPin className="h-4 w-4 mr-1" />
+                    {job?.isRemote ? 'Remote' : job?.location}
+                  </div>
+                  {job?.salaryMin && job?.salaryMax && (
+                    <div className="flex items-center">
+                      <DollarSign className="h-4 w-4 mr-1" />
+                      {job.salaryCurrency}{job.salaryMin.toLocaleString()} - {job.salaryCurrency}{job.salaryMax.toLocaleString()}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <MapPin className="h-4 w-4" />
-                {job.location}
-              </div>
-              <div className="flex items-center gap-1">
-                <Briefcase className="h-4 w-4" />
-                Full-time
+              <div className="flex items-center text-sm text-gray-500">
+                <Clock className="h-4 w-4 mr-1" />
+                Posted {new Date(job?.publishedAt || '').toLocaleDateString()}
               </div>
             </div>
+          </CardHeader>
+          <CardContent>
             <div className="prose max-w-none">
-              <p className="text-gray-700 leading-relaxed">{job.description}</p>
+              <p className="text-gray-700 mb-6">{job?.description}</p>
+              
+              {job?.responsibilities && job.responsibilities.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3">Responsibilities</h3>
+                  <ul className="list-disc list-inside space-y-1">
+                    {job.responsibilities.map((item, index) => (
+                      <li key={index} className="text-gray-700">{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {job?.requirements && job.requirements.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3">Requirements</h3>
+                  <ul className="list-disc list-inside space-y-1">
+                    {job.requirements.map((item, index) => (
+                      <li key={index} className="text-gray-700">{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {job?.benefits && job.benefits.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Benefits</h3>
+                  <ul className="list-disc list-inside space-y-1">
+                    {job.benefits.map((item, index) => (
+                      <li key={index} className="text-gray-700">{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
-          </div>
+          </CardContent>
         </Card>
 
         {/* Application Form */}
         <Card>
-          <div className="p-6">
-            <h2 className="text-xl font-bold mb-2">Apply for this position</h2>
-            <p className="text-gray-600 mb-6">Please fill out the form below to submit your application.</p>
-            
+          <CardHeader>
+            <h2 className="text-2xl font-bold">Apply for this position</h2>
+            <p className="text-gray-600">Submit your application to join our team</p>
+          </CardHeader>
+          <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-                  <input
-                    id="name"
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    First Name *
+                  </label>
+                  <Input
                     type="text"
-                    value={formData.name}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('name', e.target.value)}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={formData.firstName}
+                    onChange={(e) => handleInputChange('firstName', e.target.value)}
+                    placeholder="Enter your first name"
                   />
                 </div>
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('email', e.target.value)}
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Last Name *
+                  </label>
+                  <Input
+                    type="text"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={formData.lastName}
+                    onChange={(e) => handleInputChange('lastName', e.target.value)}
+                    placeholder="Enter your last name"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Address *
+                  </label>
+                  <Input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    placeholder="your.email@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phone Number
+                  </label>
+                  <Input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    placeholder="+1 (555) 123-4567"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="coverLetter" className="block text-sm font-medium text-gray-700 mb-1">Cover Letter</label>
-                <textarea
-                  id="coverLetter"
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Resume/CV URL
+                </label>
+                <Input
+                  type="url"
+                  value={formData.cvUrl}
+                  onChange={(e) => handleInputChange('cvUrl', e.target.value)}
+                  placeholder="https://example.com/your-resume.pdf"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Upload your resume to Google Drive, Dropbox, or another cloud service and paste the public link here
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cover Letter
+                </label>
+                <Textarea
                   value={formData.coverLetter}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleInputChange('coverLetter', e.target.value)}
+                  onChange={(e) => handleInputChange('coverLetter', e.target.value)}
                   placeholder="Tell us why you're interested in this position and what makes you a great fit..."
                   rows={6}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Resume / CV *</label>
-                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                  <div className="space-y-1 text-center">
-                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                    <div className="flex text-sm text-gray-600">
-                      <label htmlFor="resume-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500">
-                        <span>Upload a file</span>
-                        <input id="resume-upload" name="resume-upload" type="file" className="sr-only" accept=".pdf,.doc,.docx" />
-                      </label>
-                      <p className="pl-1">or drag and drop</p>
-                    </div>
-                    <p className="text-xs text-gray-500">PDF, DOC, DOCX up to 10MB</p>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="referralCode" className="block text-sm font-medium text-gray-700 mb-1">Referral Code (Optional)</label>
-                <input
-                  id="referralCode"
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Referral Code (Optional)
+                </label>
+                <Input
                   type="text"
                   value={formData.referralCode}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('referralCode', e.target.value)}
+                  onChange={(e) => handleInputChange('referralCode', e.target.value)}
                   placeholder="Enter referral code if you have one"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
-              <div className="flex justify-end space-x-4">
-                <button 
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                  <p className="text-red-600 text-sm">{error}</p>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-6">
+                <Button
                   type="button"
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onClick={() => window.history.back()}
+                  className="btn-secondary"
                 >
-                  Save Draft
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={submitting || !formData.name || !formData.email}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  Back to Jobs
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="btn-primary"
                 >
                   {submitting ? 'Submitting...' : 'Submit Application'}
-                </button>
+                </Button>
               </div>
             </form>
-          </div>
+          </CardContent>
         </Card>
       </div>
     </div>
