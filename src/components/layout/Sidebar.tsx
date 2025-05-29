@@ -9,7 +9,11 @@ import {
   UserPlus, 
   Building2, 
   Briefcase,
-  ChevronRight
+  ChevronRight,
+  ClipboardList,
+  BarChart3,
+  FileText,
+  Activity
 } from 'lucide-react';
 
 const navigation = [
@@ -29,14 +33,29 @@ const navigation = [
     icon: UserPlus,
   },
   {
-    name: 'Clients',
-    href: '/clients',
-    icon: Building2,
+    name: 'Assignments',
+    href: '/assignments',
+    icon: ClipboardList,
   },
   {
     name: 'Jobs',
     href: '/jobs',
-    icon: Briefcase,
+    icon: Building2,
+  },
+  {
+    name: 'Reports',
+    href: '/reports',
+    icon: BarChart3,
+  },
+  {
+    name: 'Notes',
+    href: '/notes',
+    icon: FileText,
+  },
+  {
+    name: 'Analytics',
+    href: '/analytics',
+    icon: Activity,
   },
 ];
 
