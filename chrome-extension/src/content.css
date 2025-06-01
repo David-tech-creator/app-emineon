@@ -1,0 +1,132 @@
+/* Emineon ATS LinkedIn Extension Styles */
+
+.emineon-add-candidate-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #0A2F5A 0%, #008080 100%);
+  color: white;
+  border: none;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin: 8px 8px 8px 0;
+  box-shadow: 0 2px 8px rgba(10, 47, 90, 0.2);
+  z-index: 1000;
+  position: relative;
+}
+
+.emineon-add-candidate-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(10, 47, 90, 0.3);
+  background: linear-gradient(135deg, #0A2F5A 0%, #006666 100%);
+}
+
+.emineon-add-candidate-btn:active {
+  transform: translateY(0);
+}
+
+.emineon-add-candidate-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.emineon-add-candidate-btn svg {
+  flex-shrink: 0;
+}
+
+/* Loading spinner */
+.emineon-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: emineon-spin 1s linear infinite;
+}
+
+@keyframes emineon-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Button container */
+.emineon-button-container {
+  display: flex;
+  align-items: center;
+  margin-top: 16px;
+}
+
+/* Notifications */
+.emineon-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 10000;
+  max-width: 400px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: emineon-slide-in 0.3s ease-out;
+}
+
+.emineon-notification--success {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+}
+
+.emineon-notification--error {
+  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+}
+
+.emineon-notification--info {
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+}
+
+@keyframes emineon-slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .emineon-add-candidate-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    margin: 4px 4px 4px 0;
+  }
+  
+  .emineon-notification {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+}
+
+/* Integration with LinkedIn's existing styles */
+.pv-top-card-v2-ctas .emineon-add-candidate-btn,
+.pv-s-profile-actions .emineon-add-candidate-btn {
+  margin-left: 8px;
+}
+
+/* Ensure button appears correctly in different LinkedIn layouts */
+.artdeco-card.pv-top-card .emineon-button-container {
+  padding: 16px 24px 0;
+}
+
+.pv-text-details__left-panel .emineon-button-container {
+  margin-top: 12px;
+} 

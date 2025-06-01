@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Emineon ATS - LinkedIn Sourcing",
+  "version": "1.0.0",
+  "description": "Source candidates from LinkedIn directly into your Emineon ATS",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://www.linkedin.com/*",
+    "https://linkedin.com/*",
+    "https://app-emineon-*.vercel.app/*",
+    "https://your-emineon-domain.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.linkedin.com/in/*",
+        "https://linkedin.com/in/*",
+        "https://www.linkedin.com/search/results/people/*",
+        "https://linkedin.com/search/results/people/*"
+      ],
+      "js": ["src/content.js"],
+      "css": ["src/content.css"]
+    }
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Emineon ATS"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["src/injected.js"],
+      "matches": ["https://www.linkedin.com/*", "https://linkedin.com/*"]
+    }
+  ]
+} 
