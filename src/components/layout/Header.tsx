@@ -18,7 +18,7 @@ interface Breadcrumb {
 const breadcrumbMap: Record<string, string> = {
   '/': 'Dashboard',
   '/candidates': 'Candidates',
-  '/candidates/new': 'Add Candidate',
+
   '/jobs': 'Jobs',
   '/job-distribution': 'Job Distribution',
   '/clients': 'Clients',

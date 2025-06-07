@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs';
 import { linkedinParsingSchema } from '@/lib/validation';
 import { cvParserService } from '@/lib/services/cv-parser';
 
@@ -8,17 +7,7 @@ export const maxDuration = 30;
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = auth();
-    
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Authentication required',
-        },
-        { status: 401 }
-      );
-    }
+    console.log('LinkedIn parsing request received');
 
     const body = await request.json();
     

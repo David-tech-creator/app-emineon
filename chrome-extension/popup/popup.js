@@ -173,6 +173,23 @@ class EmineonPopup {
 
   async testApiConnection(apiUrl, apiKey) {
     try {
+      if (!apiUrl || !apiKey) {
+        return { 
+          success: false, 
+          error: 'Please provide both ATS URL and API Key' 
+        };
+      }
+
+      // Validate URL format
+      try {
+        new URL(apiUrl);
+      } catch {
+        return { 
+          success: false, 
+          error: 'Invalid URL format' 
+        };
+      }
+
       const response = await fetch(`${apiUrl}/api/health`, {
         method: 'GET',
         headers: {
@@ -182,17 +199,28 @@ class EmineonPopup {
       });
 
       if (response.ok) {
-        return { success: true };
+        const data = await response.json();
+        return { 
+          success: true, 
+          data: data 
+        };
       } else {
+        const errorText = await response.text();
         return { 
           success: false, 
-          error: `HTTP ${response.status}: ${response.statusText}` 
+          error: `HTTP ${response.status}: ${errorText || response.statusText}` 
         };
       }
     } catch (error) {
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        return { 
+          success: false, 
+          error: 'Cannot connect to ATS. Please check the URL and try again.' 
+        };
+      }
       return { 
         success: false, 
-        error: error.message 
+        error: `Connection failed: ${error.message}` 
       };
     }
   }
@@ -217,7 +245,7 @@ class EmineonPopup {
       const config = await chrome.storage.sync.get(['emineonApiUrl', 'emineonApiKey']);
       
       if (!config.emineonApiUrl || !config.emineonApiKey) {
-        this.updateConnectionStatus('error', 'Not Configured');
+        this.updateConnectionStatus('disconnected', 'Not Configured');
         return;
       }
 
@@ -227,10 +255,11 @@ class EmineonPopup {
         this.updateConnectionStatus('connected', 'Connected');
       } else {
         this.updateConnectionStatus('error', 'Connection Error');
+        console.error('Connection check failed:', result.error);
       }
     } catch (error) {
       console.error('Connection check error:', error);
-      this.updateConnectionStatus('error', 'Check Failed');
+      this.updateConnectionStatus('error', 'Connection Error');
     }
   }
 
@@ -338,4 +367,153 @@ class EmineonPopup {
 // Initialize popup when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   new EmineonPopup();
-}); 
+});
+
+// Load saved configuration
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const config = await chrome.storage.sync.get(['emineonApiUrl', 'emineonApiKey']);
+    
+    // Set default values if not configured
+    document.getElementById('apiUrl').value = config.emineonApiUrl || 'https://app-emineon.vercel.app';
+    document.getElementById('apiKey').value = config.emineonApiKey || 'Test12345';
+    
+    // Test connection on load
+    testConnection();
+    
+    // Load stats
+    loadStats();
+  } catch (error) {
+    console.error('Error loading configuration:', error);
+  }
+});
+
+// Save configuration
+document.getElementById('saveConfig').addEventListener('click', async () => {
+  const apiUrl = document.getElementById('apiUrl').value.trim();
+  const apiKey = document.getElementById('apiKey').value.trim();
+  
+  if (!apiUrl || !apiKey) {
+    showStatus('Please fill in all fields', 'error');
+    return;
+  }
+  
+  try {
+    await chrome.storage.sync.set({
+      emineonApiUrl: apiUrl,
+      emineonApiKey: apiKey
+    });
+    
+    showStatus('Configuration saved successfully!', 'success');
+    
+    // Test connection after saving
+    setTimeout(testConnection, 1000);
+  } catch (error) {
+    console.error('Error saving configuration:', error);
+    showStatus('Error saving configuration', 'error');
+  }
+});
+
+// Test connection
+document.getElementById('testConnection').addEventListener('click', testConnection);
+
+async function testConnection() {
+  const statusElement = document.getElementById('connectionStatus');
+  const apiUrl = document.getElementById('apiUrl').value.trim();
+  const apiKey = document.getElementById('apiKey').value.trim();
+  
+  if (!apiUrl || !apiKey) {
+    statusElement.textContent = 'Please configure API settings';
+    statusElement.className = 'status error';
+    return;
+  }
+  
+  statusElement.textContent = 'Testing connection...';
+  statusElement.className = 'status';
+  
+  try {
+    // Try to reach the Emineon ATS API
+    const possibleEndpoints = [
+      '/api/health',
+      '/api/status',
+      '/api/candidates',
+      '/api/candidates/parse-linkedin'
+    ];
+    
+    let connected = false;
+    
+    for (const endpoint of possibleEndpoints) {
+      try {
+        const response = await fetch(`${apiUrl}${endpoint}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'X-API-Key': apiKey,
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (response.status !== 404) {
+          connected = true;
+          break;
+        }
+      } catch (error) {
+        // Continue to next endpoint
+        continue;
+      }
+    }
+    
+    if (connected) {
+      statusElement.textContent = 'Connected to Emineon ATS ✓';
+      statusElement.className = 'status success';
+    } else {
+      statusElement.textContent = 'Cannot reach API endpoints (may still work)';
+      statusElement.className = 'status warning';
+    }
+  } catch (error) {
+    console.error('Connection test error:', error);
+    statusElement.textContent = 'Connection failed - Check URL and network';
+    statusElement.className = 'status error';
+  }
+}
+
+async function loadStats() {
+  try {
+    const stats = await chrome.storage.local.get(['candidatesAdded', 'lastActivity']);
+    
+    document.getElementById('candidatesAdded').textContent = stats.candidatesAdded || 0;
+    
+    if (stats.lastActivity) {
+      const lastDate = new Date(stats.lastActivity);
+      document.getElementById('lastActivity').textContent = lastDate.toLocaleDateString();
+    } else {
+      document.getElementById('lastActivity').textContent = 'Never';
+    }
+  } catch (error) {
+    console.error('Error loading stats:', error);
+  }
+}
+
+function showStatus(message, type) {
+  const statusDiv = document.createElement('div');
+  statusDiv.className = `status ${type}`;
+  statusDiv.textContent = message;
+  statusDiv.style.cssText = `
+    margin-top: 10px;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    background: ${type === 'success' ? '#d4edda' : type === 'error' ? '#f8d7da' : '#fff3cd'};
+    color: ${type === 'success' ? '#155724' : type === 'error' ? '#721c24' : '#856404'};
+    border: 1px solid ${type === 'success' ? '#c3e6cb' : type === 'error' ? '#f5c6cb' : '#ffeaa7'};
+  `;
+  
+  const container = document.querySelector('.config-section');
+  container.appendChild(statusDiv);
+  
+  setTimeout(() => {
+    if (statusDiv.parentNode) {
+      statusDiv.parentNode.removeChild(statusDiv);
+    }
+  }, 3000);
+} 

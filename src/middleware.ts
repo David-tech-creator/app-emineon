@@ -6,13 +6,20 @@ export default authMiddleware({
     '/sign-in', 
     '/sign-up',
     '/apply/(.*)',
-    '/jobs/embed'
+    '/jobs/embed',
+    '/api/public/(.*)',
+    '/api/apply',
+    '/api/health',
+    '/api/candidates/parse-cv',
+    '/api/candidates/parse-linkedin'
   ],
   ignoredRoutes: [
     '/((?!api|trpc))(_next.*|.+\\.[\\w]+$)',
     '/api/public/(.*)',
     '/api/apply',
-    '/api/health'
+    '/api/health',
+    '/api/candidates/parse-cv',
+    '/api/candidates/parse-linkedin'
   ],
 })
 

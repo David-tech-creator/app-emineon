@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
     // Check if job exists and is active
-    const job = await prisma.job.findFirst({
+    const job = await (prisma as any).job.findFirst({
       where: {
         id: validatedData.jobId,
         status: 'ACTIVE',
@@ -61,16 +61,37 @@ export async function POST(request: NextRequest) {
           lastName: validatedData.lastName,
           email: validatedData.email,
           phone: validatedData.phone,
-          resumeUrl: validatedData.cvUrl,
+          portfolioUrl: validatedData.cvUrl, // Map cvUrl to portfolioUrl for now
           source: validatedData.source,
-          experience: 0, // Default, can be updated later
+          experienceYears: 0, // Default, can be updated later
+          technicalSkills: [],
+          softSkills: [],
+          toolsAndPlatforms: [],
+          frameworks: [],
+          programmingLanguages: [],
+          spokenLanguages: [],
+          methodologies: [],
+          degrees: [],
+          certifications: [],
+          universities: [],
+          graduationYear: null,
+          educationLevel: null,
+          companies: null,
+          notableProjects: [],
+          tags: ['Website Application'],
+          recruiterNotes: [`Applied via website on ${new Date().toLocaleDateString()}`],
+          freelancer: false,
+          relocationWillingness: false,
+          archived: false,
           status: 'NEW',
-        },
+          conversionStatus: 'IN_PIPELINE',
+          profileToken: `website_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        } as any,
       });
     }
 
     // Check for existing application
-    const existingApplication = await prisma.application.findUnique({
+    const existingApplication = await (prisma as any).application.findUnique({
       where: {
         candidateId_jobId: {
           candidateId: candidate.id,
@@ -87,7 +108,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the application
-    const application = await prisma.application.create({
+    const application = await (prisma as any).application.create({
       data: {
         candidateId: candidate.id,
         jobId: validatedData.jobId,
@@ -117,7 +138,7 @@ export async function POST(request: NextRequest) {
     // If there's a referral code, try to mark it as used
     if (validatedData.referralCode) {
       try {
-        await prisma.referral.updateMany({
+        await (prisma as any).referral.updateMany({
           where: {
             code: validatedData.referralCode,
             isUsed: false,

@@ -1,64 +1,89 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs';
+import { prisma } from '@/lib/prisma';
 import { jobSchema } from '@/lib/validation';
 import { workflowEngine } from '@/lib/services/workflow';
+import { loggingService } from '@/lib/services';
 
-// Mock jobs data
-const mockJobs = [
-  {
-    id: '1',
-    title: 'Senior Software Engineer',
-    description: 'We are looking for a senior software engineer with experience in React, Node.js, and TypeScript.',
-    department: 'Engineering',
-    location: 'San Francisco, CA',
-    language: 'EN',
-    status: 'ACTIVE',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    title: 'Product Manager',
-    description: 'Product manager to lead our mobile app development team.',
-    department: 'Product',
-    location: 'New York, NY',
-    language: 'EN',
-    status: 'ACTIVE',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    title: 'UX Designer',
-    description: 'UX Designer to create beautiful and intuitive user experiences.',
-    department: 'Design',
-    location: 'Remote',
-    language: 'EN',
-    status: 'DRAFT',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+export const runtime = 'nodejs';
 
+// GET /api/jobs - List all jobs with filtering and pagination
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
     const status = searchParams.get('status');
     const department = searchParams.get('department');
+    const search = searchParams.get('search') || '';
     
-    let filteredJobs = mockJobs;
+    const skip = (page - 1) * limit;
+    
+    // Build where clause
+    const where: any = {};
+    
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { department: { contains: search, mode: 'insensitive' } },
+        { location: { contains: search, mode: 'insensitive' } },
+      ];
+    }
     
     if (status) {
-      filteredJobs = filteredJobs.filter(job => job.status === status);
+      where.status = status;
     }
     
     if (department) {
-      filteredJobs = filteredJobs.filter(job => job.department === department);
+      where.department = { contains: department, mode: 'insensitive' };
     }
+    
+    // Get jobs with pagination
+    const [jobs, total] = await Promise.all([
+      prisma.job.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          department: true,
+          location: true,
+          language: true,
+          status: true,
+          salaryMin: true,
+          salaryMax: true,
+          salaryCurrency: true,
+          experienceLevel: true,
+          employmentType: true,
+          benefits: true,
+          requirements: true,
+          responsibilities: true,
+          isRemote: true,
+          publicToken: true,
+          createdAt: true,
+          updatedAt: true,
+          publishedAt: true,
+          expiresAt: true,
+        },
+      }),
+      prisma.job.count({ where }),
+    ]);
 
     return NextResponse.json({
       success: true,
-      data: filteredJobs,
+      data: {
+        jobs,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit),
+        },
+      },
     });
   } catch (error) {
     console.error('Error fetching jobs:', error);
@@ -72,6 +97,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// POST /api/jobs - Create a new job
 export async function POST(request: NextRequest) {
   try {
     const { userId } = auth();
@@ -91,33 +117,59 @@ export async function POST(request: NextRequest) {
     // Validate the data
     const validatedData = jobSchema.parse(body);
     
-    // Create mock job
-    const newJob = {
-      id: Math.random().toString(36).substr(2, 9),
-      ...validatedData,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    // Generate public token for job applications
+    const publicToken = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Create the job
+    const job = await prisma.job.create({
+      data: {
+        ...validatedData,
+        publicToken,
+        publishedAt: validatedData.status === 'ACTIVE' ? new Date() : null,
+      },
+    });
+
+    // Log the creation
+    await loggingService.log({
+      action: 'JOB_CREATED',
+      resource: `job:${job.id}`,
+      details: {
+        jobId: job.id,
+        title: job.title,
+        department: job.department,
+        status: job.status,
+        createdBy: userId,
+      },
+    });
 
     // Trigger workflow
     await workflowEngine.executeWorkflows({
       event: 'job_created',
       data: {
-        job: newJob,
+        job,
         createdBy: userId
       }
     });
 
-    // Add to mock data
-    mockJobs.push(newJob);
-
     return NextResponse.json({
       success: true,
-      data: newJob,
+      data: { job },
       message: 'Job created successfully',
     }, { status: 201 });
   } catch (error) {
     console.error('Error creating job:', error);
+    
+    if (error instanceof Error && error.message.includes('validation')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid job data provided',
+          details: error.message,
+        },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
       {
         success: false,

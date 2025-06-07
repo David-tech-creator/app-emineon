@@ -1,392 +1,421 @@
 import OpenAI from 'openai';
 
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-}) : null;
+// Lazy initialization to prevent build-time errors
+let openai: OpenAI | null = null;
 
-export interface AIMatchingResult {
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OpenAI API key is required for CV parsing');
+    }
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+}
+
+export interface JobGenerationInput {
+  title: string;
+  department: string;
+  location: string;
+  experienceLevel?: string;
+  keyRequirements?: string[];
+  responsibilities?: string[];
+  benefits?: string[];
+  salaryRange?: string;
+  isRemote?: boolean;
+}
+
+export interface GeneratedJobDescription {
+  description: string;
+  requirements: string[];
+  responsibilities: string[];
+  benefits: string[];
+  tags: string[];
+}
+
+export interface CandidateRankingInput {
+  jobDescription: string;
+  candidates: Array<{
+    id: string;
+    fullName: string;
+    currentTitle?: string;
+    technicalSkills: string[];
+    experienceYears?: number;
+  }>;
+}
+
+export interface CandidateRanking {
   candidateId: string;
   score: number;
   reasoning: string;
 }
 
-export class OpenAIService {
-  private checkApiKey(): boolean {
-    if (!openai || !process.env.OPENAI_API_KEY) {
-      console.warn('OpenAI API key not configured. AI features will return mock responses.');
-      return false;
-    }
-    return true;
-  }
+export interface EmailTemplateInput {
+  templateType: string;
+  candidateName: string;
+  jobTitle: string;
+  companyName: string;
+  tone: string;
+  customInstructions?: string;
+  includeJobDetails?: boolean;
+  includeCompanyInfo?: boolean;
+}
 
-  async generateJobDescription(input: {
-    title: string;
-    department: string;
-    location: string;
-    keyRequirements?: string[];
-    experience?: string;
-  }): Promise<string> {
-    if (!this.checkApiKey()) {
-      return `
-## ${input.title}
+export interface GeneratedEmailTemplate {
+  subject: string;
+  body: string;
+  templateType: string;
+  tone: string;
+}
 
-**Department:** ${input.department}
-**Location:** ${input.location}
-
-We are seeking a talented ${input.title} to join our ${input.department} team. This is an excellent opportunity to work on exciting projects and contribute to our growing organization.
-
-### Key Responsibilities
-- Collaborate with cross-functional teams to deliver high-quality solutions
-- Contribute to the design and implementation of innovative features
-- Participate in code reviews and maintain high coding standards
-- Stay updated with industry trends and best practices
-
-### Required Qualifications
-${input.keyRequirements?.map(req => `- ${req}`).join('\n') || '- Relevant experience in the field'}
-${input.experience ? `- ${input.experience} of experience` : ''}
-
-### What We Offer
-- Competitive salary and benefits
-- Professional development opportunities
-- Collaborative and inclusive work environment
-- Modern tools and technologies
-
-*This job description was generated using mock data. Configure OpenAI API key for AI-powered descriptions.*
-      `.trim();
-    }
-
+class OpenAIService {
+  async generateJobDescription(input: JobGenerationInput): Promise<GeneratedJobDescription> {
     try {
-      const prompt = `Generate a professional job description for the following role:
+      if (!process.env.OPENAI_API_KEY) {
+        console.log('No OpenAI API key found, returning mock job description');
+        return this.getMockJobDescription(input);
+      }
+
+      const prompt = `Generate a comprehensive job description for the following position:
 
 Title: ${input.title}
 Department: ${input.department}
 Location: ${input.location}
-${input.experience ? `Experience Level: ${input.experience}` : ''}
-${input.keyRequirements?.length ? `Key Requirements: ${input.keyRequirements.join(', ')}` : ''}
+${input.experienceLevel ? `Experience Level: ${input.experienceLevel}` : ''}
+${input.isRemote ? 'Remote Work: Available' : ''}
+${input.salaryRange ? `Salary Range: ${input.salaryRange}` : ''}
 
-Please create a comprehensive job description that includes:
-- A compelling overview of the role
-- Key responsibilities
-- Required qualifications
-- Preferred qualifications
-- What we offer
+Key Requirements:
+${input.keyRequirements?.map(req => `- ${req}`).join('\n') || '- Relevant experience in the field'}
 
-Format it professionally and make it engaging for potential candidates.`;
+Please provide a JSON response with the following structure:
+{
+  "description": "A compelling 2-3 paragraph job description",
+  "requirements": ["Array of 5-8 specific requirements"],
+  "responsibilities": ["Array of 6-10 key responsibilities"],
+  "benefits": ["Array of 4-6 benefits and perks"],
+  "tags": ["Array of 3-5 relevant tags/keywords"]
+}
 
-      const completion = await openai!.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 1000,
+Make the content professional, engaging, and specific to the role.`;
+
+      const response = await getOpenAI().chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
-      });
-
-      return completion.choices[0]?.message?.content || 'Unable to generate job description';
-    } catch (error) {
-      console.error('OpenAI Error:', error);
-      return 'Error generating job description. Please try again.';
-    }
-  }
-
-  async generateEmailTemplate(input: {
-    candidateName: string;
-    jobTitle: string;
-    companyName: string;
-    tone: 'professional' | 'friendly' | 'casual';
-    purpose: 'outreach' | 'interview_invite' | 'rejection' | 'offer';
-  }): Promise<{ subject: string; body: string }> {
-    if (!this.checkApiKey()) {
-      const mockTemplates = {
-        outreach: {
-          subject: `Exciting ${input.jobTitle} Opportunity at ${input.companyName}`,
-          body: `Hi ${input.candidateName},\n\nI hope this message finds you well. I came across your profile and was impressed by your background. We have an exciting ${input.jobTitle} position at ${input.companyName} that I think would be a great fit for your skills.\n\nWould you be interested in learning more about this opportunity?\n\nBest regards,\nRecruitment Team\n\n*This template was generated using mock data. Configure OpenAI API key for AI-powered emails.*`
-        },
-        interview_invite: {
-          subject: `Interview Invitation - ${input.jobTitle} at ${input.companyName}`,
-          body: `Dear ${input.candidateName},\n\nThank you for your interest in the ${input.jobTitle} position at ${input.companyName}. We were impressed by your application and would like to invite you for an interview.\n\nPlease let us know your availability for the coming week.\n\nBest regards,\nRecruitment Team`
-        },
-        rejection: {
-          subject: `Update on your ${input.jobTitle} application`,
-          body: `Dear ${input.candidateName},\n\nThank you for your interest in the ${input.jobTitle} position at ${input.companyName}. After careful consideration, we have decided to move forward with other candidates.\n\nWe appreciate the time you invested in the application process.\n\nBest regards,\nRecruitment Team`
-        },
-        offer: {
-          subject: `Job Offer - ${input.jobTitle} at ${input.companyName}`,
-          body: `Dear ${input.candidateName},\n\nCongratulations! We are pleased to offer you the ${input.jobTitle} position at ${input.companyName}.\n\nPlease review the attached offer details and let us know if you have any questions.\n\nBest regards,\nRecruitment Team`
-        }
-      };
-
-      return mockTemplates[input.purpose];
-    }
-
-    try {
-      const toneDescriptions = {
-        professional: 'formal and business-like',
-        friendly: 'warm and approachable',
-        casual: 'relaxed and conversational'
-      };
-
-      const purposeDescriptions = {
-        outreach: 'initial outreach to interest them in the role',
-        interview_invite: 'inviting them for an interview',
-        rejection: 'politely declining their application',
-        offer: 'extending a job offer'
-      };
-
-      const prompt = `Generate a ${toneDescriptions[input.tone]} email for ${purposeDescriptions[input.purpose]}.
-
-Context:
-- Candidate Name: ${input.candidateName}
-- Job Title: ${input.jobTitle}
-- Company Name: ${input.companyName}
-- Email Purpose: ${input.purpose}
-- Tone: ${input.tone}
-
-Please provide both a subject line and email body. Make it personalized and appropriate for the purpose.`;
-
-      const completion = await openai!.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 500,
-        temperature: 0.7,
-      });
-
-      const content = completion.choices[0]?.message?.content || '';
-      
-      // Parse subject and body
-      const lines = content.split('\n');
-      const subjectLine = lines.find(line => line.toLowerCase().includes('subject:'))?.replace(/subject:/i, '').trim() || `${input.companyName} - ${input.jobTitle}`;
-      const bodyStart = content.indexOf('\n\n') > -1 ? content.indexOf('\n\n') + 2 : 0;
-      const body = content.substring(bodyStart).trim() || content;
-
-      return {
-        subject: subjectLine,
-        body: body
-      };
-    } catch (error) {
-      console.error('OpenAI Error:', error);
-      return {
-        subject: `${input.companyName} - ${input.jobTitle}`,
-        body: 'Error generating email template. Please try again.'
-      };
-    }
-  }
-
-  async rankCandidates(jobDescription: string, candidates: Array<{
-    id: string;
-    name: string;
-    skills: string[];
-    experience: number;
-  }>): Promise<AIMatchingResult[]> {
-    if (!this.checkApiKey()) {
-      // Return mock rankings based on experience and skills match
-      return candidates
-        .map(candidate => ({
-          candidateId: candidate.id,
-          score: Math.min(90, candidate.experience * 8 + Math.random() * 20),
-          reasoning: `Strong match with ${candidate.experience} years experience and relevant skills: ${candidate.skills.slice(0, 2).join(', ')}`
-        }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 5);
-    }
-
-    try {
-      const candidateProfiles = candidates.map(c => 
-        `ID: ${c.id}, Name: ${c.name}, Skills: ${c.skills.join(', ')}, Experience: ${c.experience} years`
-      ).join('\n');
-
-      const prompt = `Rate and rank these candidates for the following job. Provide a score from 0-100 and brief reasoning for each.
-
-Job Description:
-${jobDescription}
-
-Candidates:
-${candidateProfiles}
-
-For each candidate, provide: ID, Score (0-100), Reasoning (one sentence)
-Format: ID|Score|Reasoning`;
-
-      const completion = await openai!.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 800,
-        temperature: 0.3,
-      });
-
-      const content = completion.choices[0]?.message?.content || '';
-      const results: AIMatchingResult[] = [];
-
-      content.split('\n').forEach(line => {
-        const parts = line.split('|');
-        if (parts.length >= 3) {
-          const candidateId = parts[0].trim();
-          const score = parseInt(parts[1].trim());
-          const reasoning = parts[2].trim();
-          
-          if (candidateId && !isNaN(score)) {
-            results.push({ candidateId, score, reasoning });
-          }
-        }
-      });
-
-      // Sort by score descending and take top 5
-      return results
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 5);
-    } catch (error) {
-      console.error('OpenAI Error:', error);
-      return [];
-    }
-  }
-
-  async generateCandidateSummary(candidate: {
-    name: string;
-    skills: string[];
-    experience: number;
-    assessmentScore?: number;
-    assessmentComments?: string;
-  }): Promise<string> {
-    if (!this.checkApiKey()) {
-      return `${candidate.name} is a ${candidate.experience > 5 ? 'senior' : 'mid-level'} professional with expertise in ${candidate.skills.slice(0, 3).join(', ')}. With ${candidate.experience} years of experience, they bring valuable technical skills to any team.`;
-    }
-
-    try {
-      const prompt = `Generate a concise professional summary for this candidate:
-
-Name: ${candidate.name}
-Skills: ${candidate.skills.join(', ')}
-Experience: ${candidate.experience} years
-${candidate.assessmentScore ? `Assessment Score: ${candidate.assessmentScore}/100` : ''}
-${candidate.assessmentComments ? `Assessment Notes: ${candidate.assessmentComments}` : ''}
-
-Provide a 2-3 sentence professional summary highlighting their key strengths and suitability for technical roles.`;
-
-      const completion = await openai!.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 200,
-        temperature: 0.7,
-      });
-
-      return completion.choices[0]?.message?.content || 'Unable to generate candidate summary';
-    } catch (error) {
-      console.error('OpenAI Error:', error);
-      return 'Error generating candidate summary. Please try again.';
-    }
-  }
-
-  async estimateSalary(jobTitle: string, location: string): Promise<{
-    min: number;
-    max: number;
-    currency: string;
-    reasoning: string;
-  }> {
-    if (!this.checkApiKey()) {
-      // Mock salary estimates based on common ranges
-      const baseSalary = jobTitle.toLowerCase().includes('senior') ? 80000 : 60000;
-      return {
-        min: baseSalary,
-        max: baseSalary + 40000,
-        currency: 'USD',
-        reasoning: 'Estimated based on industry standards and location (mock data - configure OpenAI for AI estimates)'
-      };
-    }
-
-    try {
-      const prompt = `Estimate the salary range for this position:
-
-Job Title: ${jobTitle}
-Location: ${location}
-
-Provide a realistic salary range in the local currency with brief reasoning. Format your response as:
-Min: [amount]
-Max: [amount]
-Currency: [currency code]
-Reasoning: [brief explanation]`;
-
-      const completion = await openai!.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 300,
-        temperature: 0.3,
-      });
-
-      const content = completion.choices[0]?.message?.content || '';
-      
-      // Parse the response
-      const minMatch = content.match(/Min:\s*[\$€£¥]?([0-9,]+)/);
-      const maxMatch = content.match(/Max:\s*[\$€£¥]?([0-9,]+)/);
-      const currencyMatch = content.match(/Currency:\s*([A-Z]{3})/);
-      const reasoningMatch = content.match(/Reasoning:\s*(.+)/);
-
-      return {
-        min: minMatch ? parseInt(minMatch[1].replace(/,/g, '')) : 50000,
-        max: maxMatch ? parseInt(maxMatch[1].replace(/,/g, '')) : 100000,
-        currency: currencyMatch?.[1] || 'USD',
-        reasoning: reasoningMatch?.[1] || 'Estimated based on market standards'
-      };
-    } catch (error) {
-      console.error('OpenAI Error:', error);
-      return {
-        min: 50000,
-        max: 100000,
-        currency: 'USD',
-        reasoning: 'Error estimating salary. Please try again.'
-      };
-    }
-  }
-
-  async parseCV(prompt: string): Promise<string> {
-    console.log('OpenAI parseCV called with prompt length:', prompt.length);
-    
-    if (!this.checkApiKey()) {
-      console.log('Using mock CV parsing data (no OpenAI API key)');
-      // Return mock JSON response for CV parsing with more detailed data
-      const mockData = {
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john.doe@email.com',
-        phone: '+1 (555) 123-4567',
-        currentTitle: 'Software Engineer',
-        currentCompany: 'Tech Corp',
-        summary: 'Experienced software engineer with expertise in full-stack development, specializing in React, Node.js, and cloud technologies.',
-        skills: ['JavaScript', 'React', 'Node.js', 'Python', 'AWS', 'Docker'],
-        experience: 5,
-        education: [{
-          degree: 'Bachelor of Computer Science',
-          university: 'State University',
-          year: 2018
-        }],
-        workHistory: [{
-          title: 'Software Engineer',
-          company: 'Tech Corp',
-          startDate: '01/2020',
-          endDate: 'Present',
-          description: 'Developed web applications using modern technologies.'
-        }],
-        location: {
-          city: 'San Francisco',
-          country: 'United States'
-        }
-      };
-      
-      console.log('Returning mock data:', mockData);
-      return JSON.stringify(mockData);
-    }
-
-    try {
-      console.log('Making OpenAI API call for CV parsing');
-      const completion = await openai!.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: prompt }],
         max_tokens: 1500,
-        temperature: 0.1,
       });
 
-      const result = completion.choices[0]?.message?.content || '{}';
-      console.log('OpenAI API response:', result);
-      return result;
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error('No response from OpenAI');
+      }
+
+      const parsed = JSON.parse(content);
+      return {
+        description: parsed.description || 'Generated job description',
+        requirements: Array.isArray(parsed.requirements) ? parsed.requirements : [],
+        responsibilities: Array.isArray(parsed.responsibilities) ? parsed.responsibilities : [],
+        benefits: Array.isArray(parsed.benefits) ? parsed.benefits : [],
+        tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+      };
+
+    } catch (error) {
+      console.error('OpenAI job generation error:', error);
+      return this.getMockJobDescription(input);
+    }
+  }
+
+  async rankCandidates(input: CandidateRankingInput): Promise<CandidateRanking[]> {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        console.log('No OpenAI API key found, returning mock candidate rankings');
+        return this.getMockCandidateRankings(input.candidates);
+      }
+
+      const candidatesText = input.candidates.map(candidate => 
+        `ID: ${candidate.id}
+Name: ${candidate.fullName}
+Title: ${candidate.currentTitle || 'Not specified'}
+Experience: ${candidate.experienceYears || 0} years
+Skills: ${candidate.technicalSkills.join(', ')}`
+      ).join('\n\n');
+
+      const prompt = `Rank the following candidates for this job based on their fit:
+
+JOB DESCRIPTION:
+${input.jobDescription}
+
+CANDIDATES:
+${candidatesText}
+
+Please provide a JSON array of rankings with this structure:
+[
+  {
+    "candidateId": "candidate_id",
+    "score": 85,
+    "reasoning": "Brief explanation of why this candidate is a good/poor fit"
+  }
+]
+
+Score from 0-100 where:
+- 90-100: Excellent fit
+- 80-89: Very good fit  
+- 70-79: Good fit
+- 60-69: Moderate fit
+- Below 60: Poor fit
+
+Consider experience level, skills match, and role relevance.`;
+
+      const response = await getOpenAI().chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+        max_tokens: 1000,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error('No response from OpenAI');
+      }
+
+      const parsed = JSON.parse(content);
+      if (!Array.isArray(parsed)) {
+        throw new Error('Invalid response format');
+      }
+
+      return parsed.map(item => ({
+        candidateId: item.candidateId,
+        score: Math.min(100, Math.max(0, item.score || 50)),
+        reasoning: item.reasoning || 'AI-generated ranking'
+      }));
+
+    } catch (error) {
+      console.error('OpenAI candidate ranking error:', error);
+      return this.getMockCandidateRankings(input.candidates);
+    }
+  }
+
+  async generateEmailTemplate(input: EmailTemplateInput): Promise<GeneratedEmailTemplate> {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        console.log('No OpenAI API key found, returning mock email template');
+        return this.getMockEmailTemplate(input);
+      }
+
+      const prompt = `Generate a professional email template with the following specifications:
+
+Template Type: ${input.templateType}
+Candidate Name: ${input.candidateName}
+Job Title: ${input.jobTitle}
+Company Name: ${input.companyName}
+Tone: ${input.tone}
+${input.customInstructions ? `Custom Instructions: ${input.customInstructions}` : ''}
+Include Job Details: ${input.includeJobDetails ? 'Yes' : 'No'}
+Include Company Info: ${input.includeCompanyInfo ? 'Yes' : 'No'}
+
+Please provide a JSON response with the following structure:
+{
+  "subject": "Email subject line",
+  "body": "Email body content with proper formatting and placeholders",
+  "templateType": "${input.templateType}",
+  "tone": "${input.tone}"
+}
+
+Guidelines:
+- Keep the tone ${input.tone.toLowerCase()}
+- Use proper email formatting
+- Include relevant placeholders like [CANDIDATE_NAME], [JOB_TITLE], etc.
+- Make it engaging and professional
+- Ensure the content matches the template type`;
+
+      const response = await getOpenAI().chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        max_tokens: 1000,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error('No response from OpenAI');
+      }
+
+      const parsed = JSON.parse(content);
+      return {
+        subject: parsed.subject || 'Generated Email Subject',
+        body: parsed.body || 'Generated email content',
+        templateType: input.templateType,
+        tone: input.tone,
+      };
+
+    } catch (error) {
+      console.error('OpenAI email template generation error:', error);
+      return this.getMockEmailTemplate(input);
+    }
+  }
+
+  private getMockJobDescription(input: JobGenerationInput): GeneratedJobDescription {
+    return {
+      description: `We are seeking a talented ${input.title} to join our ${input.department} team in ${input.location}. This role offers an exciting opportunity to work with cutting-edge technologies and contribute to innovative projects that make a real impact. The ideal candidate will bring strong technical skills, collaborative spirit, and passion for excellence to our dynamic team environment.`,
+      requirements: [
+        `${input.experienceLevel || 'Mid-level'} experience in relevant technologies`,
+        'Strong problem-solving and analytical skills',
+        'Excellent communication and teamwork abilities',
+        'Bachelor\'s degree in related field or equivalent experience',
+        'Experience with modern development practices and tools'
+      ],
+      responsibilities: [
+        'Design and develop high-quality software solutions',
+        'Collaborate with cross-functional teams on project delivery',
+        'Participate in code reviews and technical discussions',
+        'Contribute to architectural decisions and best practices',
+        'Mentor junior team members and share knowledge',
+        'Stay current with industry trends and emerging technologies'
+      ],
+      benefits: [
+        'Competitive salary and equity package',
+        'Comprehensive health, dental, and vision insurance',
+        'Flexible work arrangements and remote options',
+        'Professional development and learning opportunities',
+        'Generous PTO and company holidays'
+      ],
+      tags: ['Technology', 'Innovation', 'Growth', 'Collaboration', 'Impact']
+    };
+  }
+
+  private getMockCandidateRankings(candidates: Array<{ id: string; fullName: string; experienceYears?: number; technicalSkills: string[] }>): CandidateRanking[] {
+    // Return mock rankings based on experience and skills match
+    return candidates.map(candidate => ({
+      candidateId: candidate.id,
+      score: Math.min(90, (candidate.experienceYears || 0) * 8 + Math.random() * 20),
+      reasoning: `Strong match with ${candidate.experienceYears || 0} years experience and relevant skills: ${candidate.technicalSkills.slice(0, 2).join(', ')}`
+    })).sort((a, b) => b.score - a.score);
+  }
+
+  private getMockEmailTemplate(input: EmailTemplateInput): GeneratedEmailTemplate {
+    const templates = {
+      OUTREACH: {
+        subject: `Exciting ${input.jobTitle} Opportunity at ${input.companyName}`,
+        body: `Hi ${input.candidateName},
+
+I hope this email finds you well. I came across your profile and was impressed by your background and experience.
+
+We have an exciting ${input.jobTitle} position at ${input.companyName} that I believe would be a great fit for your skills and career goals.
+
+${input.includeJobDetails ? `This role offers the opportunity to work with cutting-edge technologies and make a significant impact on our growing team.` : ''}
+
+${input.includeCompanyInfo ? `${input.companyName} is a dynamic company focused on innovation and growth, offering excellent benefits and career development opportunities.` : ''}
+
+Would you be interested in learning more about this opportunity? I'd love to schedule a brief call to discuss how this role aligns with your career aspirations.
+
+Best regards,
+[YOUR_NAME]
+[YOUR_TITLE]
+${input.companyName}`
+      },
+      FOLLOW_UP: {
+        subject: `Following up on ${input.jobTitle} opportunity`,
+        body: `Hi ${input.candidateName},
+
+I wanted to follow up on our previous conversation regarding the ${input.jobTitle} position at ${input.companyName}.
+
+I hope you've had a chance to consider the opportunity. If you have any questions or would like to discuss next steps, please don't hesitate to reach out.
+
+Looking forward to hearing from you.
+
+Best regards,
+[YOUR_NAME]`
+      },
+      INTERVIEW_INVITE: {
+        subject: `Interview Invitation - ${input.jobTitle} at ${input.companyName}`,
+        body: `Dear ${input.candidateName},
+
+Thank you for your interest in the ${input.jobTitle} position at ${input.companyName}. We were impressed with your application and would like to invite you for an interview.
+
+Please let us know your availability for the coming week, and we'll schedule a convenient time.
+
+We look forward to speaking with you soon.
+
+Best regards,
+[YOUR_NAME]
+[YOUR_TITLE]
+${input.companyName}`
+      },
+      REJECTION: {
+        subject: `Update on your ${input.jobTitle} application`,
+        body: `Dear ${input.candidateName},
+
+Thank you for your interest in the ${input.jobTitle} position at ${input.companyName} and for taking the time to interview with our team.
+
+After careful consideration, we have decided to move forward with another candidate whose experience more closely aligns with our current needs.
+
+We were impressed with your qualifications and encourage you to apply for future opportunities that match your background.
+
+Thank you again for your time and interest in ${input.companyName}.
+
+Best regards,
+[YOUR_NAME]`
+      },
+      OFFER: {
+        subject: `Job Offer - ${input.jobTitle} at ${input.companyName}`,
+        body: `Dear ${input.candidateName},
+
+Congratulations! We are pleased to extend an offer for the ${input.jobTitle} position at ${input.companyName}.
+
+We believe your skills and experience will be a valuable addition to our team. Please find the detailed offer information attached.
+
+We're excited about the possibility of you joining our team and look forward to your response.
+
+Best regards,
+[YOUR_NAME]
+[YOUR_TITLE]
+${input.companyName}`
+      }
+    };
+
+    const template = templates[input.templateType as keyof typeof templates] || templates.OUTREACH;
+    
+    return {
+      subject: template.subject,
+      body: template.body,
+      templateType: input.templateType,
+      tone: input.tone,
+    };
+  }
+
+  // Legacy method for backward compatibility
+  async parseCV(prompt: string): Promise<string> {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        return JSON.stringify({
+          fullName: 'John Doe',
+          email: 'john.doe@email.com',
+          phone: '+1-555-0123',
+          currentTitle: 'Software Engineer',
+          experienceYears: 3,
+          technicalSkills: ['JavaScript', 'React', 'Node.js']
+        });
+      }
+
+      const response = await getOpenAI().chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1,
+        max_tokens: 1000,
+      });
+
+      return response.choices[0]?.message?.content || '{}';
     } catch (error) {
       console.error('OpenAI CV parsing error:', error);
-      return '{}';
+      return JSON.stringify({
+        fullName: 'John Doe',
+        email: 'john.doe@email.com',
+        experienceYears: 3,
+        technicalSkills: ['JavaScript', 'React', 'Node.js']
+      });
     }
   }
 }

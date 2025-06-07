@@ -36,7 +36,11 @@ export class EmailService {
     tone: 'professional' | 'friendly' | 'casual';
     purpose: 'outreach' | 'interview_invite' | 'rejection' | 'offer';
   }): Promise<EmailTemplate> {
-    return openaiService.generateEmailTemplate(input);
+    return openaiService.generateEmailTemplate({
+      ...input,
+      templateType: input.purpose,
+      tone: input.tone,
+    });
   }
 }
 

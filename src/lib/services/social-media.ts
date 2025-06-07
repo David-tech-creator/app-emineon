@@ -152,7 +152,7 @@ Link in bio to apply!
           jobId: job.id,
           platform: 'LINKEDIN',
           content: content.template,
-          status: 'POSTED',
+          status: 'PUBLISHED',
           postUrl,
           postId,
         },
@@ -185,7 +185,7 @@ Link in bio to apply!
           jobId: job.id,
           platform: 'TWITTER',
           content: content.template,
-          status: 'POSTED',
+          status: 'PUBLISHED',
           postUrl,
           postId,
         },
@@ -218,7 +218,7 @@ Link in bio to apply!
           jobId: job.id,
           platform: 'FACEBOOK',
           content: content.template,
-          status: 'POSTED',
+          status: 'PUBLISHED',
           postUrl,
           postId,
         },
@@ -251,7 +251,7 @@ Link in bio to apply!
           jobId: job.id,
           platform: 'INSTAGRAM',
           content: content.template,
-          status: 'POSTED',
+          status: 'PUBLISHED',
           postUrl,
           postId,
         },
@@ -315,7 +315,7 @@ Link in bio to apply!
       prisma.socialMediaPost.count({
         where: { 
           createdAt: { gte: startDate },
-          status: 'POSTED',
+          status: 'PUBLISHED',
         },
       }),
       
@@ -342,7 +342,7 @@ Link in bio to apply!
           acc[platform] = { total: 0, posted: 0, failed: 0 };
         }
         acc[platform].total += stat._count.platform;
-        if (stat.status === 'POSTED') {
+        if (stat.status === 'PUBLISHED') {
           acc[platform].posted += stat._count.platform;
         } else if (stat.status === 'FAILED') {
           acc[platform].failed += stat._count.platform;

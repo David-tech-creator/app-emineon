@@ -8,94 +8,108 @@ datasource db {
 }
 
 model Candidate {
-  id                  String           @id @default(cuid())
-  firstName           String
-  lastName            String
-  email               String           @unique
-  phone               String?
-  country             String?
-  city                String?
-  state               String?
-  postalCode          String?
-  timezone            String?
-  currentTitle        String?
-  summary             String?
-  skills              String[]
-  experience          Int
-  currentCompany      String?
-  currentSalary       Float?
-  currentSalaryType   SalaryType?
-  expectedSalary      Float?
-  expectedSalaryType  SalaryType?
-  currency            String?          @default("USD")
-  noticePeriod        NoticePeriod?
-  status              CandidateStatus  @default(NEW)
-  availableStartDate  DateTime?
-  preferredEmployment EmploymentType[]
-  willingToRelocate   Boolean?         @default(false)
-  remoteWork          Boolean?         @default(false)
-  highestEducation    EducationLevel?
-  university          String?
-  degree              String?
-  graduationYear      Int?
-  resumeUrl           String?
-  portfolioUrl        String?
-  linkedinUrl         String?
-  githubUrl           String?
-  websiteUrl          String?
-  assessmentScore     Float?
-  assessmentComments  String?
-  techScore           Float?
-  communicationScore  Float?
-  culturalFitScore    Float?
-  source              String?
-  referredBy          String?
-  recruiterNotes      String?
-  profileToken        String?          @unique
-  aiSummary           String?          // AI-generated profile summary
-  videoInterviewUrl   String?          // One-way video interview link
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
-  lastContactedAt     DateTime?
-  applications        Application[]
-  evaluations         Evaluation[]
-  interviews          Interview[]
-  referrals           Referral[]
-  assessments         Assessment[]
-  smsMessages         SmsMessage[]
-  aiMatches           AIMatch[]
+  id                    String            @id @default(cuid())
+  firstName             String
+  lastName              String
+  email                 String            @unique
+  createdAt             DateTime          @default(now())
+  archived              Boolean           @default(false)
+  availableFrom         DateTime?
+  certifications        String[]
+  companies             Json?
+  conversionStatus      ConversionStatus?
+  culturalFitScore      Float?
+  currentLocation       String?
+  currentTitle          String?
+  degrees               String[]
+  educationLevel        EducationLevel?
+  expectedSalary        String?
+  experienceYears       Int?
+  frameworks            String[]
+  freelancer            Boolean?          @default(false)
+  functionalDomain      String?
+  githubUrl             String?
+  graduationYear        Int?
+  interviewScores       Json?
+  lastUpdated           DateTime          @updatedAt
+  linkedinUrl           String?
+  matchingScore         Float?
+  methodologies         String[]
+  motivationalFitNotes  String?
+  nationality           String?
+  notableProjects       String[]
+  phone                 String?
+  portfolioUrl          String?
+  preferredContractType ContractType?
+  primaryIndustry       String?
+  professionalHeadline  String?
+  profileToken          String?           @unique
+  programmingLanguages  String[]
+  recruiterNotes        String[]
+  referees              Json?
+  relocationWillingness Boolean?          @default(false)
+  remotePreference      RemotePreference?
+  seniorityLevel        SeniorityLevel?
+  softSkills            String[]
+  source                String?
+  spokenLanguages       String[]
+  status                CandidateStatus   @default(NEW)
+  summary               String?
+  tags                  String[]
+  technicalSkills       String[]
+  timezone              String?
+  toolsAndPlatforms     String[]
+  universities          String[]
+  videoInterviewUrl     String?
+  workPermitType        String?
+  aiMatches             AIMatch[]
+  applications          Application[]
+  assessments           Assessment[]
+  evaluations           Evaluation[]
+  interviews            Interview[]
+  referrals             Referral[]
+  smsMessages           SmsMessage[]
 
   @@map("candidates")
 }
 
 model Job {
-  id               String              @id @default(cuid())
-  title            String
-  description      String
-  department       String
-  location         String
-  language         Language            @default(EN)
-  status           JobStatus           @default(DRAFT)
-  salaryMin        Float?
-  salaryMax        Float?
-  salaryCurrency   String?             @default("USD")
-  experienceLevel  String?
-  employmentType   EmploymentType[]
-  benefits         String[]
-  requirements     String[]
-  responsibilities String[]
-  isRemote         Boolean             @default(false)
-  publicToken      String?             @unique  // For public job widget
-  embedCode        String?             // Embeddable widget code
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  publishedAt      DateTime?
-  expiresAt        DateTime?
-  applications     Application[]
-  interviews       Interview[]
-  distributions    JobDistribution[]
-  aiMatches        AIMatch[]
-  socialPosts      SocialMediaPost[]
+  id                String            @id @default(cuid())
+  title             String
+  description       String
+  department        String
+  location          String
+  language          Language          @default(EN)
+  status            JobStatus         @default(DRAFT)
+  salaryMin         Int?
+  salaryMax         Int?
+  salaryCurrency    String?           @default("USD")
+  experienceLevel   String?
+  employmentType    String[]
+  benefits          String[]
+  requirements      String[]
+  responsibilities  String[]
+  isRemote          Boolean           @default(false)
+  publicToken       String?           @unique
+  embedCode         String?
+  publishedAt       DateTime?
+  expiresAt         DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  aiMatches         AIMatch[]
+  applications      Application[]
+  interviews        Interview[]
+  distributions     JobDistribution[]
+  socialPosts       SocialMediaPost[]
+
+  // Indexes for performance optimization
+  @@index([status, publishedAt])
+  @@index([status, isRemote])
+  @@index([status, department])
+  @@index([status, location])
+  @@index([status, language])
+  @@index([publishedAt])
+  @@index([expiresAt])
 
   @@map("jobs")
 }
@@ -108,7 +122,7 @@ model Application {
   coverLetter  String?
   cvUrl        String?
   referralCode String?
-  source       String?           // Where the application came from
+  source       String?
   ipAddress    String?
   userAgent    String?
   createdAt    DateTime          @default(now())
@@ -121,17 +135,17 @@ model Application {
 }
 
 model Referral {
-  id           String     @id @default(cuid())
+  id           String         @id @default(cuid())
   candidateId  String
   referrerId   String
   referrerName String
-  code         String     @unique
-  isUsed       Boolean    @default(false)
-  reward       Float?     // Referral bonus amount
+  code         String         @unique
+  isUsed       Boolean        @default(false)
+  reward       Float?
   status       ReferralStatus @default(PENDING)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  candidate    Candidate  @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  candidate    Candidate      @relation(fields: [candidateId], references: [id], onDelete: Cascade)
 
   @@map("referrals")
 }
@@ -142,7 +156,7 @@ model Evaluation {
   evaluatorId String
   rating      Float
   notes       String?
-  criteria    Json?     // Structured evaluation criteria and scores
+  criteria    Json?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
@@ -164,8 +178,8 @@ model Interview {
   notes             String?
   rating            Float?
   calendarEventId   String?
-  meetingLink       String?         // Video conference link
-  dialInDetails     String?         // Phone dial-in info
+  meetingLink       String?
+  dialInDetails     String?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
   candidate         Candidate       @relation(fields: [candidateId], references: [id], onDelete: Cascade)
@@ -178,8 +192,8 @@ model Assessment {
   id          String           @id @default(cuid())
   candidateId String
   type        AssessmentType
-  questions   Json             // Assessment questions and structure
-  answers     Json?            // Candidate answers
+  questions   Json
+  answers     Json?
   score       Float?
   maxScore    Float
   status      AssessmentStatus @default(NOT_STARTED)
@@ -194,31 +208,31 @@ model Assessment {
 }
 
 model CalendarIntegration {
-  id           String              @id @default(cuid())
-  userId       String              @unique
+  id           String           @id @default(cuid())
+  userId       String           @unique
   provider     CalendarProvider
   accessToken  String
   refreshToken String?
   expiresAt    DateTime?
-  isActive     Boolean             @default(true)
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   @@map("calendar_integrations")
 }
 
 model SmsMessage {
-  id          String     @id @default(cuid())
+  id          String       @id @default(cuid())
   candidateId String
   phoneNumber String
   message     String
-  status      SmsStatus  @default(PENDING)
+  status      SmsStatus    @default(PENDING)
   direction   SmsDirection
-  externalId  String?    // Twilio/provider message ID
+  externalId  String?
   errorCode   String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  candidate   Candidate  @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  candidate   Candidate    @relation(fields: [candidateId], references: [id], onDelete: Cascade)
 
   @@map("sms_messages")
 }
@@ -226,9 +240,9 @@ model SmsMessage {
 model WorkflowRule {
   id         String   @id @default(cuid())
   name       String
-  trigger    String   // Event that triggers the workflow
-  conditions Json     // Conditions to check
-  actions    Json     // Actions to execute
+  trigger    String
+  conditions Json
+  actions    Json
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -237,35 +251,35 @@ model WorkflowRule {
 }
 
 model JobDistribution {
-  id          String               @id @default(cuid())
-  jobId       String
-  platform    String               // Job board name
-  status      DistributionStatus
-  externalId  String?              // Job board's internal ID
-  postUrl     String?              // URL to the posted job
-  cost        Float?               // Cost to post
-  postedAt    DateTime?
-  expiresAt   DateTime?
-  errorCode   String?
+  id           String             @id @default(cuid())
+  jobId        String
+  platform     String
+  status       DistributionStatus
+  externalId   String?
+  postUrl      String?
+  cost         Float?
+  postedAt     DateTime?
+  expiresAt    DateTime?
+  errorCode    String?
   errorMessage String?
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  job         Job                  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  job          Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@map("job_distributions")
 }
 
 model SocialMediaPost {
-  id        String            @id @default(cuid())
+  id        String         @id @default(cuid())
   jobId     String
   platform  SocialPlatform
   content   String
   status    PostStatus
   postUrl   String?
-  postId    String?           // Platform's post ID
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-  job       Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  postId    String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  job       Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@map("social_media_posts")
 }
@@ -274,12 +288,12 @@ model AIMatch {
   id          String    @id @default(cuid())
   jobId       String
   candidateId String
-  score       Float     // AI matching score (0-100)
-  reasoning   String?   // AI explanation for the match
-  factors     Json?     // Detailed matching factors
+  score       Float
+  reasoning   String?
+  factors     Json?
   createdAt   DateTime  @default(now())
-  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
   candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@unique([jobId, candidateId])
   @@map("ai_matches")
@@ -287,10 +301,10 @@ model AIMatch {
 
 model Log {
   id        String   @id @default(cuid())
-  actor     String?  // User who performed the action
-  action    String   // Action performed
-  resource  String   // Resource affected
-  details   Json?    // Additional details
+  actor     String?
+  action    String
+  resource  String
+  details   Json?
   level     LogLevel @default(INFO)
   timestamp DateTime @default(now())
 
@@ -459,7 +473,87 @@ enum SocialPlatform {
 enum PostStatus {
   DRAFT
   SCHEDULED
-  POSTED
+  PUBLISHED
   FAILED
-  REMOVED
+}
+
+enum SeniorityLevel {
+  INTERN
+  JUNIOR
+  MID_LEVEL
+  SENIOR
+  LEAD
+  PRINCIPAL
+  ARCHITECT
+  DIRECTOR
+  VP
+  C_LEVEL
+}
+
+enum ContractType {
+  PERMANENT
+  FREELANCE
+  FIXED_TERM
+  CONTRACT
+  INTERNSHIP
+}
+
+enum RemotePreference {
+  REMOTE
+  HYBRID
+  ONSITE
+  FLEXIBLE
+}
+
+enum ConversionStatus {
+  IN_PIPELINE
+  PLACED
+  REJECTED
+  WITHDRAWN
+  ON_HOLD
+}
+
+enum WorkAuthStatus {
+  CITIZEN
+  PERMANENT_RESIDENT
+  WORK_VISA
+  STUDENT_VISA
+  REQUIRES_SPONSORSHIP
+  NOT_AUTHORIZED
+}
+
+enum TravelWillingness {
+  NONE
+  OCCASIONAL
+  FREQUENT
+  EXTENSIVE
+  INTERNATIONAL
+}
+
+enum WorkSchedule {
+  FULL_TIME
+  PART_TIME
+  FLEXIBLE
+  SHIFT_WORK
+  COMPRESSED
+  JOB_SHARE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum DataSource {
+  MANUAL
+  LINKEDIN
+  INDEED
+  GLASSDOOR
+  REFERRAL
+  WEBSITE
+  API_IMPORT
+  BULK_UPLOAD
+  AI_SOURCED
 }

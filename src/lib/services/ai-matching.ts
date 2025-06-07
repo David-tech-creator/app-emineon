@@ -1,272 +1,344 @@
-import { prisma } from '@/lib/prisma';
 import { openaiService } from '@/lib/openai';
-import { loggingService } from './logging';
 
-export interface CandidateMatch {
+export interface Job {
+  id: string;
+  title: string;
+  description: string;
+  department: string;
+  location: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  experienceLevel?: string;
+  employmentType: string[];
+  benefits: string[];
+  requirements: string[];
+  responsibilities: string[];
+  isRemote: boolean;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Candidate {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  currentTitle?: string | null;
+  professionalHeadline?: string | null;
+  currentLocation?: string | null;
+  linkedinUrl?: string | null;
+  portfolioUrl?: string | null;
+  experienceYears?: number | null;
+  technicalSkills: string[];
+  softSkills: string[];
+  primaryIndustry?: string | null;
+  seniorityLevel?: string | null;
+  expectedSalary?: string | null;
+  remotePreference?: string | null;
+  tags: string[];
+  status: string;
+  conversionStatus?: string | null;
+  matchingScore?: number | null;
+  source?: string | null;
+  createdAt: Date;
+  lastUpdated: Date;
+}
+
+export interface MatchResult {
   candidateId: string;
   score: number;
   reasoning: string;
-  factors: {
-    skillsMatch: number;
-    experienceMatch: number;
-    locationMatch: number;
-    preferenceMatch: number;
-  };
+  strengths: string[];
+  concerns: string[];
+  recommendation: 'STRONG_MATCH' | 'GOOD_MATCH' | 'WEAK_MATCH' | 'NO_MATCH';
 }
 
-export interface JobMatchInput {
-  jobId: string;
-  maxCandidates?: number;
-  minScore?: number;
+export interface RankingResult {
+  candidates: Array<{
+    candidate: Candidate;
+    score: number;
+    reasoning: string;
+  }>;
+  totalCandidates: number;
+  averageScore: number;
 }
 
 export class AIMatchingService {
-  async findMatchingCandidates(input: JobMatchInput): Promise<CandidateMatch[]> {
+  async matchCandidateToJob(candidate: Candidate, job: Job): Promise<MatchResult> {
     try {
-      const { jobId, maxCandidates = 10, minScore = 50 } = input;
+      console.log(`Matching candidate ${candidate.fullName} to job ${job.title}`);
       
-      // Get job details
-      const job = await prisma.job.findUnique({
-        where: { id: jobId },
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          requirements: true,
-          location: true,
-          experienceLevel: true,
-          isRemote: true,
-          salaryMin: true,
-          salaryMax: true,
-        },
-      });
+      // Get candidate data for matching
+      const candidateData = {
+        fullName: candidate.fullName,
+        currentTitle: candidate.currentTitle,
+        experienceYears: candidate.experienceYears,
+        technicalSkills: candidate.technicalSkills,
+        softSkills: candidate.softSkills,
+        primaryIndustry: candidate.primaryIndustry,
+        seniorityLevel: candidate.seniorityLevel,
+        currentLocation: candidate.currentLocation,
+        remotePreference: candidate.remotePreference,
+        expectedSalary: candidate.expectedSalary,
+      };
 
-      if (!job) {
-        throw new Error('Job not found');
-      }
+      // Calculate individual match scores
+      const skillsMatch = this.calculateSkillsMatch(job.requirements, candidate.technicalSkills);
+      const experienceMatch = this.calculateExperienceMatch(job.experienceLevel || null, candidate.experienceYears || null);
+      const locationMatch = this.calculateLocationMatch(job.location, job.isRemote, candidate.currentLocation || null, candidate.remotePreference || null);
+      const titleMatch = this.calculateTitleMatch(job.title, candidate.currentTitle || null);
 
-      // Get active candidates
-      const candidates = await prisma.candidate.findMany({
-        where: {
-          status: { in: ['NEW', 'ACTIVE'] },
-        },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          skills: true,
-          experience: true,
-          currentTitle: true,
-          city: true,
-          country: true,
-          expectedSalary: true,
-          currency: true,
-          remoteWork: true,
-          willingToRelocate: true,
-        },
-        take: 100, // Limit to prevent huge API calls
-      });
-
-      // Use AI to rank candidates
-      const rankings = await openaiService.rankCandidates(
-        this.formatJobForAI(job),
-        candidates.map(c => ({
-          id: c.id,
-          name: `${c.firstName} ${c.lastName}`,
-          skills: c.skills,
-          experience: c.experience,
-        }))
+      // Calculate overall score (weighted average)
+      const overallScore = Math.round(
+        (skillsMatch * 0.4) + 
+        (experienceMatch * 0.3) + 
+        (locationMatch * 0.2) + 
+        (titleMatch * 0.1)
       );
 
-      // Convert to detailed matches
-      const matches: CandidateMatch[] = [];
-      for (const ranking of rankings) {
-        if (ranking.score >= minScore) {
-          const candidate = candidates.find(c => c.id === ranking.candidateId);
-          if (candidate) {
-            const factors = this.calculateMatchFactors(job, candidate);
-            
-            matches.push({
-              candidateId: ranking.candidateId,
-              score: ranking.score,
-              reasoning: ranking.reasoning,
-              factors,
-            });
+      // Generate reasoning and recommendation
+      const { reasoning, strengths, concerns, recommendation } = this.generateMatchAnalysis(
+        overallScore, skillsMatch, experienceMatch, locationMatch, titleMatch, candidate, job
+      );
 
-            // Store match in database for future reference
-            await this.storeAIMatch(jobId, ranking.candidateId, ranking.score, ranking.reasoning, factors);
-          }
-        }
-      }
+      return {
+        candidateId: candidate.id,
+        score: overallScore,
+        reasoning,
+        strengths,
+        concerns,
+        recommendation
+      };
 
-      await loggingService.log({
-        action: 'AI_CANDIDATE_MATCHING',
-        resource: `job:${jobId}`,
-        details: { candidatesFound: matches.length, minScore },
-      });
-
-      return matches.slice(0, maxCandidates);
     } catch (error) {
-      await loggingService.log({
-        action: 'AI_MATCHING_ERROR',
-        resource: `job:${input.jobId}`,
-        details: { error: error instanceof Error ? error.message : 'Unknown error' },
-        level: 'ERROR',
-      });
+      console.error('AI matching error:', error);
       
-      throw error;
+      // Return fallback match result
+      return {
+        candidateId: candidate.id,
+        score: 50,
+        reasoning: 'Unable to perform detailed matching analysis. Manual review recommended.',
+        strengths: ['Profile available for review'],
+        concerns: ['Automated matching unavailable'],
+        recommendation: 'WEAK_MATCH'
+      };
     }
   }
 
-  async getJobMatches(jobId: string): Promise<CandidateMatch[]> {
-    const matches = await prisma.aIMatch.findMany({
-      where: { jobId },
-      include: {
-        candidate: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            currentTitle: true,
-            experience: true,
-          },
-        },
-      },
-      orderBy: { score: 'desc' },
-      take: 20,
-    });
+  async rankCandidatesForJob(candidates: Candidate[], job: Job): Promise<RankingResult> {
+    try {
+      console.log(`Ranking ${candidates.length} candidates for job: ${job.title}`);
 
-    return matches.map(match => ({
-      candidateId: match.candidateId,
-      score: match.score,
-      reasoning: match.reasoning || 'AI-generated match',
-      factors: match.factors as any || {},
-    }));
-  }
+      // Get match results for all candidates
+      const matchResults = await Promise.all(
+        candidates.map(async (candidate) => {
+          const match = await this.matchCandidateToJob(candidate, job);
+          return {
+            candidate,
+            score: match.score,
+            reasoning: match.reasoning
+          };
+        })
+      );
 
-  private formatJobForAI(job: any): string {
-    return `
-      Job Title: ${job.title}
-      Location: ${job.location}
-      Experience Level: ${job.experienceLevel || 'Not specified'}
-      Remote Work: ${job.isRemote ? 'Yes' : 'No'}
-      Salary Range: ${job.salaryMin && job.salaryMax ? `$${job.salaryMin} - $${job.salaryMax}` : 'Not specified'}
+      // Sort by score (highest first)
+      const rankedCandidates = matchResults.sort((a, b) => b.score - a.score);
+
+      // Calculate statistics
+      const totalCandidates = candidates.length;
+      const averageScore = Math.round(
+        rankedCandidates.reduce((sum, result) => sum + result.score, 0) / totalCandidates
+      );
+
+      return {
+        candidates: rankedCandidates,
+        totalCandidates,
+        averageScore
+      };
+
+    } catch (error) {
+      console.error('Candidate ranking error:', error);
       
-      Description:
-      ${job.description}
-      
-      Requirements:
-      ${job.requirements?.join('\n- ') || 'Not specified'}
-    `.trim();
-  }
-
-  private calculateMatchFactors(job: any, candidate: any) {
-    // Simple matching logic - in production, this would be more sophisticated
-    const skillsMatch = this.calculateSkillsMatch(job.requirements || [], candidate.skills);
-    const experienceMatch = this.calculateExperienceMatch(job.experienceLevel, candidate.experience);
-    const locationMatch = this.calculateLocationMatch(job, candidate);
-    const preferenceMatch = this.calculatePreferenceMatch(job, candidate);
-
-    return {
-      skillsMatch,
-      experienceMatch,
-      locationMatch,
-      preferenceMatch,
-    };
+      // Return fallback ranking
+      return {
+        candidates: candidates.map(candidate => ({
+          candidate,
+          score: 50,
+          reasoning: 'Automated ranking unavailable. Manual review recommended.'
+        })),
+        totalCandidates: candidates.length,
+        averageScore: 50
+      };
+    }
   }
 
   private calculateSkillsMatch(jobRequirements: string[], candidateSkills: string[]): number {
     if (!jobRequirements.length || !candidateSkills.length) return 50;
-    
-    const normalizedJobSkills = jobRequirements.join(' ').toLowerCase();
-    const normalizedCandidateSkills = candidateSkills.join(' ').toLowerCase();
-    
-    let matches = 0;
-    for (const skill of candidateSkills) {
-      if (normalizedJobSkills.includes(skill.toLowerCase())) {
-        matches++;
+
+    const normalizedJobSkills = jobRequirements.map(skill => skill.toLowerCase().trim());
+    const normalizedCandidateSkills = candidateSkills.map(skill => skill.toLowerCase().trim());
+
+    let matchCount = 0;
+    let partialMatchCount = 0;
+
+    normalizedJobSkills.forEach(jobSkill => {
+      const exactMatch = normalizedCandidateSkills.some(candidateSkill => 
+        candidateSkill === jobSkill
+      );
+      
+      if (exactMatch) {
+        matchCount++;
+      } else {
+        const partialMatch = normalizedCandidateSkills.some(candidateSkill => 
+          candidateSkill.includes(jobSkill) || jobSkill.includes(candidateSkill)
+        );
+        if (partialMatch) {
+          partialMatchCount++;
+        }
       }
-    }
+    });
+
+    const exactMatchScore = (matchCount / normalizedJobSkills.length) * 100;
+    const partialMatchScore = (partialMatchCount / normalizedJobSkills.length) * 50;
     
-    return Math.min(100, (matches / candidateSkills.length) * 100);
+    return Math.min(100, Math.round(exactMatchScore + partialMatchScore));
   }
 
-  private calculateExperienceMatch(jobExperience: string | null, candidateExperience: number): number {
+  private calculateExperienceMatch(jobExperience: string | null, candidateExperience: number | null): number {
     if (!jobExperience) return 70;
-    
-    const experienceMap: Record<string, number> = {
+    if (!candidateExperience) return 30;
+
+    const experienceMap: { [key: string]: number } = {
       'entry': 1,
       'junior': 2,
       'mid': 4,
       'senior': 7,
       'lead': 10,
       'principal': 12,
+      'director': 15
     };
-    
+
     const requiredYears = experienceMap[jobExperience.toLowerCase()] || 3;
     const ratio = candidateExperience / requiredYears;
-    
-    if (ratio >= 0.8 && ratio <= 1.5) return 100;
-    if (ratio >= 0.5 && ratio <= 2) return 80;
-    if (ratio >= 0.3 && ratio <= 3) return 60;
-    return 40;
-  }
 
-  private calculateLocationMatch(job: any, candidate: any): number {
-    if (job.isRemote || candidate.remoteWork) return 100;
-    if (candidate.willingToRelocate) return 80;
-    
-    const jobLocation = job.location?.toLowerCase() || '';
-    const candidateCity = candidate.city?.toLowerCase() || '';
-    const candidateCountry = candidate.country?.toLowerCase() || '';
-    
-    if (jobLocation.includes(candidateCity) || jobLocation.includes(candidateCountry)) {
-      return 100;
-    }
-    
+    if (ratio >= 0.8 && ratio <= 1.5) return 100;
+    if (ratio >= 0.6 && ratio <= 2.0) return 80;
+    if (ratio >= 0.4 && ratio <= 3.0) return 60;
     return 30;
   }
 
-  private calculatePreferenceMatch(job: any, candidate: any): number {
-    let score = 70; // Base score
-    
-    // Salary expectations
-    if (job.salaryMin && job.salaryMax && candidate.expectedSalary) {
-      const isInRange = candidate.expectedSalary >= job.salaryMin && candidate.expectedSalary <= job.salaryMax;
-      score += isInRange ? 20 : -10;
+  private calculateLocationMatch(
+    jobLocation: string, 
+    isRemote: boolean, 
+    candidateLocation: string | null, 
+    remotePreference: string | null
+  ): number {
+    if (isRemote) {
+      if (remotePreference === 'REMOTE' || remotePreference === 'FLEXIBLE') return 100;
+      if (remotePreference === 'HYBRID') return 80;
+      return 60; // ONSITE preference but remote job
     }
-    
-    // Remote work preference
-    if (job.isRemote && candidate.remoteWork) {
-      score += 10;
+
+    if (!candidateLocation) return 50;
+
+    // Simple location matching (could be enhanced with geocoding)
+    const jobLocationLower = jobLocation.toLowerCase();
+    const candidateLocationLower = candidateLocation.toLowerCase();
+
+    if (candidateLocationLower.includes(jobLocationLower) || 
+        jobLocationLower.includes(candidateLocationLower)) {
+      return 100;
     }
+
+    // Check for same city/state
+    const jobParts = jobLocationLower.split(',').map(part => part.trim());
+    const candidateParts = candidateLocationLower.split(',').map(part => part.trim());
+
+    const hasCommonLocation = jobParts.some(jobPart => 
+      candidateParts.some(candidatePart => 
+        candidatePart.includes(jobPart) || jobPart.includes(candidatePart)
+      )
+    );
+
+    if (hasCommonLocation) return 80;
+
+    // Remote preference for on-site job
+    if (remotePreference === 'REMOTE') return 20;
+    if (remotePreference === 'HYBRID') return 40;
     
-    return Math.max(0, Math.min(100, score));
+    return 30; // Different locations, no remote preference
   }
 
-  private async storeAIMatch(jobId: string, candidateId: string, score: number, reasoning: string, factors: any) {
-    try {
-      await prisma.aIMatch.upsert({
-        where: {
-          jobId_candidateId: { jobId, candidateId },
-        },
-        update: {
-          score,
-          reasoning,
-          factors,
-        },
-        create: {
-          jobId,
-          candidateId,
-          score,
-          reasoning,
-          factors,
-        },
-      });
-    } catch (error) {
-      console.error('Error storing AI match:', error);
-    }
+  private calculateTitleMatch(jobTitle: string, candidateTitle: string | null): number {
+    if (!candidateTitle) return 30;
+
+    const jobTitleLower = jobTitle.toLowerCase();
+    const candidateTitleLower = candidateTitle.toLowerCase();
+
+    // Exact match
+    if (jobTitleLower === candidateTitleLower) return 100;
+
+    // Check for key words
+    const jobWords = jobTitleLower.split(' ').filter(word => word.length > 2);
+    const candidateWords = candidateTitleLower.split(' ').filter(word => word.length > 2);
+
+    const matchingWords = jobWords.filter(word => 
+      candidateWords.some(candidateWord => 
+        candidateWord.includes(word) || word.includes(candidateWord)
+      )
+    );
+
+    const matchRatio = matchingWords.length / jobWords.length;
+    return Math.round(matchRatio * 100);
+  }
+
+  private generateMatchAnalysis(
+    overallScore: number,
+    skillsMatch: number,
+    experienceMatch: number,
+    locationMatch: number,
+    titleMatch: number,
+    candidate: Candidate,
+    job: Job
+  ) {
+    const strengths: string[] = [];
+    const concerns: string[] = [];
+
+    // Analyze strengths
+    if (skillsMatch >= 80) strengths.push('Strong technical skills alignment');
+    if (experienceMatch >= 80) strengths.push('Excellent experience level match');
+    if (locationMatch >= 80) strengths.push('Great location/remote preference fit');
+    if (titleMatch >= 70) strengths.push('Relevant title and role experience');
+    if (candidate.technicalSkills.length >= 5) strengths.push('Diverse technical skill set');
+
+    // Analyze concerns
+    if (skillsMatch < 50) concerns.push('Limited technical skills overlap');
+    if (experienceMatch < 50) concerns.push('Experience level mismatch');
+    if (locationMatch < 40) concerns.push('Location/remote preference concerns');
+    if (titleMatch < 30) concerns.push('Different role background');
+
+    // Generate recommendation
+    let recommendation: 'STRONG_MATCH' | 'GOOD_MATCH' | 'WEAK_MATCH' | 'NO_MATCH';
+    if (overallScore >= 85) recommendation = 'STRONG_MATCH';
+    else if (overallScore >= 70) recommendation = 'GOOD_MATCH';
+    else if (overallScore >= 50) recommendation = 'WEAK_MATCH';
+    else recommendation = 'NO_MATCH';
+
+    // Generate reasoning
+    const reasoning = `Overall match score of ${overallScore}% based on skills (${skillsMatch}%), experience (${experienceMatch}%), location (${locationMatch}%), and title relevance (${titleMatch}%). ${strengths.length > 0 ? 'Key strengths: ' + strengths.join(', ') + '. ' : ''}${concerns.length > 0 ? 'Areas of concern: ' + concerns.join(', ') + '.' : ''}`;
+
+    return { reasoning, strengths, concerns, recommendation };
+  }
+
+  // Mock AI-powered ranking for development
+  async mockAIRanking(candidates: Candidate[]): Promise<Array<{ candidate: Candidate; score: number; reasoning: string }>> {
+    // Return mock rankings based on experience and skills match
+    return candidates.map(candidate => ({
+      candidate,
+      score: Math.min(90, (candidate.experienceYears || 0) * 8 + Math.random() * 20),
+      reasoning: `Strong match with ${candidate.experienceYears || 0} years experience and relevant skills: ${candidate.technicalSkills.slice(0, 2).join(', ')}`
+    })).sort((a, b) => b.score - a.score);
   }
 }
 

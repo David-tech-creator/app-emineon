@@ -2,6 +2,7 @@
 
 import { UserButton, useUser, useOrganization } from '@clerk/nextjs';
 import { Bell, Settings } from 'lucide-react';
+import Image from 'next/image';
 
 export function TopBar() {
   const { user } = useUser();
@@ -9,13 +10,7 @@ export function TopBar() {
 
   return (
     <header className="bg-white border-b border-secondary-200 px-6 py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h1 className="text-2xl font-semibold text-primary-900">
-            Welcome back, {user?.firstName || 'User'}
-          </h1>
-        </div>
-
+      <div className="flex items-center justify-end">
         <div className="flex items-center space-x-4">
           {/* Organization Info */}
           {organization && (

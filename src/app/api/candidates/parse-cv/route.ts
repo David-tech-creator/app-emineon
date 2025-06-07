@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs';
 import { cvParserService } from '@/lib/services/cv-parser';
 
 export const runtime = 'nodejs';
@@ -7,17 +6,7 @@ export const maxDuration = 30;
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = auth();
-    
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Authentication required',
-        },
-        { status: 401 }
-      );
-    }
+    console.log('CV parsing request received');
 
     const formData = await request.formData();
     const file = formData.get('cv') as File;
@@ -65,7 +54,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const parsedData = await cvParserService.parseCV(file);
+    // Extract file content as text
+    const fileContent = await file.text();
+    const fileName = file.name;
+
+    const parsedData = await cvParserService.parseCV(fileContent, fileName);
 
     return NextResponse.json({
       success: true,

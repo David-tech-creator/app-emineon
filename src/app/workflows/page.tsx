@@ -121,13 +121,13 @@ export default function WorkflowsPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-green-50 text-green-700 border-green-200';
+        return 'bg-success-100 text-success-700 border border-success-200';
       case 'paused':
-        return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+        return 'bg-warning-100 text-warning-700 border border-warning-200';
       case 'draft':
-        return 'bg-gray-50 text-gray-700 border-gray-200';
+        return 'bg-neutral-100 text-neutral-700 border border-neutral-200';
       default:
-        return 'bg-gray-50 text-gray-700 border-gray-200';
+        return 'bg-neutral-100 text-neutral-700 border border-neutral-200';
     }
   };
 
@@ -140,7 +140,7 @@ export default function WorkflowsPage() {
       case 'condition':
         return <CheckCircle className="h-5 w-5 text-purple-600" />;
       default:
-        return <Settings className="h-5 w-5 text-gray-600" />;
+        return <Settings className="h-5 w-5 text-neutral-600" />;
     }
   };
 
@@ -191,34 +191,91 @@ export default function WorkflowsPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center space-x-3">
-          <Workflow className="h-8 w-8 text-blue-600" />
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Workflow Automation</h1>
-            <p className="text-gray-600">Create and manage automated recruitment workflows</p>
+      <div className="space-y-8">
+        {/* Hero Section */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-teal-600 via-primary-600 to-primary-800 rounded-3xl">
+          <div className="absolute inset-0 bg-black opacity-5"></div>
+          
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-8 right-20 w-24 h-24 border border-white rounded-full"></div>
+            <div className="absolute bottom-8 right-40 w-16 h-16 border border-white rounded-full"></div>
+          </div>
+          
+          <div className="relative px-8 py-12">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="mb-6">
+                  <h1 className="text-4xl font-bold text-white leading-tight mb-2">
+                    Intelligent Workflow Hub
+                  </h1>
+                  <p className="text-xl text-blue-100">
+                    Create and manage automated recruitment workflows with smart triggers and actions
+                  </p>
+                </div>
+                
+                {/* Features Badges */}
+                <div className="flex flex-wrap gap-3 mb-6">
+                  <div className="inline-flex items-center px-3 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium">
+                    <Zap className="h-4 w-4 mr-2" />
+                    Smart Automation
+                  </div>
+                  <div className="inline-flex items-center px-3 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium">
+                    <Target className="h-4 w-4 mr-2" />
+                    Custom Triggers
+                  </div>
+                  <div className="inline-flex items-center px-3 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium">
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    Performance Analytics
+                  </div>
+                </div>
+                
+                {/* Key Metrics */}
+                <div className="grid grid-cols-4 gap-6 text-white">
+                  <div>
+                    <p className="text-2xl font-bold">{workflows.length}</p>
+                    <p className="text-blue-200 text-sm">Active Workflows</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{workflows.reduce((sum, w) => sum + w.executionCount, 0)}</p>
+                    <p className="text-blue-200 text-sm">Total Executions</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{workflows.filter(w => w.status === 'active').length}</p>
+                    <p className="text-blue-200 text-sm">Running Now</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{Math.round(workflows.reduce((sum, w) => sum + w.successRate, 0) / workflows.length)}%</p>
+                    <p className="text-blue-200 text-sm">Success Rate</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Right Side - Large Icon */}
+              <div className="hidden lg:block ml-8">
+                <div className="relative w-32 h-32 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                  <Workflow className="w-16 h-16 text-white opacity-80" />
+                  <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-pulse"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+        <div className="bg-white rounded-2xl border border-neutral-200 p-6 shadow-soft">
+          <div className="flex flex-wrap gap-2">
             {tabs.map((tab) => (
-              <button
+              <Button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                variant={activeTab === tab.id ? 'primary' : 'outline'}
               >
-                <tab.icon className="h-4 w-4" />
-                <span>{tab.label}</span>
-              </button>
+                <tab.icon className="h-4 w-4 mr-2" />
+                {tab.label}
+              </Button>
             ))}
-          </nav>
+          </div>
         </div>
 
         {/* Tab Content */}
@@ -336,14 +393,12 @@ export default function WorkflowsPage() {
                         <div className="flex space-x-2">
                           <Button 
                             variant="outline" 
-                            size="sm"
                             onClick={() => toggleWorkflowStatus(workflow.id)}
                           >
                             {workflow.status === 'active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                           </Button>
                           <Button 
                             variant="outline" 
-                            size="sm"
                             onClick={() => setSelectedWorkflow(workflow)}
                           >
                             View
@@ -353,16 +408,16 @@ export default function WorkflowsPage() {
                     </div>
 
                     {/* Workflow Steps Preview */}
-                    <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="mt-4 pt-4 border-t border-neutral-200">
                       <div className="flex items-center space-x-2 overflow-x-auto">
                         {workflow.steps.map((step, index) => (
                           <div key={step.id} className="flex items-center space-x-2 flex-shrink-0">
-                            <div className="flex items-center space-x-2 bg-gray-50 px-3 py-1 rounded-lg">
+                            <div className="flex items-center space-x-2 px-3 py-1 bg-neutral-100 text-neutral-700 text-sm rounded-full border border-neutral-200">
                               {getStepIcon(step.type)}
-                              <span className="text-sm font-medium text-gray-700">{step.name}</span>
+                              <span className="font-medium">{step.name}</span>
                             </div>
                             {index < workflow.steps.length - 1 && (
-                              <ArrowRight className="h-4 w-4 text-gray-400" />
+                              <ArrowRight className="h-4 w-4 text-neutral-400" />
                             )}
                           </div>
                         ))}
@@ -450,7 +505,7 @@ export default function WorkflowsPage() {
 
         {activeTab === 'templates' && (
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-gray-900">Workflow Templates</h2>
+            <h2 className="text-xl font-semibold text-neutral-900">Workflow Templates</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
                 {
@@ -494,17 +549,19 @@ export default function WorkflowsPage() {
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div>
-                        <h3 className="font-semibold text-gray-900">{template.name}</h3>
-                        <p className="text-sm text-gray-600 mt-1">{template.description}</p>
+                        <h3 className="font-semibold text-neutral-900">{template.name}</h3>
+                        <p className="text-sm text-neutral-600 mt-1">{template.description}</p>
                       </div>
-                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                      <span className="inline-flex items-center px-3 py-1 bg-primary-100 text-primary-700 text-sm rounded-full border border-primary-200">
                         {template.category}
                       </span>
                     </div>
                     
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-500">{template.steps} steps</span>
-                      <Button variant="outline" size="sm">
+                      <span className="inline-flex items-center px-3 py-1 bg-neutral-100 text-neutral-700 text-sm rounded-full border border-neutral-200">
+                        {template.steps} steps
+                      </span>
+                      <Button variant="outline">
                         Use Template
                       </Button>
                     </div>
@@ -525,7 +582,7 @@ export default function WorkflowsPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-lg text-white">
+                  <div className="bg-primary-800 p-6 rounded-lg text-white">
                     <h3 className="text-lg font-medium">Total Executions</h3>
                     <p className="text-3xl font-bold mt-2">
                       {workflows.reduce((sum, w) => sum + w.executionCount, 0)}
@@ -533,7 +590,7 @@ export default function WorkflowsPage() {
                     <p className="text-blue-100 text-sm">This month</p>
                   </div>
                   
-                  <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-lg text-white">
+                  <div className="bg-primary-800 p-6 rounded-lg text-white">
                     <h3 className="text-lg font-medium">Success Rate</h3>
                     <p className="text-3xl font-bold mt-2">
                       {Math.round(workflows.reduce((sum, w) => sum + w.successRate, 0) / workflows.length)}%
@@ -541,7 +598,7 @@ export default function WorkflowsPage() {
                     <p className="text-green-100 text-sm">Average across all workflows</p>
                   </div>
                   
-                  <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-lg text-white">
+                  <div className="bg-primary-800 p-6 rounded-lg text-white">
                     <h3 className="text-lg font-medium">Time Saved</h3>
                     <p className="text-3xl font-bold mt-2">124hrs</p>
                     <p className="text-purple-100 text-sm">Estimated this month</p>
@@ -549,21 +606,21 @@ export default function WorkflowsPage() {
                 </div>
 
                 <div className="mt-8">
-                  <h4 className="text-lg font-medium text-gray-900 mb-4">Workflow Performance</h4>
+                  <h4 className="text-lg font-medium text-neutral-900 mb-4">Workflow Performance</h4>
                   <div className="space-y-4">
                     {workflows.map((workflow) => (
-                      <div key={workflow.id} className="bg-gray-50 p-4 rounded-lg">
+                      <div key={workflow.id} className="bg-neutral-50 p-4 rounded-lg">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h5 className="font-medium text-gray-900">{workflow.name}</h5>
-                            <p className="text-sm text-gray-600">{workflow.executionCount} executions</p>
+                            <h5 className="font-medium text-neutral-900">{workflow.name}</h5>
+                            <p className="text-sm text-neutral-600">{workflow.executionCount} executions</p>
                           </div>
                           <div className="flex items-center space-x-6">
                             <div className="text-right">
-                              <p className="text-lg font-bold text-gray-900">{workflow.successRate}%</p>
-                              <p className="text-xs text-gray-500">Success Rate</p>
+                              <p className="text-lg font-bold text-neutral-900">{workflow.successRate}%</p>
+                              <p className="text-xs text-neutral-500">Success Rate</p>
                             </div>
-                            <div className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(workflow.status)}`}>
+                            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(workflow.status)}`}>
                               {workflow.status}
                             </div>
                           </div>
@@ -583,14 +640,14 @@ export default function WorkflowsPage() {
             <div className="bg-white rounded-lg max-w-4xl w-full max-h-screen overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">{selectedWorkflow.name}</h2>
+                  <h2 className="text-2xl font-bold text-neutral-900">{selectedWorkflow.name}</h2>
                   <Button variant="outline" onClick={() => setSelectedWorkflow(null)}>
                     Close
                   </Button>
                 </div>
                 
                 <div className="space-y-6">
-                  <p className="text-gray-600">{selectedWorkflow.description}</p>
+                  <p className="text-neutral-600">{selectedWorkflow.description}</p>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-blue-50 p-4 rounded-lg">
@@ -601,31 +658,31 @@ export default function WorkflowsPage() {
                       <p className="text-sm font-medium text-green-900">Success Rate</p>
                       <p className="text-2xl font-bold text-green-600">{selectedWorkflow.successRate}%</p>
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-sm font-medium text-gray-900">Last Run</p>
-                      <p className="text-lg font-bold text-gray-600">
+                    <div className="bg-neutral-50 p-4 rounded-lg">
+                      <p className="text-sm font-medium text-neutral-900">Last Run</p>
+                      <p className="text-lg font-bold text-neutral-600">
                         {new Date(selectedWorkflow.lastRun).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                   
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Workflow Steps</h3>
+                    <h3 className="text-lg font-medium text-neutral-900 mb-4">Workflow Steps</h3>
                     <div className="space-y-4">
                       {selectedWorkflow.steps.map((step, index) => (
-                        <div key={step.id} className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg">
+                        <div key={step.id} className="flex items-center space-x-4 p-4 border border-neutral-200 rounded-lg">
                           <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full text-sm font-medium text-blue-600">
                             {index + 1}
                           </div>
                           {getStepIcon(step.type)}
                           <div className="flex-1">
-                            <h4 className="font-medium text-gray-900">{step.name}</h4>
-                            <p className="text-sm text-gray-600">{step.description}</p>
+                            <h4 className="font-medium text-neutral-900">{step.name}</h4>
+                            <p className="text-sm text-neutral-600">{step.description}</p>
                           </div>
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            step.type === 'trigger' ? 'bg-blue-100 text-blue-800' :
-                            step.type === 'action' ? 'bg-green-100 text-green-800' :
-                            'bg-purple-100 text-purple-800'
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                            step.type === 'trigger' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                            step.type === 'action' ? 'bg-success-100 text-success-700 border border-success-200' :
+                            'bg-accent-100 text-accent-700 border border-accent-200'
                           }`}>
                             {step.type}
                           </span>

@@ -18,7 +18,12 @@ import {
   AlertCircle,
   Eye,
   Edit,
-  Trash2
+  Trash2,
+  Sparkles,
+  Settings,
+  Zap,
+  Target,
+  MessageSquare
 } from 'lucide-react';
 
 interface Assessment {
@@ -32,10 +37,23 @@ interface Assessment {
   candidates: number;
   averageScore: number;
   createdAt: string;
+  aiGenerated?: boolean;
+}
+
+interface AssessmentConfig {
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  questionTypes: string[];
+  focusAreas: string[];
+  includeCodeChallenges: boolean;
+  adaptiveDifficulty: boolean;
+  timePerQuestion: number;
+  passingScore: number;
+  aiAssisted: boolean;
 }
 
 export default function AssessmentsPage() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [assessments, setAssessments] = useState<Assessment[]>([
     {
       id: '1',
@@ -47,7 +65,8 @@ export default function AssessmentsPage() {
       status: 'active',
       candidates: 15,
       averageScore: 78,
-      createdAt: '2024-01-15'
+      createdAt: '2024-01-15',
+      aiGenerated: true
     },
     {
       id: '2',
@@ -80,8 +99,74 @@ export default function AssessmentsPage() {
     type: 'technical' as 'technical' | 'personality' | 'cognitive',
     description: '',
     duration: 60,
-    questions: []
+    questions: [] as string[],
+    jobRole: '',
+    skillLevel: 'intermediate' as 'beginner' | 'intermediate' | 'advanced',
+    aiAssisted: true
   });
+
+  const [assessmentConfig, setAssessmentConfig] = useState<AssessmentConfig>({
+    difficulty: 'intermediate',
+    questionTypes: ['multiple_choice', 'coding'],
+    focusAreas: [],
+    includeCodeChallenges: true,
+    adaptiveDifficulty: false,
+    timePerQuestion: 3,
+    passingScore: 70,
+    aiAssisted: true
+  });
+
+  const generateAIAssessment = async () => {
+    setIsGeneratingAI(true);
+    
+    try {
+      // In a real implementation, you would call the assessment service
+      const { assessmentService } = await import('@/lib/services/assessment');
+      
+      const aiInput = {
+        jobTitle: newAssessment.jobRole || 'General Position',
+        jobDescription: newAssessment.description,
+        assessmentType: newAssessment.type,
+        skillLevel: newAssessment.skillLevel,
+        duration: newAssessment.duration,
+        focusAreas: [], // Could be derived from job description
+        includeCodeChallenges: assessmentConfig.includeCodeChallenges
+      };
+      
+      const aiQuestions = await assessmentService.generateAIAssessment(aiInput);
+      
+      setNewAssessment(prev => ({
+        ...prev,
+        description: `AI-generated ${prev.type} assessment for ${prev.jobRole || 'general'} role. This assessment evaluates key competencies and skills relevant to the position, automatically tailored to ${assessmentConfig.difficulty} difficulty level.`,
+        questions: aiQuestions.map(q => q.question)
+      }));
+      
+    } catch (error) {
+      console.error('Error generating AI assessment:', error);
+      
+      // Fallback to mock generation
+      setTimeout(() => {
+        const aiGeneratedQuestions = [
+          "What is the difference between let, const, and var in JavaScript?",
+          "Explain how closures work in JavaScript with an example.",
+          "What is the purpose of the 'this' keyword in JavaScript?",
+          "How do you handle asynchronous operations in JavaScript?",
+          "What are the key differences between == and === operators?"
+        ];
+        
+        setNewAssessment(prev => ({
+          ...prev,
+          description: `AI-generated ${prev.type} assessment for ${prev.jobRole || 'general'} role. This assessment evaluates key competencies and skills relevant to the position, automatically tailored to ${assessmentConfig.difficulty} difficulty level.`,
+          questions: aiGeneratedQuestions
+        }));
+        
+        setIsGeneratingAI(false);
+      }, 1000);
+      return;
+    }
+    
+    setIsGeneratingAI(false);
+  };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -118,7 +203,10 @@ export default function AssessmentsPage() {
       type: 'technical',
       description: '',
       duration: 60,
-      questions: []
+      questions: [],
+      jobRole: '',
+      skillLevel: 'intermediate',
+      aiAssisted: true
     });
     setActiveTab('overview');
   };
@@ -131,13 +219,74 @@ export default function AssessmentsPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center space-x-3">
-          <ClipboardList className="h-8 w-8 text-blue-600" />
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Assessment Framework</h1>
-            <p className="text-gray-600">Create and manage candidate assessments</p>
+      <div className="space-y-8">
+        {/* Hero Section */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-teal-600 via-primary-600 to-primary-800 rounded-3xl">
+          <div className="absolute inset-0 bg-black opacity-5"></div>
+          
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-8 right-20 w-24 h-24 border border-white rounded-full"></div>
+            <div className="absolute bottom-8 right-40 w-16 h-16 border border-white rounded-full"></div>
+          </div>
+          
+          <div className="relative px-8 py-12">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="mb-6">
+                  <h1 className="text-4xl font-bold text-white leading-tight mb-2">
+                    Advanced Assessment Hub
+                  </h1>
+                  <p className="text-xl text-blue-100">
+                    Create, manage and analyze candidate assessments with AI-powered intelligence
+                  </p>
+                </div>
+                
+                {/* Features Badges */}
+                <div className="flex flex-wrap gap-3 mb-6">
+                  <div className="inline-flex items-center px-3 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium">
+                    <Brain className="h-4 w-4 mr-2" />
+                    AI-Generated Questions
+                  </div>
+                  <div className="inline-flex items-center px-3 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium">
+                    <Target className="h-4 w-4 mr-2" />
+                    Smart Analytics
+                  </div>
+                  <div className="inline-flex items-center px-3 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium">
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Auto-Grading
+                  </div>
+                </div>
+                
+                {/* Key Metrics */}
+                <div className="grid grid-cols-4 gap-6 text-white">
+                  <div>
+                    <p className="text-2xl font-bold">{assessments.length}</p>
+                    <p className="text-blue-200 text-sm">Total Assessments</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{assessments.filter(a => a.status === 'active').length}</p>
+                    <p className="text-blue-200 text-sm">Active Tests</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{assessments.reduce((sum, a) => sum + a.candidates, 0)}</p>
+                    <p className="text-blue-200 text-sm">Candidates Tested</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{Math.round(assessments.reduce((sum, a) => sum + a.averageScore, 0) / assessments.length)}%</p>
+                    <p className="text-blue-200 text-sm">Average Score</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Right Side - Large Icon */}
+              <div className="hidden lg:block ml-8">
+                <div className="relative w-32 h-32 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                  <ClipboardList className="w-16 h-16 text-white opacity-80" />
+                  <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-pulse"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -238,7 +387,15 @@ export default function AssessmentsPage() {
                       <div className="flex items-center space-x-3">
                         {getTypeIcon(assessment.type)}
                         <div>
-                          <h3 className="font-semibold text-gray-900">{assessment.title}</h3>
+                          <div className="flex items-center space-x-2">
+                            <h3 className="font-semibold text-gray-900">{assessment.title}</h3>
+                            {assessment.aiGenerated && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                <Sparkles className="h-3 w-3 mr-1" />
+                                AI
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm text-gray-600 capitalize">{assessment.type}</p>
                         </div>
                       </div>
@@ -271,15 +428,15 @@ export default function AssessmentsPage() {
                     </div>
 
                     <div className="flex space-x-2 mt-4">
-                      <Button variant="outline" size="sm" className="flex-1">
-                        <Eye className="h-4 w-4 mr-1" />
+                      <Button variant="outline" className="flex-1">
+                        <Eye className="h-4 w-4 mr-2" />
                         View
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1">
-                        <Edit className="h-4 w-4 mr-1" />
+                      <Button variant="outline" className="flex-1">
+                        <Edit className="h-4 w-4 mr-2" />
                         Edit
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -295,10 +452,38 @@ export default function AssessmentsPage() {
             <CardHeader title="Create New Assessment">
               <div className="flex items-center space-x-2">
                 <Plus className="h-5 w-5 text-blue-600" />
+                <span className="text-sm text-gray-600">Build assessments manually or with AI assistance</span>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
+                {/* AI Assistant Toggle */}
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
+                        <Brain className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">AI Assessment Generator</h3>
+                        <p className="text-sm text-gray-600">
+                          Generate tailored questions automatically based on job requirements
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setNewAssessment(prev => ({ ...prev, aiAssisted: !prev.aiAssisted }))}
+                      className={`px-4 py-2 rounded-lg transition-colors ${
+                        newAssessment.aiAssisted
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-white text-purple-600 border border-purple-600'
+                      }`}
+                    >
+                      {newAssessment.aiAssisted ? 'AI Enabled' : 'Enable AI'}
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Input
                     label="Assessment Title"
@@ -322,15 +507,67 @@ export default function AssessmentsPage() {
                   </div>
                 </div>
 
-                <Textarea
-                  label="Description"
-                  value={newAssessment.description}
-                  onChange={(e) => setNewAssessment(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Describe what this assessment evaluates..."
-                  rows={3}
-                />
+                {newAssessment.aiAssisted && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Input
+                      label="Target Job Role"
+                      value={newAssessment.jobRole}
+                      onChange={(e) => setNewAssessment(prev => ({ ...prev, jobRole: e.target.value }))}
+                      placeholder="e.g., Senior Frontend Developer, Product Manager"
+                    />
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Skill Level</label>
+                      <select
+                        value={newAssessment.skillLevel}
+                        onChange={(e) => setNewAssessment(prev => ({ ...prev, skillLevel: e.target.value as any }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="beginner">Beginner (0-2 years)</option>
+                        <option value="intermediate">Intermediate (2-5 years)</option>
+                        <option value="advanced">Advanced (5+ years)</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <Textarea
+                    label={newAssessment.aiAssisted ? "Job Description (AI will analyze this)" : "Description"}
+                    value={newAssessment.description}
+                    onChange={(e) => setNewAssessment(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder={newAssessment.aiAssisted 
+                      ? "Paste the job description here and AI will generate relevant assessment questions..."
+                      : "Describe what this assessment evaluates..."
+                    }
+                    rows={4}
+                  />
+
+                  {newAssessment.aiAssisted && newAssessment.description && (
+                    <div className="flex space-x-2">
+                      <Button 
+                        onClick={generateAIAssessment}
+                        disabled={isGeneratingAI}
+                        className="flex items-center"
+                        variant="outline"
+                      >
+                        {isGeneratingAI ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600 mr-2"></div>
+                            Generating Questions...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Generate AI Questions
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <Input
                     label="Duration (minutes)"
                     type="number"
@@ -338,43 +575,154 @@ export default function AssessmentsPage() {
                     onChange={(e) => setNewAssessment(prev => ({ ...prev, duration: parseInt(e.target.value) || 60 }))}
                     placeholder="60"
                   />
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty Level</label>
+                    <select
+                      value={assessmentConfig.difficulty}
+                      onChange={(e) => setAssessmentConfig(prev => ({ ...prev, difficulty: e.target.value as any }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="beginner">Beginner</option>
+                      <option value="intermediate">Intermediate</option>
+                      <option value="advanced">Advanced</option>
+                    </select>
+                  </div>
+                  
+                  <Input
+                    label="Passing Score (%)"
+                    type="number"
+                    value={assessmentConfig.passingScore.toString()}
+                    onChange={(e) => setAssessmentConfig(prev => ({ ...prev, passingScore: parseInt(e.target.value) || 70 }))}
+                    placeholder="70"
+                    min="0"
+                    max="100"
+                  />
                 </div>
 
+                {/* Advanced Configuration */}
                 <div className="pt-6 border-t border-gray-200">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Assessment Configuration</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                    <Settings className="h-5 w-5 mr-2" />
+                    Advanced Configuration
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium text-gray-700">Include Code Challenges</label>
+                        <button
+                          onClick={() => setAssessmentConfig(prev => ({ ...prev, includeCodeChallenges: !prev.includeCodeChallenges }))}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            assessmentConfig.includeCodeChallenges ? 'bg-blue-600' : 'bg-gray-200'
+                          }`}
+                        >
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            assessmentConfig.includeCodeChallenges ? 'translate-x-6' : 'translate-x-1'
+                          }`} />
+                        </button>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium text-gray-700">Adaptive Difficulty</label>
+                        <button
+                          onClick={() => setAssessmentConfig(prev => ({ ...prev, adaptiveDifficulty: !prev.adaptiveDifficulty }))}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            assessmentConfig.adaptiveDifficulty ? 'bg-blue-600' : 'bg-gray-200'
+                          }`}
+                        >
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            assessmentConfig.adaptiveDifficulty ? 'translate-x-6' : 'translate-x-1'
+                          }`} />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <Input
+                        label="Time per Question (minutes)"
+                        type="number"
+                        value={assessmentConfig.timePerQuestion.toString()}
+                        onChange={(e) => setAssessmentConfig(prev => ({ ...prev, timePerQuestion: parseInt(e.target.value) || 3 }))}
+                        placeholder="3"
+                        min="1"
+                        max="15"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Assessment Preview */}
+                {newAssessment.questions.length > 0 && (
+                  <div className="pt-6 border-t border-gray-200">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                      <Eye className="h-5 w-5 mr-2" />
+                      AI Generated Questions Preview
+                    </h3>
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                      {newAssessment.questions.slice(0, 3).map((question, index) => (
+                        <div key={index} className="flex items-start space-x-3">
+                          <span className="text-sm font-medium text-gray-500 mt-1">{index + 1}.</span>
+                          <p className="text-sm text-gray-700">{question}</p>
+                        </div>
+                      ))}
+                      {newAssessment.questions.length > 3 && (
+                        <p className="text-sm text-gray-500 italic">
+                          +{newAssessment.questions.length - 3} more questions...
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Type-specific features */}
+                <div className="pt-6 border-t border-gray-200">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Assessment Features</h3>
                   
                   {newAssessment.type === 'technical' && (
                     <div className="bg-blue-50 p-4 rounded-lg">
-                      <h4 className="font-medium text-blue-900">Technical Assessment Features</h4>
-                      <ul className="text-sm text-blue-700 mt-2 space-y-1">
-                        <li>• Code challenges and programming questions</li>
+                      <div className="flex items-center mb-3">
+                        <Code className="h-5 w-5 text-blue-600 mr-2" />
+                        <h4 className="font-medium text-blue-900">Technical Assessment Features</h4>
+                      </div>
+                      <ul className="text-sm text-blue-700 space-y-1">
+                        <li>• {newAssessment.aiAssisted ? 'AI-generated' : 'Manual'} code challenges and programming questions</li>
                         <li>• Algorithm and data structure problems</li>
-                        <li>• Technology-specific questions</li>
-                        <li>• Automated code evaluation</li>
+                        <li>• Technology-specific questions tailored to {newAssessment.jobRole || 'role'}</li>
+                        <li>• Automated code evaluation and syntax checking</li>
+                        <li>• Real-time IDE environment for coding challenges</li>
                       </ul>
                     </div>
                   )}
 
                   {newAssessment.type === 'personality' && (
                     <div className="bg-green-50 p-4 rounded-lg">
-                      <h4 className="font-medium text-green-900">Personality Assessment Features</h4>
-                      <ul className="text-sm text-green-700 mt-2 space-y-1">
-                        <li>• Big Five personality traits</li>
-                        <li>• Work style preferences</li>
-                        <li>• Team collaboration assessment</li>
-                        <li>• Cultural fit evaluation</li>
+                      <div className="flex items-center mb-3">
+                        <Users className="h-5 w-5 text-green-600 mr-2" />
+                        <h4 className="font-medium text-green-900">Personality Assessment Features</h4>
+                      </div>
+                      <ul className="text-sm text-green-700 space-y-1">
+                        <li>• Big Five personality traits evaluation</li>
+                        <li>• Work style and communication preferences</li>
+                        <li>• Team collaboration and leadership assessment</li>
+                        <li>• Cultural fit evaluation for your organization</li>
+                        <li>• Behavioral pattern analysis</li>
                       </ul>
                     </div>
                   )}
 
                   {newAssessment.type === 'cognitive' && (
                     <div className="bg-purple-50 p-4 rounded-lg">
-                      <h4 className="font-medium text-purple-900">Cognitive Assessment Features</h4>
-                      <ul className="text-sm text-purple-700 mt-2 space-y-1">
-                        <li>• Logical reasoning tests</li>
-                        <li>• Pattern recognition</li>
-                        <li>• Problem-solving scenarios</li>
-                        <li>• Critical thinking evaluation</li>
+                      <div className="flex items-center mb-3">
+                        <Brain className="h-5 w-5 text-purple-600 mr-2" />
+                        <h4 className="font-medium text-purple-900">Cognitive Assessment Features</h4>
+                      </div>
+                      <ul className="text-sm text-purple-700 space-y-1">
+                        <li>• Logical reasoning and pattern recognition</li>
+                        <li>• Problem-solving scenarios and case studies</li>
+                        <li>• Critical thinking and analytical skills</li>
+                        <li>• Memory and attention span evaluation</li>
+                        <li>• Decision-making under pressure scenarios</li>
                       </ul>
                     </div>
                   )}
@@ -382,6 +730,7 @@ export default function AssessmentsPage() {
 
                 <div className="flex space-x-4 pt-6">
                   <Button onClick={createAssessment} className="flex-1">
+                    <Target className="h-4 w-4 mr-2" />
                     Create Assessment
                   </Button>
                   <Button variant="outline" onClick={() => setActiveTab('overview')} className="flex-1">
@@ -403,19 +752,19 @@ export default function AssessmentsPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-lg text-white">
-                    <h3 className="text-lg font-medium">Success Rate</h3>
-                    <p className="text-3xl font-bold mt-2">73%</p>
-                    <p className="text-blue-100 text-sm">Candidates passing assessments</p>
+                  <div className="bg-primary-800 p-6 rounded-lg text-white">
+                    <h3 className="text-lg font-medium">Total Assessments</h3>
+                    <p className="text-3xl font-bold mt-2">1,247</p>
+                    <p className="text-sm mt-2 text-blue-100">+12% this month</p>
                   </div>
                   
-                  <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-lg text-white">
+                  <div className="bg-primary-800 p-6 rounded-lg text-white">
                     <h3 className="text-lg font-medium">Completion Rate</h3>
                     <p className="text-3xl font-bold mt-2">89%</p>
-                    <p className="text-green-100 text-sm">Assessments completed</p>
+                    <p className="text-sm mt-2 text-blue-100">+5% from last month</p>
                   </div>
                   
-                  <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-lg text-white">
+                  <div className="bg-primary-800 p-6 rounded-lg text-white">
                     <h3 className="text-lg font-medium">Avg Duration</h3>
                     <p className="text-3xl font-bold mt-2">42min</p>
                     <p className="text-purple-100 text-sm">Time to complete</p>

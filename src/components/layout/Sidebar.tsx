@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 import { 
   LayoutDashboard, 
   Users, 
@@ -24,7 +25,8 @@ import {
   Settings,
   TrendingUp,
   Plus,
-  Mail
+  Mail,
+  Bot
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -50,37 +52,15 @@ const navigationSections: NavigationSection[] = [
         href: '/',
         icon: LayoutDashboard,
       },
-    ],
-    collapsible: false,
-  },
-  {
-    name: 'Talent',
-    icon: Users,
-    items: [
       {
-        name: 'Candidates',
-        href: '/candidates',
-        icon: Users,
+        name: 'AI Co-pilot',
+        href: '/ai-copilot',
+        icon: Bot,
       },
       {
-        name: 'Add Candidate',
-        href: '/candidates/new',
-        icon: UserPlus,
-      },
-      {
-        name: 'Assessments',
-        href: '/assessments',
-        icon: ClipboardList,
-      },
-      {
-        name: 'Video Interviews',
-        href: '/video-interviews',
-        icon: Video,
-      },
-      {
-        name: 'Tasks',
-        href: '/assignments',
-        icon: ClipboardList,
+        name: 'AI Tools',
+        href: '/ai-tools',
+        icon: Brain,
       },
     ],
     collapsible: true,
@@ -100,14 +80,37 @@ const navigationSections: NavigationSection[] = [
         icon: Share2,
       },
       {
-        name: 'AI Tools',
-        href: '/ai-tools',
-        icon: Brain,
-      },
-      {
         name: 'Outreach',
         href: '/outreach',
         icon: Mail,
+      },
+    ],
+    collapsible: true,
+  },
+  {
+    name: 'Talent',
+    icon: Users,
+    items: [
+      {
+        name: 'Candidates',
+        href: '/candidates',
+        icon: Users,
+      },
+
+      {
+        name: 'Assessments',
+        href: '/assessments',
+        icon: ClipboardList,
+      },
+      {
+        name: 'Video Interviews',
+        href: '/video-interviews',
+        icon: Video,
+      },
+      {
+        name: 'Tasks',
+        href: '/assignments',
+        icon: ClipboardList,
       },
     ],
     collapsible: true,
@@ -193,33 +196,43 @@ export function Sidebar() {
   };
 
   return (
-    <div className="flex flex-col w-64 bg-white border-r border-secondary-200 h-full">
+    <div className="flex flex-col w-64 bg-white border-r border-secondary-200 h-screen">
       {/* Logo */}
-      <div className="flex items-center px-6 py-8">
-        <div className="flex items-center">
-          <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-lg">E</span>
+      <div className="flex-shrink-0 flex items-center px-6 py-8">
+        <Link href="/" className="flex items-center group">
+          <div className="relative w-12 h-12 mr-3 transition-transform group-hover:scale-105">
+            {/* Primary Emineon Tree Logo */}
+            <Image
+              src="/images/logos/Emineon logo_tree.png"
+              alt="Emineon ATS"
+              width={48}
+              height={48}
+              className="object-contain"
+              onError={(e) => {
+                // Fallback to main logo
+                e.currentTarget.src = "/images/logos/Emineon logo_no background.png";
+              }}
+            />
           </div>
-          <span className="ml-3 text-xl font-semibold text-primary-900">
-            Emineon ATS
-          </span>
-        </div>
+          <div className="flex flex-col">
+            <span className="text-xl font-bold text-primary-900 leading-tight">
+              Emineon
+            </span>
+            <span className="text-xs font-medium text-primary-600 uppercase tracking-wide">
+              ATS Platform
+            </span>
+          </div>
+        </Link>
       </div>
 
       {/* Quick Actions */}
-      <div className="px-4 mb-6">
+      <div className="flex-shrink-0 px-4 mb-6">
         <div className="bg-primary-50 border border-primary-200 rounded-lg p-3">
           <h3 className="text-xs font-semibold text-primary-700 uppercase tracking-wide mb-2">
             Quick Actions
           </h3>
           <div className="space-y-1">
-            <Link
-              href="/candidates/new"
-              className="flex items-center text-sm text-primary-600 hover:text-primary-700 transition-colors"
-            >
-              <Plus className="h-3 w-3 mr-2" />
-              Add Candidate
-            </Link>
+
             <Link
               href="/jobs"
               className="flex items-center text-sm text-primary-600 hover:text-primary-700 transition-colors"
@@ -231,8 +244,8 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-4 pb-4 space-y-2">
+      {/* Navigation - Scrollable */}
+      <nav className="flex-1 px-4 pb-4 space-y-2 overflow-y-auto overflow-x-hidden">
         {navigationSections.map((section) => {
           const sectionActive = isSectionActive(section);
           const isCollapsed = collapsedSections.includes(section.name);

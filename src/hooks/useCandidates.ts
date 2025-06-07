@@ -1,13 +1,13 @@
 'use client';
 
 import useSWR from 'swr';
-import { api, Candidate, ApiResponse } from '@/lib/api';
+import { api, CandidateResponse } from '@/lib/api';
 import { useAuth } from '@clerk/nextjs';
 
 export function useCandidates() {
   const { getToken } = useAuth();
 
-  const fetcher = async (): Promise<Candidate[]> => {
+  const fetcher = async (): Promise<CandidateResponse[]> => {
     const token = await getToken();
     const response = await api.candidates.list(token || undefined);
     
@@ -18,8 +18,50 @@ export function useCandidates() {
     return response.data || [];
   };
 
-  const { data, error, isLoading, mutate } = useSWR<Candidate[]>(
+  const { data, error, isLoading, mutate } = useSWR<CandidateResponse[]>(
     'candidates',
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+    }
+  );
+
+  return {
+    candidates: data || [],
+    isLoading,
+    error,
+    mutate,
+  };
+}
+
+export function useCandidatesWithSearch(searchParams?: {
+  search?: string;
+  status?: string;
+  skills?: string;
+  location?: string;
+  source?: string;
+}) {
+  const { getToken } = useAuth();
+
+  const fetcher = async (): Promise<CandidateResponse[]> => {
+    const token = await getToken();
+    const response = await api.candidates.list(token || undefined, searchParams);
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to fetch candidates');
+    }
+    
+    return response.data || [];
+  };
+
+  // Create a cache key that includes search parameters
+  const cacheKey = searchParams 
+    ? `candidates-${JSON.stringify(searchParams)}`
+    : 'candidates';
+
+  const { data, error, isLoading, mutate } = useSWR<CandidateResponse[]>(
+    cacheKey,
     fetcher,
     {
       revalidateOnFocus: false,
@@ -38,7 +80,7 @@ export function useCandidates() {
 export function useCandidate(id: string) {
   const { getToken } = useAuth();
 
-  const fetcher = async (): Promise<Candidate> => {
+  const fetcher = async (): Promise<CandidateResponse> => {
     if (!id) throw new Error('No candidate ID provided');
     
     const token = await getToken();
@@ -55,7 +97,7 @@ export function useCandidate(id: string) {
     return response.data;
   };
 
-  const { data, error, isLoading, mutate } = useSWR<Candidate>(
+  const { data, error, isLoading, mutate } = useSWR<CandidateResponse>(
     id ? `candidate-${id}` : null,
     fetcher,
     {

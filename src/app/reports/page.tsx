@@ -1,6 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { Layout } from '@/components/layout/Layout';
+import { Card, CardHeader, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { 
   BarChart3, 
   FileText, 
@@ -20,7 +23,13 @@ import {
   Filter,
   Plus,
   Eye,
-  Edit
+  Edit,
+  ArrowUpRight,
+  Globe,
+  Shield,
+  Zap,
+  Activity,
+  CheckCircle
 } from 'lucide-react';
 
 interface Report {
@@ -115,328 +124,294 @@ export default function ReportsPage() {
     }, 3000);
   };
 
+  const reportMetrics = [
+    { label: 'Reports Generated', value: '1.8k', icon: FileText, color: 'teal' },
+    { label: 'Client Presentations', value: '127', icon: Presentation, color: 'primary' },
+    { label: 'Time Saved', value: '240hrs', icon: Clock, color: 'accent' },
+    { label: 'Avg Rating', value: '4.9', icon: Star, color: 'secondary' }
+  ];
+
   const reportTemplates = [
     {
-      id: 'client-update',
-      name: 'Client Update Report',
-      description: 'Monthly/quarterly updates for clients with placements, metrics, and market insights',
+      title: 'Executive Summary',
+      description: 'High-level overview for C-suite stakeholders',
+      icon: Briefcase,
+      color: 'primary',
+      usage: '45%',
+      features: ['Key metrics', 'Strategic insights', 'Market analysis', 'ROI summary']
+    },
+    {
+      title: 'Candidate Presentation',
+      description: 'Detailed profiles for client consideration',
       icon: Users,
-      estimatedTime: '5 minutes'
+      color: 'teal',
+      usage: '38%',
+      features: ['Skills assessment', 'Cultural fit', 'Interview insights', 'References']
     },
     {
-      id: 'candidate-presentation',
-      name: 'Candidate Presentation',
-      description: 'Professional candidate profiles with skills assessment and cultural fit analysis',
-      icon: FileText,
-      estimatedTime: '3 minutes'
-    },
-    {
-      id: 'market-analysis',
-      name: 'Market Analysis',
-      description: 'Industry trends, salary benchmarks, and talent availability reports',
+      title: 'Market Intelligence',
+      description: 'Industry trends and competitive landscape',
       icon: TrendingUp,
-      estimatedTime: '8 minutes'
+      color: 'accent',
+      usage: '25%',
+      features: ['Salary benchmarks', 'Skill trends', 'Hiring patterns', 'Forecasting']
     },
     {
-      id: 'performance-review',
-      name: 'Performance Review',
-      description: 'Internal performance metrics, ROI analysis, and process optimization',
+      title: 'Performance Analytics',
+      description: 'Recruitment efficiency and KPI tracking',
       icon: BarChart3,
-      estimatedTime: '6 minutes'
+      color: 'secondary',
+      usage: '32%',
+      features: ['Time-to-fill', 'Quality metrics', 'Cost analysis', 'Success rates']
     }
   ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'ready':
-        return 'bg-green-100 text-green-800';
+        return 'bg-success-100 text-success-700 border border-success-200';
       case 'draft':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-warning-100 text-warning-700 border border-warning-200';
       case 'shared':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-primary-100 text-primary-700 border border-primary-200';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-neutral-100 text-neutral-700 border border-neutral-200';
     }
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-secondary-900 flex items-center">
-          <BarChart3 className="h-8 w-8 text-primary-600 mr-3" />
-          AI Report Generator
-        </h1>
-        <p className="mt-2 text-lg text-secondary-600">
-          Create professional reports and presentations in minutes with AI
-        </p>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white border border-secondary-200 rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-secondary-600">Reports Generated</p>
-              <p className="text-2xl font-bold text-secondary-900">47</p>
-            </div>
-            <FileText className="h-8 w-8 text-blue-600" />
+    <Layout>
+      <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
+        {/* Hero Section */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-teal-600 via-primary-600 to-primary-800 rounded-3xl mb-8">
+          <div className="absolute inset-0 bg-black opacity-5"></div>
+          
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-8 right-20 w-24 h-24 border border-white rounded-full"></div>
+            <div className="absolute bottom-8 right-40 w-16 h-16 border border-white rounded-full"></div>
           </div>
-          <div className="mt-2 text-sm text-green-600">+12 this month</div>
-        </div>
-        
-        <div className="bg-white border border-secondary-200 rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-secondary-600">Time Saved</p>
-              <p className="text-2xl font-bold text-secondary-900">38h</p>
-            </div>
-            <Clock className="h-8 w-8 text-green-600" />
-          </div>
-          <div className="mt-2 text-sm text-green-600">vs manual creation</div>
-        </div>
-        
-        <div className="bg-white border border-secondary-200 rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-secondary-600">Client Satisfaction</p>
-              <p className="text-2xl font-bold text-secondary-900">4.8</p>
-            </div>
-            <Star className="h-8 w-8 text-yellow-600" />
-          </div>
-          <div className="mt-2 text-sm text-green-600">Avg rating</div>
-        </div>
-        
-        <div className="bg-white border border-secondary-200 rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-secondary-600">Shared Reports</p>
-              <p className="text-2xl font-bold text-secondary-900">31</p>
-            </div>
-            <Share className="h-8 w-8 text-purple-600" />
-          </div>
-          <div className="mt-2 text-sm text-blue-600">This quarter</div>
-        </div>
-      </div>
-
-      {/* AI Report Generator */}
-      <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Brain className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-secondary-900">AI Report Generator</h2>
-              <p className="text-sm text-secondary-600">
-                Generate professional reports automatically using your recruitment data
-              </p>
-            </div>
-          </div>
-          <Sparkles className="h-6 w-6 text-blue-600" />
-        </div>
-
-        {/* Template Selection */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {reportTemplates.map((template) => (
-            <button
-              key={template.id}
-              onClick={() => setSelectedReportType(template.id)}
-              className={`p-4 rounded-lg border-2 transition-all duration-200 text-left ${
-                selectedReportType === template.id
-                  ? 'border-blue-300 bg-blue-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
-              }`}
-            >
-              <div className="flex items-center space-x-3 mb-2">
-                <template.icon className="h-5 w-5 text-blue-600" />
-                <h3 className="font-semibold text-secondary-900 text-sm">
-                  {template.name}
-                </h3>
-              </div>
-              <p className="text-xs text-secondary-600 mb-2">{template.description}</p>
-              <div className="flex items-center text-xs text-blue-600">
-                <Clock className="h-3 w-3 mr-1" />
-                {template.estimatedTime}
-              </div>
-            </button>
-          ))}
-        </div>
-
-        {/* Generate Button */}
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={generateAIReport}
-            disabled={isGenerating}
-            className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isGenerating ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Generating Report...
-              </>
-            ) : (
-              <>
-                <Brain className="h-4 w-4 mr-2" />
-                Generate Report
-              </>
-            )}
-          </button>
-          <p className="text-sm text-secondary-600">
-            AI will analyze your data and create a professional report in minutes
-          </p>
-        </div>
-      </div>
-
-      {/* Generated Report Preview */}
-      {generatedReport && (
-        <div className="bg-white border border-secondary-200 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-secondary-900">
-              Generated Report Preview
-            </h2>
-            <div className="flex space-x-2">
-              <button className="flex items-center px-4 py-2 bg-secondary-100 text-secondary-700 rounded-lg hover:bg-secondary-200 transition-colors">
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </button>
-              <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                <Download className="h-4 w-4 mr-2" />
-                Download PDF
-              </button>
-              <button className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                <Mail className="h-4 w-4 mr-2" />
-                Send to Client
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-secondary-900 mb-2">Executive Summary</h3>
-              <p className="text-secondary-700">{generatedReport.summary}</p>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-blue-700">{generatedReport.keyMetrics.placements}</div>
-                <div className="text-sm text-blue-600">Placements</div>
-              </div>
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-green-700">{generatedReport.keyMetrics.timeToFill}</div>
-                <div className="text-sm text-green-600">Avg Days to Fill</div>
-              </div>
-              <div className="bg-yellow-50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-yellow-700">{generatedReport.keyMetrics.clientSatisfaction}</div>
-                <div className="text-sm text-yellow-600">Client Satisfaction</div>
-              </div>
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-purple-700">{generatedReport.keyMetrics.candidateQuality}%</div>
-                <div className="text-sm text-purple-600">Quality Score</div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <h4 className="text-md font-semibold text-secondary-900 mb-3">Key Insights</h4>
-                <ul className="space-y-2">
-                  {generatedReport.insights.map((insight: string, index: number) => (
-                    <li key={index} className="flex items-start text-sm text-secondary-700">
-                      <TrendingUp className="h-4 w-4 text-blue-500 mr-2 mt-0.5 flex-shrink-0" />
-                      {insight}
-                    </li>
+          
+          <div className="relative px-8 py-12">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex flex-wrap gap-3 mb-6">
+                  <div className="inline-flex items-center px-3 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium">
+                    <Brain className="h-4 w-4 mr-2" />
+                    AI-Powered Intelligence
+                  </div>
+                  <div className="inline-flex items-center px-3 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium">
+                    <Shield className="h-4 w-4 mr-2" />
+                    Professional Templates
+                  </div>
+                  <div className="inline-flex items-center px-3 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium">
+                    <Download className="h-4 w-4 mr-2" />
+                    One-Click Export
+                  </div>
+                </div>
+                
+                <h1 className="text-4xl font-bold text-white leading-tight mb-4">
+                  Intelligent Report Generator
+                </h1>
+                <p className="text-xl text-blue-100 mb-6">
+                  Create compelling, data-driven reports that showcase your recruitment impact
+                </p>
+                
+                <div className="grid grid-cols-4 gap-6 pt-4">
+                  {reportMetrics.map((metric, index) => (
+                    <div key={index} className="text-center">
+                      <div className="text-2xl font-bold text-white">{metric.value}</div>
+                      <div className="text-sm text-blue-200">{metric.label}</div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
               
-              <div>
-                <h4 className="text-md font-semibold text-secondary-900 mb-3">Recommendations</h4>
-                <ul className="space-y-2">
-                  {generatedReport.recommendations.map((rec: string, index: number) => (
-                    <li key={index} className="flex items-start text-sm text-secondary-700">
-                      <Target className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                      {rec}
-                    </li>
-                  ))}
-                </ul>
+              <div className="hidden lg:block ml-8">
+                <div className="relative w-32 h-32 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                  <div className="relative w-20 h-20">
+                    <BarChart3 className="h-20 w-20 text-white opacity-80" />
+                  </div>
+                  <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-pulse"></div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Existing Reports */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-secondary-900">Recent Reports</h2>
-          <div className="flex items-center space-x-2">
-            <button className="flex items-center px-3 py-2 border border-secondary-200 rounded-lg text-sm hover:bg-secondary-50 transition-colors">
-              <Filter className="h-4 w-4 mr-2" />
-              Filter
-            </button>
-            <button className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-              <Plus className="h-4 w-4 mr-2" />
-              New Report
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {reports.map((report) => (
-            <div
-              key={report.id}
-              className="bg-white border border-secondary-200 rounded-lg p-6 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-secondary-900 mb-1">
-                    {report.title}
-                  </h3>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}>
-                    {report.status}
-                  </span>
+        {/* Performance Metrics */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+          {reportMetrics.map((metric, index) => (
+            <div key={index} className="bg-white rounded-2xl p-6 shadow-soft border border-neutral-200 hover:shadow-medium transition-all duration-300">
+              <div className="flex items-center justify-between mb-4">
+                <div className={`p-3 rounded-xl bg-${metric.color}-50`}>
+                  <metric.icon className={`h-6 w-6 text-${metric.color}-600`} />
                 </div>
-              </div>
-
-              <div className="space-y-2 mb-4 text-sm text-secondary-600">
-                <div>Created: {report.createdDate}</div>
-                <div>Modified: {report.lastModified}</div>
-                {report.recipients && (
-                  <div>Recipients: {report.recipients.length}</div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 mb-4 text-center">
-                <div>
-                  <div className="text-lg font-bold text-secondary-900">{report.metrics.pages}</div>
-                  <div className="text-xs text-secondary-600">Pages</div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-neutral-900">{metric.value}</p>
+                  <p className="text-sm text-neutral-600">{metric.label}</p>
                 </div>
-                <div>
-                  <div className="text-lg font-bold text-secondary-900">{report.metrics.insights}</div>
-                  <div className="text-xs text-secondary-600">Insights</div>
-                </div>
-                <div>
-                  <div className="text-lg font-bold text-secondary-900">{report.metrics.recommendations}</div>
-                  <div className="text-xs text-secondary-600">Actions</div>
-                </div>
-              </div>
-
-              <div className="flex space-x-2">
-                <button className="flex-1 flex items-center justify-center px-3 py-2 bg-primary-600 text-white text-sm rounded hover:bg-primary-700 transition-colors">
-                  <Eye className="h-4 w-4 mr-2" />
-                  View
-                </button>
-                <button className="flex items-center px-3 py-2 border border-secondary-200 text-secondary-700 text-sm rounded hover:bg-secondary-50 transition-colors">
-                  <Download className="h-4 w-4" />
-                </button>
-                <button className="flex items-center px-3 py-2 border border-secondary-200 text-secondary-700 text-sm rounded hover:bg-secondary-50 transition-colors">
-                  <Share className="h-4 w-4" />
-                </button>
               </div>
             </div>
           ))}
         </div>
+
+        {/* Report Templates */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-neutral-900 mb-2">Report Templates</h2>
+              <p className="text-neutral-600">Professional templates optimized for different stakeholders</p>
+            </div>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Report
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {reportTemplates.map((template, index) => (
+              <div key={index} className="bg-white rounded-2xl border border-neutral-200 overflow-hidden hover:shadow-medium transition-all duration-300 group">
+                {/* Template Header */}
+                <div className="bg-primary-800 px-6 py-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="p-2 bg-white/20 backdrop-blur-sm rounded-xl">
+                        <template.icon className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-white">{template.title}</h3>
+                        <p className="text-white/80 text-sm">{template.description}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-white/90 text-sm">Usage</div>
+                      <div className="text-white font-bold">{template.usage}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Template Content */}
+                <div className="p-6">
+                  <div className="space-y-3 mb-6">
+                    {template.features.map((feature, idx) => (
+                      <div key={idx} className="flex items-center space-x-2">
+                        <CheckCircle className="h-4 w-4 text-success-500" />
+                        <span className="text-sm text-neutral-700">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    <Button variant="outline" fullWidth>
+                      Use Template
+                    </Button>
+                    <button className="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
+                      <Eye className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Recent Reports */}
+        <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-soft mb-8">
+          <div className="px-6 py-5 border-b border-neutral-200 bg-gradient-to-r from-neutral-50 to-neutral-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-neutral-900">Recent Reports</h3>
+                <p className="text-sm text-neutral-600">Your latest generated reports and presentations</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button variant="outline">
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filter
+                </Button>
+                <Button>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export All
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6">
+            <div className="space-y-4">
+              {[
+                { title: 'Q4 Talent Market Analysis', type: 'Market Intelligence', created: '2 hours ago', status: 'ready', downloads: 12 },
+                { title: 'Senior Developer Shortlist', type: 'Candidate Presentation', created: '5 hours ago', status: 'ready', downloads: 8 },
+                { title: 'TechCorp Recruitment Summary', type: 'Executive Summary', created: '1 day ago', status: 'ready', downloads: 15 },
+                { title: 'Monthly Performance Review', type: 'Performance Analytics', created: '2 days ago', status: 'generating', downloads: 0 }
+              ].map((report, index) => (
+                <div key={index} className="flex items-center justify-between p-4 rounded-xl hover:bg-neutral-50 transition-colors border border-neutral-100">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-2 bg-primary-50 rounded-lg">
+                      <FileText className="h-5 w-5 text-primary-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-neutral-900 mb-2">{report.title}</h4>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="inline-flex items-center px-3 py-1 bg-primary-100 text-primary-700 text-sm rounded-full border border-primary-200">
+                          {report.type}
+                        </span>
+                        <span className="inline-flex items-center px-3 py-1 bg-neutral-100 text-neutral-700 text-sm rounded-full border border-neutral-200">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {report.created}
+                        </span>
+                        <span className="inline-flex items-center px-3 py-1 bg-neutral-100 text-neutral-700 text-sm rounded-full border border-neutral-200">
+                          <Download className="h-3 w-3 mr-1" />
+                          {report.downloads} downloads
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                      report.status === 'ready' ? 'bg-success-100 text-success-700 border border-success-200' : 'bg-warning-100 text-warning-700 border border-warning-200'
+                    }`}>
+                      {report.status === 'ready' ? 'Ready' : 'Generating...'}
+                    </div>
+                    <button className="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
+                      <Download className="h-4 w-4" />
+                    </button>
+                    <button className="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
+                      <Share className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* AI Capabilities */}
+        <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-soft">
+          <div className="px-6 py-5 border-b border-neutral-200 bg-gradient-to-r from-neutral-50 to-neutral-100">
+            <h3 className="text-lg font-bold text-neutral-900">AI-Powered Features</h3>
+            <p className="text-sm text-neutral-600">Advanced capabilities that enhance your reporting workflow</p>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[
+                { title: 'Smart Insights', description: 'AI identifies key trends and patterns in your data', icon: Brain },
+                { title: 'Auto-Formatting', description: 'Professional layouts generated automatically', icon: Sparkles },
+                { title: 'Data Visualization', description: 'Interactive charts and graphs created instantly', icon: BarChart3 },
+                { title: 'Narrative Generation', description: 'AI writes compelling report narratives', icon: FileText }
+              ].map((feature, index) => (
+                <div key={index} className="text-center">
+                  <div className="inline-flex items-center justify-center w-12 h-12 bg-primary-50 rounded-xl mb-3">
+                    <feature.icon className="h-6 w-6 text-primary-600" />
+                  </div>
+                  <h4 className="font-semibold text-neutral-900 mb-2">{feature.title}</h4>
+                  <p className="text-sm text-neutral-600">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 } 

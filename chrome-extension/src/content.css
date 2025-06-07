@@ -20,8 +20,8 @@
 }
 
 .emineon-add-candidate-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(10, 47, 90, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(10, 47, 90, 0.4);
   background: linear-gradient(135deg, #0A2F5A 0%, #006666 100%);
 }
 
@@ -37,6 +37,55 @@
 
 .emineon-add-candidate-btn svg {
   flex-shrink: 0;
+}
+
+/* Search result buttons */
+.emineon-search-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, #0A2F5A 0%, #008080 100%);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin: 4px 4px 4px 0;
+  box-shadow: 0 1px 4px rgba(10, 47, 90, 0.2);
+  z-index: 1000;
+  position: relative;
+}
+
+.emineon-search-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(10, 47, 90, 0.4);
+  background: linear-gradient(135deg, #0A2F5A 0%, #006666 100%);
+}
+
+.emineon-search-btn:active {
+  transform: translateY(0);
+}
+
+.emineon-search-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.emineon-search-btn svg {
+  flex-shrink: 0;
+}
+
+/* Search button container */
+.emineon-search-button-container {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e5e5;
 }
 
 /* Loading spinner */
@@ -59,6 +108,8 @@
   display: flex;
   align-items: center;
   margin-top: 16px;
+  padding: 12px;
+  border-top: 1px solid #e5e5e5;
 }
 
 /* Notifications */
@@ -74,30 +125,43 @@
   z-index: 10000;
   max-width: 400px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  animation: emineon-slide-in 0.3s ease-out;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
 }
 
-.emineon-notification--success {
-  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+.emineon-notification-success {
+  background: #10B981;
 }
 
-.emineon-notification--error {
-  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+.emineon-notification-error {
+  background: #EF4444;
 }
 
-.emineon-notification--info {
-  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+.emineon-notification-info {
+  background: #3B82F6;
 }
 
-@keyframes emineon-slide-in {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+/* Search result specific styling */
+.entity-result .emineon-search-btn,
+.search-result .emineon-search-btn {
+  margin-top: 8px;
+}
+
+.entity-result__actions .emineon-search-btn,
+.search-result__actions .emineon-search-btn {
+  margin-left: 8px;
+}
+
+/* Success and error states */
+.emineon-add-candidate-btn.success,
+.emineon-search-btn.success {
+  background: #10B981 !important;
+}
+
+.emineon-add-candidate-btn.error,
+.emineon-search-btn.error {
+  background: #EF4444 !important;
 }
 
 /* Responsive adjustments */
@@ -106,6 +170,11 @@
     padding: 6px 12px;
     font-size: 12px;
     margin: 4px 4px 4px 0;
+  }
+  
+  .emineon-search-btn {
+    padding: 3px 8px;
+    font-size: 11px;
   }
   
   .emineon-notification {
@@ -129,4 +198,34 @@
 
 .pv-text-details__left-panel .emineon-button-container {
   margin-top: 12px;
+}
+
+/* Search results layout fixes */
+.entity-result__content .emineon-search-button-container {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* Animation classes */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
 } 

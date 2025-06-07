@@ -9,14 +9,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Emineon Brand Colors
+        // Emineon Brand Colors - Exact specification
         primary: {
-          DEFAULT: '#0A2F5A', // Deep Navy
-          50: '#E6EDF5',
-          100: '#C7D8E8',
-          200: '#8FB1D1',
-          300: '#578AB9',
-          400: '#2E5A8A',
+          DEFAULT: '#0A2F5A', // Deep Navy Blue - professionalism, reliability, expertise
+          50: '#F0F4F8',
+          100: '#E1E9F1',
+          200: '#C3D3E3',
+          300: '#A5BDD5',
+          400: '#6691B9',
           500: '#0A2F5A',
           600: '#092951',
           700: '#072040',
@@ -24,31 +24,58 @@ const config: Config = {
           900: '#040E20',
         },
         secondary: {
-          DEFAULT: '#F8FAFC',
-          50: '#FFFFFF',
-          100: '#F8FAFC',
-          200: '#F1F5F9',
-          300: '#E2E8F0',
-          400: '#CBD5E1',
-          500: '#94A3B8',
-          600: '#64748B',
-          700: '#475569',
-          800: '#334155',
-          900: '#1E293B',
+          DEFAULT: '#444B54', // Steel Gray - modern, industrial feel
+          50: '#F8F9FA',
+          100: '#E9ECEF',
+          200: '#DEE2E6',
+          300: '#CED4DA',
+          400: '#ADB5BD',
+          500: '#6C757D',
+          600: '#495057',
+          700: '#444B54',
+          800: '#343A40',
+          900: '#232629', // Charcoal Black
         },
         accent: {
-          DEFAULT: '#3B82F6',
-          50: '#EFF6FF',
-          100: '#DBEAFE',
-          200: '#BFDBFE',
-          300: '#93C5FD',
-          400: '#60A5FA',
-          500: '#3B82F6',
-          600: '#2563EB',
-          700: '#1D4ED8',
-          800: '#1E40AF',
-          900: '#1E3A8A',
+          DEFAULT: '#C75B12', // Burnt Orange - creativity, enthusiasm, energy
+          50: '#FEF4ED',
+          100: '#FDE8D7',
+          200: '#FBCEB0',
+          300: '#F8B088',
+          400: '#F4985F',
+          500: '#C75B12',
+          600: '#B8520F',
+          700: '#A8490D',
+          800: '#98400A',
+          900: '#893708',
         },
+        teal: {
+          DEFAULT: '#008080', // Teal - balance, tranquility, sophistication
+          50: '#E6F7F7',
+          100: '#CCEEEE',
+          200: '#99DDDD',
+          300: '#66CCCC',
+          400: '#33BBBB',
+          500: '#008080',
+          600: '#007373',
+          700: '#006666',
+          800: '#005959',
+          900: '#004D4D',
+        },
+        neutral: {
+          DEFAULT: '#F8F9FA', // Off-White - balance, clarity, modern appeal
+          50: '#FFFFFF',
+          100: '#F8F9FA',
+          200: '#E9ECEF',
+          300: '#DEE2E6',
+          400: '#CED4DA',
+          500: '#ADB5BD',
+          600: '#6C757D',
+          700: '#495057',
+          800: '#343A40',
+          900: '#232629', // Charcoal Black
+        },
+        // Functional colors
         success: {
           DEFAULT: '#10B981',
           50: '#ECFDF5',
@@ -100,14 +127,29 @@ const config: Config = {
         '3xl': '24px',
       },
       boxShadow: {
-        'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
-        'medium': '0 4px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 30px -5px rgba(0, 0, 0, 0.08)',
-        'large': '0 10px 40px -10px rgba(0, 0, 0, 0.15), 0 20px 50px -10px rgba(0, 0, 0, 0.1)',
+        'soft': '0 2px 15px -3px rgba(10, 47, 90, 0.07), 0 10px 20px -2px rgba(10, 47, 90, 0.04)',
+        'medium': '0 4px 25px -5px rgba(10, 47, 90, 0.1), 0 10px 30px -5px rgba(10, 47, 90, 0.08)',
+        'large': '0 10px 40px -10px rgba(10, 47, 90, 0.15), 0 20px 50px -10px rgba(10, 47, 90, 0.1)',
+        'emineon': '0 4px 20px -2px rgba(10, 47, 90, 0.12), 0 8px 30px -4px rgba(68, 75, 84, 0.08)',
       },
       spacing: {
         '18': '4.5rem',
         '88': '22rem',
         '128': '32rem',
+      },
+      backdropBlur: {
+        'xs': '2px',
+      },
+      animation: {
+        'spin-slow': 'spin 3s linear infinite',
+        'pulse-slow': 'pulse 3s linear infinite',
+        'bounce-slow': 'bounce 2s infinite',
+      },
+      keyframes: {
+        'pulse-slow': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.5' },
+        },
       },
     },
   },

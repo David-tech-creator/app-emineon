@@ -120,15 +120,19 @@ export class JobService {
     employmentType?: string;
     isRemote?: boolean;
     language?: string;
+    limit?: number;
+    offset?: number;
   }) {
     const where: any = {
       status: 'ACTIVE',
+      publishedAt: { not: null },
       OR: [
         { expiresAt: null },
         { expiresAt: { gt: new Date() } },
       ],
     };
 
+    // Build filters efficiently
     if (filters?.location) {
       where.location = { contains: filters.location, mode: 'insensitive' };
     }
@@ -145,29 +149,52 @@ export class JobService {
       where.language = filters.language;
     }
 
-    return prisma.job.findMany({
-      where,
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        department: true,
-        location: true,
-        salaryMin: true,
-        salaryMax: true,
-        salaryCurrency: true,
-        experienceLevel: true,
-        employmentType: true,
-        benefits: true,
-        requirements: true,
-        responsibilities: true,
-        isRemote: true,
-        language: true,
-        publishedAt: true,
-        publicToken: true,
-      },
-      orderBy: { publishedAt: 'desc' },
-    });
+    // Use pagination for better performance
+    const limit = filters?.limit || 50; // Default limit
+    const offset = filters?.offset || 0;
+
+    const [jobs, totalCount] = await Promise.all([
+      prisma.job.findMany({
+        where,
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          department: true,
+          location: true,
+          salaryMin: true,
+          salaryMax: true,
+          salaryCurrency: true,
+          experienceLevel: true,
+          employmentType: true,
+          benefits: true,
+          requirements: true,
+          responsibilities: true,
+          isRemote: true,
+          language: true,
+          publishedAt: true,
+          publicToken: true,
+        },
+        orderBy: [
+          { publishedAt: 'desc' },
+          { createdAt: 'desc' }
+        ],
+        take: limit,
+        skip: offset,
+      }),
+      // Get total count for pagination
+      prisma.job.count({ where })
+    ]);
+
+    return {
+      jobs,
+      pagination: {
+        total: totalCount,
+        limit,
+        offset,
+        hasMore: offset + limit < totalCount
+      }
+    };
   }
 
   async getJobByToken(publicToken: string) {

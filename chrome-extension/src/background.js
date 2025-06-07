@@ -37,16 +37,33 @@ class EmineonBackground {
   }
 
   showWelcomeNotification() {
-    chrome.notifications.create({
-      type: 'basic',
-      title: 'Emineon ATS Extension Installed',
-      message: 'Click the extension icon to configure your ATS connection.'
-    });
+    try {
+      if (chrome.notifications && chrome.notifications.create) {
+        chrome.notifications.create('welcome', {
+          type: 'basic',
+          iconUrl: chrome.runtime.getURL('icons/icon48.png'),
+          title: 'Emineon ATS Extension Installed',
+          message: 'Click the extension icon to configure your ATS connection.'
+        }, (notificationId) => {
+          if (chrome.runtime.lastError) {
+            console.log('Notification error:', chrome.runtime.lastError.message);
+          } else {
+            console.log('Welcome notification created:', notificationId);
+          }
+        });
+      }
+    } catch (error) {
+      console.log('Notification not available:', error);
+    }
   }
 
   openSetupPage() {
     // Open the extension popup for initial setup
-    chrome.action.openPopup();
+    try {
+      chrome.action.openPopup();
+    } catch (error) {
+      console.log('Could not open popup automatically:', error);
+    }
   }
 
   handleUpdate(previousVersion) {
@@ -133,11 +150,24 @@ class EmineonBackground {
       });
       
       // Show success notification
-      chrome.notifications.create({
-        type: 'basic',
-        title: 'Candidate Added to Emineon ATS',
-        message: `${candidateData.firstName} ${candidateData.lastName} has been successfully added to your ATS.`
-      });
+      try {
+        if (chrome.notifications && chrome.notifications.create) {
+          chrome.notifications.create(`candidate-${Date.now()}`, {
+            type: 'basic',
+            iconUrl: chrome.runtime.getURL('icons/icon48.png'),
+            title: 'Candidate Added to Emineon ATS',
+            message: `${candidateData.firstName} ${candidateData.lastName} has been successfully added to your ATS.`
+          }, (notificationId) => {
+            if (chrome.runtime.lastError) {
+              console.log('Notification error:', chrome.runtime.lastError.message);
+            } else {
+              console.log('Success notification created:', notificationId);
+            }
+          });
+        }
+      } catch (error) {
+        console.log('Notification not available:', error);
+      }
       
     } catch (error) {
       console.error('Error handling candidate added:', error);
@@ -146,7 +176,8 @@ class EmineonBackground {
 
   async getConfiguration() {
     try {
-      return await chrome.storage.sync.get(['emineonApiUrl', 'emineonApiKey']);
+      const config = await chrome.storage.sync.get(['emineonApiUrl', 'emineonApiKey']);
+      return config;
     } catch (error) {
       console.error('Error getting configuration:', error);
       return {};
@@ -155,6 +186,13 @@ class EmineonBackground {
 
   async testConnection(config) {
     try {
+      if (!config.apiUrl || !config.apiKey) {
+        return { 
+          success: false, 
+          error: 'Configuration not found. Please set your ATS URL and API Key.' 
+        };
+      }
+
       const response = await fetch(`${config.apiUrl}/api/health`, {
         method: 'GET',
         headers: {
@@ -164,17 +202,22 @@ class EmineonBackground {
       });
 
       if (response.ok) {
-        return { success: true };
+        const data = await response.json();
+        return { 
+          success: true, 
+          data: data 
+        };
       } else {
+        const errorText = await response.text();
         return { 
           success: false, 
-          error: `HTTP ${response.status}: ${response.statusText}` 
+          error: `HTTP ${response.status}: ${errorText || response.statusText}` 
         };
       }
     } catch (error) {
       return { 
         success: false, 
-        error: error.message 
+        error: `Connection failed: ${error.message}` 
       };
     }
   }

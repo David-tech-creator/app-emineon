@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       department: validatedData.department,
       location: validatedData.location,
       keyRequirements: validatedData.keySkills || [],
-      experience: validatedData.experienceLevel,
+      experienceLevel: validatedData.experienceLevel,
     });
 
     return NextResponse.json({
