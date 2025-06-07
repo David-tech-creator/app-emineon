@@ -43,7 +43,22 @@ import {
   TrendingDown,
   Plus,
   Phone,
-  AtSign
+  AtSign,
+  UserPlus,
+  CalendarDays,
+  Timer,
+  Flame,
+  Hourglass,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Coffee,
+  Handshake,
+  DollarSign,
+  Gauge,
+  Activity,
+  Bookmark,
+  ExternalLink
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -54,37 +69,53 @@ interface DailyQuote {
   date: string;
 }
 
-interface Task {
+interface UrgentItem {
+  id: string;
+  type: 'sla_breach' | 'interview_today' | 'follow_up_overdue' | 'candidate_waiting' | 'client_deadline';
+  title: string;
+  description: string;
+  priority: 'critical' | 'high' | 'medium';
+  dueTime?: string;
+  candidate?: string;
+  client?: string;
+  job?: string;
+  action: string;
+  href: string;
+}
+
+interface PriorityJob {
   id: string;
   title: string;
-  type: 'interview' | 'review' | 'follow-up' | 'assessment';
-  priority: 'high' | 'medium' | 'low';
-  dueTime: string;
+  client: string;
+  status: 'urgent' | 'at_risk' | 'on_track' | 'stalled';
+  daysToSLA: number;
+  candidatesInPipeline: number;
+  lastActivity: string;
+  bottleneck?: string;
+  nextAction: string;
+}
+
+interface RecentActivity {
+  id: string;
+  type: 'candidate_applied' | 'interview_completed' | 'offer_sent' | 'client_feedback' | 'assessment_submitted';
+  title: string;
+  description: string;
+  time: string;
   candidate?: string;
   job?: string;
+  client?: string;
+  href: string;
 }
 
-interface JobPipeline {
-  id: string;
-  title: string;
-  company: string;
-  stages: {
-    name: string;
-    count: number;
-    isBottleneck?: boolean;
-  }[];
-  totalCandidates: number;
-}
-
-interface AICandidate {
-  id: string;
-  name: string;
-  title: string;
-  company: string;
-  matchPercentage: number;
-  skills: string[];
-  location: string;
-  avatar?: string;
+interface QuickStat {
+  label: string;
+  value: string | number;
+  change?: string;
+  changeType?: 'positive' | 'negative' | 'neutral';
+  trend?: 'up' | 'down' | 'stable';
+  icon: any;
+  color: string;
+  href?: string;
 }
 
 // Fallback quotes for when API is unavailable
@@ -178,182 +209,224 @@ export default function Dashboard() {
     day: 'numeric'
   });
 
-  // Sample data - in real app, this would come from APIs
-  const alerts = [
-    { id: 1, type: 'interview', message: '3 interviews scheduled today', priority: 'high' },
-    { id: 2, type: 'review', message: '5 pending candidate reviews', priority: 'medium' },
-    { id: 3, type: 'follow-up', message: '8 follow-ups due', priority: 'medium' }
-  ];
-
-  const kpiData = [
-    {
-      title: 'Average Time to Hire',
-      value: '18 days',
-      change: '-2 days',
-      changeType: 'positive' as const,
-      icon: Clock,
-      color: 'teal'
-    },
-    {
-      title: 'New Applicants (24h)',
-      value: '47',
-      change: '+23%',
-      changeType: 'positive' as const,
-      icon: Users,
-      color: 'primary'
-    },
-    {
-      title: 'Outreach Response Rate',
-      value: '34%',
-      change: '+8%',
-      changeType: 'positive' as const,
-      icon: MessageSquare,
-      color: 'accent'
-    },
-    {
-      title: 'AI-Suggested Candidates',
-      value: '127',
-      change: '+15',
-      changeType: 'positive' as const,
-      icon: Brain,
-      color: 'secondary'
-    }
-  ];
-
-  const jobPipelines: JobPipeline[] = [
+  // Sample urgent items that need immediate attention
+  const urgentItems: UrgentItem[] = [
     {
       id: '1',
-      title: 'Senior React Developer',
-      company: 'TechCorp',
-      totalCandidates: 34,
-      stages: [
-        { name: 'Applied', count: 12 },
-        { name: 'Screening', count: 8, isBottleneck: true },
-        { name: 'Interview', count: 6 },
-        { name: 'Final', count: 3 },
-        { name: 'Offer', count: 1 }
-      ]
+      type: 'sla_breach',
+      title: 'SLA Breach Alert',
+      description: 'Senior React Developer role is 3 days overdue',
+      priority: 'critical',
+      client: 'TechCorp',
+      job: 'Senior React Developer',
+      action: 'Review pipeline',
+      href: '/jobs/1'
     },
     {
       id: '2',
-      title: 'Product Manager',
-      company: 'StartupCo',
-      totalCandidates: 28,
-      stages: [
-        { name: 'Applied', count: 15 },
-        { name: 'Screening', count: 7 },
-        { name: 'Interview', count: 4 },
-        { name: 'Final', count: 2 },
-        { name: 'Offer', count: 0 }
-      ]
-    },
-    {
-      id: '3',
-      title: 'Data Scientist',
-      company: 'DataTech',
-      totalCandidates: 19,
-      stages: [
-        { name: 'Applied', count: 8 },
-        { name: 'Screening', count: 5 },
-        { name: 'Interview', count: 4 },
-        { name: 'Final', count: 2 },
-        { name: 'Offer', count: 0 }
-      ]
-    }
-  ];
-
-  const todaysTasks: Task[] = [
-    {
-      id: '1',
-      title: 'Interview with Sarah Chen',
-      type: 'interview',
+      type: 'interview_today',
+      title: 'Interview in 2 hours',
+      description: 'Sarah Chen - Technical Interview',
       priority: 'high',
-      dueTime: '10:00 AM',
-      candidate: 'Sarah Chen',
-      job: 'Senior React Developer'
-    },
-    {
-      id: '2',
-      title: 'Review assessment results',
-      type: 'review',
-      priority: 'medium',
       dueTime: '2:00 PM',
-      candidate: 'Michael Rodriguez'
+      candidate: 'Sarah Chen',
+      job: 'Frontend Developer',
+      action: 'Prepare interview',
+      href: '/interviews/1'
     },
     {
       id: '3',
-      title: 'Follow up with TechCorp',
-      type: 'follow-up',
-      priority: 'medium',
-      dueTime: '4:00 PM',
-      job: 'Senior React Developer'
+      type: 'candidate_waiting',
+      title: 'Candidate awaiting feedback',
+      description: 'Michael Rodriguez completed assessment 3 days ago',
+      priority: 'high',
+      candidate: 'Michael Rodriguez',
+      job: 'Product Manager',
+      action: 'Provide feedback',
+      href: '/candidates/2'
     },
     {
       id: '4',
-      title: 'Technical assessment review',
-      type: 'assessment',
-      priority: 'low',
-      dueTime: '5:00 PM',
-      candidate: 'Emily Watson'
+      type: 'follow_up_overdue',
+      title: 'Client follow-up overdue',
+      description: 'DataTech - Final decision pending for 5 days',
+      priority: 'medium',
+      client: 'DataTech',
+      job: 'Data Scientist',
+      action: 'Contact client',
+      href: '/clients/3'
     }
   ];
 
-  const aiSuggestions: AICandidate[] = [
+  // Priority jobs that need attention
+  const priorityJobs: PriorityJob[] = [
     {
       id: '1',
-      name: 'Alex Thompson',
-      title: 'Senior Frontend Developer',
-      company: 'Google',
-      matchPercentage: 94,
-      skills: ['React', 'TypeScript', 'Node.js'],
-      location: 'San Francisco, CA'
+      title: 'Senior React Developer',
+      client: 'TechCorp',
+      status: 'urgent',
+      daysToSLA: -3,
+      candidatesInPipeline: 8,
+      lastActivity: '2 days ago',
+      bottleneck: 'Client feedback pending',
+      nextAction: 'Follow up with client'
     },
     {
       id: '2',
-      name: 'Maria Gonzalez',
       title: 'Product Manager',
-      company: 'Meta',
-      matchPercentage: 89,
-      skills: ['Product Strategy', 'Analytics', 'Leadership'],
-      location: 'New York, NY'
+      client: 'StartupCo',
+      status: 'at_risk',
+      daysToSLA: 2,
+      candidatesInPipeline: 4,
+      lastActivity: '1 day ago',
+      bottleneck: 'Technical assessment',
+      nextAction: 'Schedule assessments'
     },
     {
       id: '3',
-      name: 'James Wilson',
       title: 'Data Scientist',
-      company: 'Netflix',
-      matchPercentage: 87,
-      skills: ['Python', 'Machine Learning', 'SQL'],
-      location: 'Los Angeles, CA'
+      client: 'DataTech',
+      status: 'stalled',
+      daysToSLA: 7,
+      candidatesInPipeline: 2,
+      lastActivity: '5 days ago',
+      bottleneck: 'No new candidates',
+      nextAction: 'Source candidates'
+    },
+    {
+      id: '4',
+      title: 'UX Designer',
+      client: 'DesignCorp',
+      status: 'on_track',
+      daysToSLA: 12,
+      candidatesInPipeline: 6,
+      lastActivity: 'Today',
+      nextAction: 'Review applications'
     }
   ];
 
-  const outreachData = [
-    { day: 'Mon', sent: 45, responses: 12 },
-    { day: 'Tue', sent: 38, responses: 15 },
-    { day: 'Wed', sent: 52, responses: 18 },
-    { day: 'Thu', sent: 41, responses: 14 },
-    { day: 'Fri', sent: 48, responses: 19 },
-    { day: 'Sat', sent: 23, responses: 8 },
-    { day: 'Sun', sent: 15, responses: 5 }
+  // Recent activity feed
+  const recentActivity: RecentActivity[] = [
+    {
+      id: '1',
+      type: 'candidate_applied',
+      title: 'New application received',
+      description: 'Emma Wilson applied for UX Designer',
+      time: '15 minutes ago',
+      candidate: 'Emma Wilson',
+      job: 'UX Designer',
+      href: '/candidates/5'
+    },
+    {
+      id: '2',
+      type: 'interview_completed',
+      title: 'Interview completed',
+      description: 'Technical interview with Alex Thompson',
+      time: '2 hours ago',
+      candidate: 'Alex Thompson',
+      job: 'Senior React Developer',
+      href: '/interviews/2'
+    },
+    {
+      id: '3',
+      type: 'offer_sent',
+      title: 'Offer sent',
+      description: 'Job offer sent to Maria Gonzalez',
+      time: '4 hours ago',
+      candidate: 'Maria Gonzalez',
+      job: 'Product Manager',
+      href: '/offers/1'
+    },
+    {
+      id: '4',
+      type: 'client_feedback',
+      title: 'Client feedback received',
+      description: 'TechCorp provided feedback on 3 candidates',
+      time: '6 hours ago',
+      client: 'TechCorp',
+      job: 'Senior React Developer',
+      href: '/jobs/1'
+    }
   ];
 
-  const getTaskIcon = (type: Task['type']) => {
+  // Performance metrics
+  const performanceStats: QuickStat[] = [
+    {
+      label: 'Active Jobs',
+      value: 12,
+      change: '+3',
+      changeType: 'positive',
+      icon: Briefcase,
+      color: 'blue',
+      href: '/jobs'
+    },
+    {
+      label: 'Candidates in Pipeline',
+      value: 47,
+      change: '+8',
+      changeType: 'positive',
+      icon: Users,
+      color: 'green',
+      href: '/candidates'
+    },
+    {
+      label: 'Avg. Time to Fill',
+      value: '18d',
+      change: '-2d',
+      changeType: 'positive',
+      icon: Timer,
+      color: 'purple',
+      href: '/analytics'
+    },
+    {
+      label: 'This Week Placements',
+      value: 3,
+      change: '+1',
+      changeType: 'positive',
+      icon: Handshake,
+      color: 'orange',
+      href: '/reports'
+    }
+  ];
+
+  const getUrgentItemIcon = (type: UrgentItem['type']) => {
     switch (type) {
-      case 'interview': return Video;
-      case 'review': return ClipboardList;
-      case 'follow-up': return Phone;
-      case 'assessment': return FileText;
-      default: return CheckCircle;
+      case 'sla_breach': return AlertTriangle;
+      case 'interview_today': return Video;
+      case 'follow_up_overdue': return Clock;
+      case 'candidate_waiting': return Hourglass;
+      case 'client_deadline': return Calendar;
+      default: return Bell;
     }
   };
 
-  const getPriorityColor = (priority: Task['priority']) => {
+  const getUrgentItemColor = (priority: UrgentItem['priority']) => {
     switch (priority) {
-      case 'high': return 'text-red-600 bg-red-50 border-red-200';
-      case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'low': return 'text-green-600 bg-green-50 border-green-200';
-      default: return 'text-neutral-600 bg-neutral-50 border-neutral-200';
+      case 'critical': return 'bg-red-50 border-red-200 text-red-700';
+      case 'high': return 'bg-orange-50 border-orange-200 text-orange-700';
+      case 'medium': return 'bg-yellow-50 border-yellow-200 text-yellow-700';
+      default: return 'bg-gray-50 border-gray-200 text-gray-700';
+    }
+  };
+
+  const getJobStatusColor = (status: PriorityJob['status']) => {
+    switch (status) {
+      case 'urgent': return 'bg-red-100 text-red-800 border-red-200';
+      case 'at_risk': return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'stalled': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'on_track': return 'bg-green-100 text-green-800 border-green-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getActivityIcon = (type: RecentActivity['type']) => {
+    switch (type) {
+      case 'candidate_applied': return UserPlus;
+      case 'interview_completed': return Video;
+      case 'offer_sent': return Send;
+      case 'client_feedback': return MessageSquare;
+      case 'assessment_submitted': return ClipboardList;
+      default: return Activity;
     }
   };
 
@@ -380,10 +453,10 @@ export default function Dashboard() {
                       <Calendar className="h-4 w-4 mr-2" />
                       {currentDate}
                     </div>
-                    {alerts.length > 0 && (
+                    {urgentItems.length > 0 && (
                       <div className="inline-flex items-center px-3 py-2 bg-red-500/20 backdrop-blur-sm rounded-full text-white text-sm font-medium">
                         <Bell className="h-4 w-4 mr-2" />
-                        {alerts.length} alerts
+                        {urgentItems.length} urgent items
                       </div>
                     )}
                   </div>
@@ -454,333 +527,219 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Alerts Section */}
-        {alerts.length > 0 && (
+        {/* 🎯 URGENT ITEMS - Top Priority Section */}
+        {urgentItems.length > 0 && (
           <div className="mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {alerts.map((alert) => (
-                <div key={alert.id} className="bg-white rounded-2xl p-4 shadow-soft border border-neutral-200 hover:shadow-medium transition-all duration-300">
-                  <div className="flex items-center space-x-3">
-                    <div className={`p-2 rounded-lg ${
-                      alert.priority === 'high' ? 'bg-red-50 text-red-600' :
-                      alert.priority === 'medium' ? 'bg-yellow-50 text-yellow-600' :
-                      'bg-blue-50 text-blue-600'
-                    }`}>
-                      {alert.type === 'interview' && <Video className="h-4 w-4" />}
-                      {alert.type === 'review' && <ClipboardList className="h-4 w-4" />}
-                      {alert.type === 'follow-up' && <Phone className="h-4 w-4" />}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <Flame className="h-5 w-5 text-red-500" />
+                <h2 className="text-xl font-bold text-gray-900">Needs Immediate Attention</h2>
+                <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
+                  {urgentItems.filter(item => item.priority === 'critical').length} critical
+                </span>
+              </div>
+              <Button variant="outline" size="sm">
+                <Eye className="h-4 w-4 mr-2" />
+                View All
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {urgentItems.slice(0, 4).map((item) => {
+                const Icon = getUrgentItemIcon(item.type);
+                return (
+                  <Link key={item.id} href={item.href}>
+                    <div className={`p-4 rounded-xl border-2 hover:shadow-lg transition-all duration-200 cursor-pointer ${getUrgentItemColor(item.priority)}`}>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 bg-white/50 rounded-lg">
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-sm">{item.title}</h3>
+                            <p className="text-xs opacity-80">{item.description}</p>
+                          </div>
+                        </div>
+                        <ArrowUpRight className="h-4 w-4 opacity-60" />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs">
+                          {item.candidate && <span>👤 {item.candidate}</span>}
+                          {item.client && <span>🏢 {item.client}</span>}
+                          {item.dueTime && <span>⏰ {item.dueTime}</span>}
+                        </div>
+                        <Button size="sm" variant="outline" className="text-xs h-6 px-2">
+                          {item.action}
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-neutral-900">{alert.message}</p>
-                      <p className="text-xs text-neutral-500 capitalize">{alert.priority} priority</p>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-neutral-400" />
-                  </div>
-                </div>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         )}
 
-        {/* Key Performance Indicators */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-          {kpiData.map((kpi, index) => (
-            <div key={index} className="bg-white rounded-2xl p-6 shadow-soft border border-neutral-200 hover:shadow-medium transition-all duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-xl bg-${kpi.color}-50`}>
-                  <kpi.icon className={`h-6 w-6 text-${kpi.color}-600`} />
+        {/* 📊 PERFORMANCE OVERVIEW */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {performanceStats.map((stat, index) => (
+            <Link key={index} href={stat.href || '#'}>
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 cursor-pointer">
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`p-3 rounded-xl bg-${stat.color}-50`}>
+                    <stat.icon className={`h-6 w-6 text-${stat.color}-600`} />
+                  </div>
+                  {stat.change && (
+                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      stat.changeType === 'positive' ? 'bg-green-50 text-green-700' :
+                      stat.changeType === 'negative' ? 'bg-red-50 text-red-700' :
+                      'bg-gray-100 text-gray-600'
+                    }`}>
+                      {stat.change}
+                    </div>
+                  )}
                 </div>
-                <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                  kpi.changeType === 'positive' ? 'bg-success-50 text-success-700' :
-                  kpi.changeType === 'negative' ? 'bg-error-50 text-error-700' :
-                  'bg-neutral-100 text-neutral-600'
-                }`}>
-                  {kpi.change}
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">
+                    {stat.label}
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {stat.value}
+                  </p>
                 </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-neutral-600 mb-1">
-                  {kpi.title}
-                </p>
-                <p className="text-3xl font-bold text-neutral-900">
-                  {kpi.value}
-                </p>
-              </div>
-            </div>
+            </Link>
           ))}
         </div>
 
-        {/* Main Dashboard Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        {/* 🎯 PRIORITY JOBS & 📈 RECENT ACTIVITY */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           
-          {/* Job Pipelines Overview */}
-          <div className="lg:col-span-2 bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-soft">
-            <div className="px-6 py-5 border-b border-neutral-200 bg-gradient-to-r from-neutral-50 to-neutral-100">
+          {/* Priority Jobs - Jobs that need attention */}
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-neutral-900">Active Job Pipelines</h3>
-                  <p className="text-sm text-neutral-600">Top 3 jobs with candidate flow</p>
+                  <h3 className="text-lg font-bold text-gray-900">Priority Jobs</h3>
+                  <p className="text-sm text-gray-600">Jobs requiring your attention</p>
                 </div>
                 <Link href="/jobs">
-                  <Button variant="outline">
-                    <Eye className="h-4 w-4 mr-2" />
+                  <Button variant="outline" size="sm">
+                    <Briefcase className="h-4 w-4 mr-2" />
+                    All Jobs
+                  </Button>
+                </Link>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              {priorityJobs.map((job) => (
+                <Link key={job.id} href={`/jobs/${job.id}`}>
+                  <div className="p-4 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h4 className="font-semibold text-gray-900">{job.title}</h4>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getJobStatusColor(job.status)}`}>
+                            {job.status.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600">{job.client}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className={`text-sm font-medium ${job.daysToSLA < 0 ? 'text-red-600' : job.daysToSLA <= 3 ? 'text-orange-600' : 'text-green-600'}`}>
+                          {job.daysToSLA < 0 ? `${Math.abs(job.daysToSLA)}d overdue` : `${job.daysToSLA}d to SLA`}
+                        </div>
+                        <div className="text-xs text-gray-500">{job.candidatesInPipeline} candidates</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-gray-500">
+                        {job.bottleneck && (
+                          <span className="text-orange-600">⚠️ {job.bottleneck}</span>
+                        )}
+                        {!job.bottleneck && <span>Last activity: {job.lastActivity}</span>}
+                      </div>
+                      <Button size="sm" variant="outline" className="text-xs h-6 px-2">
+                        {job.nextAction}
+                      </Button>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Recent Activity Feed */}
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Recent Activity</h3>
+                  <p className="text-sm text-gray-600">Latest updates across your pipeline</p>
+                </div>
+                <Link href="/activity">
+                  <Button variant="outline" size="sm">
+                    <Activity className="h-4 w-4 mr-2" />
                     View All
                   </Button>
                 </Link>
               </div>
             </div>
-            <div className="p-6 space-y-6">
-              {jobPipelines.map((job) => (
-                <div key={job.id} className="border border-neutral-100 rounded-xl p-4 hover:bg-neutral-50 transition-colors">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h4 className="font-semibold text-neutral-900">{job.title}</h4>
-                      <p className="text-sm text-neutral-600">{job.company} • {job.totalCandidates} total candidates</p>
-                    </div>
-                    <Link href={`/jobs/${job.id}`}>
-                      <button className="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">
-                        <ArrowUpRight className="h-4 w-4" />
-                      </button>
-                    </Link>
-                  </div>
-                  <div className="flex space-x-2">
-                    {job.stages.map((stage, idx) => (
-                      <div key={idx} className="flex-1">
-                        <div className={`text-center p-3 rounded-lg border ${
-                          stage.isBottleneck ? 'bg-red-50 border-red-200' : 'bg-neutral-50 border-neutral-200'
-                        }`}>
-                          <div className={`text-lg font-bold ${
-                            stage.isBottleneck ? 'text-red-600' : 'text-neutral-900'
-                          }`}>
-                            {stage.count}
-                          </div>
-                          <div className={`text-xs ${
-                            stage.isBottleneck ? 'text-red-600' : 'text-neutral-600'
-                          }`}>
-                            {stage.name}
-                            {stage.isBottleneck && (
-                              <AlertTriangle className="h-3 w-3 inline ml-1" />
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Today's Tasks */}
-          <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-soft">
-            <div className="px-6 py-5 border-b border-neutral-200 bg-gradient-to-r from-neutral-50 to-neutral-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-neutral-900">Today's Tasks</h3>
-                  <p className="text-sm text-neutral-600">{todaysTasks.length} items pending</p>
-                </div>
-                <Link href="/tasks">
-                  <Button variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Task
-                  </Button>
-                </Link>
-              </div>
-            </div>
-            <div className="p-6">
-              <div className="space-y-3">
-                {todaysTasks.map((task) => {
-                  const TaskIcon = getTaskIcon(task.type);
-                  return (
-                    <div key={task.id} className="flex items-start space-x-3 p-3 rounded-xl hover:bg-neutral-50 transition-colors border border-neutral-100">
-                      <div className="p-2 bg-primary-50 rounded-lg">
-                        <TaskIcon className="h-4 w-4 text-primary-600" />
+            <div className="p-6 space-y-4">
+              {recentActivity.map((activity) => {
+                const Icon = getActivityIcon(activity.type);
+                return (
+                  <Link key={activity.id} href={activity.href}>
+                    <div className="flex items-start space-x-3 p-3 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
+                      <div className="p-2 bg-blue-50 rounded-lg">
+                        <Icon className="h-4 w-4 text-blue-600" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                          <h4 className="text-sm font-medium text-neutral-900 truncate">{task.title}</h4>
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(task.priority)}`}>
-                            {task.priority}
-                          </span>
+                          <h4 className="text-sm font-medium text-gray-900">{activity.title}</h4>
+                          <span className="text-xs text-gray-500">{activity.time}</span>
                         </div>
-                        <p className="text-xs text-neutral-600">{task.dueTime}</p>
-                        {task.candidate && (
-                          <p className="text-xs text-neutral-500 mt-1">{task.candidate}</p>
-                        )}
+                        <p className="text-sm text-gray-600">{activity.description}</p>
+                        <div className="flex items-center space-x-4 mt-1 text-xs text-gray-500">
+                          {activity.candidate && <span>👤 {activity.candidate}</span>}
+                          {activity.client && <span>🏢 {activity.client}</span>}
+                          {activity.job && <span>💼 {activity.job}</span>}
+                        </div>
                       </div>
-                      <button className="p-1 text-neutral-400 hover:text-neutral-600 transition-colors">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </button>
+                      <ArrowUpRight className="h-4 w-4 text-gray-400" />
                     </div>
-                  );
-                })}
-              </div>
-              <div className="mt-4 pt-4 border-t border-neutral-200">
-                <Link href="/tasks">
-                  <Button variant="outline" fullWidth>
-                    View All Tasks
-                  </Button>
-                </Link>
-              </div>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>
 
-        {/* Bottom Row: Outreach Summary & AI Suggestions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          
-          {/* Outreach Summary */}
-          <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-soft">
-            <div className="px-6 py-5 border-b border-neutral-200 bg-gradient-to-r from-neutral-50 to-neutral-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-neutral-900">Outreach Summary</h3>
-                  <p className="text-sm text-neutral-600">Last 7 days performance</p>
-                </div>
-                <Link href="/outreach">
-                  <Button>
-                    <Send className="h-4 w-4 mr-2" />
-                    Launch Campaign
-                  </Button>
-                </Link>
-              </div>
-            </div>
-            <div className="p-6">
-              {/* Mini Sparkline Chart */}
-              <div className="mb-4">
-                <div className="flex items-end space-x-1 h-16">
-                  {outreachData.map((day, index) => (
-                    <div key={day.day} className="flex-1 flex flex-col justify-end">
-                      <div 
-                        className="bg-primary-500 rounded-t-sm relative"
-                        style={{ height: `${(day.responses / 20) * 100}%` }}
-                      >
-                        <div 
-                          className="bg-primary-200 rounded-t-sm absolute bottom-0 w-full"
-                          style={{ height: `${(day.sent / 60) * 100}%` }}
-                        />
-                      </div>
-                      <div className="text-xs text-neutral-600 text-center mt-1">
-                        {day.day}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-neutral-900">34%</div>
-                  <div className="text-sm text-neutral-600">Response Rate</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-neutral-900">262</div>
-                  <div className="text-sm text-neutral-600">Messages Sent</div>
-                </div>
-              </div>
-              
-              <div className="mt-4 pt-4 border-t border-neutral-200">
-                <div className="flex items-center space-x-2 text-sm">
-                  <div className="w-3 h-3 bg-primary-500 rounded"></div>
-                  <span className="text-neutral-600">Responses</span>
-                  <div className="w-3 h-3 bg-primary-200 rounded ml-4"></div>
-                  <span className="text-neutral-600">Sent</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* AI Suggestions */}
-          <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-soft">
-            <div className="px-6 py-5 border-b border-neutral-200 bg-gradient-to-r from-neutral-50 to-neutral-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-neutral-900">AI Candidate Suggestions</h3>
-                  <p className="text-sm text-neutral-600">High-match candidates for active roles</p>
-                </div>
-                <Link href="/ai-tools">
-                  <Button>
-                    <Brain className="h-4 w-4 mr-2" />
-                    AI Tools
-                  </Button>
-                </Link>
-              </div>
-            </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                {aiSuggestions.map((candidate) => (
-                  <div key={candidate.id} className="flex items-start space-x-3 p-3 rounded-xl hover:bg-neutral-50 transition-colors border border-neutral-100">
-                    <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-teal-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                      {candidate.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <h4 className="text-sm font-medium text-neutral-900 truncate">{candidate.name}</h4>
-                        <div className="flex items-center space-x-1">
-                          <Star className="h-3 w-3 text-yellow-400 fill-current" />
-                          <span className="text-sm font-bold text-success-600">{candidate.matchPercentage}%</span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-neutral-600 mb-1">{candidate.title} at {candidate.company}</p>
-                      <div className="flex items-center space-x-2 text-xs text-neutral-500">
-                        <MapPin className="h-3 w-3" />
-                        <span>{candidate.location}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {candidate.skills.slice(0, 2).map((skill, idx) => (
-                          <span key={idx} className="inline-flex items-center px-2 py-1 bg-primary-50 text-primary-700 text-xs rounded-full">
-                            {skill}
-                          </span>
-                        ))}
-                        {candidate.skills.length > 2 && (
-                          <span className="text-xs text-neutral-500">+{candidate.skills.length - 2} more</span>
-                        )}
-                      </div>
-                    </div>
-                    <Link href={`/candidates/${candidate.id}`}>
-                      <button className="p-1 text-neutral-400 hover:text-neutral-600 transition-colors">
-                        <ArrowUpRight className="h-4 w-4" />
-                      </button>
-                    </Link>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="mt-4 pt-4 border-t border-neutral-200">
-                <Link href="/ai-tools">
-                  <Button variant="outline" fullWidth>
-                    <Search className="h-4 w-4 mr-2" />
-                    Explore More Suggestions
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Actions - Module Navigation (Existing) */}
-        <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-soft">
-          <div className="px-6 py-5 border-b border-neutral-200 bg-gradient-to-r from-neutral-50 to-neutral-100">
-            <h3 className="text-lg font-bold text-neutral-900">Quick Access</h3>
-            <p className="text-sm text-neutral-600">Jump to any module in your platform</p>
+        {/* 🚀 QUICK ACTIONS - Fast access to common tasks */}
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+          <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+            <h3 className="text-lg font-bold text-gray-900">Quick Actions</h3>
+            <p className="text-sm text-gray-600">One-click access to your most common tasks</p>
           </div>
           <div className="p-6">
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {[
-                { label: 'Candidates', href: '/candidates', icon: Users, color: 'teal' },
-                { label: 'Jobs', href: '/jobs', icon: Briefcase, color: 'primary' },
-                { label: 'Clients', href: '/clients', icon: Building2, color: 'accent' },
-                { label: 'Analytics', href: '/analytics', icon: BarChart3, color: 'secondary' },
-                { label: 'AI Tools', href: '/ai-tools', icon: Brain, color: 'primary' },
-                { label: 'Reports', href: '/reports', icon: FileText, color: 'teal' }
-              ].map((item, index) => (
-                <Link key={index} href={item.href}>
-                  <div className="flex flex-col items-center p-4 rounded-xl hover:bg-neutral-50 transition-all duration-200 group text-center">
-                    <div className={`p-3 rounded-xl bg-${item.color}-50 group-hover:bg-${item.color}-100 transition-colors mb-2`}>
-                      <item.icon className={`h-6 w-6 text-${item.color}-600`} />
+                { label: 'Add Candidate', href: '/candidates/new', icon: UserPlus, color: 'blue', description: 'Import or create new candidate' },
+                { label: 'Post Job', href: '/jobs/new', icon: Plus, color: 'green', description: 'Create new job posting' },
+                { label: 'Schedule Interview', href: '/interviews/new', icon: CalendarDays, color: 'purple', description: 'Book candidate interview' },
+                { label: 'AI Search', href: '/ai-tools', icon: Brain, color: 'indigo', description: 'Find matching candidates' },
+                { label: 'Send Email', href: '/communication', icon: Mail, color: 'orange', description: 'Email candidates or clients' },
+                { label: 'View Reports', href: '/reports', icon: BarChart3, color: 'teal', description: 'Performance analytics' }
+              ].map((action, index) => (
+                <Link key={index} href={action.href}>
+                  <div className="group flex flex-col items-center p-4 rounded-xl hover:bg-gray-50 transition-all duration-200 text-center border border-gray-100 hover:border-gray-200">
+                    <div className={`p-3 rounded-xl bg-${action.color}-50 group-hover:bg-${action.color}-100 transition-colors mb-3`}>
+                      <action.icon className={`h-6 w-6 text-${action.color}-600`} />
                     </div>
-                    <span className="text-sm font-medium text-neutral-700 group-hover:text-neutral-900 transition-colors">
-                      {item.label}
+                    <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors mb-1">
+                      {action.label}
+                    </span>
+                    <span className="text-xs text-gray-500 group-hover:text-gray-600 transition-colors">
+                      {action.description}
                     </span>
                   </div>
                 </Link>

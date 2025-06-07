@@ -1,1033 +1,505 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { Card, CardContent } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { Card, CardHeader, CardContent } from '@/components/ui/Card';
+import { CreateCandidateModal } from '@/components/candidates/CreateCandidateModal';
 import { useCandidates } from '@/hooks/useCandidates';
 import { useAuth } from '@clerk/nextjs';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { candidateFormSchema, type CandidateFormData } from '@/lib/validation';
-import { api } from '@/lib/api';
-import { useDropzone } from 'react-dropzone';
-import { 
-  candidateResponseToListItem, 
-  getStatusColor 
-} from '@/types/candidate';
 import { 
   Users, 
+  UserPlus, 
   Search, 
-  Plus,
-  X,
-  Upload,
-  Linkedin,
-  User,
-  Mail,
-  Phone,
-  MapPin,
-  Briefcase,
-  AlertCircle,
-  Loader2,
-  Eye,
-  Edit,
-  MoreHorizontal,
-  Grid3X3,
-  List,
-  Save,
   Filter,
   Star,
-  MessageSquare,
-  Calendar,
-  Tag,
-  Building
+  MapPin,
+  Briefcase,
+  ChevronDown,
+  Eye,
+  Mail,
+  Phone,
+  Building,
+  Plus
 } from 'lucide-react';
-
-// Form default values
-const formDefaultValues: CandidateFormData = {
-  firstName: '',
-  lastName: '',
-  email: '',
-  phone: undefined,
-  linkedinUrl: '',
-  portfolioUrl: '',
-  githubUrl: '',
-  currentLocation: undefined,
-  nationality: undefined,
-  timezone: undefined,
-  currentTitle: undefined,
-  professionalHeadline: undefined,
-  summary: undefined,
-  seniorityLevel: undefined,
-  primaryIndustry: undefined,
-  functionalDomain: undefined,
-  experienceYears: undefined,
-  companies: undefined,
-  technicalSkills: [],
-  softSkills: [],
-  toolsAndPlatforms: [],
-  frameworks: [],
-  programmingLanguages: [],
-  spokenLanguages: [],
-  methodologies: [],
-  notableProjects: [],
-  freelancer: false,
-  degrees: [],
-  certifications: [],
-  universities: [],
-  graduationYear: undefined,
-  educationLevel: undefined,
-  availableFrom: undefined,
-  preferredContractType: undefined,
-  expectedSalary: undefined,
-  relocationWillingness: false,
-  remotePreference: undefined,
-  workPermitType: undefined,
-  matchingScore: undefined,
-  tags: [],
-  archived: false,
-  source: 'Manual Entry',
-  recruiterNotes: [],
-  interviewScores: undefined,
-  videoInterviewUrl: '',
-  culturalFitScore: undefined,
-  motivationalFitNotes: undefined,
-  referees: undefined,
-  conversionStatus: undefined,
-};
+import Link from 'next/link';
 
 export default function CandidatesPage() {
   const { getToken } = useAuth();
-  const { candidates = [], isLoading, error, mutate } = useCandidates();
-  
-  // State management
-  const [filters, setFilters] = useState({
-    search: '',
-    status: [] as string[],
-    availability: [] as string[],
-    location: '',
-    skills: [] as string[],
-    source: [] as string[]
-  });
-  
-  const [viewState, setViewState] = useState({
-    layout: 'list' as 'list' | 'grid',
-    selectedCandidate: null as any,
-    showAddDrawer: false,
-    showFilters: true
-  });
+  const [token, setToken] = useState<string | null>(null);
+  const { candidates, isLoading, error } = useCandidates();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedCandidates, setSelectedCandidates] = useState<number[]>([]);
 
-  // Add candidate form state
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isParsing, setIsParsing] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [parseError, setParseError] = useState<string | null>(null);
-  const [linkedinUrl, setLinkedinUrl] = useState('');
-  const [skillsInput, setSkillsInput] = useState('');
-  const [tagsInput, setTagsInput] = useState('');
+  useEffect(() => {
+    const fetchToken = async () => {
+      const authToken = await getToken();
+      setToken(authToken);
+    };
+    fetchToken();
+  }, [getToken]);
 
-  // Form setup
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-    setValue,
-  } = useForm<CandidateFormData>({
-    resolver: zodResolver(candidateFormSchema),
-    defaultValues: formDefaultValues,
-  });
-
-  // Drag and drop for CV upload
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) {
-      const file = acceptedFiles[0];
-      setUploadedFile(file);
-      parseCV(file);
-    }
-  }, []);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'application/pdf': ['.pdf'],
-      'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+  const mockCandidates = [
+    {
+      id: 1,
+      name: 'Marilyn Garcia',
+      location: 'Sydney, Australia',
+      experience: 'Medical Science Liaison at Pfizer (2015 - 2023)',
+      score: 'Very strong',
+      status: 'Active',
+      avatar: 'MG',
+      skills: ['Clinical Research', 'Medical Affairs', 'Regulatory'],
+      rating: 4.8
     },
-    maxFiles: 1,
-    maxSize: 10 * 1024 * 1024, // 10MB
-  });
+    {
+      id: 2,
+      name: 'Frances Jimenez',
+      location: 'Melbourne, Australia',
+      experience: 'Clinical Research Associate at Pfizer (2019 - 2023)',
+      score: 'Very strong',
+      status: 'Interview Scheduled',
+      avatar: 'FJ',
+      skills: ['Clinical Trials', 'GCP', 'Data Analysis'],
+      rating: 4.6
+    },
+    {
+      id: 3,
+      name: 'Angela Walker',
+      location: 'San Jose, United States',
+      experience: 'Medical Science Liaison at Gilead Sciences (2019 - 2023)',
+      score: 'Very strong',
+      status: 'Under Review',
+      avatar: 'AW',
+      skills: ['Medical Communications', 'KOL Management', 'Clinical Research'],
+      rating: 4.9
+    },
+    {
+      id: 4,
+      name: 'Zachary Carter',
+      location: 'Breda, Netherlands',
+      experience: 'Medical Science Liaison at AbbVie (2018 - 2023)',
+      score: 'Strong',
+      status: 'Long List',
+      avatar: 'ZC',
+      skills: ['Medical Affairs', 'Scientific Communication', 'Clinical Data'],
+      rating: 4.4
+    }
+  ];
 
-  // Parse CV function
-  const parseCV = async (file: File) => {
-    setIsParsing(true);
-    setParseError(null);
-    
-    try {
-      const formData = new FormData();
-      formData.append('cv', file);
-      
-      const token = await getToken();
-      const response = await fetch('/api/candidates/parse-cv', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to parse CV');
-      }
-
-      const data = await response.json();
-      
-      // Fill form with parsed data
-      if (data.firstName) setValue('firstName', data.firstName);
-      if (data.lastName) setValue('lastName', data.lastName);
-      if (data.email) setValue('email', data.email);
-      if (data.phone) setValue('phone', data.phone);
-      if (data.currentTitle) setValue('currentTitle', data.currentTitle);
-      if (data.summary) setValue('summary', data.summary);
-      if (data.experienceYears) setValue('experienceYears', data.experienceYears);
-      if (data.skills) {
-        setValue('technicalSkills', data.skills);
-        setSkillsInput(data.skills.join(', '));
-      }
-      
-    } catch (error) {
-      setParseError('Failed to parse CV. Please try again or enter details manually.');
-    } finally {
-      setIsParsing(false);
+  const getScoreColor = (score: string) => {
+    switch (score.toLowerCase()) {
+      case 'very strong':
+        return 'bg-green-100 text-green-800';
+      case 'strong':
+        return 'bg-blue-100 text-blue-800';
+      case 'moderate':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  // Submit form
-  const onSubmit = async (data: CandidateFormData) => {
-    setIsSubmitting(true);
-    
-    try {
-      const token = await getToken();
-      const response = await api.candidates.create(data, token || undefined);
-      
-      // Reset form and close drawer
-      reset(formDefaultValues);
-      setUploadedFile(null);
-      setLinkedinUrl('');
-      setSkillsInput('');
-      setTagsInput('');
-      setViewState(prev => ({ ...prev, showAddDrawer: false }));
-      
-      // Refresh candidates list
-      mutate();
-      
-    } catch (error) {
-      console.error('Failed to create candidate:', error);
-    } finally {
-      setIsSubmitting(false);
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'active':
+        return 'bg-green-100 text-green-800';
+      case 'interview scheduled':
+        return 'bg-blue-100 text-blue-800';
+      case 'under review':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'long list':
+        return 'bg-purple-100 text-purple-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  // Handle skills input
-  const handleSkillsChange = (value: string) => {
-    setSkillsInput(value);
-    const skillsArray = value.split(',').map(skill => skill.trim()).filter(Boolean);
-    setValue('technicalSkills', skillsArray);
+  const handleSelectCandidate = (candidateId: number) => {
+    setSelectedCandidates(prev => 
+      prev.includes(candidateId) 
+        ? prev.filter(id => id !== candidateId)
+        : [...prev, candidateId]
+    );
   };
 
-  // Handle tags input
-  const handleTagsChange = (value: string) => {
-    setTagsInput(value);
-    const tagsArray = value.split(',').map(tag => tag.trim()).filter(Boolean);
-    setValue('tags', tagsArray);
+  const handleSelectAll = () => {
+    if (selectedCandidates.length === mockCandidates.length) {
+      setSelectedCandidates([]);
+    } else {
+      setSelectedCandidates(mockCandidates.map(c => c.id));
+    }
   };
 
-  // Filter candidates
-  const filteredCandidates = candidates.filter(candidate => {
-    const candidateItem = candidateResponseToListItem(candidate);
-    
-    // Search filter
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      const searchMatch = 
-        candidateItem.name.toLowerCase().includes(searchLower) ||
-        candidateItem.email.toLowerCase().includes(searchLower) ||
-        (candidateItem.currentTitle || '').toLowerCase().includes(searchLower) ||
-        (candidateItem.company || '').toLowerCase().includes(searchLower) ||
-        candidateItem.skills.some(skill => skill.toLowerCase().includes(searchLower));
-      
-      if (!searchMatch) return false;
-    }
-    
-    // Status filter
-    if (filters.status.length > 0 && !filters.status.includes(candidateItem.status)) {
-      return false;
-    }
-    
-    return true;
-  });
-
-  // Get stats
-  const stats = {
-    total: candidates.length,
-    active: candidates.filter(c => !['Rejected', 'Withdrawn'].includes(candidateResponseToListItem(c).status)).length,
-    inInterview: candidates.filter(c => candidateResponseToListItem(c).status === 'Interview').length,
-    positioned: candidates.filter(c => candidateResponseToListItem(c).status === 'Positioned').length,
+  const handleBulkCompetenceFiles = () => {
+    // Navigate to competence files page with selected candidates
+    const selectedNames = mockCandidates
+      .filter(c => selectedCandidates.includes(c.id))
+      .map(c => c.name)
+      .join(',');
+    window.location.href = `/competence-files?candidates=${encodeURIComponent(selectedNames)}`;
   };
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
-        {/* Enhanced Header */}
-        <div className="bg-white border-b border-neutral-200 shadow-soft">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-6">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-teal-500 rounded-xl flex items-center justify-center shadow-soft">
-                    <Users className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-2xl font-bold text-neutral-900">Candidates</h1>
-                    <p className="text-sm text-neutral-600">Manage your talent pipeline</p>
-                  </div>
-                </div>
-                
-                {/* Enhanced Stats Dashboard */}
-                <div className="hidden lg:flex items-center space-x-4 ml-8">
-                  <div className="flex items-center space-x-2 px-3 py-2 bg-neutral-50 rounded-lg border border-neutral-200">
-                    <div className="w-2 h-2 bg-neutral-400 rounded-full"></div>
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-neutral-900">{stats.total}</div>
-                      <div className="text-xs text-neutral-500">Total</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2 px-3 py-2 bg-success-50 rounded-lg border border-success-200">
-                    <div className="w-2 h-2 bg-success-500 rounded-full"></div>
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-success-600">{stats.active}</div>
-                      <div className="text-xs text-success-600">Active</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2 px-3 py-2 bg-warning-50 rounded-lg border border-warning-200">
-                    <div className="w-2 h-2 bg-warning-500 rounded-full"></div>
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-warning-600">{stats.inInterview}</div>
-                      <div className="text-xs text-warning-600">Interview</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2 px-3 py-2 bg-primary-50 rounded-lg border border-primary-200">
-                    <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-primary-600">{stats.positioned}</div>
-                      <div className="text-xs text-primary-600">Positioned</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            <div className="flex items-center space-x-3">
-              {/* Enhanced Global Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
-                <input
-                  type="text"
-                  placeholder="Search by name, skills, location, or company..."
-                  value={filters.search}
-                  onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                  className="w-96 pl-10 pr-4 py-2.5 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm transition-all duration-200 text-sm"
-                />
-                {filters.search && (
-                  <button
-                    onClick={() => setFilters(prev => ({ ...prev, search: '' }))}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-
-              {/* View Toggle */}
-              <div className="flex items-center bg-neutral-100 rounded-lg p-1">
-                <button
-                  onClick={() => setViewState(prev => ({ ...prev, layout: 'list' }))}
-                  className={`p-2 rounded-md transition-colors ${
-                    viewState.layout === 'list' 
-                      ? 'bg-white text-primary-600 shadow-sm' 
-                      : 'text-neutral-500 hover:text-neutral-700'
-                  }`}
-                >
-                  <List className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => setViewState(prev => ({ ...prev, layout: 'grid' }))}
-                  className={`p-2 rounded-md transition-colors ${
-                    viewState.layout === 'grid' 
-                      ? 'bg-white text-primary-600 shadow-sm' 
-                      : 'text-neutral-500 hover:text-neutral-700'
-                  }`}
-                >
-                  <Grid3X3 className="h-4 w-4" />
-                </button>
-              </div>
-
-              {/* Add Candidate Button */}
-              <Button
-                onClick={() => setViewState(prev => ({ ...prev, showAddDrawer: true }))}
-                className="bg-primary-600 hover:bg-primary-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                New Candidate
-              </Button>
-            </div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-primary-900">Candidates</h1>
+            <p className="text-secondary-600 mt-1">
+              Manage your talent pipeline with advanced scoring and insights
+            </p>
           </div>
+          <button 
+            onClick={() => setShowCreateModal(true)}
+            className="btn-primary flex items-center space-x-2"
+          >
+            <UserPlus className="h-4 w-4" />
+            <span>Add Candidate</span>
+          </button>
         </div>
 
-        <div className="flex h-[calc(100vh-120px)]">
-          {/* Left Sidebar - Filters */}
-          {viewState.showFilters && (
-            <div className="w-80 bg-white border-r border-neutral-200 p-6 overflow-y-auto">
-              <div className="space-y-6">
-                {/* Quick Filters */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-medium text-neutral-900">Quick Filters</h3>
-                    <button
-                      onClick={() => setViewState(prev => ({ ...prev, showFilters: false }))}
-                      className="p-1 text-neutral-400 hover:text-neutral-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    <button className="w-full text-left px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors">
-                      🔥 Hot Candidates
-                    </button>
-                    <button className="w-full text-left px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors">
-                      📅 Available ASAP
-                    </button>
-                    <button className="w-full text-left px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors">
-                      🎯 High Match Score
-                    </button>
-                    <button className="w-full text-left px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors">
-                      💼 Senior Level
-                    </button>
-                  </div>
-                </div>
+        {/* LinkedIn Recruiter-Style Stats Bar */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <Card variant="elevated" className="text-center p-4">
+            <div className="text-2xl font-bold text-primary-600">{mockCandidates.length}</div>
+            <div className="text-sm text-gray-600">Total Candidates</div>
+          </Card>
+          <Card variant="elevated" className="text-center p-4">
+            <div className="text-2xl font-bold text-green-600">
+              {mockCandidates.filter(c => c.status === 'Active').length}
+            </div>
+            <div className="text-sm text-gray-600">Active</div>
+          </Card>
+          <Card variant="elevated" className="text-center p-4">
+            <div className="text-2xl font-bold text-blue-600">
+              {mockCandidates.filter(c => c.status === 'Interview Scheduled').length}
+            </div>
+            <div className="text-sm text-gray-600">Interviews</div>
+          </Card>
+          <Card variant="elevated" className="text-center p-4">
+            <div className="text-2xl font-bold text-yellow-600">
+              {mockCandidates.filter(c => c.score === 'Very strong').length}
+            </div>
+            <div className="text-sm text-gray-600">Top Matches</div>
+          </Card>
+        </div>
 
-                {/* Status Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    Status
-                  </label>
-                  <div className="space-y-2">
-                    {['Applied', 'Screening', 'Interview', 'Positioned', 'Hired'].map(status => (
-                      <label key={status} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={filters.status.includes(status)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setFilters(prev => ({ ...prev, status: [...prev.status, status] }));
-                            } else {
-                              setFilters(prev => ({ ...prev, status: prev.status.filter(s => s !== status) }));
-                            }
-                          }}
-                          className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
-                        />
-                        <span className="ml-2 text-sm text-neutral-700">{status}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Availability Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    Availability
-                  </label>
-                  <div className="space-y-2">
-                    {['ASAP', '1 month', '3+ months'].map(availability => (
-                      <label key={availability} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={filters.availability.includes(availability)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setFilters(prev => ({ ...prev, availability: [...prev.availability, availability] }));
-                            } else {
-                              setFilters(prev => ({ ...prev, availability: prev.availability.filter(a => a !== availability) }));
-                            }
-                          }}
-                          className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
-                        />
-                        <span className="ml-2 text-sm text-neutral-700">{availability}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Location Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    Location
-                  </label>
+        {/* Advanced Filters */}
+        <Card variant="elevated">
+          <CardContent>
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex-1 min-w-64">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="City, Country"
-                    value={filters.location}
-                    onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder="Search by name, title, skills, company, location, or keywords..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2.5 w-full border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm transition-all duration-200"
                   />
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Center - Main Content */}
-          <div className="flex-1 overflow-y-auto">
-            {!viewState.showFilters && (
-              <div className="p-4 border-b border-neutral-200 bg-white">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setViewState(prev => ({ ...prev, showFilters: true }))}
-                >
-                  <Filter className="h-4 w-4 mr-2" />
-                  Show Filters
-                </Button>
-              </div>
-            )}
-
-            {isLoading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary-600 mx-auto mb-4" />
-                  <p className="text-neutral-600">Loading candidates...</p>
-                </div>
-              </div>
-            ) : filteredCandidates.length === 0 ? (
-              // Empty State
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center max-w-md mx-auto px-6">
-                  <div className="w-24 h-24 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Users className="h-12 w-12 text-primary-600" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-neutral-900 mb-2">
-                    {candidates.length === 0 ? "No candidates yet" : "No candidates match your filters"}
-                  </h3>
-                  <p className="text-neutral-600 mb-6">
-                    {candidates.length === 0 
-                      ? "Start building your talent pipeline by adding your first candidate."
-                      : "Try adjusting your search criteria or filters to find candidates."
-                    }
-                  </p>
-                  {candidates.length === 0 && (
-                    <Button
-                      onClick={() => setViewState(prev => ({ ...prev, showAddDrawer: true }))}
-                      className="bg-primary-600 hover:bg-primary-700"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add First Candidate
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              // Candidates List/Grid
-              <div className="p-6">
-                {viewState.layout === 'list' ? (
-                  // List View
-                  <div className="space-y-3">
-                    {filteredCandidates.map((candidate) => {
-                      const candidateItem = candidateResponseToListItem(candidate);
-                      return (
-                        <div
-                          key={candidate.id}
-                          className="bg-white rounded-lg border border-neutral-200 p-4 hover:shadow-md transition-all duration-200 cursor-pointer group"
-                          onClick={() => setViewState(prev => ({ ...prev, selectedCandidate: candidate }))}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4">
-                              <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                                {candidateItem.initials}
-                              </div>
-                              <div>
-                                <h3 className="font-semibold text-neutral-900">{candidateItem.name}</h3>
-                                <p className="text-sm text-neutral-600">{candidateItem.currentTitle || 'No title'}</p>
-                                <div className="flex items-center space-x-4 mt-1">
-                                  <div className="flex items-center text-xs text-neutral-500">
-                                    <MapPin className="h-3 w-3 mr-1" />
-                                    {candidateItem.location || 'No location'}
-                                  </div>
-                                  <div className="flex items-center text-xs text-neutral-500">
-                                    <Briefcase className="h-3 w-3 mr-1" />
-                                    {candidateItem.experience}+ years
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center space-x-4">
-                              <div className="text-right">
-                                <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(candidateItem.status)}`}>
-                                  {candidateItem.status}
-                                </div>
-                                <p className="text-xs text-neutral-500 mt-1">{candidateItem.source}</p>
-                              </div>
-                              
-                              <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    // Handle view action
-                                  }}
-                                  className="p-2 text-neutral-400 hover:text-primary-600 transition-colors"
-                                  title="View Profile"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </button>
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    // Handle message action
-                                  }}
-                                  className="p-2 text-neutral-400 hover:text-primary-600 transition-colors"
-                                  title="Send Message"
-                                >
-                                  <MessageSquare className="h-4 w-4" />
-                                </button>
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    // Handle tag action
-                                  }}
-                                  className="p-2 text-neutral-400 hover:text-primary-600 transition-colors"
-                                  title="Add Tag"
-                                >
-                                  <Tag className="h-4 w-4" />
-                                </button>
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    // Handle more actions
-                                  }}
-                                  className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {candidateItem.skills.length > 0 && (
-                            <div className="mt-3 flex flex-wrap gap-1">
-                              {candidateItem.skills.slice(0, 5).map((skill, index) => (
-                                <span
-                                  key={index}
-                                  className="inline-flex items-center px-2 py-1 bg-neutral-100 text-neutral-700 text-xs rounded-md"
-                                >
-                                  {skill}
-                                </span>
-                              ))}
-                              {candidateItem.skills.length > 5 && (
-                                <span className="inline-flex items-center px-2 py-1 bg-neutral-100 text-neutral-500 text-xs rounded-md">
-                                  +{candidateItem.skills.length - 5} more
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  // Grid View
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredCandidates.map((candidate) => {
-                      const candidateItem = candidateResponseToListItem(candidate);
-                      return (
-                        <Card
-                          key={candidate.id}
-                          className="hover:shadow-lg transition-all duration-200 cursor-pointer"
-                          onClick={() => setViewState(prev => ({ ...prev, selectedCandidate: candidate }))}
-                        >
-                          <CardContent className="p-6">
-                            <div className="text-center mb-4">
-                              <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-3 text-white font-bold">
-                                {candidateItem.initials}
-                              </div>
-                              <h3 className="font-semibold text-neutral-900">{candidateItem.name}</h3>
-                              <p className="text-sm text-neutral-600">{candidateItem.currentTitle || 'No title'}</p>
-                            </div>
-                            
-                            <div className="space-y-2 mb-4">
-                              <div className="flex items-center text-xs text-neutral-500">
-                                <MapPin className="h-3 w-3 mr-1" />
-                                {candidateItem.location || 'No location'}
-                              </div>
-                              <div className="flex items-center text-xs text-neutral-500">
-                                <Briefcase className="h-3 w-3 mr-1" />
-                                {candidateItem.experience}+ years experience
-                              </div>
-                            </div>
-                            
-                            <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium w-full justify-center ${getStatusColor(candidateItem.status)}`}>
-                              {candidateItem.status}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Right Sidebar - Candidate Details Drawer */}
-          {viewState.selectedCandidate && (
-            <div className="w-96 bg-white border-l border-neutral-200 overflow-y-auto">
-              <div className="sticky top-0 bg-white border-b border-neutral-200 p-6 z-10">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-neutral-900">Candidate Profile</h2>
-                  <button
-                    onClick={() => setViewState(prev => ({ ...prev, selectedCandidate: null }))}
-                    className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
+              
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <Filter className="h-4 w-4 text-primary-600" />
+                  <select 
+                    value={selectedFilter}
+                    onChange={(e) => setSelectedFilter(e.target.value)}
+                    className="border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
-                    <X className="h-4 w-4" />
-                  </button>
+                    <option value="all">All Candidates</option>
+                    <option value="available">Available</option>
+                    <option value="very-strong">Very Strong Match</option>
+                    <option value="strong">Strong Match</option>
+                    <option value="active">Active</option>
+                    <option value="interview">Interview Scheduled</option>
+                    <option value="senior">Senior Level</option>
+                    <option value="recent">Recently Added</option>
+                  </select>
                 </div>
                 
-                {/* Quick Actions */}
-                <div className="grid grid-cols-3 gap-2">
-                  <Button variant="outline" size="sm" className="text-xs">
-                    <Building className="h-3 w-3 mr-1" />
-                    Submit
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-xs">
-                    <MessageSquare className="h-3 w-3 mr-1" />
-                    Message
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-xs">
-                    <Calendar className="h-3 w-3 mr-1" />
-                    Schedule
-                  </Button>
+                <div className="flex items-center space-x-2">
+                  <MapPin className="h-4 w-4 text-neutral-500" />
+                  <input
+                    type="text"
+                    placeholder="Location"
+                    className="border border-neutral-300 rounded-lg px-3 py-2 text-sm w-32 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Briefcase className="h-4 w-4 text-neutral-500" />
+                  <select className="border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">Experience Level</option>
+                    <option value="entry">Entry Level (0-2 years)</option>
+                    <option value="mid">Mid Level (3-5 years)</option>
+                    <option value="senior">Senior Level (6-10 years)</option>
+                    <option value="lead">Lead/Principal (10+ years)</option>
+                  </select>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Building className="h-4 w-4 text-neutral-500" />
+                  <select className="border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">Industry</option>
+                    <option value="tech">Technology</option>
+                    <option value="finance">Finance</option>
+                    <option value="healthcare">Healthcare</option>
+                    <option value="consulting">Consulting</option>
+                    <option value="ecommerce">E-commerce</option>
+                  </select>
+                </div>
+                
+                <button className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center space-x-1">
+                  <Plus className="h-4 w-4" />
+                  <span>More Filters</span>
+                </button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Bulk Actions Bar */}
+        {selectedCandidates.length > 0 && (
+          <Card variant="elevated" className="bg-blue-50 border-blue-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm font-medium text-blue-900">
+                    {selectedCandidates.length} candidate{selectedCandidates.length > 1 ? 's' : ''} selected
+                  </span>
+                  <button
+                    onClick={() => setSelectedCandidates([])}
+                    className="text-sm text-blue-600 hover:text-blue-700"
+                  >
+                    Clear selection
+                  </button>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={handleBulkCompetenceFiles}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2"
+                  >
+                    <span>Create Competence Files</span>
+                  </button>
+                  <button className="bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-lg text-sm font-medium">
+                    Add to Job
+                  </button>
+                  <button className="bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-lg text-sm font-medium">
+                    Send Message
+                  </button>
                 </div>
               </div>
-              
-              <div className="p-6">
-                {/* Candidate details content */}
-                <div className="space-y-6">
-                  <div className="text-center">
-                    <div className="w-20 h-20 bg-gradient-to-br from-primary-500 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-4 text-white font-bold text-lg">
-                      {candidateResponseToListItem(viewState.selectedCandidate).initials}
-                    </div>
-                    <h3 className="font-semibold text-neutral-900 text-lg">
-                      {candidateResponseToListItem(viewState.selectedCandidate).name}
-                    </h3>
-                    <p className="text-sm text-neutral-600">
-                      {candidateResponseToListItem(viewState.selectedCandidate).currentTitle || 'No title'}
-                    </p>
-                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-2 ${getStatusColor(candidateResponseToListItem(viewState.selectedCandidate).status)}`}>
-                      {candidateResponseToListItem(viewState.selectedCandidate).status}
-                    </div>
-                  </div>
-                  
-                  {/* Contact Info */}
-                  <div className="space-y-3">
-                    <h4 className="font-medium text-neutral-900">Contact Information</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-center text-sm">
-                        <Mail className="h-4 w-4 text-neutral-400 mr-2" />
-                        <span className="text-neutral-600">{candidateResponseToListItem(viewState.selectedCandidate).email}</span>
-                      </div>
-                      {candidateResponseToListItem(viewState.selectedCandidate).phone && (
-                        <div className="flex items-center text-sm">
-                          <Phone className="h-4 w-4 text-neutral-400 mr-2" />
-                          <span className="text-neutral-600">{candidateResponseToListItem(viewState.selectedCandidate).phone}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center text-sm">
-                        <MapPin className="h-4 w-4 text-neutral-400 mr-2" />
-                        <span className="text-neutral-600">{candidateResponseToListItem(viewState.selectedCandidate).location || 'No location'}</span>
-                      </div>
-                    </div>
-                  </div>
+            </CardContent>
+          </Card>
+        )}
 
-                  {/* Skills */}
-                  {candidateResponseToListItem(viewState.selectedCandidate).skills.length > 0 && (
-                    <div className="space-y-3">
-                      <h4 className="font-medium text-neutral-900">Skills</h4>
-                      <div className="flex flex-wrap gap-1">
-                        {candidateResponseToListItem(viewState.selectedCandidate).skills.map((skill, index) => (
-                          <span
+        {/* Select All Option */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <input
+              type="checkbox"
+              id="select-all"
+              checked={selectedCandidates.length === mockCandidates.length && mockCandidates.length > 0}
+              onChange={handleSelectAll}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="select-all" className="text-sm font-medium text-gray-700">
+              Select all candidates
+            </label>
+          </div>
+          <span className="text-sm text-gray-500">
+            {mockCandidates.length} candidate{mockCandidates.length > 1 ? 's' : ''} found
+          </span>
+        </div>
+
+        {/* LinkedIn Recruiter-Style Candidates List */}
+        <div className="space-y-4">
+          {mockCandidates.map((candidate) => (
+            <Card key={candidate.id} variant="elevated" className={`hover:shadow-xl transition-all duration-300 border-l-4 group cursor-pointer ${
+              selectedCandidates.includes(candidate.id) ? 'border-l-blue-500 bg-blue-50' : 'border-l-primary-500'
+            }`}>
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-4 flex-1">
+                    <div className="flex items-start space-x-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedCandidates.includes(candidate.id)}
+                        onChange={() => handleSelectCandidate(candidate.id)}
+                        className="mt-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                        {candidate.avatar}
+                      </div>
+                    </div>
+                    
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h3 className="text-xl font-bold text-gray-900 group-hover:text-primary-700 transition-colors">{candidate.name}</h3>
+                        <div className="flex items-center space-x-1 bg-yellow-50 px-2 py-1 rounded-full">
+                          <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                          <span className="text-sm font-bold text-yellow-700">{candidate.rating}</span>
+                        </div>
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getScoreColor(candidate.score)}`}>
+                          {candidate.score}
+                        </span>
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(candidate.status)}`}>
+                          {candidate.status}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center space-x-6 text-sm text-gray-600 mb-3">
+                        <div className="flex items-center space-x-1">
+                          <MapPin className="h-4 w-4 text-primary-500" />
+                          <span className="font-medium">{candidate.location}</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Briefcase className="h-4 w-4 text-primary-500" />
+                          <span>8+ years experience</span>
+                        </div>
+                      </div>
+                      
+                      <p className="text-gray-700 font-medium mb-3 text-base">{candidate.experience}</p>
+                      
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {candidate.skills.map((skill, index) => (
+                          <span 
                             key={index}
-                            className="inline-flex items-center px-2 py-1 bg-primary-50 text-primary-700 text-xs rounded-md"
+                            className="px-3 py-1.5 bg-primary-50 text-primary-700 text-sm rounded-full font-medium border border-primary-200 hover:bg-primary-100 transition-colors"
                           >
                             {skill}
                           </span>
                         ))}
                       </div>
-                    </div>
-                  )}
-
-                  {/* Experience */}
-                  <div className="space-y-3">
-                    <h4 className="font-medium text-neutral-900">Experience</h4>
-                    <div className="flex items-center text-sm">
-                      <Briefcase className="h-4 w-4 text-neutral-400 mr-2" />
-                      <span className="text-neutral-600">{candidateResponseToListItem(viewState.selectedCandidate).experience}+ years of experience</span>
-                    </div>
-                  </div>
-
-                  {/* Tags */}
-                  {candidateResponseToListItem(viewState.selectedCandidate).tags.length > 0 && (
-                    <div className="space-y-3">
-                      <h4 className="font-medium text-neutral-900">Tags</h4>
-                      <div className="flex flex-wrap gap-1">
-                        {candidateResponseToListItem(viewState.selectedCandidate).tags.map((tag, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center px-2 py-1 bg-neutral-100 text-neutral-700 text-xs rounded-md"
-                          >
-                            {tag}
-                          </span>
-                        ))}
+                      
+                      {/* LinkedIn Recruiter-Style Quick Actions */}
+                      <div className="flex items-center space-x-4 pt-3 border-t border-gray-100">
+                        <button className="text-primary-600 hover:text-primary-700 font-semibold text-sm flex items-center space-x-1">
+                          <span>Add to Job</span>
+                        </button>
+                        <button 
+                          onClick={() => window.location.href = '/competence-files'}
+                          className="text-primary-600 hover:text-primary-700 font-semibold text-sm flex items-center space-x-1"
+                        >
+                          <span>Create Competence File</span>
+                        </button>
+                        <button className="text-primary-600 hover:text-primary-700 font-semibold text-sm flex items-center space-x-1">
+                          <span>Schedule Interview</span>
+                        </button>
+                        <button className="text-primary-600 hover:text-primary-700 font-semibold text-sm flex items-center space-x-1">
+                          <span>Send Message</span>
+                        </button>
+                        <button className="text-primary-600 hover:text-primary-700 font-semibold text-sm flex items-center space-x-1">
+                          <span>Add Note</span>
+                        </button>
                       </div>
                     </div>
-                  )}
+                  </div>
+                  
+                  <div className="flex flex-col items-end space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <button className="p-3 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors border border-gray-200 hover:border-primary-200">
+                        <Eye className="h-5 w-5" />
+                      </button>
+                      <button className="p-3 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors border border-gray-200 hover:border-primary-200">
+                        <Mail className="h-5 w-5" />
+                      </button>
+                      <button className="p-3 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors border border-gray-200 hover:border-primary-200">
+                        <Phone className="h-5 w-5" />
+                      </button>
+                    </div>
+                    
+                    <button className="bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors flex items-center space-x-2 shadow-md">
+                      <span>View Profile</span>
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
-        {/* Add Candidate Drawer */}
-        {viewState.showAddDrawer && (
-          <div className="fixed inset-0 z-50 overflow-hidden">
-            <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setViewState(prev => ({ ...prev, showAddDrawer: false }))} />
-            <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl">
-              <div className="flex flex-col h-full">
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-neutral-200">
-                  <div>
-                    <h2 className="text-xl font-semibold text-neutral-900">Add New Candidate</h2>
-                    <p className="text-sm text-neutral-600">Add a candidate manually or import from CV/LinkedIn</p>
-                  </div>
-                  <button
-                    onClick={() => setViewState(prev => ({ ...prev, showAddDrawer: false }))}
-                    className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6">
-                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                    {/* Import Options */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                      {/* CV Upload */}
-                      <div
-                        {...getRootProps()}
-                        className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-                          isDragActive 
-                            ? 'border-primary-400 bg-primary-50' 
-                            : 'border-neutral-300 hover:border-primary-400'
-                        }`}
-                      >
-                        <input {...getInputProps()} />
-                        <Upload className="h-8 w-8 text-neutral-400 mx-auto mb-2" />
-                        <p className="text-sm font-medium text-neutral-700">Upload CV</p>
-                        <p className="text-xs text-neutral-500">PDF, DOC, DOCX up to 10MB</p>
-                        {uploadedFile && (
-                          <p className="text-xs text-primary-600 mt-2">{uploadedFile.name}</p>
-                        )}
-                      </div>
-
-                      {/* LinkedIn Import */}
-                      <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6">
-                        <Linkedin className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                        <p className="text-sm font-medium text-neutral-700 mb-2">Import from LinkedIn</p>
-                        <input
-                          type="url"
-                          placeholder="LinkedIn profile URL"
-                          value={linkedinUrl}
-                          onChange={(e) => setLinkedinUrl(e.target.value)}
-                          className="w-full px-3 py-2 text-xs border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        />
-                        <Button
-                          type="button"
-                          disabled={!linkedinUrl || isParsing}
-                          size="sm"
-                          className="w-full mt-2"
-                        >
-                          {isParsing ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-                          Import
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Parse Error */}
-                    {parseError && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                        <div className="flex items-center">
-                          <AlertCircle className="h-4 w-4 text-red-600 mr-2" />
-                          <p className="text-sm text-red-700">{parseError}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Basic Information */}
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-neutral-900">Basic Information</h3>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-neutral-700 mb-1">
-                            First Name *
-                          </label>
-                          <input
-                            {...register('firstName')}
-                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                          />
-                          {errors.firstName && (
-                            <p className="text-xs text-red-600 mt-1">{errors.firstName.message}</p>
-                          )}
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-neutral-700 mb-1">
-                            Last Name *
-                          </label>
-                          <input
-                            {...register('lastName')}
-                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                          />
-                          {errors.lastName && (
-                            <p className="text-xs text-red-600 mt-1">{errors.lastName.message}</p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">
-                          Email *
-                        </label>
-                        <input
-                          type="email"
-                          {...register('email')}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        />
-                        {errors.email && (
-                          <p className="text-xs text-red-600 mt-1">{errors.email.message}</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">
-                          Phone
-                        </label>
-                        <input
-                          type="tel"
-                          {...register('phone')}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">
-                          Current Title
-                        </label>
-                        <input
-                          {...register('currentTitle')}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">
-                          Location
-                        </label>
-                        <input
-                          {...register('currentLocation')}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">
-                          Technical Skills
-                        </label>
-                        <input
-                          value={skillsInput}
-                          onChange={(e) => handleSkillsChange(e.target.value)}
-                          placeholder="React, Node.js, Python, etc. (comma separated)"
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">
-                          Summary
-                        </label>
-                        <textarea
-                          {...register('summary')}
-                          rows={3}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">
-                          Tags
-                        </label>
-                        <input
-                          value={tagsInput}
-                          onChange={(e) => handleTagsChange(e.target.value)}
-                          placeholder="senior, frontend, remote, etc. (comma separated)"
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        />
-                      </div>
-                    </div>
-                  </form>
-                </div>
-
-                {/* Footer */}
-                <div className="border-t border-neutral-200 p-6">
-                  <div className="flex items-center justify-between">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setViewState(prev => ({ ...prev, showAddDrawer: false }))}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleSubmit(onSubmit)}
-                      disabled={isSubmitting}
-                      className="bg-primary-600 hover:bg-primary-700"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          Creating...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4 mr-2" />
-                          Create Candidate
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
+        {/* Loading/Error States */}
+        {isLoading && (
+          <div className="text-center py-8">
+            <p className="text-secondary-600">Loading candidates...</p>
           </div>
         )}
+
+        {error && (
+          <div className="text-center py-8">
+            <p className="text-error-600">Error loading candidates: {error.message || String(error)}</p>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!isLoading && !error && candidates.length === 0 && (
+          <Card variant="elevated">
+            <CardContent>
+              <div className="text-center py-12">
+                <Users className="h-16 w-16 text-secondary-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-secondary-900 mb-2">No candidates yet</h3>
+                <p className="text-secondary-600 mb-6">
+                  Start building your talent pipeline by adding your first candidate.
+                </p>
+                <button 
+                  onClick={() => setShowCreateModal(true)}
+                  className="btn-primary inline-flex items-center space-x-2"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  <span>Add First Candidate</span>
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Advanced Features Preview */}
+        <Card variant="outlined">
+          <CardHeader title="Advanced Features">
+            <div></div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center p-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <Star className="h-6 w-6 text-blue-600" />
+                </div>
+                <h4 className="font-medium text-gray-900 mb-1">AI-Powered Scoring</h4>
+                <p className="text-sm text-gray-600">Intelligent candidate scoring coming soon</p>
+              </div>
+              
+              <div className="text-center p-4">
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <Filter className="h-6 w-6 text-green-600" />
+                </div>
+                <h4 className="font-medium text-gray-900 mb-1">Smart Filtering</h4>
+                <p className="text-sm text-gray-600">Advanced search and filtering coming soon</p>
+              </div>
+              
+              <div className="text-center p-4">
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <Users className="h-6 w-6 text-purple-600" />
+                </div>
+                <h4 className="font-medium text-gray-900 mb-1">Bulk Operations</h4>
+                <p className="text-sm text-gray-600">Batch actions and workflows coming soon</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Create Candidate Modal */}
+      <CreateCandidateModal 
+        open={showCreateModal} 
+        onClose={() => setShowCreateModal(false)} 
+      />
     </Layout>
   );
-}
+} 

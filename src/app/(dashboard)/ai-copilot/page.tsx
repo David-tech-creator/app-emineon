@@ -38,7 +38,7 @@ interface QuickAction {
   description: string;
   icon: React.ReactNode;
   prompt: string;
-  category: 'search' | 'analysis' | 'outreach' | 'reports';
+  category: 'search' | 'analysis' | 'communication' | 'reports';
 }
 
 const quickActions: QuickAction[] = [
@@ -83,12 +83,12 @@ const quickActions: QuickAction[] = [
     category: 'analysis'
   },
   {
-    id: 'bulk-outreach',
-    title: 'Bulk Outreach Generator',
-    description: 'Generate personalized outreach for multiple candidates',
+    id: 'bulk-communication',
+    title: 'Bulk Communication Generator',
+    description: 'Generate personalized communication for multiple candidates',
     icon: <MessageCircle className="w-5 h-5" />,
-    prompt: 'Help me create personalized outreach messages for a group of candidates based on specific criteria',
-    category: 'outreach'
+    prompt: 'Help me create personalized communication messages for a group of candidates based on specific criteria',
+    category: 'communication'
   },
   {
     id: 'client-insights',
@@ -114,7 +114,7 @@ export default function AICopilotPage() {
     {
       id: '1',
       type: 'assistant',
-      content: "👋 Welcome to your AI Co-pilot! I can help you with intelligent candidate searches, document analysis, and company-wide insights.\n\n🔹 **Drag & drop documents** (job descriptions, CVs, company docs) for instant analysis\n🔹 **Ask questions** about your candidate database, market trends, or talent insights\n🔹 **Get recommendations** for candidate matching, outreach strategies, and pipeline optimization\n\nWhat would you like to explore today?",
+      content: "👋 Welcome to your AI Co-pilot! I can help you with intelligent candidate searches, document analysis, and company-wide insights.\n\n🔹 **Drag & drop documents** (job descriptions, CVs, company docs) for instant analysis\n🔹 **Ask questions** about your candidate database, market trends, or talent insights\n🔹 **Get recommendations** for candidate matching, communication strategies, and pipeline optimization\n\nWhat would you like to explore today?",
       timestamp: new Date()
     }
   ]);
@@ -363,7 +363,7 @@ ${matchingCandidates.map((candidate, index) => `
   2. Schedule initial screening calls
   3. Prepare technical assessment if needed
 
-Would you like me to draft personalized outreach messages for these candidates?`;
+Would you like me to draft personalized communication messages for these candidates?`;
       }
       
       if (cvs.length > 0) {
@@ -479,7 +479,7 @@ Would you like detailed recommendations for any specific area?`;
 • Market demand forecasting
 • Client success metrics
 
-**💌 Outreach & Engagement**
+**💌 Communication & Engagement**
 • Personalized message generation
 • Timing optimization
 • Multi-channel campaign planning
@@ -579,7 +579,7 @@ Try uploading a document or asking a specific question about your talent pipelin
               
               {/* Category Filter */}
               <div className="flex flex-wrap gap-1 mb-4">
-                {['all', 'search', 'analysis', 'outreach', 'reports'].map((category) => (
+                {['all', 'search', 'analysis', 'communication', 'reports'].map((category) => (
                   <button
                     key={category}
                     onClick={() => setActiveCategory(category)}

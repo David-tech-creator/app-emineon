@@ -169,6 +169,15 @@ Emineon Recruitment`);
       features: ['Personalized templates', 'Brand alignment', 'Multi-format export', 'Client customization']
     },
     {
+      id: 'competence-files',
+      title: 'Competence Files',
+      description: 'Create polished, client-facing candidate profiles with AI assistance',
+      icon: Users,
+      color: 'secondary',
+      metrics: { files: '2.5k+', quality: '97%', timeReduction: '80%' },
+      features: ['AI-powered drafting', 'Template customization', 'Client branding', 'Export options']
+    },
+    {
       id: 'timing',
       title: 'Perfect Timing AI',
       description: 'Detect optimal engagement moments through business signals and behavior analysis',
@@ -293,7 +302,13 @@ Emineon Recruitment`);
 
                 {/* Action Button */}
                 <Button
-                  onClick={() => setActiveTab(tool.id)}
+                  onClick={() => {
+                    if (tool.id === 'competence-files') {
+                      window.location.href = '/competence-files';
+                    } else {
+                      setActiveTab(tool.id);
+                    }
+                  }}
                   variant="outline"
                   fullWidth
                 >

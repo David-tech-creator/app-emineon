@@ -1,101 +1,93 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs';
 import { prisma } from '@/lib/prisma';
-import { jobSchema } from '@/lib/validation';
-import { workflowEngine } from '@/lib/services/workflow';
-import { loggingService } from '@/lib/services';
+import { z } from 'zod';
 
 export const runtime = 'nodejs';
 
 // GET /api/jobs - List all jobs with filtering and pagination
 export async function GET(request: NextRequest) {
   try {
+    const { userId } = auth();
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
     const status = searchParams.get('status');
+    const search = searchParams.get('search');
     const department = searchParams.get('department');
-    const search = searchParams.get('search') || '';
-    
-    const skip = (page - 1) * limit;
-    
-    // Build where clause
+
     const where: any = {};
-    
+
+    if (status && status !== 'all') {
+      where.status = status.toUpperCase();
+    }
+
     if (search) {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } },
-        { department: { contains: search, mode: 'insensitive' } },
         { location: { contains: search, mode: 'insensitive' } },
+        { department: { contains: search, mode: 'insensitive' } },
       ];
     }
-    
-    if (status) {
-      where.status = status;
-    }
-    
-    if (department) {
-      where.department = { contains: department, mode: 'insensitive' };
-    }
-    
-    // Get jobs with pagination
-    const [jobs, total] = await Promise.all([
-      prisma.job.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          department: true,
-          location: true,
-          language: true,
-          status: true,
-          salaryMin: true,
-          salaryMax: true,
-          salaryCurrency: true,
-          experienceLevel: true,
-          employmentType: true,
-          benefits: true,
-          requirements: true,
-          responsibilities: true,
-          isRemote: true,
-          publicToken: true,
-          createdAt: true,
-          updatedAt: true,
-          publishedAt: true,
-          expiresAt: true,
-        },
-      }),
-      prisma.job.count({ where }),
-    ]);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        jobs,
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit),
+    if (department) {
+      where.department = department;
+    }
+
+    const jobs = await prisma.job.findMany({
+      where,
+      include: {
+        applications: {
+          include: {
+            candidate: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                status: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            applications: true,
+          },
         },
       },
+      orderBy: { createdAt: 'desc' },
     });
+
+    return NextResponse.json(jobs);
   } catch (error) {
     console.error('Error fetching jobs:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch jobs',
-      },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
+
+const createJobSchema = z.object({
+  title: z.string().min(1, 'Job title is required'),
+  client: z.string().optional(),
+  location: z.string().min(1, 'Location is required'),
+  contractType: z.enum(['permanent', 'freelance', 'fixed-term', 'internship']),
+  startDate: z.string().optional(),
+  status: z.enum(['draft', 'active', 'paused', 'closed']).default('draft'),
+  description: z.string().optional(),
+  requirements: z.string().optional(),
+  salaryMin: z.number().optional(),
+  salaryMax: z.number().optional(),
+  currency: z.string().default('CHF'),
+  remote: z.boolean().default(false),
+  urgent: z.boolean().default(false),
+});
 
 // POST /api/jobs - Create a new job
 export async function POST(request: NextRequest) {
@@ -103,78 +95,53 @@ export async function POST(request: NextRequest) {
     const { userId } = auth();
     
     if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Authentication required',
-        },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
-    
-    // Validate the data
-    const validatedData = jobSchema.parse(body);
-    
-    // Generate public token for job applications
-    const publicToken = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Create the job
+    const validatedData = createJobSchema.parse(body);
+
+    // Map form data to Job model fields
+    const jobData = {
+      title: validatedData.title,
+      description: validatedData.description || '',
+      department: 'General', // Default department
+      location: validatedData.location,
+      status: validatedData.status?.toUpperCase() as any || 'DRAFT',
+      salaryMin: validatedData.salaryMin,
+      salaryMax: validatedData.salaryMax,
+      salaryCurrency: validatedData.currency,
+      isRemote: validatedData.remote,
+      employmentType: [validatedData.contractType],
+      requirements: validatedData.requirements ? [validatedData.requirements] : [],
+    };
+
+    // Create the job in the database
     const job = await prisma.job.create({
-      data: {
-        ...validatedData,
-        publicToken,
-        publishedAt: validatedData.status === 'ACTIVE' ? new Date() : null,
+      data: jobData,
+      include: {
+        applications: true,
+        _count: {
+          select: {
+            applications: true,
+          },
+        },
       },
     });
 
-    // Log the creation
-    await loggingService.log({
-      action: 'JOB_CREATED',
-      resource: `job:${job.id}`,
-      details: {
-        jobId: job.id,
-        title: job.title,
-        department: job.department,
-        status: job.status,
-        createdBy: userId,
-      },
-    });
-
-    // Trigger workflow
-    await workflowEngine.executeWorkflows({
-      event: 'job_created',
-      data: {
-        job,
-        createdBy: userId
-      }
-    });
-
-    return NextResponse.json({
-      success: true,
-      data: { job },
-      message: 'Job created successfully',
-    }, { status: 201 });
+    return NextResponse.json(job, { status: 201 });
   } catch (error) {
     console.error('Error creating job:', error);
     
-    if (error instanceof Error && error.message.includes('validation')) {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid job data provided',
-          details: error.message,
-        },
+        { error: 'Validation error', details: error.errors },
         { status: 400 }
       );
     }
-    
+
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to create job',
-      },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

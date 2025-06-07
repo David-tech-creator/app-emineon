@@ -1,448 +1,530 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Layout } from '@/components/layout/Layout';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { 
-  Briefcase, 
-  Plus, 
-  Search, 
+import { Input } from '@/components/ui/Input';
+import { Card, CardContent } from '@/components/ui/Card';
+import { CreateJobModal } from '@/components/jobs/CreateJobModal';
+import { CreateCandidateModal } from '@/components/candidates/CreateCandidateModal';
+import {
+  Plus,
+  Search,
   Filter,
+  Grid3X3,
+  List,
+  Download,
+  Upload,
+  MoreHorizontal,
   MapPin,
-  DollarSign,
-  Clock,
-  Users,
   Calendar,
-  Building2,
-  Brain,
-  Shield,
-  Globe,
-  Zap,
+  Users,
+  Clock,
   TrendingUp,
-  Eye,
-  Edit,
-  Share,
-  Settings,
-  CheckCircle,
+  Building2,
+  Briefcase,
   Target,
+  Eye,
+  UserPlus,
+  Share2,
+  ChevronDown,
   Star,
-  Activity,
-  BarChart3,
-  Sparkles,
-  Award,
-  Timer,
-  UserCheck,
-  ArrowUpRight,
-  Copy,
-  ExternalLink
+  AlertCircle,
+  CheckCircle2
 } from 'lucide-react';
 
 export default function JobsPage() {
-  const jobMetrics = [
-    { label: 'Active Jobs', value: '42', icon: Briefcase, color: 'primary' },
-    { label: 'Candidates Applied', value: '1.3k', icon: Users, color: 'teal' },
-    { label: 'Avg Time to Fill', value: '18 days', icon: Clock, color: 'accent' },
-    { label: 'Fill Rate', value: '89%', icon: Target, color: 'secondary' }
-  ];
+  const router = useRouter();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [showAddCandidateModal, setShowAddCandidateModal] = useState(false);
 
-  const jobCategories = [
+  // Mock data for jobs
+  const mockJobs = [
     {
-      title: 'Engineering',
-      count: 18,
-      icon: Brain,
-      color: 'primary',
-      avgSalary: '$140k',
-      urgency: 'High',
-      locations: ['SF', 'NYC', 'Remote']
+      id: '1',
+      title: 'Senior Software Engineer',
+      company: 'Credit Suisse',
+      location: 'Zurich, Switzerland',
+      contractType: 'Permanent',
+      workMode: 'Hybrid',
+      status: 'Active',
+      priority: 'High',
+      candidates: 24,
+      applications: 156,
+      daysToFill: 12,
+      slaProgress: 75,
+      skills: ['React', 'TypeScript', 'Node.js', 'AWS'],
+      salary: 'CHF 120,000 - 150,000',
+      posted: '2 days ago',
+      owner: 'Sarah Chen',
+      pipeline: {
+        applied: 156,
+        screening: 24,
+        interview: 8,
+        offer: 2
+      }
     },
     {
-      title: 'Product',
-      count: 8,
-      icon: Target,
-      color: 'teal',
-      avgSalary: '$130k',
-      urgency: 'Medium',
-      locations: ['SF', 'LA', 'Austin']
+      id: '2',
+      title: 'Product Manager',
+      company: 'UBS',
+      location: 'Basel, Switzerland',
+      contractType: 'Permanent',
+      workMode: 'Remote',
+      status: 'Active',
+      priority: 'Medium',
+      candidates: 18,
+      applications: 89,
+      daysToFill: 8,
+      slaProgress: 60,
+      skills: ['Product Strategy', 'Agile', 'Analytics', 'Leadership'],
+      salary: 'CHF 110,000 - 140,000',
+      posted: '1 week ago',
+      owner: 'Marcus Weber',
+      pipeline: {
+        applied: 89,
+        screening: 18,
+        interview: 5,
+        offer: 1
+      }
     },
     {
-      title: 'Design',
-      count: 6,
-      icon: Sparkles,
-      color: 'accent',
-      avgSalary: '$110k',
-      urgency: 'Low',
-      locations: ['NYC', 'Portland', 'Remote']
-    },
-    {
-      title: 'Marketing',
-      count: 10,
-      icon: TrendingUp,
-      color: 'secondary',
-      avgSalary: '$95k',
-      urgency: 'Medium',
-      locations: ['SF', 'Chicago', 'Remote']
+      id: '3',
+      title: 'Data Scientist',
+      company: 'Nestlé',
+      location: 'Vevey, Switzerland',
+      contractType: 'Contract',
+      workMode: 'On-site',
+      status: 'Draft',
+      priority: 'High',
+      candidates: 0,
+      applications: 0,
+      daysToFill: 0,
+      slaProgress: 0,
+      skills: ['Python', 'Machine Learning', 'SQL', 'Statistics'],
+      salary: 'CHF 95,000 - 125,000',
+      posted: 'Draft',
+      owner: 'Anna Müller',
+      pipeline: {
+        applied: 0,
+        screening: 0,
+        interview: 0,
+        offer: 0
+      }
     }
   ];
 
+  // Mock stats data with clickable filters
+  const stats = [
+    { label: 'Active', value: '32', change: '+8%', icon: CheckCircle2, filter: 'active', action: 'filter' },
+    { label: 'SLA Risk', value: '8', change: '+2 this week', icon: AlertCircle, filter: 'sla-risk', action: 'filter' },
+    { label: 'Candidates', value: '1,247', change: '+23%', icon: Users, filter: null, action: 'navigate', path: '/candidates' },
+    { label: 'Avg. Days to Fill', value: '18', change: '-2 days', icon: Clock, filter: null, action: 'navigate', path: '/analytics' }
+  ];
+
+  const handleStatClick = (stat: any) => {
+    if (stat.action === 'filter' && stat.filter) {
+      setSelectedFilter(stat.filter);
+    } else if (stat.action === 'navigate' && stat.path) {
+      router.push(stat.path);
+    }
+  };
+
+  const handleViewJob = (jobId: string) => {
+    router.push(`/jobs/${jobId}`);
+  };
+
+  const handleAddCandidate = (jobId: string) => {
+    setSelectedJobId(jobId);
+    setShowAddCandidateModal(true);
+  };
+
+  const filteredJobs = mockJobs.filter(job => {
+    const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         job.location.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    let matchesFilter = true;
+    
+    switch (selectedFilter) {
+      case 'all':
+        matchesFilter = true;
+        break;
+      case 'active':
+        matchesFilter = job.status.toLowerCase() === 'active';
+        break;
+      case 'sla-risk':
+        // Jobs that are at risk of missing SLA (active jobs with low progress)
+        matchesFilter = job.status === 'Active' && job.slaProgress < 70;
+        break;
+      case 'draft':
+        matchesFilter = job.status.toLowerCase() === 'draft';
+        break;
+      default:
+        matchesFilter = job.status.toLowerCase() === selectedFilter.toLowerCase();
+    }
+    
+    return matchesSearch && matchesFilter;
+  });
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'active': return 'bg-green-100 text-green-800';
+      case 'draft': return 'bg-yellow-100 text-yellow-800';
+      case 'paused': return 'bg-gray-100 text-gray-800';
+      case 'closed': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority.toLowerCase()) {
+      case 'high': return 'text-red-600';
+      case 'medium': return 'text-yellow-600';
+      case 'low': return 'text-green-600';
+      default: return 'text-gray-600';
+    }
+  };
+
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
-        {/* Hero Section */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-teal-600 via-primary-600 to-primary-800 rounded-3xl mb-8">
-          <div className="absolute inset-0 bg-black opacity-5"></div>
-          
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-8 right-20 w-24 h-24 border border-white rounded-full"></div>
-            <div className="absolute bottom-8 right-40 w-16 h-16 border border-white rounded-full"></div>
+      {/* Header Section */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Jobs</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Manage your job postings and track hiring progress
+            </p>
           </div>
-          
-          <div className="relative px-8 py-12">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex flex-wrap gap-3 mb-6">
-                  <div className="inline-flex items-center px-3 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium">
-                    <Shield className="h-4 w-4 mr-2" />
-                    Compliance Ready
-                  </div>
-                  <div className="inline-flex items-center px-3 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium">
-                    <Globe className="h-4 w-4 mr-2" />
-                    Multi-Platform Posting
-                  </div>
-                  <div className="inline-flex items-center px-3 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium">
-                    <Brain className="h-4 w-4 mr-2" />
-                    Auto-Optimization
-                  </div>
-                </div>
-                
-                <h1 className="text-4xl font-bold text-white leading-tight mb-4">
-                  Intelligent Job Board
-                </h1>
-                <p className="text-xl text-blue-100 mb-6">
-                  Create, distribute, and optimize job opportunities with AI-powered insights
-                </p>
-                
-                <div className="grid grid-cols-4 gap-6 pt-4">
-                  {jobMetrics.map((metric, index) => (
-                    <div key={index} className="text-center">
-                      <div className="text-2xl font-bold text-white">{metric.value}</div>
-                      <div className="text-sm text-blue-200">{metric.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="hidden lg:block ml-8">
-                <div className="relative w-32 h-32 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
-                  <div className="relative w-20 h-20">
-                    <Briefcase className="h-20 w-20 text-white opacity-80" />
-                  </div>
-                  <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-pulse"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Performance Metrics */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-          {jobMetrics.map((metric, index) => (
-            <div key={index} className="bg-white rounded-2xl p-6 shadow-soft border border-neutral-200 hover:shadow-medium transition-all duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-xl bg-${metric.color}-50`}>
-                  <metric.icon className={`h-6 w-6 text-${metric.color}-600`} />
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-neutral-900">{metric.value}</p>
-                  <p className="text-sm text-neutral-600">{metric.label}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Search and Filters */}
-        <div className="bg-white rounded-2xl border border-neutral-200 p-6 mb-8 shadow-soft">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 h-5 w-5" />
-                <input
-                  type="text"
-                  placeholder="Search jobs by title, company, or skills..."
-                  className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline">
-                <Filter className="h-4 w-4 mr-2" />
-                Filters
-              </Button>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Job
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Job Categories */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-neutral-900 mb-2">Job Categories</h2>
-              <p className="text-neutral-600">Overview of your open positions by department</p>
-            </div>
-            <Button>
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Analytics
+          <div className="flex items-center space-x-3">
+            <Button variant="outline" size="sm">
+              <Upload className="h-4 w-4 mr-2" />
+              Import
             </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {jobCategories.map((category, index) => (
-              <div key={index} className="bg-white rounded-2xl border border-neutral-200 overflow-hidden hover:shadow-medium transition-all duration-300 group">
-                {/* Category Header */}
-                <div className="bg-primary-800 px-6 py-5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="p-2 bg-white/20 backdrop-blur-sm rounded-xl">
-                        <category.icon className="h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-white">{category.title}</h3>
-                        <p className="text-white/80 text-sm">{category.count} open positions</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-white/90 text-sm">Urgency</div>
-                      <div className={`text-white font-bold px-2 py-1 rounded-full text-xs ${
-                        category.urgency === 'High' ? 'bg-red-500/20' :
-                        category.urgency === 'Medium' ? 'bg-yellow-500/20' :
-                        'bg-green-500/20'
-                      }`}>
-                        {category.urgency}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Category Content */}
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-sm text-neutral-600">Avg Salary</div>
-                    <div className="text-lg font-bold text-neutral-900">{category.avgSalary}</div>
-                  </div>
-                  
-                  <div className="mb-4">
-                    <div className="text-sm text-neutral-600 mb-2">Locations</div>
-                    <div className="flex flex-wrap gap-2">
-                      {category.locations.map((location, idx) => (
-                        <span key={idx} className="inline-flex items-center px-3 py-1 bg-neutral-100 text-neutral-700 text-sm rounded-full border border-neutral-200">
-                          {location}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <Button variant="outline" className="w-full">
-                    View Jobs
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Active Jobs */}
-        <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-soft mb-8">
-          <div className="px-6 py-5 border-b border-neutral-200 bg-gradient-to-r from-neutral-50 to-neutral-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-neutral-900">Active Job Postings</h3>
-                <p className="text-sm text-neutral-600">Currently open positions and their performance</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button variant="outline">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Manage
-                </Button>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Job
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6">
-            <div className="space-y-4">
-              {[
-                { 
-                  title: 'Senior React Developer', 
-                  company: 'TechCorp Inc.',
-                  location: 'San Francisco, CA',
-                  salary: '$140k - $180k',
-                  posted: '3 days ago',
-                  applications: 47,
-                  views: 1200,
-                  status: 'Active'
-                },
-                { 
-                  title: 'Product Manager', 
-                  company: 'StartupX',
-                  location: 'Remote',
-                  salary: '$120k - $150k',
-                  posted: '1 week ago',
-                  applications: 89,
-                  views: 2300,
-                  status: 'Hot'
-                },
-                { 
-                  title: 'UX Designer', 
-                  company: 'Design Studio',
-                  location: 'New York, NY',
-                  salary: '$95k - $120k',
-                  posted: '5 days ago',
-                  applications: 34,
-                  views: 890,
-                  status: 'Active'
-                },
-                { 
-                  title: 'Data Scientist', 
-                  company: 'Analytics Pro',
-                  location: 'Austin, TX',
-                  salary: '$130k - $160k',
-                  posted: '2 days ago',
-                  applications: 23,
-                  views: 450,
-                  status: 'Urgent'
-                }
-              ].map((job, index) => (
-                <div key={index} className="flex items-center justify-between p-4 rounded-xl hover:bg-neutral-50 transition-colors border border-neutral-100">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-2 bg-primary-50 rounded-lg">
-                      <Briefcase className="h-5 w-5 text-primary-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-neutral-900">{job.title}</h4>
-                      <div className="flex items-center space-x-4 text-sm text-neutral-500 mb-2">
-                        <span className="flex items-center">
-                          <Building2 className="h-3 w-3 mr-1" />
-                          {job.company}
-                        </span>
-                        <span>•</span>
-                        <span className="flex items-center">
-                          <MapPin className="h-3 w-3 mr-1" />
-                          {job.location}
-                        </span>
-                        <span>•</span>
-                        <span className="flex items-center">
-                          <DollarSign className="h-3 w-3 mr-1" />
-                          {job.salary}
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-4 text-xs text-neutral-400">
-                        <span>{job.applications} applications</span>
-                        <span>•</span>
-                        <span>{job.views} views</span>
-                        <span>•</span>
-                        <span>Posted {job.posted}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      job.status === 'Hot' ? 'bg-accent-100 text-accent-700' : 
-                      job.status === 'Urgent' ? 'bg-red-100 text-red-700' :
-                      'bg-success-100 text-success-700'
-                    }`}>
-                      {job.status}
-                    </div>
-                    <div className="flex space-x-1">
-                      <button className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors rounded-lg hover:bg-neutral-50">
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      <button className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors rounded-lg hover:bg-neutral-50">
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors rounded-lg hover:bg-neutral-50">
-                        <Share className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {[
-            { 
-              title: 'Job Templates', 
-              description: 'Use pre-built templates for faster job creation',
-              icon: Copy,
-              color: 'primary',
-              action: 'Browse Templates'
-            },
-            { 
-              title: 'Multi-Platform Posting', 
-              description: 'Post to LinkedIn, Indeed, and other job boards',
-              icon: ExternalLink,
-              color: 'teal',
-              action: 'Configure Channels'
-            },
-            { 
-              title: 'Performance Analytics', 
-              description: 'Track application rates and optimization opportunities',
-              icon: BarChart3,
-              color: 'accent',
-              action: 'View Reports'
-            }
-          ].map((action, index) => (
-            <div key={index} className="bg-white rounded-2xl border border-neutral-200 p-6 hover:shadow-medium transition-all duration-300 group">
-              <div className={`inline-flex items-center justify-center w-12 h-12 bg-${action.color}-50 rounded-xl mb-4`}>
-                <action.icon className={`h-6 w-6 text-${action.color}-600`} />
-              </div>
-              <h3 className="text-lg font-bold text-neutral-900 mb-2">{action.title}</h3>
-              <p className="text-sm text-neutral-600 mb-4">{action.description}</p>
-              <Button variant="outline" className="w-full">
-                {action.action}
-              </Button>
-            </div>
-          ))}
-        </div>
-
-        {/* AI Features */}
-        <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-soft">
-          <div className="px-6 py-5 border-b border-neutral-200 bg-gradient-to-r from-neutral-50 to-neutral-100">
-            <h3 className="text-lg font-bold text-neutral-900">AI-Powered Features</h3>
-            <p className="text-sm text-neutral-600">Intelligent tools to optimize your job postings and hiring process</p>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[
-                { title: 'Smart Job Writing', description: 'AI helps create compelling job descriptions', icon: Brain },
-                { title: 'Salary Optimization', description: 'Get market-competitive salary recommendations', icon: DollarSign },
-                { title: 'Application Scoring', description: 'AI ranks candidates automatically', icon: Star },
-                { title: 'Performance Insights', description: 'Optimize postings based on data', icon: TrendingUp }
-              ].map((feature, index) => (
-                <div key={index} className="text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 bg-primary-50 rounded-xl mb-3">
-                    <feature.icon className="h-6 w-6 text-primary-600" />
-                  </div>
-                  <h4 className="font-semibold text-neutral-900 mb-2">{feature.title}</h4>
-                  <p className="text-sm text-neutral-600">{feature.description}</p>
-                </div>
-              ))}
-            </div>
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+            <Button 
+              onClick={() => setShowCreateModal(true)}
+              className="bg-primary-600 hover:bg-primary-700"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Job
+            </Button>
           </div>
         </div>
       </div>
+
+      {/* Stats Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {stats.map((stat, index) => (
+          <Card 
+            key={index} 
+            className={`bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 rounded-lg cursor-pointer hover:scale-105 ${
+              stat.filter && selectedFilter === stat.filter ? 'ring-2 ring-primary-500 bg-primary-50 border-primary-200' : 'border-gray-200'
+            }`}
+            onClick={() => handleStatClick(stat)}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">{stat.label}</p>
+                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                  <p className={`text-xs mt-1 ${
+                    stat.label === 'SLA Risk' ? 'text-orange-600' : 'text-green-600'
+                  }`}>{stat.change}</p>
+                </div>
+                <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${
+                  stat.label === 'SLA Risk' ? 'bg-orange-50' : 'bg-primary-50'
+                }`}>
+                  <stat.icon className={`h-6 w-6 ${
+                    stat.label === 'SLA Risk' ? 'text-orange-600' : 'text-primary-600'
+                  }`} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Search and Filters */}
+      <Card className="bg-white shadow-sm mb-6">
+        <CardContent className="p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+            <div className="flex-1 max-w-lg">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search jobs, companies, or locations..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <select
+                value={selectedFilter}
+                onChange={(e) => setSelectedFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="all">All Jobs</option>
+                <option value="active">Active</option>
+                <option value="sla-risk">SLA Risk</option>
+                <option value="draft">Draft</option>
+                <option value="paused">Paused</option>
+                <option value="closed">Closed</option>
+              </select>
+
+              <div className="flex items-center border border-gray-300 rounded-md">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 ${viewMode === 'list' ? 'bg-primary-50 text-primary-600' : 'text-gray-400'}`}
+                >
+                  <List className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 ${viewMode === 'grid' ? 'bg-primary-50 text-primary-600' : 'text-gray-400'}`}
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Jobs List */}
+      <div className={viewMode === 'grid' ? 'grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6' : 'space-y-4'}>
+        {filteredJobs.map((job) => (
+          <Card key={job.id} className={`bg-white shadow-sm hover:shadow-md transition-shadow ${viewMode === 'grid' ? 'h-fit' : ''}`}>
+            <CardContent className={viewMode === 'grid' ? 'p-5' : 'p-6'}>
+              {/* Header */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <h3 className={`font-semibold text-gray-900 truncate ${viewMode === 'grid' ? 'text-base' : 'text-lg'}`}>
+                      {job.title}
+                    </h3>
+                    <Star className={`h-4 w-4 flex-shrink-0 ${getPriorityColor(job.priority)}`} />
+                  </div>
+                  <div className={`${viewMode === 'grid' ? 'space-y-1' : 'flex items-center space-x-4'} text-sm text-gray-600 mb-3`}>
+                    <div className="flex items-center">
+                      <Building2 className="h-4 w-4 mr-1 flex-shrink-0" />
+                      <span className="truncate">{job.company}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
+                      <span className="truncate">{job.location}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 flex-shrink-0">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
+                    {job.status}
+                  </span>
+                  <button className="p-1 hover:bg-gray-100 rounded">
+                    <MoreHorizontal className="h-4 w-4 text-gray-400" />
+                  </button>
+                </div>
+              </div>
+
+              {/* SLA Progress */}
+              {job.status === 'Active' && (
+                <div className="mb-4">
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="text-gray-600">SLA Progress</span>
+                    <span className="font-medium">{job.slaProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${
+                        job.slaProgress >= 80 ? 'bg-green-500' : 
+                        job.slaProgress >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${job.slaProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Pipeline Progress */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-gray-600">Pipeline</span>
+                  <span className="text-gray-500">{job.applications} applications</span>
+                </div>
+                
+                {viewMode === 'grid' ? (
+                  // Simplified pipeline for grid view
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs text-gray-600">
+                      <span>Applied: {job.pipeline.applied}</span>
+                      <span>Screening: {job.pipeline.screening}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-600">
+                      <span>Interview: {job.pipeline.interview}</span>
+                      <span>Offer: {job.pipeline.offer}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="h-2 bg-gradient-to-r from-blue-500 via-yellow-500 via-orange-500 to-green-500 rounded-full"
+                        style={{ width: `${(job.pipeline.offer / job.pipeline.applied) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  // Detailed pipeline for list view
+                  <div className="space-y-2">
+                    <div className="flex space-x-1 mb-2">
+                      <div className="flex-1 bg-blue-100 rounded h-2 relative">
+                        <div className="absolute inset-0 bg-blue-500 rounded" style={{ width: '100%' }} />
+                        <span className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs text-gray-600">
+                          {job.pipeline.applied}
+                        </span>
+                      </div>
+                      <div className="flex-1 bg-yellow-100 rounded h-2 relative">
+                        <div className="absolute inset-0 bg-yellow-500 rounded" 
+                             style={{ width: `${(job.pipeline.screening / job.pipeline.applied) * 100}%` }} />
+                        <span className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs text-gray-600">
+                          {job.pipeline.screening}
+                        </span>
+                      </div>
+                      <div className="flex-1 bg-orange-100 rounded h-2 relative">
+                        <div className="absolute inset-0 bg-orange-500 rounded" 
+                             style={{ width: `${(job.pipeline.interview / job.pipeline.applied) * 100}%` }} />
+                        <span className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs text-gray-600">
+                          {job.pipeline.interview}
+                        </span>
+                      </div>
+                      <div className="flex-1 bg-green-100 rounded h-2 relative">
+                        <div className="absolute inset-0 bg-green-500 rounded" 
+                             style={{ width: `${(job.pipeline.offer / job.pipeline.applied) * 100}%` }} />
+                        <span className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs text-gray-600">
+                          {job.pipeline.offer}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Skills */}
+              <div className="mb-4">
+                <div className="flex flex-wrap gap-1">
+                  {job.skills.slice(0, viewMode === 'grid' ? 2 : 3).map((skill, index) => (
+                    <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                      {skill}
+                    </span>
+                  ))}
+                  {job.skills.length > (viewMode === 'grid' ? 2 : 3) && (
+                    <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                      +{job.skills.length - (viewMode === 'grid' ? 2 : 3)} more
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className={`pt-4 border-t border-gray-100 ${viewMode === 'grid' ? 'space-y-2' : 'flex items-center justify-between'}`}>
+                {viewMode === 'grid' ? (
+                  // Simplified actions for grid view
+                  <div className="flex items-center justify-between">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1 mr-2"
+                      onClick={() => handleViewJob(job.id)}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      View
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => handleAddCandidate(job.id)}
+                    >
+                      <UserPlus className="h-4 w-4 mr-1" />
+                      Add
+                    </Button>
+                  </div>
+                ) : (
+                  // Full actions for list view
+                  <>
+                    <div className="flex items-center space-x-4">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleViewJob(job.id)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleAddCandidate(job.id)}
+                      >
+                        <UserPlus className="h-4 w-4 mr-1" />
+                        Add Candidate
+                      </Button>
+                    </div>
+                    <Button variant="outline" size="sm">
+                      <Share2 className="h-4 w-4 mr-1" />
+                      Share
+                    </Button>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {filteredJobs.length === 0 && (
+        <Card className="bg-white shadow-sm">
+          <CardContent className="p-12 text-center">
+            <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
+            <p className="text-gray-500 mb-6">
+              {searchTerm || selectedFilter !== 'all' 
+                ? 'Try adjusting your search or filters'
+                : 'Get started by creating your first job posting'
+              }
+            </p>
+            {!searchTerm && selectedFilter === 'all' && (
+              <Button onClick={() => setShowCreateModal(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Job
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Create Job Modal */}
+      <CreateJobModal 
+        open={showCreateModal} 
+        onClose={() => setShowCreateModal(false)} 
+      />
+
+      {/* Add Candidate Modal */}
+      <CreateCandidateModal 
+        open={showAddCandidateModal} 
+        onClose={() => setShowAddCandidateModal(false)} 
+      />
+
+
     </Layout>
   );
-} 
+}

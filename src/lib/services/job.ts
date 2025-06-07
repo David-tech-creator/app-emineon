@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/prisma';
 import { loggingService } from './logging';
-import { distributionService } from './distribution';
 import { socialMediaService } from './social-media';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -80,10 +79,7 @@ export class JobService {
         },
       });
 
-      // Distribute to job boards if specified
-      if (distributionOptions?.platforms?.length) {
-        await distributionService.distributeJob(jobId, distributionOptions.platforms);
-      }
+      // Job board distribution functionality removed
 
       // Post to social media if specified
       if (distributionOptions?.socialMedia) {

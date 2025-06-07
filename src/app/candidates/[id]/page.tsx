@@ -154,7 +154,7 @@ export default function CandidatePage() {
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-neutral-900 mb-2">Candidate Not Found</h2>
             <p className="text-neutral-600 mb-4">
-              {error?.message || 'The candidate you\'re looking for doesn\'t exist or you don\'t have permission to view it.'}
+              {typeof error === 'string' ? error : error?.message || 'The candidate you\'re looking for doesn\'t exist or you don\'t have permission to view it.'}
             </p>
             <Link href="/candidates">
               <Button>

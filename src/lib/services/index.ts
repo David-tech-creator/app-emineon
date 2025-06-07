@@ -3,7 +3,7 @@ export { aiMatchingService } from './ai-matching';
 export { assessmentService } from './assessment';
 export { calendarService } from './calendar';
 export { cvParserService } from './cv-parser';
-export { distributionService } from './distribution';
+
 export { emailService } from './email';
 export { jobService } from './job';
 export { referralService } from './referral';

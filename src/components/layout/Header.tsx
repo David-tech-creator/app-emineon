@@ -18,9 +18,8 @@ interface Breadcrumb {
 const breadcrumbMap: Record<string, string> = {
   '/': 'Dashboard',
   '/candidates': 'Candidates',
-
+  '/competence-files': 'Competence Files',
   '/jobs': 'Jobs',
-  '/job-distribution': 'Job Distribution',
   '/clients': 'Clients',
   '/ai-tools': 'AI Tools',
   '/assessments': 'Assessments',
@@ -36,11 +35,11 @@ const breadcrumbMap: Record<string, string> = {
 const sectionMap: Record<string, string> = {
   '/candidates': 'Talent',
   '/candidates/new': 'Talent',
+  '/competence-files': 'Talent',
   '/assessments': 'Talent',
   '/video-interviews': 'Talent',
   '/assignments': 'Talent',
   '/jobs': 'Jobs',
-  '/job-distribution': 'Jobs',
   '/ai-tools': 'Jobs',
   '/clients': 'Clients',
   '/notes': 'Clients',

@@ -34,7 +34,7 @@ export class EmailService {
     jobTitle: string;
     companyName: string;
     tone: 'professional' | 'friendly' | 'casual';
-    purpose: 'outreach' | 'interview_invite' | 'rejection' | 'offer';
+    purpose: 'communication' | 'interview_invite' | 'rejection' | 'offer';
   }): Promise<EmailTemplate> {
     return openaiService.generateEmailTemplate({
       ...input,

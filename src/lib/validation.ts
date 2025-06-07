@@ -348,7 +348,7 @@ export const aiJobDescriptionSchema = z.object({
 });
 
 export const aiEmailTemplateSchema = z.object({
-  templateType: z.enum(['OUTREACH', 'FOLLOW_UP', 'INTERVIEW_INVITE', 'REJECTION', 'OFFER']),
+  templateType: z.enum(['COMMUNICATION', 'FOLLOW_UP', 'INTERVIEW_INVITE', 'REJECTION', 'OFFER']),
   candidateName: z.string().min(1, 'Candidate name is required'),
   jobTitle: z.string().min(1, 'Job title is required'),
   companyName: z.string().min(1, 'Company name is required'),

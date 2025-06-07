@@ -126,7 +126,7 @@ export default function AssignmentsPage() {
               <CardContent>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-medium text-purple-900 mb-1">Outreach</h3>
+                    <h3 className="font-medium text-purple-900 mb-1">Communication</h3>
                     <p className="text-2xl font-bold text-purple-600">3</p>
                   </div>
                   <Search className="h-6 w-6 text-purple-500" />

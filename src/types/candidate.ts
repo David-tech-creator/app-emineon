@@ -207,7 +207,7 @@ export type SourceType =
   | 'recruitment-agency'
   | 'social-media'
   | 'networking-event'
-  | 'cold-outreach'
+  | 'cold-communication'
   | 'internal-database';
 
 export type WorkAuthStatus = 

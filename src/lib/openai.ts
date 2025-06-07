@@ -297,7 +297,7 @@ Guidelines:
 
   private getMockEmailTemplate(input: EmailTemplateInput): GeneratedEmailTemplate {
     const templates = {
-      OUTREACH: {
+      COMMUNICATION: {
         subject: `Exciting ${input.jobTitle} Opportunity at ${input.companyName}`,
         body: `Hi ${input.candidateName},
 
@@ -376,7 +376,7 @@ ${input.companyName}`
       }
     };
 
-    const template = templates[input.templateType as keyof typeof templates] || templates.OUTREACH;
+    const template = templates[input.templateType as keyof typeof templates] || templates.COMMUNICATION;
     
     return {
       subject: template.subject,
