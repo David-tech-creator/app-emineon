@@ -411,14 +411,14 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
                 <Button variant="outline" onClick={handleClose}>
                   Cancel
                 </Button>
-                <Button
+                <button
                   onClick={handleParse}
                   disabled={!inputMethod || (inputMethod === 'linkedin' && !linkedinUrl) || (inputMethod === 'manual' && !manualInput)}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="btn-primary flex items-center space-x-2 disabled:opacity-50"
                 >
-                  <Brain className="h-4 w-4 mr-2" />
-                  Parse with AI
-                </Button>
+                  <Brain className="h-4 w-4" />
+                  <span>Parse with AI</span>
+                </button>
               </div>
             </div>
           )}
@@ -649,12 +649,12 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
                 <Button variant="outline" onClick={() => setCurrentStep('intake')}>
                   Back
                 </Button>
-                <Button
+                <button
                   onClick={() => setCurrentStep('assign')}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="btn-primary flex items-center space-x-2"
                 >
-                  Continue to Assignment
-                </Button>
+                  <span>Continue to Assignment</span>
+                </button>
               </div>
             </div>
           )}
@@ -788,23 +788,23 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
                 <Button variant="outline" onClick={() => setCurrentStep('review')}>
                   Back
                 </Button>
-                <Button
+                <button
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className="bg-green-600 hover:bg-green-700"
+                  className="btn-primary flex items-center space-x-2 disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Saving...</span>
                     </>
                   ) : (
                     <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Save Candidate
+                      <Save className="h-4 w-4" />
+                      <span>Save Candidate</span>
                     </>
                   )}
-                </Button>
+                </button>
               </div>
             </div>
           )}
@@ -824,15 +824,15 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
               
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Button
+                  <button
                     onClick={() => {
                       window.location.href = `/candidates/${createdCandidate.id}`;
                     }}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="btn-primary flex items-center space-x-2"
                   >
-                    <Eye className="h-4 w-4 mr-2" />
-                    View Profile
-                  </Button>
+                    <Eye className="h-4 w-4" />
+                    <span>View Profile</span>
+                  </button>
                   
                   <Button
                     variant="outline"

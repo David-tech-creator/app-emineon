@@ -281,14 +281,14 @@ export default function CandidatesPage() {
                 <div className="flex items-center space-x-3">
                   <button
                     onClick={handleBulkCompetenceFiles}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2"
+                    className="btn-primary flex items-center space-x-2 text-sm"
                   >
                     <span>Create Competence Files</span>
                   </button>
-                  <button className="bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-lg text-sm font-medium">
+                  <button className="bg-white border border-primary-300 text-primary-700 hover:bg-primary-50 px-4 py-2 rounded-lg text-sm font-medium">
                     Add to Job
                   </button>
-                  <button className="bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-lg text-sm font-medium">
+                  <button className="bg-white border border-primary-300 text-primary-700 hover:bg-primary-50 px-4 py-2 rounded-lg text-sm font-medium">
                     Send Message
                   </button>
                 </div>

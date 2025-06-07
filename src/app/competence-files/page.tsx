@@ -129,18 +129,18 @@ export default function CompetenceFilesPage() {
             <Button 
               onClick={() => setIsCreateTemplateModalOpen(true)}
               variant="outline"
-              className="border-blue-600 text-blue-600 hover:bg-blue-50"
+              className="border-primary-500 text-primary-600 hover:bg-primary-50"
             >
               <Plus className="h-4 w-4 mr-2" />
               Create Template
             </Button>
-            <Button 
+            <button 
               onClick={() => setIsCreateModalOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="btn-primary flex items-center space-x-2"
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Create Competence File
-            </Button>
+              <Plus className="h-4 w-4" />
+              <span>Create Competence File</span>
+            </button>
           </div>
         </div>
 
