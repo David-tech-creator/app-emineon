@@ -278,47 +278,73 @@ export default function CandidatesPage() {
   return (
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
-        {/* Header */}
-        <div className="bg-white border-b border-neutral-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Users className="h-6 w-6 text-primary-600" />
-                <h1 className="text-2xl font-bold text-neutral-900">Candidates</h1>
+        {/* Enhanced Header */}
+        <div className="bg-white border-b border-neutral-200 shadow-soft">
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-6">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-teal-500 rounded-xl flex items-center justify-center shadow-soft">
+                    <Users className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-neutral-900">Candidates</h1>
+                    <p className="text-sm text-neutral-600">Manage your talent pipeline</p>
+                  </div>
+                </div>
+                
+                {/* Enhanced Stats Dashboard */}
+                <div className="hidden lg:flex items-center space-x-4 ml-8">
+                  <div className="flex items-center space-x-2 px-3 py-2 bg-neutral-50 rounded-lg border border-neutral-200">
+                    <div className="w-2 h-2 bg-neutral-400 rounded-full"></div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-neutral-900">{stats.total}</div>
+                      <div className="text-xs text-neutral-500">Total</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 px-3 py-2 bg-success-50 rounded-lg border border-success-200">
+                    <div className="w-2 h-2 bg-success-500 rounded-full"></div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-success-600">{stats.active}</div>
+                      <div className="text-xs text-success-600">Active</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 px-3 py-2 bg-warning-50 rounded-lg border border-warning-200">
+                    <div className="w-2 h-2 bg-warning-500 rounded-full"></div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-warning-600">{stats.inInterview}</div>
+                      <div className="text-xs text-warning-600">Interview</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 px-3 py-2 bg-primary-50 rounded-lg border border-primary-200">
+                    <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-primary-600">{stats.positioned}</div>
+                      <div className="text-xs text-primary-600">Positioned</div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              
-              {/* Stats */}
-              <div className="hidden md:flex items-center space-x-6 ml-8">
-                <div className="text-center">
-                  <div className="text-lg font-bold text-neutral-900">{stats.total}</div>
-                  <div className="text-xs text-neutral-500">Total</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold text-success-600">{stats.active}</div>
-                  <div className="text-xs text-neutral-500">Active</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold text-warning-600">{stats.inInterview}</div>
-                  <div className="text-xs text-neutral-500">Interview</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold text-primary-600">{stats.positioned}</div>
-                  <div className="text-xs text-neutral-500">Positioned</div>
-                </div>
-              </div>
-            </div>
 
             <div className="flex items-center space-x-3">
-              {/* Global Search */}
+              {/* Enhanced Global Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
                 <input
                   type="text"
-                  placeholder="Search candidates..."
+                  placeholder="Search by name, skills, location, or company..."
                   value={filters.search}
                   onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                  className="w-80 pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-96 pl-10 pr-4 py-2.5 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm transition-all duration-200 text-sm"
                 />
+                {filters.search && (
+                  <button
+                    onClick={() => setFilters(prev => ({ ...prev, search: '' }))}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
 
               {/* View Toggle */}
