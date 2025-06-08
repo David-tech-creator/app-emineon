@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -65,6 +65,7 @@ interface CreateCompetenceFileModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (fileData: any) => void;
+  preselectedCandidate?: CandidateData | null;
 }
 
 // Mock candidates for demo
@@ -270,7 +271,7 @@ function SortableSectionItem({
   );
 }
 
-export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess }: CreateCompetenceFileModalProps) {
+export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselectedCandidate }: CreateCompetenceFileModalProps) {
   const store = useCompetenceFileStore();
   
   // Local state for section management
@@ -278,6 +279,14 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess }: Create
   const [editingLabel, setEditingLabel] = useState('');
   const [newSectionLabel, setNewSectionLabel] = useState('');
   const [showAddSection, setShowAddSection] = useState(false);
+
+  // Effect to handle preselected candidate
+  useEffect(() => {
+    if (preselectedCandidate && isOpen) {
+      store.setCandidateData(preselectedCandidate);
+      store.nextStep(); // Skip to next step since we have candidate data
+    }
+  }, [preselectedCandidate, isOpen, store]);
 
   // Predefined section suggestions
   const sectionSuggestions = [

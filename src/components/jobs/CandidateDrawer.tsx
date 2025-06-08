@@ -27,6 +27,8 @@ import {
   DollarSign,
   Globe
 } from 'lucide-react';
+import { CreateCompetenceFileModal } from '@/components/competence-files/CreateCompetenceFileModal';
+import { AddToJobModal } from './AddToJobModal';
 
 interface Candidate {
   id: string;
@@ -97,8 +99,42 @@ export function CandidateDrawer({
   const [activeTab, setActiveTab] = useState('overview');
   const [newNote, setNewNote] = useState('');
   const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [isCompetenceFileModalOpen, setIsCompetenceFileModalOpen] = useState(false);
+  const [isAddToJobModalOpen, setIsAddToJobModalOpen] = useState(false);
 
   if (!candidate) return null;
+
+  // Convert candidate data for competence file modal
+  const competenceFileCandidate = candidate ? {
+    id: candidate.id,
+    fullName: `${candidate.firstName} ${candidate.lastName}`,
+    currentTitle: candidate.currentRole,
+    email: candidate.email,
+    phone: candidate.phone,
+    location: candidate.currentLocation,
+    yearsOfExperience: parseInt(candidate.experience) || 5,
+    skills: candidate.skills,
+    certifications: [],
+    experience: candidate.workHistory?.map(job => ({
+      company: job.company,
+      title: job.role,
+      startDate: '2020-01', // Mock data
+      endDate: job.duration.includes('Present') ? 'Present' : '2023-12',
+      responsibilities: job.description
+    })) || [],
+    education: candidate.education?.map(edu => edu.degree) || [],
+    languages: ['English (Professional)', 'German (Intermediate)'], // Mock data
+    summary: candidate.notes || `Experienced ${candidate.currentRole} with strong technical skills`
+  } : null;
+
+  // Convert candidate data for Add to Job modal
+  const addToJobCandidate = candidate ? {
+    id: candidate.id,
+    firstName: candidate.firstName,
+    lastName: candidate.lastName,
+    currentRole: candidate.currentRole,
+    skills: candidate.skills
+  } : null;
 
   const getTimelineIcon = (type: string) => {
     switch (type) {
@@ -130,6 +166,21 @@ export function CandidateDrawer({
       onNotesUpdate(candidate.id, updatedNotes);
       setNewNote('');
     }
+  };
+
+  const handleCreateCompetenceFile = (fileData: any) => {
+    console.log('Competence file created:', fileData);
+    // Handle competence file creation
+    setIsCompetenceFileModalOpen(false);
+  };
+
+  const handleAddToJob = async (jobId: string, candidateId: string) => {
+    console.log('Adding candidate to job:', { jobId, candidateId });
+    // Handle adding candidate to job
+    // This would typically call an API to add the candidate to the job pipeline
+    
+    // Mock success
+    alert(`Successfully added ${candidate.firstName} ${candidate.lastName} to the selected job!`);
   };
 
   const tabs = [
@@ -194,8 +245,22 @@ export function CandidateDrawer({
 
           {/* Quick Actions */}
           <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <div className="flex items-center space-x-3">
-              <button className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium">
+            <div className="flex items-center space-x-3 flex-wrap gap-y-2">
+              <button 
+                onClick={() => setIsCompetenceFileModalOpen(true)}
+                className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Create Competence File
+              </button>
+              <button 
+                onClick={() => setIsAddToJobModalOpen(true)}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add to Job
+              </button>
+              <button className="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
                 <Send className="h-4 w-4 mr-2" />
                 Submit to Client
               </button>
@@ -556,6 +621,21 @@ export function CandidateDrawer({
           </div>
         </div>
       </div>
+      
+      {/* Modals */}
+      <CreateCompetenceFileModal
+        isOpen={isCompetenceFileModalOpen}
+        onClose={() => setIsCompetenceFileModalOpen(false)}
+        onSuccess={handleCreateCompetenceFile}
+        preselectedCandidate={competenceFileCandidate}
+      />
+      
+      <AddToJobModal
+        isOpen={isAddToJobModalOpen}
+        candidate={addToJobCandidate}
+        onClose={() => setIsAddToJobModalOpen(false)}
+        onAddToJob={handleAddToJob}
+      />
     </div>
   );
 } 
