@@ -8,20 +8,39 @@ const parseJobDescriptionSchema = z.object({
   jobDescription: z.string().min(10, 'Job description must be at least 10 characters'),
 });
 
+interface ParsedJobData {
+  title: string;
+  company: string;
+  location: string;
+  contractType: string;
+  workMode: string;
+  description: string;
+  skills: string[];
+  languages: string[];
+  department: string;
+  priority: string;
+  salary: string;
+  duration: string;
+  startDate: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = auth();
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
-      );
+    // Make auth optional since this route is in publicRoutes
+    let userId = null;
+    try {
+      const authResult = auth();
+      userId = authResult.userId;
+    } catch (authError) {
+      console.log('Auth not available, continuing without user context');
     }
 
     const body = await request.json();
     const validatedData = parseJobDescriptionSchema.parse(body);
 
-    // Enhanced AI parsing with GPT-4 (mock implementation for now)
+    // Enhanced AI parsing with GPT-like intelligence (mock implementation)
+    // In production, this would use actual OpenAI API
+    
     const parsedData = await parseWithAI(validatedData.jobDescription);
 
     return NextResponse.json({
@@ -46,24 +65,23 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function parseWithAI(jobDescription: string) {
-  // Simulate AI processing delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-
-  // Enhanced extraction logic (in production, this would use OpenAI GPT-4)
+async function parseWithAI(jobDescription: string): Promise<ParsedJobData> {
+  // Enhanced AI parsing with GPT-like intelligence (mock implementation)
+  // In production, this would use actual OpenAI API
+  
   const text = jobDescription.toLowerCase();
   
   return {
     title: extractTitle(jobDescription),
     company: extractCompany(jobDescription),
     location: extractLocation(jobDescription),
-    contractType: extractContractType(text),
-    workMode: extractWorkMode(text),
+    contractType: extractContractType(jobDescription),
+    workMode: extractWorkMode(jobDescription),
     description: jobDescription,
     skills: extractSkills(jobDescription),
     languages: extractLanguages(jobDescription),
-    department: extractDepartment(text),
-    priority: extractPriority(text),
+    department: extractDepartment(jobDescription),
+    priority: extractPriority(jobDescription),
     salary: extractSalary(jobDescription),
     duration: extractDuration(jobDescription),
     startDate: extractStartDate(jobDescription),
@@ -71,55 +89,80 @@ async function parseWithAI(jobDescription: string) {
 }
 
 function extractTitle(text: string): string {
+  // Enhanced title extraction
   const titlePatterns = [
-    /(?:job title|position|role):\s*([^\n]+)/i,
-    /(?:we are looking for|seeking|hiring)\s+(?:a|an)?\s*([^\n]+)/i,
-    /^([^\n]+)(?:\s*-\s*(?:job|position))/i,
-    /([A-Z][a-zA-Z\s]+(?:Engineer|Developer|Manager|Analyst|Designer|Specialist))/i
+    /(?:we are looking for|seeking|hiring)(?:\s+(?:a|an))?\s+([^.]+?)(?:\s+to|$)/i,
+    /(?:position|role|job):\s*([^\n.]+)/i,
+    /([^.,\n]+?engineer[^.,\n]*)/i,
+    /([^.,\n]+?developer[^.,\n]*)/i,
+    /([^.,\n]+?manager[^.,\n]*)/i,
+    /([^.,\n]+?specialist[^.,\n]*)/i,
   ];
   
   for (const pattern of titlePatterns) {
     const match = text.match(pattern);
-    if (match) return match[1].trim();
+    if (match && match[1]) {
+      let title = match[1].trim();
+      // Clean up common prefixes/suffixes
+      title = title.replace(/^(a|an|the)\s+/i, '');
+      title = title.replace(/\s+(at|for|in)\s+.*/i, '');
+      return title;
+    }
   }
   return 'Software Engineer';
 }
 
 function extractCompany(text: string): string {
   const companyPatterns = [
-    /(?:company|client):\s*([^\n]+)/i,
-    /at\s+([A-Z][a-zA-Z\s&]+)(?:\s+we|,)/,
-    /([A-Z][a-zA-Z\s&]+)\s+is\s+(?:looking|seeking|hiring)/,
-    /(Credit Suisse|UBS|Nestlé|Roche|Novartis|ABB|Zurich Insurance)/i
+    /(?:team\s+at|join\s+(?:our\s+team\s+at\s+)?|work\s+(?:at|for))\s+([A-Z][a-zA-Z0-9\s&.-]+?)(?:\s*[.!,]|\s+(?:in|located|based)|$)/i,
+    /company:\s*([^\n.]+)/i,
+    /([A-Z][a-zA-Z0-9\s&.-]+?)\s+(?:is|are)\s+(?:looking|seeking|hiring)/i,
+    /(?:at|for|with)\s+([A-Z][a-zA-Z0-9\s&.-]{2,}?)(?:\s*[.!,]|\s+(?:in|we|is|are|located|based)|$)/i,
   ];
   
   for (const pattern of companyPatterns) {
     const match = text.match(pattern);
-    if (match) return match[1].trim();
+    if (match && match[1] && match[1].length > 1 && match[1].length < 50) {
+      let company = match[1].trim();
+      // Clean up common words that shouldn't be part of company name
+      if (!['We', 'Our', 'The', 'A', 'An', 'This', 'That'].includes(company)) {
+        return company;
+      }
+    }
   }
   return 'Tech Company';
 }
 
 function extractLocation(text: string): string {
   const locationPatterns = [
-    /(?:location|based in|office in):\s*([^\n]+)/i,
-    /(Zurich|Geneva|Basel|Bern|Lausanne|Switzerland)/i,
-    /(London|Berlin|Paris|Amsterdam|Munich)/i,
-    /([A-Z][a-zA-Z\s]+,\s*[A-Z][a-zA-Z\s]+)/
+    /location:\s*([^\n.,]+)/i,
+    /(?:based|located|office)\s+in\s+([^\n.,]+)/i,
+    /(Zurich|Geneva|Basel|Bern|Lausanne|Switzerland|New York|London|Berlin|Paris|Amsterdam)[^\n.]*/i,
+    /(?:in|at)\s+([A-Z][a-zA-Z\s,.-]+(?:Switzerland|Germany|France|UK|USA))/i,
   ];
   
   for (const pattern of locationPatterns) {
     const match = text.match(pattern);
-    if (match) return match[1].trim();
+    if (match && match[1]) {
+      return match[1].trim();
+    }
   }
-  return 'Zurich, Switzerland';
+  return 'Remote';
 }
 
 function extractContractType(text: string): string {
-  if (/contract|contractor|temporary/i.test(text)) return 'contract';
+  // Look for explicit contract type mentions first
+  if (/contract\s+type:\s*permanent/i.test(text)) return 'permanent';
+  if (/contract\s+type:\s*freelance/i.test(text)) return 'freelance';
+  if (/contract\s+type:\s*(?:fixed.?term|temporary)/i.test(text)) return 'fixed-term';
+  if (/contract\s+type:\s*internship/i.test(text)) return 'internship';
+  
+  // Then look for general mentions
   if (/freelance|freelancer/i.test(text)) return 'freelance';
-  if (/fixed.term|fixed term/i.test(text)) return 'fixed-term';
+  if (/(?:fixed.?term|temporary|temp)\s+(?:contract|position)/i.test(text)) return 'fixed-term';
   if (/intern|internship/i.test(text)) return 'internship';
+  if (/permanent|full.?time|indefinite/i.test(text)) return 'permanent';
+  
   return 'permanent';
 }
 
@@ -193,55 +236,66 @@ function extractDepartment(text: string): string {
 
 function extractPriority(text: string): string {
   if (/urgent|asap|immediately|high priority/i.test(text)) return 'high';
-  if (/low priority|nice to have/i.test(text)) return 'low';
+  if (/low priority|when possible/i.test(text)) return 'low';
   return 'medium';
 }
 
 function extractSalary(text: string): string {
   const salaryPatterns = [
-    /(?:salary|compensation|pay):\s*([^\n]+)/i,
-    /(CHF|EUR|USD|GBP)\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s*-?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)?/i,
-    /(\d{1,3}(?:,\d{3})*)\s*-\s*(\d{1,3}(?:,\d{3})*)\s*(CHF|EUR|USD|GBP)/i,
+    /salary:\s*([^\n.]+)/i,
+    /(\$\d+[,\d]*(?:\s*-\s*\$?\d+[,\d]*)?(?:\s*per\s+year|\s*annually|\s*\/year)?)/i,
+    /(CHF\s*\d+[,\d]*(?:\s*-\s*CHF?\s*\d+[,\d]*)?)/i,
+    /(\€\d+[,\d]*(?:\s*-\s*\€?\d+[,\d]*)?)/i,
   ];
   
   for (const pattern of salaryPatterns) {
     const match = text.match(pattern);
-    if (match) return match[0].trim();
+    if (match && match[1]) {
+      return match[1].trim();
+    }
   }
   return '';
 }
 
 function extractDuration(text: string): string {
-  const durationPatterns = [
-    /(\d+)\s*(?:month|months|mo)/i,
-    /(\d+)\s*(?:year|years|yr)/i,
-    /(permanent|indefinite|ongoing)/i,
-    /(6 months?|12 months?|18 months?|24 months?)/i,
-  ];
-  
-  for (const pattern of durationPatterns) {
-    const match = text.match(pattern);
-    if (match) return match[0].trim();
+  if (/permanent|full.?time|indefinite/i.test(text)) return 'Permanent';
+  if (/contract|fixed.?term|temporary/i.test(text)) {
+    const durationMatch = text.match(/(\d+)\s*(month|year)s?/i);
+    if (durationMatch) {
+      return `${durationMatch[1]} ${durationMatch[2]}${durationMatch[1] !== '1' ? 's' : ''}`;
+    }
+    return 'Fixed term';
   }
-  return '';
+  if (/freelance|consultant/i.test(text)) return 'Freelance';
+  if (/intern|internship/i.test(text)) return 'Internship';
+  return 'Permanent';
 }
 
 function extractStartDate(text: string): string {
+  if (/immediately|asap|as soon as possible/i.test(text)) {
+    return new Date().toISOString().split('T')[0];
+  }
+  
   const datePatterns = [
-    /start date:\s*([^\n]+)/i,
-    /(immediately|asap|as soon as possible)/i,
-    /(\d{1,2}\/\d{1,2}\/\d{4})/,
-    /(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}/i,
+    /start(?:\s+date)?:\s*([^\n.]+)/i,
+    /(?:starting|begins?|commence)\s+(?:on\s+)?([^\n.]+)/i,
+    /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/,
+    /(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s+\d{4}/i,
   ];
   
   for (const pattern of datePatterns) {
     const match = text.match(pattern);
-    if (match) {
-      if (match[1].toLowerCase().includes('immediately') || match[1].toLowerCase().includes('asap')) {
-        return new Date().toISOString().split('T')[0];
+    if (match && match[1]) {
+      try {
+        const date = new Date(match[1]);
+        if (!isNaN(date.getTime())) {
+          return date.toISOString().split('T')[0];
+        }
+      } catch {
+        // Continue to next pattern
       }
-      return match[1].trim();
     }
   }
+  
   return '';
 } 

@@ -65,6 +65,23 @@ interface PipelineKanbanProps {
   onAddCandidate: () => void;
 }
 
+/**
+ * PipelineKanban Component
+ * 
+ * A drag-and-drop Kanban board for managing candidates through recruitment pipeline stages.
+ * Features:
+ * - Drag and drop candidates between stages
+ * - Visual feedback during drag operations
+ * - Custom drag image for better UX
+ * - Real-time stage updates
+ * - Search and filter functionality
+ * 
+ * @param candidates - Array of candidate objects
+ * @param stages - Array of pipeline stage objects
+ * @param onCandidateMove - Callback when candidate is moved to new stage
+ * @param onCandidateSelect - Callback when candidate card is clicked
+ * @param onAddCandidate - Callback when add candidate button is clicked
+ */
 export function PipelineKanban({ 
   candidates, 
   stages, 
@@ -90,24 +107,82 @@ export function PipelineKanban({
     return filteredCandidates.filter(candidate => candidate.stage === stageId);
   }, [filteredCandidates]);
 
-  const handleDragStart = (candidateId: string) => {
+  const handleDragStart = (e: React.DragEvent, candidateId: string) => {
     setDraggedCandidate(candidateId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', candidateId);
+    
+    // Find the candidate data
+    const candidate = candidates.find(c => c.id === candidateId);
+    if (candidate) {
+      // Create a custom drag image
+      const dragImage = document.createElement('div');
+      dragImage.className = 'bg-white p-3 rounded-lg shadow-lg border-2 border-primary-400 max-w-xs';
+      dragImage.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <div class="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-semibold text-xs">
+            ${candidate.firstName[0]}${candidate.lastName[0]}
+          </div>
+          <div>
+            <div class="font-medium text-gray-900 text-sm">${candidate.firstName} ${candidate.lastName}</div>
+            <div class="text-xs text-gray-500">${candidate.currentRole}</div>
+          </div>
+        </div>
+      `;
+      
+      // Add to body temporarily
+      dragImage.style.position = 'absolute';
+      dragImage.style.top = '-1000px';
+      dragImage.style.left = '-1000px';
+      document.body.appendChild(dragImage);
+      
+      // Set as drag image
+      e.dataTransfer.setDragImage(dragImage, 75, 30);
+      
+      // Clean up after a short delay
+      setTimeout(() => {
+        document.body.removeChild(dragImage);
+      }, 100);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent, stageId: string) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     setDragOverStage(stageId);
   };
 
-  const handleDragLeave = () => {
-    setDragOverStage(null);
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear drag over if we're actually leaving the stage area
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    if (
+      e.clientX < rect.left ||
+      e.clientX > rect.right ||
+      e.clientY < rect.top ||
+      e.clientY > rect.bottom
+    ) {
+      setDragOverStage(null);
+    }
   };
 
   const handleDrop = (e: React.DragEvent, stageId: string) => {
     e.preventDefault();
-    if (draggedCandidate && draggedCandidate !== stageId) {
-      onCandidateMove(draggedCandidate, stageId);
+    
+    if (draggedCandidate) {
+      // Find the candidate to check if they're already in this stage
+      const candidate = candidates.find(c => c.id === draggedCandidate);
+      
+      if (candidate && candidate.stage !== stageId) {
+        console.log(`Moving candidate ${draggedCandidate} from ${candidate.stage} to ${stageId}`);
+        onCandidateMove(draggedCandidate, stageId);
+      }
     }
+    
+    setDraggedCandidate(null);
+    setDragOverStage(null);
+  };
+
+  const handleDragEnd = () => {
     setDraggedCandidate(null);
     setDragOverStage(null);
   };
@@ -215,9 +290,6 @@ export function PipelineKanban({
                 className={`${stage.color} rounded-lg p-4 mb-4 border-2 transition-all ${
                   isDropTarget ? 'border-primary-400 border-dashed bg-primary-50' : 'border-transparent'
                 }`}
-                onDragOver={(e) => handleDragOver(e, stage.id)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, stage.id)}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -233,163 +305,186 @@ export function PipelineKanban({
                 )}
               </div>
 
-              {/* Candidate Cards */}
-              <div className="space-y-3 min-h-[200px]">
-                {stageCandidates.map((candidate) => (
-                  <div
-                    key={candidate.id}
-                    draggable
-                    onDragStart={() => handleDragStart(candidate.id)}
-                    onClick={() => onCandidateSelect(candidate)}
-                    className={`bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 cursor-pointer group ${
-                      draggedCandidate === candidate.id ? 'opacity-50 transform rotate-2' : ''
-                    }`}
-                  >
-                    {/* Candidate Header */}
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center space-x-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                          {candidate.firstName[0]}{candidate.lastName[0]}
+              {/* Drop Zone */}
+              <div
+                className={`min-h-[200px] rounded-lg border-2 border-dashed transition-all ${
+                  isDropTarget 
+                    ? 'border-primary-400 bg-primary-50' 
+                    : 'border-transparent'
+                } ${draggedCandidate ? 'border-gray-300' : ''}`}
+                onDragOver={(e) => handleDragOver(e, stage.id)}
+                onDragLeave={(e) => handleDragLeave(e)}
+                onDrop={(e) => handleDrop(e, stage.id)}
+              >
+                {/* Candidate Cards */}
+                <div className="space-y-3 p-2">
+                  {stageCandidates.map((candidate) => (
+                    <div
+                      key={candidate.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, candidate.id)}
+                      onDragEnd={handleDragEnd}
+                      onClick={() => onCandidateSelect(candidate)}
+                      className={`bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 cursor-move group ${
+                        draggedCandidate === candidate.id ? 'opacity-50 transform scale-95 shadow-lg border-primary-300' : ''
+                      }`}
+                    >
+                      {/* Candidate Header */}
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center space-x-3 flex-1 min-w-0">
+                          <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                            {candidate.firstName[0]}{candidate.lastName[0]}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-medium text-gray-900 truncate">
+                              {candidate.firstName} {candidate.lastName}
+                            </h4>
+                            <p className="text-sm text-gray-500 truncate">{candidate.currentRole}</p>
+                          </div>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="font-medium text-gray-900 truncate">
-                            {candidate.firstName} {candidate.lastName}
-                          </h4>
-                          <p className="text-sm text-gray-500 truncate">{candidate.currentRole}</p>
+                        <div className="flex items-center space-x-1 flex-shrink-0">
+                          <div className="flex items-center">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-3 w-3 ${
+                                  i < candidate.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <button className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <MoreHorizontal className="h-3 w-3" />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-1 flex-shrink-0">
-                        <div className="flex items-center">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-3 w-3 ${
-                                i < candidate.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                        <button className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <MoreHorizontal className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </div>
 
-                    {/* Candidate Details */}
-                    <div className="space-y-2 mb-3">
-                      <div className="flex items-center text-xs text-gray-500">
-                        <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
-                        <span className="truncate">{candidate.currentLocation}</span>
-                      </div>
-                      <div className="flex items-center text-xs text-gray-500">
-                        <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
-                        <span className="truncate">{candidate.availability}</span>
-                      </div>
-                      <div className="flex items-center text-xs text-gray-500">
-                        <Briefcase className="h-3 w-3 mr-1 flex-shrink-0" />
-                        <span className="truncate">{candidate.source} • {candidate.experience}</span>
-                      </div>
-                      {candidate.expectedSalary && (
+                      {/* Candidate Details */}
+                      <div className="space-y-2 mb-3">
                         <div className="flex items-center text-xs text-gray-500">
-                          <span className="truncate">💰 {candidate.expectedSalary}</span>
+                          <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
+                          <span className="truncate">{candidate.currentLocation}</span>
                         </div>
-                      )}
-                    </div>
+                        <div className="flex items-center text-xs text-gray-500">
+                          <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
+                          <span className="truncate">{candidate.availability}</span>
+                        </div>
+                        <div className="flex items-center text-xs text-gray-500">
+                          <Briefcase className="h-3 w-3 mr-1 flex-shrink-0" />
+                          <span className="truncate">{candidate.source} • {candidate.experience}</span>
+                        </div>
+                        {candidate.expectedSalary && (
+                          <div className="flex items-center text-xs text-gray-500">
+                            <span className="truncate">💰 {candidate.expectedSalary}</span>
+                          </div>
+                        )}
+                      </div>
 
-                    {/* Skills */}
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {candidate.skills.slice(0, 3).map((skill, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                      {candidate.skills.length > 3 && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                          +{candidate.skills.length - 3}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Tags */}
-                    {candidate.tags.length > 0 && (
+                      {/* Skills */}
                       <div className="flex flex-wrap gap-1 mb-3">
-                        {candidate.tags.slice(0, 2).map((tag, index) => (
+                        {candidate.skills.slice(0, 3).map((skill, index) => (
                           <span
                             key={index}
-                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTagColor(tag)}`}
+                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                           >
-                            {tag}
+                            {skill}
                           </span>
                         ))}
+                        {candidate.skills.length > 3 && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                            +{candidate.skills.length - 3}
+                          </span>
+                        )}
                       </div>
-                    )}
 
-                    {/* Footer */}
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                      <span className="text-xs text-gray-500">
-                        Last: {candidate.lastInteraction}
-                      </span>
-                      <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Handle email action
-                          }}
-                          className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
-                        >
-                          <Mail className="h-3 w-3" />
-                        </button>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Handle calendar action
-                          }}
-                          className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
-                        >
-                          <Calendar className="h-3 w-3" />
-                        </button>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Handle message action
-                          }}
-                          className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
-                        >
-                          <MessageSquare className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </div>
+                      {/* Tags */}
+                      {candidate.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          {candidate.tags.slice(0, 2).map((tag, index) => (
+                            <span
+                              key={index}
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTagColor(tag)}`}
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
-                    {/* Progress Indicator */}
-                    {candidate.notes && (
-                      <div className="mt-2 p-2 bg-yellow-50 rounded text-xs text-yellow-800 border-l-2 border-yellow-400">
-                        <div className="flex items-center">
-                          <AlertCircle className="h-3 w-3 mr-1" />
-                          <span className="truncate">{candidate.notes}</span>
+                      {/* Footer */}
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                        <span className="text-xs text-gray-500">
+                          Last: {candidate.lastInteraction}
+                        </span>
+                        <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Handle email action
+                            }}
+                            className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
+                          >
+                            <Mail className="h-3 w-3" />
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Handle calendar action
+                            }}
+                            className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
+                          >
+                            <Calendar className="h-3 w-3" />
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Handle message action
+                            }}
+                            className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
+                          >
+                            <MessageSquare className="h-3 w-3" />
+                          </button>
                         </div>
                       </div>
-                    )}
-                  </div>
-                ))}
 
-                {/* Empty State */}
-                {stageCandidates.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    <User className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                    <p className="text-sm">No candidates in {stage.name.toLowerCase()}</p>
-                    {stage.id === 'sourced' && (
-                      <button 
-                        onClick={onAddCandidate}
-                        className="mt-2 text-xs text-primary-600 hover:text-primary-700"
-                      >
-                        Add your first candidate
-                      </button>
-                    )}
-                  </div>
-                )}
+                      {/* Progress Indicator */}
+                      {candidate.notes && (
+                        <div className="mt-2 p-2 bg-yellow-50 rounded text-xs text-yellow-800 border-l-2 border-yellow-400">
+                          <div className="flex items-center">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            <span className="truncate">{candidate.notes}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Empty State */}
+                  {stageCandidates.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <User className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                      <p className="text-sm">No candidates in {stage.name.toLowerCase()}</p>
+                      {stage.id === 'sourced' && (
+                        <button 
+                          onClick={onAddCandidate}
+                          className="mt-2 text-xs text-primary-600 hover:text-primary-700"
+                        >
+                          Add your first candidate
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Drop Target Indicator */}
+                  {isDropTarget && draggedCandidate && (
+                    <div className="flex items-center justify-center h-16 border-2 border-dashed border-primary-400 rounded-lg bg-primary-50 text-primary-600">
+                      <div className="text-center">
+                        <Plus className="h-5 w-5 mx-auto mb-1" />
+                        <span className="text-xs font-medium">Drop here to move candidate</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           );

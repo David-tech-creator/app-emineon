@@ -94,7 +94,7 @@ const jobSchema = z.object({
   workMode: z.enum(['on-site', 'remote', 'hybrid']),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   skills: z.array(z.string()).min(1, 'At least one skill is required'),
-  languages: z.array(z.string()).optional(),
+  languages: z.array(z.string()).optional().default([]),
   department: z.string().optional(),
   priority: z.enum(['low', 'medium', 'high']),
   owner: z.string().min(1, 'Job owner is required'),
@@ -166,17 +166,18 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
     formState: { errors },
     reset
   } = useForm({
+    resolver: zodResolver(jobSchema),
     defaultValues: {
       title: '',
       company: '',
       location: '',
-      contractType: 'permanent',
-      workMode: 'hybrid',
-      priority: 'medium',
-      status: 'draft',
+      contractType: 'permanent' as const,
+      workMode: 'hybrid' as const,
+      priority: 'medium' as const,
+      status: 'draft' as const,
       startDate: '',
       description: '',
-      owner: '',
+      owner: user?.fullName || user?.firstName + ' ' + user?.lastName || '',
       skills: [] as string[],
       languages: [] as string[],
       duration: '',
@@ -215,6 +216,8 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
     setCurrentStep('parsing');
     
     try {
+      console.log('🔄 Starting job description parsing...', { textLength: text.length });
+      
       // Call the AI job description parsing API
       const response = await fetch('/api/ai/job-description/parse', {
         method: 'POST',
@@ -224,48 +227,111 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
         body: JSON.stringify({ jobDescription: text }),
       });
 
+      console.log('📡 API Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to parse job description');
+        const errorData = await response.text();
+        console.error('❌ API Error:', errorData);
+        throw new Error(`API Error: ${response.status} - ${errorData}`);
       }
 
       const result = await response.json();
+      console.log('✅ API Result:', result);
       
-      // Enhanced parsed data with AI extraction
+      // Enhanced parsed data with AI extraction - properly map API response
       const aiParsedData: Partial<JobFormData> = {
         title: result.data?.title || extractTitle(text) || 'Senior Software Developer',
         company: result.data?.company || extractCompany(text) || 'Tech Company',
         location: result.data?.location || extractLocation(text) || 'Zurich, Switzerland',
-        contractType: result.data?.contractType || extractContractType(text) || 'permanent',
+        // Fix contract type mapping - API returns 'contract' but form expects 'fixed-term'
+        contractType: result.data?.contractType === 'contract' ? 'fixed-term' : 
+                     (result.data?.contractType || extractContractType(text) || 'permanent'),
         workMode: result.data?.workMode || extractWorkMode(text) || 'hybrid',
         description: result.data?.description || text,
         skills: result.data?.skills || extractSkills(text),
         languages: result.data?.languages || extractLanguages(text),
         department: result.data?.department || extractDepartment(text),
         priority: result.data?.priority || 'medium',
-        owner: 'Current User',
+        // Use actual user name instead of hardcoded string
+        owner: user?.fullName || user?.firstName + ' ' + user?.lastName || 'Current User',
         salary: result.data?.salary || '',
-        duration: result.data?.duration || ''
+        duration: result.data?.duration || '',
+        // Handle start date properly
+        startDate: result.data?.startDate ? formatDateForInput(result.data.startDate) : ''
       };
 
+      console.log('🎯 Parsed Data:', aiParsedData);
       setParsedData(aiParsedData);
       
-      // Pre-fill form with parsed data
-      if (aiParsedData.title) setValue('title', aiParsedData.title);
-      if (aiParsedData.company) setValue('company', aiParsedData.company);
-      if (aiParsedData.location) setValue('location', aiParsedData.location);
-      if (aiParsedData.contractType) setValue('contractType', aiParsedData.contractType as any);
-      if (aiParsedData.workMode) setValue('workMode', aiParsedData.workMode as any);
-      if (aiParsedData.description) setValue('description', aiParsedData.description);
-      if (aiParsedData.skills) setValue('skills', aiParsedData.skills as any);
-      if (aiParsedData.languages) setValue('languages', aiParsedData.languages as any);
-      if (aiParsedData.priority) setValue('priority', aiParsedData.priority as any);
-      if (aiParsedData.owner) setValue('owner', aiParsedData.owner);
-      if (aiParsedData.department) setValue('department', aiParsedData.department as any);
-      if (aiParsedData.salary) setValue('salary', aiParsedData.salary);
-      if (aiParsedData.duration) setValue('duration', aiParsedData.duration);
+      // Pre-fill form with parsed data - ensure proper type casting and force re-render
+      console.log('📝 Setting form values...');
+      
+      // Use setTimeout to ensure state updates are processed
+      setTimeout(() => {
+        if (aiParsedData.title) {
+          console.log('Setting title:', aiParsedData.title);
+          setValue('title', aiParsedData.title, { shouldValidate: true, shouldDirty: true });
+        }
+        if (aiParsedData.company) {
+          console.log('Setting company:', aiParsedData.company);
+          setValue('company', aiParsedData.company, { shouldValidate: true, shouldDirty: true });
+        }
+        if (aiParsedData.location) {
+          console.log('Setting location:', aiParsedData.location);
+          setValue('location', aiParsedData.location, { shouldValidate: true, shouldDirty: true });
+        }
+        if (aiParsedData.contractType) {
+          console.log('Setting contractType:', aiParsedData.contractType);
+          setValue('contractType', aiParsedData.contractType as 'permanent' | 'freelance' | 'fixed-term' | 'internship', { shouldValidate: true, shouldDirty: true });
+        }
+        if (aiParsedData.workMode) {
+          console.log('Setting workMode:', aiParsedData.workMode);
+          setValue('workMode', aiParsedData.workMode as 'on-site' | 'remote' | 'hybrid', { shouldValidate: true, shouldDirty: true });
+        }
+        if (aiParsedData.description) {
+          console.log('Setting description:', aiParsedData.description.substring(0, 100) + '...');
+          setValue('description', aiParsedData.description, { shouldValidate: true, shouldDirty: true });
+        }
+        if (aiParsedData.skills && Array.isArray(aiParsedData.skills)) {
+          console.log('Setting skills:', aiParsedData.skills);
+          setValue('skills', aiParsedData.skills, { shouldValidate: true, shouldDirty: true });
+        }
+        if (aiParsedData.languages && Array.isArray(aiParsedData.languages)) {
+          console.log('Setting languages:', aiParsedData.languages);
+          setValue('languages', aiParsedData.languages, { shouldValidate: true, shouldDirty: true });
+        }
+        if (aiParsedData.priority) {
+          console.log('Setting priority:', aiParsedData.priority);
+          setValue('priority', aiParsedData.priority as 'low' | 'medium' | 'high', { shouldValidate: true, shouldDirty: true });
+        }
+        if (aiParsedData.owner) {
+          console.log('Setting owner:', aiParsedData.owner);
+          setValue('owner', aiParsedData.owner, { shouldValidate: true, shouldDirty: true });
+        }
+        if (aiParsedData.department) {
+          console.log('Setting department:', aiParsedData.department);
+          setValue('department', aiParsedData.department, { shouldValidate: true, shouldDirty: true });
+        }
+        if (aiParsedData.salary) {
+          console.log('Setting salary:', aiParsedData.salary);
+          setValue('salary', aiParsedData.salary, { shouldValidate: true, shouldDirty: true });
+        }
+        if (aiParsedData.duration) {
+          console.log('Setting duration:', aiParsedData.duration);
+          setValue('duration', aiParsedData.duration, { shouldValidate: true, shouldDirty: true });
+        }
+        if (aiParsedData.startDate) {
+          console.log('Setting startDate:', aiParsedData.startDate);
+          setValue('startDate', aiParsedData.startDate, { shouldValidate: true, shouldDirty: true });
+        }
+        
+        console.log('✅ All form values set!');
+      }, 100);
+      
     } catch (error) {
-      console.error('AI parsing failed, using fallback:', error);
-      // Fallback to local extraction
+      console.error('❌ AI parsing failed, using fallback:', error);
+      
+      // Fallback to local extraction with same fixes
       const fallbackParsedData: Partial<JobFormData> = {
         title: extractTitle(text) || 'Senior Software Developer',
         company: extractCompany(text) || 'Tech Company',
@@ -277,26 +343,30 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
         languages: extractLanguages(text),
         department: extractDepartment(text),
         priority: 'medium',
-        owner: 'Current User'
+        owner: user?.fullName || user?.firstName + ' ' + user?.lastName || 'Current User',
+        salary: '',
+        duration: '',
+        startDate: ''
       };
 
+      console.log('🔄 Using fallback data:', fallbackParsedData);
       setParsedData(fallbackParsedData);
       
       // Pre-fill form with fallback data
-      if (fallbackParsedData.title) setValue('title', fallbackParsedData.title);
-      if (fallbackParsedData.company) setValue('company', fallbackParsedData.company);
-      if (fallbackParsedData.location) setValue('location', fallbackParsedData.location);
-      if (fallbackParsedData.contractType) setValue('contractType', fallbackParsedData.contractType as any);
-      if (fallbackParsedData.workMode) setValue('workMode', fallbackParsedData.workMode as any);
-      if (fallbackParsedData.description) setValue('description', fallbackParsedData.description);
-      if (fallbackParsedData.skills) setValue('skills', fallbackParsedData.skills as any);
-      if (fallbackParsedData.languages) setValue('languages', fallbackParsedData.languages as any);
-      if (fallbackParsedData.priority) setValue('priority', fallbackParsedData.priority as any);
-      if (fallbackParsedData.owner) setValue('owner', fallbackParsedData.owner);
-      if (fallbackParsedData.department) setValue('department', fallbackParsedData.department as any);
+      setTimeout(() => {
+        if (fallbackParsedData.title) setValue('title', fallbackParsedData.title, { shouldValidate: true, shouldDirty: true });
+        if (fallbackParsedData.company) setValue('company', fallbackParsedData.company, { shouldValidate: true, shouldDirty: true });
+        if (fallbackParsedData.location) setValue('location', fallbackParsedData.location, { shouldValidate: true, shouldDirty: true });
+        if (fallbackParsedData.contractType) setValue('contractType', fallbackParsedData.contractType as 'permanent' | 'freelance' | 'fixed-term' | 'internship', { shouldValidate: true, shouldDirty: true });
+        if (fallbackParsedData.workMode) setValue('workMode', fallbackParsedData.workMode as 'on-site' | 'remote' | 'hybrid', { shouldValidate: true, shouldDirty: true });
+        if (fallbackParsedData.description) setValue('description', fallbackParsedData.description, { shouldValidate: true, shouldDirty: true });
+        if (fallbackParsedData.skills && Array.isArray(fallbackParsedData.skills)) setValue('skills', fallbackParsedData.skills, { shouldValidate: true, shouldDirty: true });
+        if (fallbackParsedData.languages && Array.isArray(fallbackParsedData.languages)) setValue('languages', fallbackParsedData.languages, { shouldValidate: true, shouldDirty: true });
+        if (fallbackParsedData.priority) setValue('priority', fallbackParsedData.priority as 'low' | 'medium' | 'high', { shouldValidate: true, shouldDirty: true });
+        if (fallbackParsedData.owner) setValue('owner', fallbackParsedData.owner, { shouldValidate: true, shouldDirty: true });
+        if (fallbackParsedData.department) setValue('department', fallbackParsedData.department, { shouldValidate: true, shouldDirty: true });
+      }, 100);
     }
-
-
 
     setIsParsingAI(false);
     setCurrentStep('review');
@@ -316,7 +386,7 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
     }
     return null;
   };
-
+  
   const extractCompany = (text: string) => {
     const companyPatterns = [
       /company:\s*([^\n]+)/i,
@@ -393,6 +463,93 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
     return 'Technology';
   };
 
+  // Helper function to format date for input field
+  const formatDateForInput = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD format
+    } catch {
+      return '';
+    }
+  };
+
+  // Helper function to extract text from different file types
+  const extractTextFromFile = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = () => {
+        const text = reader.result as string;
+        resolve(text);
+      };
+      
+      reader.onerror = () => {
+        reject(new Error('Failed to read file'));
+      };
+      
+      // For now, only handle text files directly
+      // In production, you'd want to use libraries for PDF/DOCX parsing
+      if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+        reader.readAsText(file);
+      } else {
+        reject(new Error('File type not supported for direct text extraction'));
+      }
+    });
+  };
+
+  // Improved file upload handler with better error handling
+  const handleFileUpload = async (file: File) => {
+    setIsParsingAI(true);
+    setCurrentStep('parsing');
+    
+    try {
+      console.log('📁 Processing uploaded file:', file.name, file.type);
+      
+      // For text files, extract text directly
+      if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+        const text = await extractTextFromFile(file);
+        await parseJobDescription(text);
+        return;
+      }
+      
+      // For PDF/DOCX files, use file parsing API
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      console.log('📤 Uploading file for parsing...');
+      const response = await fetch('/api/files/parse', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`File upload failed: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('📄 File parsing result:', result);
+      
+      if (result.success && result.data?.content) {
+        await parseJobDescription(result.data.content);
+      } else {
+        throw new Error('No content extracted from file');
+      }
+    } catch (error) {
+      console.error('❌ File upload error:', error);
+      setIsParsingAI(false);
+      setCurrentStep('intake');
+      // Show error to user
+      alert(`Failed to process file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // Wrapper for file input change handler
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFileUpload(e.target.files[0]);
+    }
+  };
+
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -405,35 +562,20 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
     setDragActive(false);
     
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const text = event.target?.result as string;
-        setChatInput(text);
-        setJobDescription(text);
-        // Auto-process the dropped file
-        parseJobDescription(text);
-      };
-      reader.readAsText(file);
-    }
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const text = event.target?.result as string;
-        setChatInput(text);
-        setJobDescription(text);
-        // Auto-process the uploaded file
-        parseJobDescription(text);
-      };
-      reader.readAsText(file);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      const file = files[0];
+      // Validate file type
+      const allowedTypes = ['.pdf', '.docx', '.txt', '.doc'];
+      const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+      
+      if (allowedTypes.includes(fileExtension)) {
+        handleFileUpload(file);
+      } else {
+        alert('Please upload a PDF, DOCX, or TXT file.');
+      }
     }
   };
 
@@ -692,7 +834,7 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
                         <input
                           type="file"
                           accept=".pdf,.docx,.txt,.doc"
-                          onChange={handleFileUpload}
+                          onChange={handleFileInputChange}
                           className="hidden"
                           id="file-upload-chat"
                         />
@@ -950,6 +1092,52 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
                 </div>
               </div>
 
+              {/* Extraction Summary */}
+              {parsedData && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                  <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center space-x-2">
+                    <Sparkles className="h-4 w-4" />
+                    <span>AI Extracted Information</span>
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                    <div className="flex items-center space-x-1">
+                      <div className={`w-2 h-2 rounded-full ${parsedData.title ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className={parsedData.title ? 'text-green-700' : 'text-gray-500'}>Job Title</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className={`w-2 h-2 rounded-full ${parsedData.company ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className={parsedData.company ? 'text-green-700' : 'text-gray-500'}>Company</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className={`w-2 h-2 rounded-full ${parsedData.location ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className={parsedData.location ? 'text-green-700' : 'text-gray-500'}>Location</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className={`w-2 h-2 rounded-full ${parsedData.skills && parsedData.skills.length > 0 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className={parsedData.skills && parsedData.skills.length > 0 ? 'text-green-700' : 'text-gray-500'}>
+                        Skills ({parsedData.skills?.length || 0})
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className={`w-2 h-2 rounded-full ${parsedData.salary ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className={parsedData.salary ? 'text-green-700' : 'text-gray-500'}>Salary</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className={`w-2 h-2 rounded-full ${parsedData.department ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className={parsedData.department ? 'text-green-700' : 'text-gray-500'}>Department</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className={`w-2 h-2 rounded-full ${parsedData.contractType ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className={parsedData.contractType ? 'text-green-700' : 'text-gray-500'}>Contract Type</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className={`w-2 h-2 rounded-full ${parsedData.workMode ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className={parsedData.workMode ? 'text-green-700' : 'text-gray-500'}>Work Mode</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Basic Information */}
                 <div className="space-y-4">
@@ -1095,29 +1283,98 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
               {/* Skills Tags */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Required Skills</label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {parsedData?.skills?.map((skill, index) => (
-                    <span key={index} className="px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm">
-                      {skill}
-                    </span>
-                  ))}
+                <div className="space-y-3">
+                  {/* Display current skills */}
+                  <div className="flex flex-wrap gap-2 min-h-[40px] p-3 border border-gray-300 rounded-lg bg-gray-50">
+                    {(watch('skills') || []).length > 0 ? (
+                      (watch('skills') || []).map((skill, index) => (
+                        <span 
+                          key={index} 
+                          className="flex items-center space-x-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm"
+                        >
+                          <span>{skill}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const currentSkills = watch('skills') || [];
+                              const newSkills = currentSkills.filter((_, i) => i !== index);
+                              setValue('skills', newSkills);
+                            }}
+                            className="ml-1 text-primary-600 hover:text-primary-800"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-gray-500 text-sm">No skills added yet</span>
+                    )}
+                  </div>
+                  
+                  {/* Add new skill input */}
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      placeholder="Add a skill (e.g., React, Python, Leadership)"
+                      className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const value = (e.target as HTMLInputElement).value.trim();
+                          if (value) {
+                            const currentSkills = watch('skills') || [];
+                            if (!currentSkills.includes(value)) {
+                              setValue('skills', [...currentSkills, value]);
+                              (e.target as HTMLInputElement).value = '';
+                            }
+                          }
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={(e) => {
+                        const input = (e.target as HTMLButtonElement).previousElementSibling as HTMLInputElement;
+                        const value = input.value.trim();
+                        if (value) {
+                          const currentSkills = watch('skills') || [];
+                          if (!currentSkills.includes(value)) {
+                            setValue('skills', [...currentSkills, value]);
+                            input.value = '';
+                          }
+                        }
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  {/* Suggested skills based on job description */}
+                  {parsedData?.skills && parsedData.skills.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-sm text-gray-600">Suggested skills from job description:</span>
+                      <div className="flex flex-wrap gap-2">
+                        {parsedData.skills
+                          .filter(skill => !(watch('skills') || []).includes(skill))
+                          .map((skill, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => {
+                                const currentSkills = watch('skills') || [];
+                                setValue('skills', [...currentSkills, skill]);
+                              }}
+                              className="px-3 py-1 border border-gray-300 text-gray-700 rounded-full text-sm hover:bg-gray-100 transition-colors"
+                            >
+                              + {skill}
+                            </button>
+                          ))
+                        }
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <input
-                  type="text"
-                  placeholder="Add skills (comma separated)"
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      const value = (e.target as HTMLInputElement).value.trim();
-                      if (value) {
-                        const currentSkills = watch('skills') || [];
-                        setValue('skills', [...currentSkills, value]);
-                        (e.target as HTMLInputElement).value = '';
-                      }
-                    }
-                  }}
-                />
               </div>
 
               {/* Action Buttons */}
