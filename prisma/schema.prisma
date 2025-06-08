@@ -1,3 +1,6 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,553 +10,206 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  candidates        Candidate[]
+  competenceFiles   CompetenceFile[]
+  templates         Template[]
+  jobs              Job[]
+
+  @@map("users")
+}
+
 model Candidate {
-  id                    String            @id @default(cuid())
-  firstName             String
-  lastName              String
-  email                 String            @unique
-  createdAt             DateTime          @default(now())
-  archived              Boolean           @default(false)
-  availableFrom         DateTime?
-  certifications        String[]
-  companies             Json?
-  conversionStatus      ConversionStatus?
-  culturalFitScore      Float?
-  currentLocation       String?
-  currentTitle          String?
-  degrees               String[]
-  educationLevel        EducationLevel?
-  expectedSalary        String?
-  experienceYears       Int?
-  frameworks            String[]
-  freelancer            Boolean?          @default(false)
-  functionalDomain      String?
-  githubUrl             String?
-  graduationYear        Int?
-  interviewScores       Json?
-  lastUpdated           DateTime          @updatedAt
-  linkedinUrl           String?
-  matchingScore         Float?
-  methodologies         String[]
-  motivationalFitNotes  String?
-  nationality           String?
-  notableProjects       String[]
-  phone                 String?
-  portfolioUrl          String?
-  preferredContractType ContractType?
-  primaryIndustry       String?
-  professionalHeadline  String?
-  profileToken          String?           @unique
-  programmingLanguages  String[]
-  recruiterNotes        String[]
-  referees              Json?
-  relocationWillingness Boolean?          @default(false)
-  remotePreference      RemotePreference?
-  seniorityLevel        SeniorityLevel?
-  softSkills            String[]
-  source                String?
-  spokenLanguages       String[]
-  status                CandidateStatus   @default(NEW)
-  summary               String?
-  tags                  String[]
-  technicalSkills       String[]
-  timezone              String?
-  toolsAndPlatforms     String[]
-  universities          String[]
-  videoInterviewUrl     String?
-  workPermitType        String?
-  aiMatches             AIMatch[]
-  applications          Application[]
-  assessments           Assessment[]
-  evaluations           Evaluation[]
-  interviews            Interview[]
-  referrals             Referral[]
-  smsMessages           SmsMessage[]
+  id                 String    @id @default(cuid())
+  fullName           String
+  currentTitle       String
+  email              String?
+  phone              String?
+  location           String?
+  photo              String?
+  yearsOfExperience  Int?
+  summary            String?
+  skills             String[]
+  certifications     String[]
+  education          String[]
+  languages          String[]
+  linkedinUrl        String?
+  portfolioUrl       String?
+  cvFilePath         String?
+  status             CandidateStatus @default(ACTIVE)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Relations
+  userId             String
+  user               User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  experience         Experience[]
+  competenceFiles    CompetenceFile[]
+  applications       Application[]
 
   @@map("candidates")
 }
 
-model Job {
-  id                String            @id @default(cuid())
-  title             String
-  description       String
-  department        String
-  location          String
-  language          Language          @default(EN)
-  status            JobStatus         @default(DRAFT)
-  salaryMin         Int?
-  salaryMax         Int?
-  salaryCurrency    String?           @default("USD")
-  experienceLevel   String?
-  employmentType    String[]
-  benefits          String[]
-  requirements      String[]
-  responsibilities  String[]
-  isRemote          Boolean           @default(false)
-  publicToken       String?           @unique
-  embedCode         String?
-  publishedAt       DateTime?
-  expiresAt         DateTime?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  aiMatches         AIMatch[]
-  applications      Application[]
-  interviews        Interview[]
-  distributions     JobDistribution[]
-  socialPosts       SocialMediaPost[]
+model Experience {
+  id               String   @id @default(cuid())
+  company          String
+  title            String
+  startDate        String
+  endDate          String
+  responsibilities String
+  location         String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  // Indexes for performance optimization
-  @@index([status, publishedAt])
-  @@index([status, isRemote])
-  @@index([status, department])
-  @@index([status, location])
-  @@index([status, language])
-  @@index([publishedAt])
-  @@index([expiresAt])
+  // Relations
+  candidateId      String
+  candidate        Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@map("experiences")
+}
+
+model Template {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  colorHex    String
+  font        String
+  client      String?
+  footerText  String?
+  logoUrl     String?
+  sections    Json     // Array of section configurations
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  userId          String
+  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  competenceFiles CompetenceFile[]
+
+  @@map("templates")
+}
+
+model CompetenceFile {
+  id           String            @id @default(cuid())
+  fileName     String
+  filePath     String
+  format       FileFormat
+  fileSize     Int
+  downloadUrl  String
+  customization Json            // Styling customization data
+  sections     Json             // Section configuration
+  status       FileStatus       @default(GENERATED)
+  generatedAt  DateTime         @default(now())
+  expiresAt    DateTime?
+  downloadCount Int             @default(0)
+  lastDownloadAt DateTime?
+
+  // Relations
+  candidateId  String
+  candidate    Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  templateId   String
+  template     Template @relation(fields: [templateId], references: [id])
+  userId       String
+  user         User @relation(fields: [userId], references: [id])
+
+  @@map("competence_files")
+}
+
+model Job {
+  id              String       @id @default(cuid())
+  title           String
+  company         String
+  description     String
+  requirements    String[]
+  skills          String[]
+  location        String?
+  remote          Boolean      @default(false)
+  contractType    ContractType
+  salaryMin       Int?
+  salaryMax       Int?
+  currency        String       @default("CHF")
+  urgent          Boolean      @default(false)
+  status          JobStatus    @default(ACTIVE)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  expiresAt       DateTime?
+
+  // Relations
+  userId          String
+  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications    Application[]
 
   @@map("jobs")
 }
 
 model Application {
-  id           String            @id @default(cuid())
-  candidateId  String
-  jobId        String
-  status       ApplicationStatus @default(PENDING)
-  coverLetter  String?
-  cvUrl        String?
-  referralCode String?
-  source       String?
-  ipAddress    String?
-  userAgent    String?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  candidate    Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  job          Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  id          String            @id @default(cuid())
+  status      ApplicationStatus @default(PENDING)
+  appliedAt   DateTime          @default(now())
+  notes       String?
+  
+  // Relations
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId       String
+  job         Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@unique([candidateId, jobId])
   @@map("applications")
 }
 
-model Referral {
-  id           String         @id @default(cuid())
-  candidateId  String
-  referrerId   String
-  referrerName String
-  code         String         @unique
-  isUsed       Boolean        @default(false)
-  reward       Float?
-  status       ReferralStatus @default(PENDING)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  candidate    Candidate      @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-
-  @@map("referrals")
-}
-
-model Evaluation {
-  id          String    @id @default(cuid())
-  candidateId String
-  evaluatorId String
-  rating      Float
-  notes       String?
-  criteria    Json?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-
-  @@map("evaluations")
-}
-
-model Interview {
-  id                String          @id @default(cuid())
-  candidateId       String
-  jobId             String
-  interviewerId     String
-  type              InterviewType
-  status            InterviewStatus @default(SCHEDULED)
-  scheduledAt       DateTime
-  duration          Int
-  location          String?
-  videoInterviewUrl String?
-  notes             String?
-  rating            Float?
-  calendarEventId   String?
-  meetingLink       String?
-  dialInDetails     String?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  candidate         Candidate       @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  job               Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
-
-  @@map("interviews")
-}
-
-model Assessment {
-  id          String           @id @default(cuid())
-  candidateId String
-  type        AssessmentType
-  questions   Json
-  answers     Json?
-  score       Float?
-  maxScore    Float
-  status      AssessmentStatus @default(NOT_STARTED)
-  startedAt   DateTime?
-  completedAt DateTime?
-  expiresAt   DateTime?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  candidate   Candidate        @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-
-  @@map("assessments")
-}
-
-model CalendarIntegration {
-  id           String           @id @default(cuid())
-  userId       String           @unique
-  provider     CalendarProvider
-  accessToken  String
-  refreshToken String?
-  expiresAt    DateTime?
-  isActive     Boolean          @default(true)
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-
-  @@map("calendar_integrations")
-}
-
-model SmsMessage {
-  id          String       @id @default(cuid())
-  candidateId String
-  phoneNumber String
-  message     String
-  status      SmsStatus    @default(PENDING)
-  direction   SmsDirection
-  externalId  String?
-  errorCode   String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  candidate   Candidate    @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-
-  @@map("sms_messages")
-}
-
-model WorkflowRule {
-  id         String   @id @default(cuid())
-  name       String
-  trigger    String
-  conditions Json
-  actions    Json
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@map("workflow_rules")
-}
-
-model JobDistribution {
-  id           String             @id @default(cuid())
-  jobId        String
-  platform     String
-  status       DistributionStatus
-  externalId   String?
-  postUrl      String?
-  cost         Float?
-  postedAt     DateTime?
-  expiresAt    DateTime?
-  errorCode    String?
-  errorMessage String?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  job          Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
-
-  @@map("job_distributions")
-}
-
-model SocialMediaPost {
-  id        String         @id @default(cuid())
-  jobId     String
-  platform  SocialPlatform
-  content   String
-  status    PostStatus
-  postUrl   String?
-  postId    String?
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-  job       Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
-
-  @@map("social_media_posts")
-}
-
-model AIMatch {
-  id          String    @id @default(cuid())
-  jobId       String
-  candidateId String
-  score       Float
-  reasoning   String?
-  factors     Json?
-  createdAt   DateTime  @default(now())
-  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
-
-  @@unique([jobId, candidateId])
-  @@map("ai_matches")
-}
-
-model Log {
-  id        String   @id @default(cuid())
-  actor     String?
-  action    String
-  resource  String
-  details   Json?
-  level     LogLevel @default(INFO)
-  timestamp DateTime @default(now())
-
-  @@map("logs")
-}
-
-enum JobStatus {
-  DRAFT
-  ACTIVE
-  PAUSED
-  CLOSED
-  ARCHIVED
-}
-
-enum Language {
-  EN
-  ES
-  FR
-  DE
-  PT
-  IT
-  NL
-  PL
-  RU
-  ZH
-  JA
-  KO
-}
-
-enum ApplicationStatus {
-  PENDING
-  REVIEWING
-  INTERVIEW_SCHEDULED
-  INTERVIEWED
-  OFFER_EXTENDED
-  HIRED
-  REJECTED
-  WITHDRAWN
-}
-
-enum InterviewType {
-  PHONE_SCREENING
-  TECHNICAL
-  BEHAVIORAL
-  FINAL
-  VIDEO_ONE_WAY
-}
-
-enum InterviewStatus {
-  SCHEDULED
-  COMPLETED
-  CANCELLED
-  RESCHEDULED
-}
-
-enum LogLevel {
-  INFO
-  WARN
-  ERROR
-  DEBUG
+// Enums
+enum UserRole {
+  USER
+  ADMIN
 }
 
 enum CandidateStatus {
-  NEW
   ACTIVE
-  PASSIVE
-  DO_NOT_CONTACT
-  BLACKLISTED
+  INACTIVE
+  ARCHIVED
 }
 
-enum EmploymentType {
-  FULL_TIME
-  PART_TIME
-  CONTRACT
-  FREELANCE
-  INTERNSHIP
-  TEMPORARY
+enum FileFormat {
+  PDF
+  DOCX
 }
 
-enum NoticePeriod {
-  IMMEDIATE
-  ONE_WEEK
-  TWO_WEEKS
-  ONE_MONTH
-  TWO_MONTHS
-  THREE_MONTHS
-  SIX_MONTHS
-  OTHER
-}
-
-enum SalaryType {
-  ANNUAL
-  MONTHLY
-  DAILY
-  HOURLY
-}
-
-enum EducationLevel {
-  HIGH_SCHOOL
-  ASSOCIATE
-  BACHELOR
-  MASTER
-  PHD
-  CERTIFICATION
-  BOOTCAMP
-  SELF_TAUGHT
-}
-
-enum ReferralStatus {
-  PENDING
-  APPROVED
-  PAID
-  REJECTED
-}
-
-enum AssessmentType {
-  TECHNICAL
-  PERSONALITY
-  COGNITIVE
-  SKILLS_BASED
-  CUSTOM
-}
-
-enum AssessmentStatus {
-  NOT_STARTED
-  IN_PROGRESS
-  COMPLETED
-  EXPIRED
-  CANCELLED
-}
-
-enum CalendarProvider {
-  GOOGLE
-  OUTLOOK
-  APPLE
-}
-
-enum SmsStatus {
-  PENDING
-  SENT
-  DELIVERED
-  FAILED
-  REPLIED
-}
-
-enum SmsDirection {
-  OUTBOUND
-  INBOUND
-}
-
-enum DistributionStatus {
-  PENDING
-  POSTED
+enum FileStatus {
+  GENERATING
+  GENERATED
   FAILED
   EXPIRED
-  REMOVED
-}
-
-enum SocialPlatform {
-  LINKEDIN
-  TWITTER
-  FACEBOOK
-  INSTAGRAM
-}
-
-enum PostStatus {
-  DRAFT
-  SCHEDULED
-  PUBLISHED
-  FAILED
-}
-
-enum SeniorityLevel {
-  INTERN
-  JUNIOR
-  MID_LEVEL
-  SENIOR
-  LEAD
-  PRINCIPAL
-  ARCHITECT
-  DIRECTOR
-  VP
-  C_LEVEL
 }
 
 enum ContractType {
   PERMANENT
   FREELANCE
   FIXED_TERM
-  CONTRACT
   INTERNSHIP
 }
 
-enum RemotePreference {
-  REMOTE
-  HYBRID
-  ONSITE
-  FLEXIBLE
+enum JobStatus {
+  ACTIVE
+  PAUSED
+  CLOSED
+  DRAFT
 }
 
-enum ConversionStatus {
-  IN_PIPELINE
-  PLACED
+enum ApplicationStatus {
+  PENDING
+  REVIEWING
+  INTERVIEWING
+  OFFERED
+  HIRED
   REJECTED
-  WITHDRAWN
-  ON_HOLD
-}
-
-enum WorkAuthStatus {
-  CITIZEN
-  PERMANENT_RESIDENT
-  WORK_VISA
-  STUDENT_VISA
-  REQUIRES_SPONSORSHIP
-  NOT_AUTHORIZED
-}
-
-enum TravelWillingness {
-  NONE
-  OCCASIONAL
-  FREQUENT
-  EXTENSIVE
-  INTERNATIONAL
-}
-
-enum WorkSchedule {
-  FULL_TIME
-  PART_TIME
-  FLEXIBLE
-  SHIFT_WORK
-  COMPRESSED
-  JOB_SHARE
-}
-
-enum Priority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
-
-enum DataSource {
-  MANUAL
-  LINKEDIN
-  INDEED
-  GLASSDOOR
-  REFERRAL
-  WEBSITE
-  API_IMPORT
-  BULK_UPLOAD
-  AI_SOURCED
 }

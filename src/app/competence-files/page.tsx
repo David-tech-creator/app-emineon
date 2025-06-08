@@ -436,9 +436,9 @@ export default function CompetenceFilesPage() {
       />
       
       <CreateTemplateModal
-        isOpen={isCreateTemplateModalOpen}
+        open={isCreateTemplateModalOpen}
         onClose={() => setIsCreateTemplateModalOpen(false)}
-        onSuccess={handleCreateTemplate}
+        onSave={handleCreateTemplate}
       />
     </Layout>
   );

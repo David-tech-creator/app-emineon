@@ -562,10 +562,25 @@ export default function Dashboard() {
                         <ArrowUpRight className="h-4 w-4 opacity-60" />
                       </div>
                       <div className="flex items-center justify-between">
-                        <div className="text-xs">
-                          {item.candidate && <span>👤 {item.candidate}</span>}
-                          {item.client && <span>🏢 {item.client}</span>}
-                          {item.dueTime && <span>⏰ {item.dueTime}</span>}
+                        <div className="text-xs flex items-center space-x-3">
+                          {item.candidate && (
+                            <span className="flex items-center space-x-1">
+                              <Users className="h-3 w-3" />
+                              <span>{item.candidate}</span>
+                            </span>
+                          )}
+                          {item.client && (
+                            <span className="flex items-center space-x-1">
+                              <Building2 className="h-3 w-3" />
+                              <span>{item.client}</span>
+                            </span>
+                          )}
+                          {item.dueTime && (
+                            <span className="flex items-center space-x-1">
+                              <Clock className="h-3 w-3" />
+                              <span>{item.dueTime}</span>
+                            </span>
+                          )}
                         </div>
                         <Button size="sm" variant="outline" className="text-xs h-6 px-2">
                           {item.action}
@@ -654,7 +669,10 @@ export default function Dashboard() {
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-gray-500">
                         {job.bottleneck && (
-                          <span className="text-orange-600">⚠️ {job.bottleneck}</span>
+                          <span className="flex items-center space-x-1 text-orange-600">
+                            <AlertTriangle className="h-3 w-3" />
+                            <span>{job.bottleneck}</span>
+                          </span>
                         )}
                         {!job.bottleneck && <span>Last activity: {job.lastActivity}</span>}
                       </div>
@@ -700,9 +718,24 @@ export default function Dashboard() {
                         </div>
                         <p className="text-sm text-gray-600">{activity.description}</p>
                         <div className="flex items-center space-x-4 mt-1 text-xs text-gray-500">
-                          {activity.candidate && <span>👤 {activity.candidate}</span>}
-                          {activity.client && <span>🏢 {activity.client}</span>}
-                          {activity.job && <span>💼 {activity.job}</span>}
+                          {activity.candidate && (
+                            <span className="flex items-center space-x-1">
+                              <Users className="h-3 w-3" />
+                              <span>{activity.candidate}</span>
+                            </span>
+                          )}
+                          {activity.client && (
+                            <span className="flex items-center space-x-1">
+                              <Building2 className="h-3 w-3" />
+                              <span>{activity.client}</span>
+                            </span>
+                          )}
+                          {activity.job && (
+                            <span className="flex items-center space-x-1">
+                              <Briefcase className="h-3 w-3" />
+                              <span>{activity.job}</span>
+                            </span>
+                          )}
                         </div>
                       </div>
                       <ArrowUpRight className="h-4 w-4 text-gray-400" />

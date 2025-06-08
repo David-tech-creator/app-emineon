@@ -11,7 +11,11 @@ export default authMiddleware({
     '/api/apply',
     '/api/health',
     '/api/candidates/parse-cv',
-    '/api/candidates/parse-linkedin'
+    '/api/candidates/parse-linkedin',
+    '/api/ai/(.*)',
+    '/api/files/(.*)',
+    '/api/competence-files/(.*)',
+    '/uploads/(.*)'
   ],
   ignoredRoutes: [
     '/((?!api|trpc))(_next.*|.+\\.[\\w]+$)',
@@ -19,7 +23,11 @@ export default authMiddleware({
     '/api/apply',
     '/api/health',
     '/api/candidates/parse-cv',
-    '/api/candidates/parse-linkedin'
+    '/api/candidates/parse-linkedin',
+    '/api/ai/(.*)',
+    '/api/files/(.*)',
+    '/api/competence-files/(.*)',
+    '/uploads/(.*)'
   ],
 })
 

@@ -211,13 +211,13 @@ export default function JobsPage() {
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
-            <Button 
+            <button 
               onClick={() => setShowCreateModal(true)}
-              className="bg-primary-600 hover:bg-primary-700"
+              className="btn-primary flex items-center space-x-2"
             >
-              <Plus className="h-4 w-4 mr-2" />
-              New Job
-            </Button>
+              <Plus className="h-4 w-4" />
+              <span>New Job</span>
+            </button>
           </div>
         </div>
       </div>

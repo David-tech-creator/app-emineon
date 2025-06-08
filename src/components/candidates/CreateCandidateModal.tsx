@@ -62,6 +62,69 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const quickStartTemplates = [
+    {
+      role: 'Software Engineer',
+      preview: 'Full-stack developer with React, Node.js, and cloud experience.',
+      text: `Experienced Software Engineer with 6+ years in full-stack development. Proficient in React, Node.js, and AWS. Strong background in building scalable web applications, collaborating in agile teams, and delivering high-quality code. Passionate about learning new technologies and mentoring junior developers.`
+    },
+    {
+      role: 'Product Manager',
+      preview: 'Leads cross-functional teams to deliver product vision.',
+      text: `Results-driven Product Manager with a proven track record in SaaS and fintech. Skilled at defining product strategy, gathering requirements, and leading cross-functional teams from ideation to launch. Adept at stakeholder management and data-driven decision making.`
+    },
+    {
+      role: 'UX Designer',
+      preview: 'Designs intuitive, user-centered digital experiences.',
+      text: `Creative UX Designer with 5+ years of experience designing web and mobile interfaces. Expert in user research, wireframing, prototyping, and usability testing. Strong portfolio of projects improving user satisfaction and engagement.`
+    },
+    {
+      role: 'Data Scientist',
+      preview: 'Builds predictive models and data-driven insights.',
+      text: `Analytical Data Scientist with expertise in Python, machine learning, and data visualization. Experienced in building predictive models, analyzing large datasets, and communicating actionable insights to business stakeholders.`
+    },
+    {
+      role: 'DevOps Engineer',
+      preview: 'Automates CI/CD and cloud infrastructure.',
+      text: `DevOps Engineer with hands-on experience in AWS, Docker, Kubernetes, and CI/CD pipelines. Skilled at automating deployments, monitoring systems, and ensuring high availability for mission-critical applications.`
+    },
+    {
+      role: 'Business Analyst',
+      preview: 'Bridges business needs and technical solutions.',
+      text: `Business Analyst with strong analytical and communication skills. Experienced in requirements gathering, process mapping, and delivering actionable recommendations to improve business performance.`
+    },
+    {
+      role: 'Project Manager',
+      preview: 'Delivers projects on time and within budget.',
+      text: `Certified Project Manager (PMP) with 8+ years leading cross-functional teams in IT and consulting. Adept at project planning, risk management, and stakeholder communication. Consistently delivers projects on time and within budget.`
+    },
+    {
+      role: 'Sales Representative',
+      preview: 'Drives revenue growth and client relationships.',
+      text: `Dynamic Sales Representative with a strong record of exceeding targets in B2B environments. Skilled in lead generation, client relationship management, and closing deals. Excellent communication and negotiation abilities.`
+    },
+    {
+      role: 'Accountant',
+      preview: 'Manages financial records and reporting.',
+      text: `Detail-oriented Accountant with expertise in financial reporting, budgeting, and compliance. Proficient in SAP and QuickBooks. Strong analytical skills and a commitment to accuracy and integrity.`
+    },
+    {
+      role: 'Graphic Designer',
+      preview: 'Creates compelling visual content and branding.',
+      text: `Innovative Graphic Designer with 4+ years of experience in branding, digital, and print design. Proficient in Adobe Creative Suite. Strong portfolio of work for startups and established brands.`
+    },
+    {
+      role: 'Marketing Specialist',
+      preview: 'Executes campaigns and grows brand awareness.',
+      text: `Marketing Specialist with a focus on digital marketing, content creation, and campaign analytics. Experienced in SEO, SEM, and social media strategy. Proven ability to increase brand engagement and lead generation.`
+    },
+    {
+      role: 'HR Manager',
+      preview: 'Leads talent acquisition and employee engagement.',
+      text: `HR Manager with 7+ years in talent acquisition, employee relations, and HR policy development. Skilled at building positive workplace cultures and supporting organizational growth.`
+    }
+  ];
+
   if (!open) return null;
 
   const handleClose = () => {
@@ -390,19 +453,43 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
               {/* Quick Start Templates */}
               <div className="space-y-3">
                 <h4 className="font-medium text-gray-900">Quick Start Templates</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {['Software Engineer', 'Product Manager', 'UX Designer', 'Data Scientist'].map((role) => (
-                    <button
-                      key={role}
-                      onClick={() => {
-                        setManualInput(`Looking for a ${role} with...`);
-                        setInputMethod('manual');
-                      }}
-                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      {role}
-                    </button>
-                  ))}
+                <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-visible">
+                  {quickStartTemplates.map((template) => {
+                    const isSelected = manualInput === template.text && inputMethod === 'manual';
+                    return (
+                      <button
+                        key={template.role}
+                        type="button"
+                        onClick={() => {
+                          setManualInput(template.text);
+                          setInputMethod('manual');
+                        }}
+                        className={`min-w-[180px] px-4 py-3 text-left border-2 rounded-lg transition-all duration-200 shadow-sm focus:outline-none ${
+                          isSelected 
+                            ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-100' 
+                            : 'border-gray-300 bg-white hover:border-blue-300 hover:bg-blue-50 hover:shadow-md'
+                        }`}
+                        aria-label={`Insert ${template.role} template`}
+                      >
+                        <div className={`font-semibold mb-1 ${
+                          isSelected ? 'text-blue-800' : 'text-gray-800'
+                        }`}>
+                          {template.role}
+                        </div>
+                        <div className={`text-xs line-clamp-2 ${
+                          isSelected ? 'text-blue-600' : 'text-gray-500'
+                        }`}>
+                          {template.preview}
+                        </div>
+                        {isSelected && (
+                          <div className="mt-2 flex items-center text-xs text-blue-600">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Selected
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

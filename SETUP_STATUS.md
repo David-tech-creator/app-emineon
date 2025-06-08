@@ -57,7 +57,7 @@
 
 If Prisma Accelerate is not working, you can use a direct database connection:
 
-1. **Set up a PostgreSQL database** (locally or on Railway/Supabase/etc.)
+1. **Set up a PostgreSQL database** (locally or on Railway/etc.)
 2. **Update your `.env` file**:
    ```env
    DATABASE_URL="postgresql://username:password@host:port/database"

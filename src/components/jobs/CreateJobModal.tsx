@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
@@ -40,7 +41,45 @@ import {
   MicOff,
   Send,
   Paperclip,
-  Type
+  Type,
+  Code,
+  BarChart3,
+  Palette,
+  Database,
+  Shield,
+  Wrench,
+  HeadphonesIcon,
+  Calculator,
+  Megaphone,
+  Truck,
+  GraduationCap,
+  Heart,
+  Scale,
+  ChefHat,
+  HardHat,
+  PenTool,
+  Camera,
+  Smartphone,
+  Coins,
+  Presentation,
+  Brain,
+  Monitor,
+  Gamepad2,
+  FlaskConical,
+  Stethoscope,
+  TreePine,
+  Plane,
+  ShoppingCart,
+  BookOpen,
+  Languages,
+  MessageSquare,
+  Headphones,
+  Linkedin,
+  Twitter,
+  Facebook,
+  Instagram,
+  Search,
+  MapPin as LocationPin
 } from 'lucide-react';
 
 // Enhanced form schema following E2E flow
@@ -48,7 +87,7 @@ const jobSchema = z.object({
   title: z.string().min(1, 'Job title is required'),
   company: z.string().min(1, 'Company is required'),
   location: z.string().min(1, 'Location is required'),
-  contractType: z.enum(['permanent', 'contract', 'freelance', 'fixed-term']),
+  contractType: z.enum(['permanent', 'freelance', 'fixed-term', 'internship']),
   startDate: z.string().min(1, 'Start date is required'),
   duration: z.string().optional(),
   salary: z.string().optional(),
@@ -101,7 +140,10 @@ const popularJobTitles = [
 
 export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
   const router = useRouter();
+  const { user } = useUser();
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showPostEditor, setShowPostEditor] = useState(false);
+  const [customPost, setCustomPost] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [titleSuggestions, setTitleSuggestions] = useState<string[]>([]);
   const [clientSuggestions, setClientSuggestions] = useState<string[]>([]);
@@ -303,10 +345,11 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
     return null;
   };
 
-  const extractContractType = (text: string): 'permanent' | 'contract' | 'freelance' | 'fixed-term' => {
-    if (/contract|contractor/i.test(text)) return 'contract';
+  const extractContractType = (text: string): 'permanent' | 'freelance' | 'fixed-term' | 'internship' => {
+    if (/contract|contractor/i.test(text)) return 'fixed-term'; // Map contract to fixed-term
     if (/freelance|freelancer/i.test(text)) return 'freelance';
-    if (/fixed.term|temporary/i.test(text)) return 'fixed-term';
+    if (/fixed.term|temporary|temp/i.test(text)) return 'fixed-term';
+    if (/intern|internship/i.test(text)) return 'internship';
     return 'permanent';
   };
 
@@ -453,12 +496,38 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     try {
+      // Map form data to API schema
+      const apiData = {
+        title: data.title,
+        client: data.company, // Map company to client
+        location: data.location,
+        contractType: data.contractType,
+        startDate: data.startDate,
+        status: data.status || 'draft',
+        description: data.description,
+        requirements: data.skills?.join(', ') || '',
+        salaryMin: data.salary ? parseInt(data.salary.split('-')[0]?.replace(/[^\d]/g, '')) : undefined,
+        salaryMax: data.salary ? parseInt(data.salary.split('-')[1]?.replace(/[^\d]/g, '')) : undefined,
+        currency: 'CHF',
+        remote: data.workMode === 'remote',
+        urgent: data.priority === 'high'
+      };
+
+      console.log('Form data:', data);
+      console.log('API data:', apiData);
+
+      // Ensure contractType is valid
+      if (!['permanent', 'freelance', 'fixed-term', 'internship'].includes(apiData.contractType)) {
+        console.error('Invalid contractType:', apiData.contractType, 'falling back to permanent');
+        apiData.contractType = 'permanent';
+      }
+
       const response = await fetch('/api/jobs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(apiData),
       });
 
       if (response.ok) {
@@ -466,6 +535,9 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
         setCurrentStep('success');
         // Store job data for success screen
         setCreatedJob(newJob);
+      } else {
+        const errorData = await response.json();
+        console.error('API Error:', errorData);
       }
     } catch (error) {
       console.error('Error creating job:', error);
@@ -507,7 +579,7 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
               <h2 className="text-2xl font-bold text-gray-900">Create a Job</h2>
               <p className="text-gray-600">
                 {currentStep === 'intake' && 'Chat with AI to create your job posting'}
-                {currentStep === 'parsing' && 'AI is parsing your job description...'}
+                {currentStep === 'parsing' && 'Analyzing your job description...'}
                 {currentStep === 'review' && 'Review and edit the extracted information'}
                 {currentStep === 'configure' && 'Configure job settings and publish'}
               </p>
@@ -535,7 +607,7 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep === 'parsing' ? 'bg-primary-100 text-primary-600' : currentStep === 'review' || currentStep === 'configure' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
                 {currentStep === 'review' || currentStep === 'configure' ? <CheckCircle className="h-4 w-4" /> : '2'}
               </div>
-              <span className="font-medium">AI Parse</span>
+              <span className="font-medium">Smart Analysis</span>
             </div>
             <ArrowRight className="h-4 w-4 text-gray-400" />
             <div className={`flex items-center space-x-2 ${currentStep === 'review' ? 'text-primary-600' : currentStep === 'configure' ? 'text-green-600' : 'text-gray-400'}`}>
@@ -566,7 +638,7 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
                     <Sparkles className="h-5 w-5 text-primary-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Hi! I'm your AI Job Assistant</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Hi {user?.firstName || 'there'}!</h3>
                     <p className="text-gray-600 leading-relaxed">
                       I'll help you create a job posting quickly and easily. You can:
                     </p>
@@ -678,32 +750,160 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
                   )}
                 </div>
 
-                {/* Quick Actions */}
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setChatInput("We're looking for a Senior Software Engineer to join our team...")}
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-                  >
-                    💻 Software Engineer
-                  </button>
-                  <button
-                    onClick={() => setChatInput("We need a Product Manager with 5+ years of experience...")}
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-                  >
-                    📊 Product Manager
-                  </button>
-                  <button
-                    onClick={() => setChatInput("Looking for a UX Designer to create amazing user experiences...")}
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-                  >
-                    🎨 UX Designer
-                  </button>
-                  <button
-                    onClick={() => setChatInput("We're hiring a Data Scientist to work with machine learning...")}
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-                  >
-                    📈 Data Scientist
-                  </button>
+                {/* Quick Create Options */}
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-3">Quick create templates:</p>
+                  <div className="overflow-x-auto">
+                    <div className="flex space-x-3 pb-2" style={{ minWidth: 'max-content' }}>
+                      <button
+                        onClick={() => setChatInput("Job Title: Senior Software Engineer\n\nCompany: TechCorp AG\nLocation: Zurich, Switzerland\nContract Type: Permanent\nWork Mode: Hybrid (3 days office, 2 days remote)\nDepartment: Engineering\nSalary: CHF 110,000 - 140,000\nStart Date: Immediate\nPriority: High\n\nJob Description:\nWe are seeking a highly skilled Senior Software Engineer to join our growing engineering team. You will be responsible for designing, developing, and maintaining scalable web applications using modern technologies. This role offers the opportunity to work on cutting-edge projects and mentor junior developers.\n\nKey Responsibilities:\n- Design and develop high-quality software solutions\n- Collaborate with cross-functional teams to deliver features\n- Code review and mentor junior developers\n- Participate in architecture decisions\n- Ensure code quality and best practices\n\nRequired Skills:\n- 5+ years of experience in software development\n- Proficiency in JavaScript, TypeScript, React, Node.js\n- Experience with cloud platforms (AWS, Azure)\n- Strong knowledge of databases (PostgreSQL, MongoDB)\n- Experience with microservices architecture\n- Knowledge of CI/CD pipelines\n- Excellent problem-solving skills\n\nPreferred Skills:\n- Experience with Docker and Kubernetes\n- Knowledge of GraphQL and REST APIs\n- Familiarity with agile methodologies\n- Previous experience in fintech or healthcare\n\nLanguages: English (fluent), German (conversational)\n\nWhat We Offer:\n- Competitive salary and equity package\n- Flexible working arrangements\n- Professional development opportunities\n- Health insurance and wellness benefits\n- Modern office in central Zurich")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Code className="h-4 w-4" />
+                        <span>Software Engineer</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("Job Title: Senior Product Manager\n\nCompany: InnovateCorp\nLocation: Basel, Switzerland\nContract Type: Permanent\nWork Mode: Hybrid (2 days office, 3 days remote)\nDepartment: Product\nSalary: CHF 120,000 - 150,000\nStart Date: March 2024\nPriority: High\n\nJob Description:\nWe are looking for an experienced Senior Product Manager to drive our product strategy and execution. You will lead cross-functional teams to deliver innovative solutions that delight our customers and drive business growth. This role requires a strategic thinker with strong analytical skills and excellent stakeholder management abilities.\n\nKey Responsibilities:\n- Define and execute product roadmap and strategy\n- Conduct market research and competitive analysis\n- Collaborate with engineering, design, and marketing teams\n- Gather and prioritize product requirements\n- Analyze product metrics and user feedback\n- Lead product launches and go-to-market strategies\n- Manage stakeholder expectations and communications\n\nRequired Skills:\n- 5+ years of product management experience\n- Strong analytical and data-driven decision making\n- Experience with agile development methodologies\n- Proficiency in product management tools (Jira, Figma, Analytics)\n- Excellent communication and presentation skills\n- Experience with B2B or SaaS products\n- Strong understanding of UX/UI principles\n\nPreferred Skills:\n- MBA or equivalent business education\n- Technical background or engineering degree\n- Experience in fintech or healthcare industry\n- Knowledge of A/B testing and experimentation\n- Previous startup or scale-up experience\n\nLanguages: English (fluent), German (fluent), French (basic)\n\nWhat We Offer:\n- Competitive salary with performance bonuses\n- Equity participation program\n- Flexible working arrangements\n- Budget for conferences and training\n- Comprehensive health and wellness benefits\n- Modern office space in Basel city center")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <BarChart3 className="h-4 w-4" />
+                        <span>Product Manager</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("Job Title: Senior UX Designer\n\nCompany: DesignStudio Ltd\nLocation: Geneva, Switzerland\nContract Type: Permanent\nWork Mode: Hybrid (2 days office, 3 days remote)\nDepartment: Design\nSalary: CHF 85,000 - 115,000\nStart Date: April 2024\nPriority: Medium\n\nJob Description:\nWe are seeking a talented Senior UX Designer to join our creative team and help shape the future of digital experiences. You will be responsible for creating intuitive, user-centered designs that solve complex problems and delight our users. This role offers the opportunity to work on diverse projects across web and mobile platforms.\n\nKey Responsibilities:\n- Conduct user research and usability testing\n- Create wireframes, prototypes, and high-fidelity designs\n- Collaborate with product managers and developers\n- Develop and maintain design systems\n- Present design concepts to stakeholders\n- Iterate designs based on user feedback and analytics\n- Mentor junior designers and promote design thinking\n\nRequired Skills:\n- 4+ years of UX/UI design experience\n- Proficiency in design tools (Figma, Sketch, Adobe Creative Suite)\n- Strong understanding of user-centered design principles\n- Experience with user research and testing methodologies\n- Knowledge of responsive and mobile design\n- Understanding of accessibility standards (WCAG)\n- Excellent visual design and typography skills\n\nPreferred Skills:\n- Experience with design systems and component libraries\n- Knowledge of HTML/CSS and front-end development\n- Familiarity with prototyping tools (Principle, Framer)\n- Background in psychology or human-computer interaction\n- Experience in B2B or enterprise software design\n\nLanguages: English (fluent), French (fluent), German (conversational)\n\nWhat We Offer:\n- Competitive salary and creative freedom\n- State-of-the-art design tools and equipment\n- Flexible working arrangements\n- Professional development budget\n- Creative workshops and design conferences\n- Beautiful studio space in Geneva")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Palette className="h-4 w-4" />
+                        <span>UX Designer</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("Job Title: Senior Data Scientist\n\nCompany: DataTech Analytics\nLocation: Lausanne, Switzerland\nContract Type: Permanent\nWork Mode: Remote\nDepartment: Data Science\nSalary: CHF 130,000 - 160,000\nStart Date: May 2024\nPriority: High\n\nJob Description:\nWe are seeking an experienced Senior Data Scientist to join our AI/ML team and drive data-driven insights across our organization. You will work with large datasets, develop predictive models, and collaborate with cross-functional teams to solve complex business problems using advanced analytics and machine learning techniques.\n\nKey Responsibilities:\n- Design and implement machine learning models and algorithms\n- Analyze large, complex datasets to extract actionable insights\n- Collaborate with engineers to deploy models in production\n- Present findings and recommendations to stakeholders\n- Mentor junior data scientists and analysts\n- Stay current with latest ML/AI research and techniques\n- Lead data science projects from conception to deployment\n\nRequired Skills:\n- PhD or Master's in Data Science, Statistics, Computer Science, or related field\n- 5+ years of experience in data science and machine learning\n- Proficiency in Python, R, SQL, and statistical analysis\n- Experience with ML frameworks (TensorFlow, PyTorch, scikit-learn)\n- Knowledge of cloud platforms (AWS, GCP, Azure)\n- Strong experience with data visualization tools\n- Excellent analytical and problem-solving skills\n\nPreferred Skills:\n- Experience with deep learning and neural networks\n- Knowledge of MLOps and model deployment pipelines\n- Familiarity with big data technologies (Spark, Hadoop)\n- Experience in NLP or computer vision\n- Previous experience in fintech or healthcare\n- Publications in peer-reviewed journals\n\nLanguages: English (fluent), German (conversational), French (basic)\n\nWhat We Offer:\n- Highly competitive salary and equity package\n- Fully remote work with flexible hours\n- Access to cutting-edge technology and datasets\n- Conference and research publication support\n- Comprehensive benefits package\n- Collaborative and innovative work environment")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Database className="h-4 w-4" />
+                        <span>Data Scientist</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("Job Title: Senior DevOps Engineer\n\nCompany: CloudTech Solutions\nLocation: Bern, Switzerland\nContract Type: Permanent\nWork Mode: Hybrid (3 days office, 2 days remote)\nDepartment: Infrastructure\nSalary: CHF 115,000 - 145,000\nStart Date: Immediate\nPriority: High\n\nJob Description:\nWe are looking for an experienced Senior DevOps Engineer to lead our infrastructure automation and cloud operations. You will be responsible for designing, implementing, and maintaining scalable, secure, and reliable infrastructure solutions. This role is critical to enabling our development teams to deliver high-quality software efficiently.\n\nKey Responsibilities:\n- Design and maintain CI/CD pipelines and automation tools\n- Manage cloud infrastructure on AWS/Azure/GCP\n- Implement monitoring, logging, and alerting systems\n- Ensure security best practices and compliance\n- Collaborate with development teams on deployment strategies\n- Troubleshoot production issues and optimize performance\n- Lead infrastructure as code initiatives\n\nRequired Skills:\n- 5+ years of DevOps or infrastructure engineering experience\n- Expertise in cloud platforms (AWS, Azure, or GCP)\n- Proficiency in Infrastructure as Code (Terraform, CloudFormation)\n- Experience with containerization (Docker, Kubernetes)\n- Strong knowledge of CI/CD tools (Jenkins, GitLab CI, GitHub Actions)\n- Scripting skills (Python, Bash, PowerShell)\n- Experience with monitoring tools (Prometheus, Grafana, ELK Stack)\n\nPreferred Skills:\n- Certification in AWS, Azure, or GCP\n- Experience with service mesh technologies (Istio, Linkerd)\n- Knowledge of security scanning and compliance tools\n- Experience with database administration\n- Previous experience in fintech or regulated industries\n\nLanguages: English (fluent), German (fluent)\n\nWhat We Offer:\n- Competitive salary with performance bonuses\n- Cutting-edge technology stack\n- Flexible working arrangements\n- Professional certification support\n- Comprehensive health and pension benefits\n- Modern office in Bern with excellent transport links")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Shield className="h-4 w-4" />
+                        <span>DevOps Engineer</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("Looking for a Frontend Developer with React experience...")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Monitor className="h-4 w-4" />
+                        <span>Frontend Developer</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("We're hiring a Backend Developer to build scalable APIs...")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Database className="h-4 w-4" />
+                        <span>Backend Developer</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("Looking for a Business Analyst to optimize our processes...")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Calculator className="h-4 w-4" />
+                        <span>Business Analyst</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("Job Title: Digital Marketing Manager\n\nCompany: GrowthCorp\nLocation: Lucerne, Switzerland\nContract Type: Permanent\nWork Mode: Hybrid (2 days office, 3 days remote)\nDepartment: Marketing\nSalary: CHF 75,000 - 95,000\nStart Date: June 2024\nPriority: Medium\n\nJob Description:\nWe are seeking a dynamic Digital Marketing Manager to drive our online presence and lead generation efforts. You will develop and execute comprehensive digital marketing strategies across multiple channels to increase brand awareness, generate leads, and drive revenue growth. This role offers the opportunity to work with cutting-edge marketing technologies and data analytics.\n\nKey Responsibilities:\n- Develop and execute digital marketing strategies and campaigns\n- Manage social media presence and content marketing\n- Optimize SEO/SEM and paid advertising campaigns\n- Analyze marketing metrics and ROI\n- Collaborate with sales team on lead generation\n- Manage marketing automation and CRM systems\n- Create compelling content across various digital channels\n\nRequired Skills:\n- 3+ years of digital marketing experience\n- Proficiency in Google Analytics, Google Ads, Facebook Ads\n- Experience with marketing automation tools (HubSpot, Marketo)\n- Strong understanding of SEO/SEM best practices\n- Knowledge of social media marketing and content creation\n- Excellent analytical and data interpretation skills\n- Strong written and verbal communication skills\n\nPreferred Skills:\n- Experience with B2B marketing and lead generation\n- Knowledge of email marketing best practices\n- Familiarity with CRM systems (Salesforce, HubSpot)\n- Basic understanding of HTML/CSS\n- Certification in Google Analytics or Google Ads\n- Previous experience in SaaS or technology companies\n\nLanguages: English (fluent), German (fluent), French (conversational)\n\nWhat We Offer:\n- Competitive salary with performance incentives\n- Flexible working arrangements\n- Marketing technology budget\n- Professional development opportunities\n- Health and wellness benefits\n- Dynamic and creative work environment")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Megaphone className="h-4 w-4" />
+                        <span>Marketing Manager</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("Looking for a Sales Representative to drive revenue growth...")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Coins className="h-4 w-4" />
+                        <span>Sales Representative</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("We're hiring an HR Manager to support our growing team...")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Users className="h-4 w-4" />
+                        <span>HR Manager</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("Looking for an Accountant to manage our financial operations...")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Calculator className="h-4 w-4" />
+                        <span>Accountant</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("We need a Customer Support Specialist to help our clients...")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Headphones className="h-4 w-4" />
+                        <span>Customer Support</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("Looking for a Graphic Designer to create visual content...")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <PenTool className="h-4 w-4" />
+                        <span>Graphic Designer</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("We're hiring a Content Writer to create engaging content...")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <BookOpen className="h-4 w-4" />
+                        <span>Content Writer</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("Looking for a Project Manager to coordinate our initiatives...")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Presentation className="h-4 w-4" />
+                        <span>Project Manager</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("We need a QA Engineer to ensure product quality...")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <FlaskConical className="h-4 w-4" />
+                        <span>QA Engineer</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("Looking for a Photographer to capture our brand story...")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Camera className="h-4 w-4" />
+                        <span>Photographer</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("We're hiring a Mobile Developer to build our app...")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Smartphone className="h-4 w-4" />
+                        <span>Mobile Developer</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("Looking for a Game Developer to create interactive experiences...")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Gamepad2 className="h-4 w-4" />
+                        <span>Game Developer</span>
+                      </button>
+                      <button
+                        onClick={() => setChatInput("We need a System Administrator to manage our IT infrastructure...")}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <Wrench className="h-4 w-4" />
+                        <span>System Admin</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Recording Indicator */}
@@ -724,14 +924,14 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
             </div>
           )}
 
-          {/* Step 2: AI Parsing */}
+          {/* Step 2: Smart Analysis */}
           {currentStep === 'parsing' && (
             <div className="text-center space-y-6">
               <div className="w-24 h-24 bg-primary-100 rounded-full flex items-center justify-center mx-auto">
                 <Sparkles className="h-12 w-12 text-primary-600 animate-pulse" />
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">AI is parsing your job description...</h3>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Analyzing your job description...</h3>
                 <p className="text-gray-600">This will take just a moment while we extract the key information</p>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
@@ -746,7 +946,7 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-green-800 font-medium">AI parsing completed! Review and edit the extracted information below.</span>
+                  <span className="text-green-800 font-medium">Analysis completed! Review and edit the extracted information below.</span>
                 </div>
               </div>
 
@@ -795,9 +995,9 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     >
                       <option value="permanent">Permanent</option>
-                      <option value="contract">Contract</option>
                       <option value="freelance">Freelance</option>
                       <option value="fixed-term">Fixed-term</option>
+                      <option value="internship">Internship</option>
                     </select>
                   </div>
 
@@ -1040,7 +1240,7 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
                       <div className="border border-gray-200 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center space-x-2">
-                            <div className="w-5 h-5 bg-blue-700 rounded"></div>
+                            <Linkedin className="h-5 w-5 text-blue-700" />
                             <span className="font-medium">LinkedIn</span>
                           </div>
                           <input type="checkbox" className="rounded" />
@@ -1052,7 +1252,7 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
                       <div className="border border-gray-200 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center space-x-2">
-                            <div className="w-5 h-5 bg-blue-600 rounded"></div>
+                            <Search className="h-5 w-5 text-blue-600" />
                             <span className="font-medium">Indeed</span>
                           </div>
                           <input type="checkbox" className="rounded" />
@@ -1064,7 +1264,7 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
                       <div className="border border-gray-200 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center space-x-2">
-                            <div className="w-5 h-5 bg-red-600 rounded"></div>
+                            <LocationPin className="h-5 w-5 text-red-600" />
                             <span className="font-medium">Jobup.ch</span>
                           </div>
                           <input type="checkbox" className="rounded" />
@@ -1075,41 +1275,118 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
 
                     {/* Social Media Promotion */}
                     <div className="border-t border-gray-200 pt-4">
-                      <h5 className="font-medium text-gray-900 mb-3">Social Media Promotion</h5>
+                      <h5 className="font-medium text-gray-900 mb-3 flex items-center space-x-2">
+                        <Share2 className="h-4 w-4 text-gray-600" />
+                        <span>Social Media Promotion</span>
+                      </h5>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <label className="flex items-center space-x-2">
+                        <label className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
                           <input type="checkbox" className="rounded" />
+                          <Linkedin className="h-4 w-4 text-blue-700" />
                           <span className="text-sm">LinkedIn Post</span>
                         </label>
-                        <label className="flex items-center space-x-2">
+                        <label className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
                           <input type="checkbox" className="rounded" />
+                          <Twitter className="h-4 w-4 text-blue-500" />
                           <span className="text-sm">Twitter</span>
                         </label>
-                        <label className="flex items-center space-x-2">
+                        <label className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
                           <input type="checkbox" className="rounded" />
+                          <Facebook className="h-4 w-4 text-blue-600" />
                           <span className="text-sm">Facebook</span>
                         </label>
-                        <label className="flex items-center space-x-2">
+                        <label className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
                           <input type="checkbox" className="rounded" />
+                          <Instagram className="h-4 w-4 text-pink-600" />
                           <span className="text-sm">Instagram</span>
                         </label>
                       </div>
                     </div>
 
-                    {/* Auto-generated LinkedIn Post Preview */}
+                    {/* Auto-generated Social Media Post Preview */}
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                      <h5 className="font-medium text-gray-900 mb-2">LinkedIn Post Preview</h5>
-                      <div className="bg-white border border-gray-200 rounded p-3 text-sm">
-                        <p>🚀 We're hiring a <strong>{watch('title') || 'Software Engineer'}</strong> for {watch('company') || 'our client'} in {watch('location') || 'Zurich'}!</p>
-                        <p className="mt-2">✨ {watch('contractType') === 'contract' ? 'Contract opportunity' : 'Permanent position'}</p>
-                        <p>📍 {watch('workMode') === 'remote' ? 'Remote work' : watch('workMode') === 'hybrid' ? 'Hybrid work' : 'On-site'}</p>
-                        <p className="mt-2">Apply now 👉 [link]</p>
-                        <p className="text-gray-500 mt-2">#hiring #jobs #{watch('department')?.toLowerCase().replace(' ', '')}</p>
-                      </div>
-                      <Button variant="outline" size="sm" className="mt-2">
-                        <Eye className="h-4 w-4 mr-1" />
-                        Edit Post
-                      </Button>
+                      <h5 className="font-medium text-gray-900 mb-2 flex items-center space-x-2">
+                        <MessageSquare className="h-4 w-4 text-gray-600" />
+                        <span>Post Preview</span>
+                      </h5>
+                      
+                      {!showPostEditor ? (
+                        <>
+                          <div className="bg-white border border-gray-200 rounded p-3 text-sm">
+                            {customPost ? (
+                              <div className="whitespace-pre-wrap">{customPost}</div>
+                            ) : (
+                              <>
+                                <p>🚀 We're hiring a <strong>{watch('title') || 'Software Engineer'}</strong> for {watch('company') || 'our client'} in {watch('location') || 'Zurich'}!</p>
+                                <p className="mt-2">✨ {watch('contractType') === 'fixed-term' ? 'Fixed-term opportunity' : 'Permanent position'}</p>
+                                <p>📍 {watch('workMode') === 'remote' ? 'Remote work' : watch('workMode') === 'hybrid' ? 'Hybrid work' : 'On-site'}</p>
+                                <p className="mt-2">Apply now 👉 [link]</p>
+                                <p className="text-gray-500 mt-2">#hiring #jobs #{watch('department')?.toLowerCase().replace(' ', '') || 'tech'}</p>
+                              </>
+                            )}
+                          </div>
+                          <div className="flex space-x-2 mt-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => setShowPostEditor(true)}
+                            >
+                              <PenTool className="h-4 w-4 mr-1" />
+                              Edit Post
+                            </Button>
+                            {customPost && (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => {
+                                  setCustomPost('');
+                                  setShowPostEditor(false);
+                                }}
+                              >
+                                Reset to Default
+                              </Button>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="space-y-3">
+                          <textarea
+                            value={customPost || `🚀 We're hiring a ${watch('title') || 'Software Engineer'} for ${watch('company') || 'our client'} in ${watch('location') || 'Zurich'}!
+
+✨ ${watch('contractType') === 'fixed-term' ? 'Fixed-term opportunity' : 'Permanent position'}
+📍 ${watch('workMode') === 'remote' ? 'Remote work' : watch('workMode') === 'hybrid' ? 'Hybrid work' : 'On-site'}
+
+Apply now 👉 [link]
+
+#hiring #jobs #${watch('department')?.toLowerCase().replace(' ', '') || 'tech'}`}
+                            onChange={(e) => setCustomPost(e.target.value)}
+                            className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            placeholder="Customize your social media post..."
+                          />
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-gray-500">
+                              {customPost?.length || 0} characters
+                            </span>
+                            <div className="flex space-x-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => setShowPostEditor(false)}
+                              >
+                                Cancel
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                onClick={() => setShowPostEditor(false)}
+                                className="bg-primary-600 hover:bg-primary-700 text-white"
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Save Post
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>
