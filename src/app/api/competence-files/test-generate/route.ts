@@ -1,6 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadToCloudinary } from '@/lib/cloudinary-config';
 
+// Serverless-compatible Puppeteer setup
+async function getPuppeteerConfig() {
+  if (process.env.NODE_ENV === 'production') {
+    // Production: Use serverless Chromium
+    const chromium = require('@sparticuz/chromium');
+    const puppeteer = require('puppeteer-core');
+    
+    return {
+      puppeteer,
+      launchOptions: {
+        args: chromium.args,
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
+        ignoreHTTPSErrors: true,
+      }
+    };
+  } else {
+    // Development: Use regular Puppeteer
+    const puppeteer = require('puppeteer');
+    
+    return {
+      puppeteer,
+      launchOptions: {
+        headless: true,
+        args: [
+          '--no-sandbox', 
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--disable-gpu'
+        ]
+      }
+    };
+  }
+}
+
 export async function POST(request: NextRequest) {
   console.log('🧪 Test generate endpoint called');
   
@@ -202,25 +241,14 @@ export async function POST(request: NextRequest) {
     console.log('📄 HTML content generated, length:', htmlContent.length);
 
     if (format === 'pdf') {
-      // Try to generate PDF using Puppeteer
+      // Try to generate PDF using serverless-compatible Puppeteer
       try {
-        console.log('🔧 Attempting to load Puppeteer...');
-        const puppeteer = require('puppeteer');
-        console.log('✅ Puppeteer loaded successfully');
+        console.log('🔧 Configuring Puppeteer for environment:', process.env.NODE_ENV);
+        const { puppeteer, launchOptions } = await getPuppeteerConfig();
+        console.log('✅ Puppeteer configured successfully');
         
-        console.log('🚀 Launching browser...');
-        const browser = await puppeteer.launch({
-          headless: true,
-          args: [
-            '--no-sandbox', 
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-gpu'
-          ]
-        });
+        console.log('🚀 Launching browser with serverless config...');
+        const browser = await puppeteer.launch(launchOptions);
         console.log('✅ Browser launched successfully');
 
         const page = await browser.newPage();

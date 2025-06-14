@@ -13,6 +13,8 @@ export async function POST(request: NextRequest) {
       const { userId } = auth();
       if (!userId) {
         console.log('⚠️ No authentication found, proceeding for testing purposes');
+      } else {
+        console.log('✅ User authenticated:', userId);
       }
     } catch (authError) {
       console.log('⚠️ Authentication check failed, proceeding for testing purposes:', authError);
