@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     
     console.log('📋 Request body received:', JSON.stringify(body, null, 2));
     
-    const { candidateData, format = 'pdf' } = body;
+    const { candidateData, format = 'pdf', logoUrl, footerText } = body;
 
     if (!candidateData) {
       console.error('❌ Missing candidate data');
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     console.log('👤 Processing candidate:', candidateData.fullName);
 
-    // Generate simple HTML content
+    // Generate enhanced HTML content with logo support
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -49,16 +49,79 @@ export async function POST(request: NextRequest) {
         <meta charset="UTF-8">
         <title>Competence File - ${candidateData.fullName}</title>
         <style>
-          body { font-family: Arial, sans-serif; margin: 40px; color: #333; line-height: 1.6; }
-          .header { border-bottom: 2px solid #3B82F6; padding-bottom: 20px; margin-bottom: 30px; }
-          .name { font-size: 28px; font-weight: bold; color: #1F2937; }
-          .title { font-size: 18px; color: #6B7280; margin-top: 5px; }
-          .section { margin-bottom: 25px; }
-          .section-title { font-size: 16px; font-weight: bold; color: #374151; margin-bottom: 10px; border-bottom: 1px solid #E5E7EB; padding-bottom: 5px; }
-          .skill-list { display: flex; flex-wrap: wrap; gap: 8px; }
-          .skill { background: #EFF6FF; color: #1E40AF; padding: 4px 12px; border-radius: 6px; font-size: 14px; }
-          .contact-info { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 10px; }
-          .contact-item { color: #6B7280; }
+          body { 
+            font-family: Arial, sans-serif; 
+            margin: 40px; 
+            color: #333; 
+            line-height: 1.6; 
+          }
+          .header { 
+            border-bottom: 2px solid #3B82F6; 
+            padding-bottom: 20px; 
+            margin-bottom: 30px; 
+            position: relative;
+          }
+          .logo {
+            position: absolute;
+            top: 0;
+            right: 0;
+            max-height: 60px;
+            max-width: 200px;
+            object-fit: contain;
+          }
+          .header-content {
+            ${logoUrl ? 'margin-right: 220px;' : ''}
+          }
+          .name { 
+            font-size: 28px; 
+            font-weight: bold; 
+            color: #1F2937; 
+          }
+          .title { 
+            font-size: 18px; 
+            color: #6B7280; 
+            margin-top: 5px; 
+          }
+          .section { 
+            margin-bottom: 25px; 
+          }
+          .section-title { 
+            font-size: 16px; 
+            font-weight: bold; 
+            color: #374151; 
+            margin-bottom: 10px; 
+            border-bottom: 1px solid #E5E7EB; 
+            padding-bottom: 5px; 
+          }
+          .skill-list { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 8px; 
+          }
+          .skill { 
+            background: #EFF6FF; 
+            color: #1E40AF; 
+            padding: 4px 12px; 
+            border-radius: 6px; 
+            font-size: 14px; 
+          }
+          .contact-info { 
+            display: flex; 
+            gap: 20px; 
+            flex-wrap: wrap; 
+            margin-top: 10px; 
+          }
+          .contact-item { 
+            color: #6B7280; 
+          }
+          .footer {
+            margin-top: 40px; 
+            text-align: center; 
+            color: #9CA3AF; 
+            font-size: 12px;
+            border-top: 1px solid #E5E7EB;
+            padding-top: 20px;
+          }
           @media print { 
             body { margin: 20px; }
             .header { page-break-after: avoid; }
@@ -67,12 +130,15 @@ export async function POST(request: NextRequest) {
       </head>
       <body>
         <div class="header">
-          <div class="name">${candidateData.fullName}</div>
-          <div class="title">${candidateData.currentTitle || 'Professional'}</div>
-          <div class="contact-info">
-            ${candidateData.email ? `<div class="contact-item">📧 ${candidateData.email}</div>` : ''}
-            ${candidateData.phone ? `<div class="contact-item">📞 ${candidateData.phone}</div>` : ''}
-            ${candidateData.location ? `<div class="contact-item">📍 ${candidateData.location}</div>` : ''}
+          ${logoUrl ? `<img src="${logoUrl}" alt="Company Logo" class="logo" />` : ''}
+          <div class="header-content">
+            <div class="name">${candidateData.fullName}</div>
+            <div class="title">${candidateData.currentTitle || 'Professional'}</div>
+            <div class="contact-info">
+              ${candidateData.email ? `<div class="contact-item">📧 ${candidateData.email}</div>` : ''}
+              ${candidateData.phone ? `<div class="contact-item">📞 ${candidateData.phone}</div>` : ''}
+              ${candidateData.location ? `<div class="contact-item">📍 ${candidateData.location}</div>` : ''}
+            </div>
           </div>
         </div>
 
@@ -126,8 +192,8 @@ export async function POST(request: NextRequest) {
         </div>
         ` : ''}
 
-        <div style="margin-top: 40px; text-align: center; color: #9CA3AF; font-size: 12px;">
-          Generated on ${new Date().toLocaleDateString()} by Emineon ATS
+        <div class="footer">
+          ${footerText || `Generated on ${new Date().toLocaleDateString()} by Emineon ATS`}
         </div>
       </body>
       </html>
@@ -182,7 +248,7 @@ export async function POST(request: NextRequest) {
         await browser.close();
         console.log('✅ Browser closed');
 
-        // Upload to Cloudinary
+        // Upload to Cloudinary with proper filename
         console.log('☁️ Uploading to Cloudinary...');
         const fileName = `${candidateData.fullName.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
         
@@ -281,7 +347,7 @@ export async function GET() {
   return NextResponse.json({
     status: 'healthy',
     endpoint: 'test-generate',
-    features: ['simple-pdf', 'html-fallback', 'cloudinary-upload'],
+    features: ['pdf-generation', 'html-fallback', 'cloudinary-upload'],
     timestamp: new Date().toISOString()
   });
 } 

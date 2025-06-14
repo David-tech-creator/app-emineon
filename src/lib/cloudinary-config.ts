@@ -1,14 +1,22 @@
 import { v2 as cloudinary } from 'cloudinary';
 
-// Force correct Cloudinary Configuration
-console.log('🔧 Configuring Cloudinary with cloud_name: emineon');
+// Configure Cloudinary using environment variables
+console.log('🔧 Configuring Cloudinary...');
 
-cloudinary.config({
-  cloud_name: 'emineon',
-  api_key: '452814944399829',
-  api_secret: 'c1vCg07L1avVzo-WludXlXhYgDs',
-  secure: true,
-});
+// Check if CLOUDINARY_URL is available (single URL format)
+if (process.env.CLOUDINARY_URL) {
+  console.log('✅ Using CLOUDINARY_URL configuration');
+  // Cloudinary will automatically parse the CLOUDINARY_URL
+} else {
+  // Fallback to individual environment variables
+  console.log('🔧 Using individual environment variables');
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'emineon',
+    api_key: process.env.CLOUDINARY_API_KEY || '452814944399829',
+    api_secret: process.env.CLOUDINARY_API_SECRET || 'c1vCg07L1avVzo-WludXlXhYgDs',
+    secure: true,
+  });
+}
 
 // Verify configuration
 const config = cloudinary.config();
@@ -24,27 +32,18 @@ export const uploadToCloudinary = async (
 ): Promise<{ url: string; publicId: string }> => {
   console.log('📤 Attempting upload to cloud_name:', cloudinary.config().cloud_name);
   
-  // Remove extension from filename for public_id to avoid double extensions
-  const publicId = filename.replace(/\.[^/.]+$/, '');
-  
-  // Determine resource type based on file extension
-  const isPdf = filename.toLowerCase().endsWith('.pdf');
-  const resourceType = isPdf ? 'raw' : 'auto';
+  // Use auto resource type for all files to avoid access issues
+  const publicId = filename.replace(/\.[^/.]+$/, ''); // Remove extension to avoid double extensions
   
   return new Promise((resolve, reject) => {
     cloudinary.uploader.upload_stream(
       {
-        resource_type: resourceType,
+        resource_type: 'auto',
         folder: `emineon-ats/${folder}`,
         public_id: publicId,
         overwrite: true,
-        // Only apply transformations for non-PDF files
-        ...(isPdf ? {} : {
-          transformation: [
-            { quality: 'auto' },
-            { format: 'auto' }
-          ]
-        })
+        type: 'upload',
+        invalidate: true
       },
       (error: any, result: any) => {
         if (error) {

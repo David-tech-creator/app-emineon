@@ -406,8 +406,25 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
       store.setProcessingCandidate(false);
       
       // Show user-friendly error message
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      alert(`Failed to process resume: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
+      let errorMessage = 'Unknown error occurred';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      // Provide specific guidance for common errors
+      if (errorMessage.includes('Invalid file type') || errorMessage.includes('Unsupported file type')) {
+        alert(`File format error: ${errorMessage}\n\nSupported formats:\n• PDF (.pdf)\n• Word Document (.docx)\n• Plain Text (.txt)\n• Markdown (.md)\n• HTML (.html)`);
+      } else if (errorMessage.includes('could not be processed') || errorMessage.includes('Could not extract')) {
+        alert(`Document parsing failed: ${errorMessage}\n\nYour document might be:\n• Image-based or scanned (try OCR conversion)\n• Corrupted or password-protected\n• In an unsupported format\n\nTry converting to a different supported format.`);
+      } else if (errorMessage.includes('File too large')) {
+        alert(`File size error: ${errorMessage}\n\nPlease use a smaller file (under 25MB) or compress your document.`);
+      } else if (errorMessage.includes('Service is currently busy')) {
+        alert(`Service busy: ${errorMessage}\n\nPlease wait a moment and try again.`);
+      } else if (errorMessage.includes('Unauthorized')) {
+        alert(`Authentication error: Please sign in and try again.`);
+      } else {
+        alert(`Failed to process resume: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
+      }
     }
   }, [store]);
 
@@ -415,8 +432,10 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
     onDrop,
     accept: {
       'application/pdf': ['.pdf'],
-      'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'text/plain': ['.txt'],
+      'text/markdown': ['.md'],
+      'text/html': ['.html']
     },
     multiple: false
   });
@@ -462,8 +481,92 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
       store.setProcessingCandidate(false);
       
       // Show user-friendly error message
+      let errorMessage = 'Unknown error occurred';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      // Provide specific guidance for common errors
+      if (errorMessage.includes('LinkedIn text too short')) {
+        alert(`More content needed: ${errorMessage}\n\nPlease provide more detailed LinkedIn profile information (at least 50 characters).`);
+      } else if (errorMessage.includes('No LinkedIn text provided')) {
+        alert(`Missing content: Please paste LinkedIn profile text in the text area.`);
+      } else if (errorMessage.includes('Could not extract candidate name')) {
+        alert(`Parsing failed: ${errorMessage}\n\nThe LinkedIn text might not contain enough profile information. Please ensure you've copied the complete profile text including name and work experience.`);
+      } else if (errorMessage.includes('Unauthorized')) {
+        alert(`Authentication error: Please sign in and try again.`);
+      } else {
+        alert(`Failed to process LinkedIn profile: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
+      }
+    }
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      alert('Please upload a PNG, JPG, SVG, or WebP image');
+      return;
+    }
+
+    // Validate file size (2MB limit)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Logo file size must be less than 2MB');
+      return;
+    }
+
+    setIsUploadingLogo(true);
+
+    try {
+      console.log('📤 Uploading logo via API...');
+      
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Upload via our API endpoint
+      const response = await fetch('/api/competence-files/upload-logo', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || `Upload failed: ${response.status}`);
+      }
+
+      if (!result.success) {
+        throw new Error(result.message || 'Upload failed');
+      }
+
+      console.log('✅ Logo uploaded successfully:', result.data.logoUrl);
+
+      // Update store with the uploaded logo URL
+      store.updateStyleCustomization({ logoUrl: result.data.logoUrl });
+      setIsUploadingLogo(false);
+      
+    } catch (error) {
+      console.error('❌ Logo upload error:', error);
+      setIsUploadingLogo(false);
+      
+      // Show user-friendly error message
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      alert(`Failed to process LinkedIn profile: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
+      
+      if (errorMessage.includes('Unauthorized')) {
+        alert('Authentication error: Please sign in and try again.');
+      } else if (errorMessage.includes('Invalid file type')) {
+        alert('File format error: Please upload a PNG, JPG, SVG, or WebP image.');
+      } else if (errorMessage.includes('File too large')) {
+        alert('File size error: Logo file size must be less than 2MB.');
+      } else if (errorMessage.includes('Upload failed')) {
+        alert(`Upload failed: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
+      } else {
+        alert(`Failed to upload logo: ${errorMessage}\n\nPlease try again.`);
+      }
     }
   };
 
@@ -473,23 +576,38 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
     store.setGenerating(true);
     
     try {
-      console.log('🚀 Starting generation with test endpoint...');
+      console.log('🚀 Starting generation with enhanced endpoint...');
       
-      // Use the test endpoint for simplified generation
+      // Prepare the generation request with all customizations
+      const requestData = {
+        candidateData: store.candidateData,
+        format: store.outputFormat,
+        logoUrl: store.styleCustomization.logoUrl,
+        footerText: store.styleCustomization.footerText || `Generated by Emineon ATS - ${new Date().toLocaleDateString()}`,
+        template: store.selectedTemplate,
+        sections: store.sections.filter(section => section.show),
+        styleCustomization: store.styleCustomization
+      };
+
+      console.log('📋 Request data:', {
+        candidateName: store.candidateData.fullName,
+        format: store.outputFormat,
+        hasLogo: !!store.styleCustomization.logoUrl,
+        sectionsCount: requestData.sections.length
+      });
+      
+      // Use the test endpoint for generation
       const response = await fetch('/api/competence-files/test-generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          candidateData: store.candidateData,
-          format: store.outputFormat
-        }),
+        body: JSON.stringify(requestData),
       });
 
       console.log('📡 Response status:', response.status);
       const responseText = await response.text();
-      console.log('📡 Response text:', responseText);
+      console.log('📡 Response text length:', responseText.length);
 
       let result;
       try {
@@ -527,7 +645,8 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
         fileName: result.data.fileName,
         format: result.data.format,
         fileUrl: result.data.fileUrl,
-        fileSize: result.data.fileSize
+        fileSize: result.data.fileSize,
+        hasLogo: !!store.styleCustomization.logoUrl
       });
 
       // Show success message if there's a warning
@@ -548,41 +667,6 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
   const handleClose = () => {
     store.resetWizard();
     onClose();
-  };
-
-  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      alert('Please upload a PNG, JPG, SVG, or WebP image');
-      return;
-    }
-
-    // Validate file size (2MB limit)
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Logo file size must be less than 2MB');
-      return;
-    }
-
-    setIsUploadingLogo(true);
-
-    try {
-      // Convert to base64 for preview
-      const reader = new FileReader();
-      reader.onload = () => {
-        const logoUrl = reader.result as string;
-        store.updateStyleCustomization({ logoUrl });
-        setIsUploadingLogo(false);
-      };
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error('Logo upload error:', error);
-      setIsUploadingLogo(false);
-      alert('Failed to upload logo');
-    }
   };
 
   if (!isOpen) return null;
@@ -784,7 +868,10 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
                           {isDragActive ? 'Drop CV here' : 'Upload CV'}
                         </p>
                         <p className="text-sm text-gray-600">
-                          Drag & drop or click to select PDF, DOC, or DOCX files
+                          Drag & drop or click to select resume files
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Supported formats: PDF, DOCX, TXT, MD, HTML (max 25MB)
                         </p>
                       </div>
                     </div>
@@ -809,10 +896,13 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
                     <textarea
                       rows={6}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="Paste the LinkedIn profile text or URL here..."
+                      placeholder="Paste the LinkedIn profile text here... (minimum 50 characters required)"
                       value={store.linkedinText || ''}
                       onChange={(e) => store.setLinkedInText(e.target.value)}
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Copy and paste the text content from a LinkedIn profile. URLs are not supported yet.
+                    </p>
                   </div>
                   
                   <Button 
@@ -1388,7 +1478,7 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
                       <div className="flex items-start justify-between mb-6">
                         <div className="flex-1">
                           <div 
-                            className="h-1 w-full mb-3"
+                            className="h-2 w-full mb-3"
                             style={{ backgroundColor: store.styleCustomization.colorHex }}
                           />
                           <h1 
@@ -1407,7 +1497,7 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
                               className="w-full h-full object-contain rounded"
                             />
                           ) : (
-                            <Image className="h-8 w-8 text-gray-400" />
+                            <Image className="h-6 w-6 text-gray-400" />
                           )}
                         </div>
                       </div>
@@ -1623,10 +1713,14 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
                   <Button 
                     variant="outline"
                     onClick={() => {
+                      // Use download proxy to ensure proper file delivery
+                      const fileName = `${store.candidateData?.fullName || 'Candidate'}_Competence_File.${store.outputFormat}`;
+                      const downloadUrl = `/api/competence-files/download?url=${encodeURIComponent(store.generatedFileUrl!)}&filename=${encodeURIComponent(fileName)}`;
+                      
                       // Create download link and trigger download
                       const link = document.createElement('a');
-                      link.href = store.generatedFileUrl!;
-                      link.download = `${store.candidateData?.fullName || 'Candidate'}_Competence_File.${store.outputFormat}`;
+                      link.href = downloadUrl;
+                      link.download = fileName;
                       document.body.appendChild(link);
                       link.click();
                       document.body.removeChild(link);

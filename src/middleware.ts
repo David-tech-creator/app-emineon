@@ -16,6 +16,11 @@ export default authMiddleware({
     '/api/ai/job-description/(.*)',
     '/api/files/(.*)',
     '/api/competence-files/test-generate',
+    '/api/competence-files/test-linkedin',
+    '/api/competence-files/parse-linkedin',
+    '/api/competence-files/parse-resume',
+    '/api/competence-files/download',
+    '/api/competence-files/upload-logo',
     '/api/daily-quote',
     '/uploads/(.*)'
   ],
@@ -25,6 +30,10 @@ export default authMiddleware({
     '/api/public/(.*)',
     '/api/daily-quote',
     '/api/competence-files/test-generate',
+    '/api/competence-files/test-linkedin',
+    '/api/competence-files/parse-resume',
+    '/api/competence-files/download',
+    '/api/competence-files/upload-logo',
     '/uploads/(.*)',
     // Static assets and build files
     '/_next/(.*)',
@@ -35,6 +44,24 @@ export default authMiddleware({
   
   afterAuth(auth, req) {
     const { pathname } = req.nextUrl;
+    
+    // Always allow health check and test endpoints
+    if (pathname === '/api/health' || 
+        pathname === '/api/daily-quote' ||
+        pathname === '/api/competence-files/test-generate' ||
+        pathname === '/api/competence-files/test-linkedin' ||
+        pathname === '/api/competence-files/parse-resume' ||
+        pathname === '/api/competence-files/download') {
+      return NextResponse.next();
+    }
+    
+    // Special handling for upload-logo endpoint - allow GET without auth, require auth for POST
+    if (pathname === '/api/competence-files/upload-logo') {
+      if (req.method === 'GET') {
+        return NextResponse.next(); // Allow GET without authentication
+      }
+      // For POST, continue with normal auth check below
+    }
     
     // For API routes, return 401 instead of redirecting
     if (pathname.startsWith('/api/')) {

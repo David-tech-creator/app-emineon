@@ -144,12 +144,13 @@ export default function CompetenceFilesPage() {
     }
 
     try {
+      // Use download proxy to ensure proper file delivery
+      const downloadUrl = `/api/competence-files/download?url=${encodeURIComponent(file.fileUrl)}&filename=${encodeURIComponent(file.fileName || `${file.candidateName}_competence_file.${file.format || 'pdf'}`)}`;
+      
       // Create a temporary link element to trigger download
       const link = document.createElement('a');
-      link.href = file.fileUrl;
+      link.href = downloadUrl;
       link.download = file.fileName || `${file.candidateName}_competence_file.${file.format || 'pdf'}`;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
