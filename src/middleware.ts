@@ -18,6 +18,7 @@ export default authMiddleware({
     '/api/files/(.*)',
     '/api/daily-quote',
     '/uploads/(.*)',
+    '/api/test-bypass',
     // Make ALL competence-files endpoints public
     '/api/competence-files/test-generate',
     '/api/competence-files/test-linkedin',
@@ -36,6 +37,7 @@ export default authMiddleware({
     '/api/public/(.*)',
     '/api/daily-quote',
     '/uploads/(.*)',
+    '/api/test-bypass',
     // Ignore ALL competence-files endpoints
     '/api/competence-files/test-generate',
     '/api/competence-files/test-linkedin',
@@ -56,6 +58,11 @@ export default authMiddleware({
   
   afterAuth(auth, req) {
     const { pathname } = req.nextUrl;
+    
+    // ALWAYS allow test-bypass endpoint
+    if (pathname === '/api/test-bypass') {
+      return NextResponse.next();
+    }
     
     // ALWAYS allow competence-files endpoints regardless of auth status
     if (pathname.startsWith('/api/competence-files/')) {
