@@ -3,23 +3,46 @@ import { uploadToCloudinary } from '@/lib/cloudinary-config';
 
 // Serverless-compatible Puppeteer setup
 async function getPuppeteerConfig() {
-  if (process.env.NODE_ENV === 'production') {
-    // Production: Use serverless Chromium
+  // Check if we're in a serverless environment (Vercel)
+  const isServerless = process.env.VERCEL || process.env.NODE_ENV === 'production';
+  
+  if (isServerless) {
+    // Production/Serverless: Use serverless Chromium
+    console.log('🔧 Using serverless Chromium for production/Vercel environment');
     const chromium = require('@sparticuz/chromium');
     const puppeteer = require('puppeteer-core');
+    
+    // Optimize for serverless
+    chromium.setHeadlessMode = true;
+    chromium.setGraphicsMode = false;
     
     return {
       puppeteer,
       launchOptions: {
-        args: chromium.args,
+        args: [
+          ...chromium.args,
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--disable-gpu',
+          '--single-process',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding'
+        ],
         defaultViewport: chromium.defaultViewport,
         executablePath: await chromium.executablePath(),
         headless: chromium.headless,
         ignoreHTTPSErrors: true,
+        timeout: 0,
       }
     };
   } else {
     // Development: Use regular Puppeteer
+    console.log('🔧 Using regular Puppeteer for development environment');
     const puppeteer = require('puppeteer');
     
     return {
