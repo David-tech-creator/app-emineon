@@ -556,16 +556,22 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
       // Show user-friendly error message
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       
-      if (errorMessage.includes('Unauthorized')) {
-        alert('Authentication error: Please sign in and try again.');
-      } else if (errorMessage.includes('Invalid file type')) {
+      if (errorMessage.includes('Unauthorized') || errorMessage.includes('Authentication')) {
+        alert('Authentication error: Please sign in and try again.\n\nIf you are signed in, please refresh the page and try again.');
+      } else if (errorMessage.includes('Invalid file type') || errorMessage.includes('file type')) {
         alert('File format error: Please upload a PNG, JPG, SVG, or WebP image.');
-      } else if (errorMessage.includes('File too large')) {
+      } else if (errorMessage.includes('File too large') || errorMessage.includes('file size')) {
         alert('File size error: Logo file size must be less than 2MB.');
+      } else if (errorMessage.includes('configuration') || errorMessage.includes('API Key')) {
+        alert('Cloud storage configuration error: Please contact support.\n\nThe logo upload service is temporarily unavailable.');
+      } else if (errorMessage.includes('timeout')) {
+        alert('Upload timeout: Please try again with a smaller file or check your internet connection.');
+      } else if (errorMessage.includes('network')) {
+        alert('Network error: Please check your internet connection and try again.');
       } else if (errorMessage.includes('Upload failed')) {
         alert(`Upload failed: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
       } else {
-        alert(`Failed to upload logo: ${errorMessage}\n\nPlease try again.`);
+        alert(`Failed to upload logo: An unexpected error occurred while uploading the logo.\n\nError details: ${errorMessage}\n\nPlease try again.`);
       }
     }
   };

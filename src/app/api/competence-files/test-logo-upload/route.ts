@@ -1,31 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs';
 import { uploadImageToCloudinary } from '@/lib/cloudinary-config';
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication with better error handling
-    let userId: string | null = null;
-    try {
-      const authResult = auth();
-      userId = authResult.userId;
-    } catch (authError) {
-      console.error('❌ Authentication error:', authError);
-      // In development or testing, allow bypass
-      if (process.env.NODE_ENV === 'development' || process.env.BYPASS_AUTH === 'true') {
-        console.log('⚠️ Bypassing authentication for development/testing');
-        userId = 'dev-user';
-      }
-    }
-
-    if (!userId) {
-      return NextResponse.json({ 
-        error: 'Unauthorized',
-        message: 'Authentication required to upload logo'
-      }, { status: 401 });
-    }
-
-    console.log('📤 Logo upload endpoint called for user:', userId);
+    console.log('🧪 Test logo upload endpoint called');
 
     // Get the uploaded file from FormData
     const formData = await request.formData();
@@ -56,7 +34,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log(`📁 Processing logo: ${file.name} (${file.size} bytes, ${file.type})`);
+    console.log(`📁 Processing test logo: ${file.name} (${file.size} bytes, ${file.type})`);
 
     try {
       // Convert file to buffer for Cloudinary upload
@@ -65,17 +43,17 @@ export async function POST(request: NextRequest) {
 
       // Generate a unique filename for the logo
       const timestamp = Date.now();
-      const filename = `logo_${timestamp}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      const filename = `test_logo_${timestamp}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
 
       // Upload to Cloudinary with image optimizations
-      console.log('☁️ Uploading logo to Cloudinary...');
+      console.log('☁️ Uploading test logo to Cloudinary...');
       const result = await uploadImageToCloudinary(buffer, filename, [
         { width: 200, height: 200, crop: 'limit' }, // Limit size for logos
         { quality: 'auto' }, // Optimize quality
         { format: 'auto' } // Auto format selection
       ]);
 
-      console.log('✅ Logo uploaded successfully:', result.url);
+      console.log('✅ Test logo uploaded successfully:', result.url);
 
       return NextResponse.json({
         success: true,
@@ -86,40 +64,25 @@ export async function POST(request: NextRequest) {
           fileSize: file.size,
           fileType: file.type
         },
-        message: 'Logo uploaded successfully'
+        message: 'Test logo uploaded successfully'
       });
 
     } catch (uploadError: any) {
-      console.error('❌ Cloudinary upload error:', uploadError);
-      
-      // Provide more specific error messages
-      let errorMessage = 'Failed to upload logo to cloud storage';
-      let errorDetails = uploadError?.message || 'Unknown upload error';
-      
-      if (uploadError?.message?.includes('Invalid API Key')) {
-        errorMessage = 'Cloud storage configuration error';
-        errorDetails = 'Please check Cloudinary API credentials';
-      } else if (uploadError?.message?.includes('timeout')) {
-        errorMessage = 'Upload timeout';
-        errorDetails = 'Please try again with a smaller file';
-      } else if (uploadError?.message?.includes('network')) {
-        errorMessage = 'Network error';
-        errorDetails = 'Please check your internet connection and try again';
-      }
+      console.error('❌ Cloudinary test upload error:', uploadError);
       
       return NextResponse.json({
         error: 'Upload failed',
-        message: errorMessage,
-        details: errorDetails
+        message: 'Failed to upload test logo to cloud storage',
+        details: uploadError?.message || 'Unknown upload error'
       }, { status: 500 });
     }
 
   } catch (error) {
-    console.error('💥 Logo upload error:', error);
+    console.error('💥 Test logo upload error:', error);
     
     return NextResponse.json({
       error: 'Internal server error',
-      message: 'An unexpected error occurred while uploading the logo.',
+      message: 'An unexpected error occurred while uploading the test logo.',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
@@ -127,11 +90,11 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   return NextResponse.json({
-    message: 'Logo upload endpoint',
+    message: 'Test logo upload endpoint',
     supportedFormats: ['PNG', 'JPG', 'SVG', 'WebP'],
     maxFileSize: '2MB',
-    authentication: 'required',
-    endpoint: '/api/competence-files/upload-logo',
+    authentication: 'not required',
+    endpoint: '/api/competence-files/test-logo-upload',
     status: 'active'
   });
 } 

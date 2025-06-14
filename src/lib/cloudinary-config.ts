@@ -10,12 +10,23 @@ if (process.env.CLOUDINARY_URL) {
 } else {
   // Fallback to individual environment variables
   console.log('🔧 Using individual environment variables');
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'emineon',
-    api_key: process.env.CLOUDINARY_API_KEY || '452814944399829',
-    api_secret: process.env.CLOUDINARY_API_SECRET || 'c1vCg07L1avVzo-WludXlXhYgDs',
-  secure: true,
-});
+  
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'emineon';
+  const apiKey = process.env.CLOUDINARY_API_KEY || '452814944399829';
+  const apiSecret = process.env.CLOUDINARY_API_SECRET || 'c1vCg07L1avVzo-WludXlXhYgDs';
+  
+  cloudinary.config({
+    cloud_name: cloudName,
+    api_key: apiKey,
+    api_secret: apiSecret,
+    secure: true,
+  });
+  
+  console.log('🔧 Cloudinary configured with:', {
+    cloud_name: cloudName,
+    api_key: apiKey ? apiKey.substring(0, 5) + '...' : 'not set',
+    api_secret: apiSecret ? '***' : 'not set'
+  });
 }
 
 // Verify configuration
@@ -31,6 +42,12 @@ export const uploadToCloudinary = async (
   folder: string = 'competence-files'
 ): Promise<{ url: string; publicId: string }> => {
   console.log('📤 Attempting upload to cloud_name:', cloudinary.config().cloud_name);
+  
+  // Validate configuration before upload
+  const currentConfig = cloudinary.config();
+  if (!currentConfig.cloud_name || !currentConfig.api_key || !currentConfig.api_secret) {
+    throw new Error('Cloudinary configuration is incomplete. Please check environment variables.');
+  }
   
   // Use auto resource type for all files to avoid access issues
   const publicId = filename.replace(/\.[^/.]+$/, ''); // Remove extension to avoid double extensions
@@ -66,6 +83,14 @@ export const uploadImageToCloudinary = async (
   filename: string,
   transformations?: any[]
 ): Promise<{ url: string; publicId: string }> => {
+  console.log('📤 Uploading image to Cloudinary...');
+  
+  // Validate configuration before upload
+  const currentConfig = cloudinary.config();
+  if (!currentConfig.cloud_name || !currentConfig.api_key || !currentConfig.api_secret) {
+    throw new Error('Cloudinary configuration is incomplete. Please check environment variables.');
+  }
+  
   return new Promise((resolve, reject) => {
     cloudinary.uploader.upload_stream(
       {
@@ -81,8 +106,10 @@ export const uploadImageToCloudinary = async (
       },
       (error: any, result: any) => {
         if (error) {
+          console.error('❌ Cloudinary image upload error:', error);
           reject(error);
         } else {
+          console.log('✅ Cloudinary image upload successful:', result.secure_url);
           resolve({
             url: result!.secure_url,
             publicId: result!.public_id
