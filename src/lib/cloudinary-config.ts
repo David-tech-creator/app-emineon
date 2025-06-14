@@ -49,18 +49,39 @@ export const uploadToCloudinary = async (
     throw new Error('Cloudinary configuration is incomplete. Please check environment variables.');
   }
   
-  // Use auto resource type for all files to avoid access issues
-  const publicId = filename.replace(/\.[^/.]+$/, ''); // Remove extension to avoid double extensions
+  // Determine resource type based on file extension
+  const fileExtension = filename.toLowerCase().split('.').pop();
+  let resourceType: 'auto' | 'raw' | 'image' | 'video' = 'auto';
+  
+  // For PDFs and other documents, use 'raw' to preserve binary integrity
+  if (fileExtension === 'pdf' || fileExtension === 'doc' || fileExtension === 'docx') {
+    resourceType = 'raw';
+    console.log('📄 Uploading as raw file type for PDF/document');
+  } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExtension || '')) {
+    resourceType = 'image';
+    console.log('🖼️ Uploading as image file type');
+  } else {
+    resourceType = 'auto';
+    console.log('🔄 Using auto detection for file type');
+  }
+  
+  // Remove extension from public_id to avoid double extensions
+  const publicId = filename.replace(/\.[^/.]+$/, '');
   
   return new Promise((resolve, reject) => {
     cloudinary.uploader.upload_stream(
       {
-        resource_type: 'auto',
+        resource_type: resourceType,
         folder: `emineon-ats/${folder}`,
         public_id: publicId,
         overwrite: true,
         type: 'upload',
-        invalidate: true
+        invalidate: true,
+        // For raw files, don't apply any transformations
+        ...(resourceType === 'raw' && { 
+          format: fileExtension,
+          flags: 'attachment' // This ensures proper download behavior
+        })
       },
       (error: any, result: any) => {
         if (error) {
