@@ -15,14 +15,7 @@ export default authMiddleware({
     '/api/candidates/parse-linkedin',
     '/api/ai/job-description/(.*)',
     '/api/files/(.*)',
-    '/api/competence-files/test-generate',
-    '/api/competence-files/test-linkedin',
-    '/api/competence-files/test-logo-upload',
-    '/api/competence-files/simple-logo-test',
-    '/api/competence-files/parse-linkedin',
-    '/api/competence-files/parse-resume',
-    '/api/competence-files/download',
-    '/api/competence-files/upload-logo',
+    '/api/competence-files/(.*)',
     '/api/daily-quote',
     '/uploads/(.*)'
   ],
@@ -31,13 +24,7 @@ export default authMiddleware({
     '/api/health',
     '/api/public/(.*)',
     '/api/daily-quote',
-    '/api/competence-files/test-generate',
-    '/api/competence-files/test-linkedin',
-    '/api/competence-files/test-logo-upload',
-    '/api/competence-files/simple-logo-test',
-    '/api/competence-files/parse-resume',
-    '/api/competence-files/download',
-    '/api/competence-files/upload-logo',
+    '/api/competence-files/(.*)',
     '/uploads/(.*)',
     // Static assets and build files
     '/_next/(.*)',
@@ -49,24 +36,11 @@ export default authMiddleware({
   afterAuth(auth, req) {
     const { pathname } = req.nextUrl;
     
-    // Always allow health check and test endpoints
+    // Always allow health check, daily quote, and ALL competence-files endpoints
     if (pathname === '/api/health' || 
         pathname === '/api/daily-quote' ||
-        pathname === '/api/competence-files/test-generate' ||
-        pathname === '/api/competence-files/test-linkedin' ||
-        pathname === '/api/competence-files/test-logo-upload' ||
-        pathname === '/api/competence-files/simple-logo-test' ||
-        pathname === '/api/competence-files/parse-resume' ||
-        pathname === '/api/competence-files/download') {
+        pathname.startsWith('/api/competence-files/')) {
       return NextResponse.next();
-    }
-    
-    // Special handling for upload-logo endpoint - allow GET without auth, require auth for POST
-    if (pathname === '/api/competence-files/upload-logo') {
-      if (req.method === 'GET') {
-        return NextResponse.next(); // Allow GET without authentication
-      }
-      // For POST, continue with normal auth check below
     }
     
     // For API routes, return 401 instead of redirecting
