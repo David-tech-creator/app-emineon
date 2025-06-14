@@ -1,13 +1,8 @@
 {
   "framework": "nextjs",
-  "buildCommand": "prisma generate --no-engine && next build",
-  "outputDirectory": ".next",
-  "installCommand": "npm install",
+  "buildCommand": "npm run build",
   "devCommand": "npm run dev",
-  "env": {
-    "NODE_ENV": "production",
-    "PRISMA_GENERATE_DATAPROXY": "true"
-  },
+  "installCommand": "npm install",
   "functions": {
     "src/app/api/**/*.ts": {
       "maxDuration": 30
@@ -25,25 +20,38 @@
       "maxDuration": 60
     }
   },
-  "crons": [],
-  "regions": ["iad1"],
   "headers": [
     {
       "source": "/api/(.*)",
       "headers": [
         {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, DELETE, OPTIONS"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization"
+          "key": "Cache-Control",
+          "value": "no-store, must-revalidate"
         }
       ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/health",
+      "destination": "/api/health"
     }
   ]
 } 

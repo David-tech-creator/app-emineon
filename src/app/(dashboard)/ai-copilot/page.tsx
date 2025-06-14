@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Bot, User, Sparkles, MessageCircle, Brain, Search, FileText, Users, Briefcase, Upload, File, X, AlertCircle, CheckCircle, Database, Zap, Target, TrendingUp } from 'lucide-react';
+import { Send, User, Sparkles, MessageCircle, Brain, Search, FileText, Users, Briefcase, Upload, File, X, AlertCircle, CheckCircle, Database, Zap, Target, TrendingUp } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/Button';
 import { Layout } from '@/components/layout/Layout';
 import { useDropzone } from 'react-dropzone';
 import { useAuth } from '@clerk/nextjs';
 import { api } from '@/lib/api';
+import { useSearchParams } from 'next/navigation';
 
 interface Message {
   id: string;
@@ -21,16 +23,13 @@ interface UploadedDocument {
   name: string;
   type: string;
   size: number;
-  content?: string;
-  analysis?: DocumentAnalysis;
+  fileId?: string; // OpenAI file ID
+  purpose?: string;
+  status?: 'uploading' | 'completed' | 'error';
+  uploadProgress?: number;
 }
 
-interface DocumentAnalysis {
-  type: 'job_description' | 'cv' | 'company_document' | 'other';
-  extractedData: any;
-  keyInsights: string[];
-  searchableTerms: string[];
-}
+
 
 interface QuickAction {
   id: string;
@@ -38,7 +37,7 @@ interface QuickAction {
   description: string;
   icon: React.ReactNode;
   prompt: string;
-  category: 'search' | 'analysis' | 'communication' | 'reports';
+  category: 'search' | 'analysis' | 'outreach' | 'reports';
 }
 
 const quickActions: QuickAction[] = [
@@ -83,12 +82,12 @@ const quickActions: QuickAction[] = [
     category: 'analysis'
   },
   {
-    id: 'bulk-communication',
-    title: 'Bulk Communication Generator',
-    description: 'Generate personalized communication for multiple candidates',
+    id: 'bulk-outreach',
+    title: 'Bulk Outreach Generator',
+    description: 'Generate personalized outreach for multiple candidates',
     icon: <MessageCircle className="w-5 h-5" />,
-    prompt: 'Help me create personalized communication messages for a group of candidates based on specific criteria',
-    category: 'communication'
+    prompt: 'Help me create personalized outreach messages for a group of candidates based on specific criteria',
+    category: 'outreach'
   },
   {
     id: 'client-insights',
@@ -110,11 +109,12 @@ const quickActions: QuickAction[] = [
 
 export default function AICopilotPage() {
   const { getToken } = useAuth();
+  const searchParams = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       type: 'assistant',
-      content: "👋 Welcome to your AI Co-pilot! I can help you with intelligent candidate searches, document analysis, and company-wide insights.\n\n🔹 **Drag & drop documents** (job descriptions, CVs, company docs) for instant analysis\n🔹 **Ask questions** about your candidate database, market trends, or talent insights\n🔹 **Get recommendations** for candidate matching, communication strategies, and pipeline optimization\n\nWhat would you like to explore today?",
+      content: "👋 Welcome to your AI Co-pilot! I can help you with intelligent candidate searches, document analysis, and company-wide insights.\n\n🔹 **Drag & drop documents** (job descriptions, CVs, company docs) for instant analysis\n🔹 **Ask questions** about your candidate database, market trends, or talent insights\n🔹 **Get recommendations** for candidate matching, outreach strategies, and pipeline optimization\n\nWhat would you like to explore today?",
       timestamp: new Date()
     }
   ]);
@@ -135,6 +135,20 @@ export default function AICopilotPage() {
     scrollToBottom();
   }, [messages]);
 
+  // Handle initial message from URL parameter
+  useEffect(() => {
+    const initialMessage = searchParams.get('message');
+    if (initialMessage && inputValue === '') {
+      setInputValue(initialMessage);
+      // Auto-send the message after a short delay
+      setTimeout(() => {
+        handleSendMessage(initialMessage);
+        // Clear the input field after sending to prevent double sending
+        setInputValue('');
+      }, 500);
+    }
+  }, [searchParams]);
+
   // Load candidates data
   useEffect(() => {
     const loadCandidates = async () => {
@@ -152,7 +166,7 @@ export default function AICopilotPage() {
     loadCandidates();
   }, [getToken]);
 
-  // Document upload functionality
+  // Document upload functionality using Vercel Blob
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     setIsAnalyzing(true);
     
@@ -162,35 +176,66 @@ export default function AICopilotPage() {
         name: file.name,
         type: file.type,
         size: file.size,
+        status: 'uploading',
+        uploadProgress: 0,
       };
 
+      setUploadedDocuments(prev => [...prev, newDoc]);
+
       try {
-        // Read file content
-        const text = await readFileContent(file);
-        newDoc.content = text;
+        // Upload to Vercel Blob and extract content
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error(`Upload failed: ${response.statusText}`);
+        }
+
+        const uploadResult = await response.json();
         
-        // Analyze document
-        const analysis = await analyzeDocument(text, file.name);
-        newDoc.analysis = analysis;
-        
-        setUploadedDocuments(prev => [...prev, newDoc]);
+        if (!uploadResult.success) {
+          throw new Error(uploadResult.error || 'Upload failed');
+        }
+
+        // Update document with results
+        const updatedDoc: UploadedDocument = {
+          ...newDoc,
+          status: 'completed',
+          fileId: uploadResult.data.fileId,
+          purpose: uploadResult.data.purpose
+        };
+
+        setUploadedDocuments(prev => 
+          prev.map(doc => doc.id === newDoc.id ? updatedDoc : doc)
+        );
         
         // Add system message about uploaded document
         const systemMessage: Message = {
           id: Date.now().toString() + 'sys',
           type: 'system',
-          content: `📄 **Document uploaded:** ${file.name}\n\n**Analysis:** ${analysis.type.replace('_', ' ').toUpperCase()}\n\n**Key insights:** ${analysis.keyInsights.join(', ')}\n\nYou can now ask questions about this document or request candidate matching.`,
+          content: `📄 **Document uploaded:** ${file.name}\n\n**File ID:** ${uploadResult.data.fileId}\n**Size:** ${(uploadResult.data.size / 1024 / 1024).toFixed(2)} MB\n\nYou can now ask questions about this document or request candidate matching.`,
           timestamp: new Date(),
-          attachments: [newDoc]
+          attachments: [updatedDoc]
         };
         
         setMessages(prev => [...prev, systemMessage]);
       } catch (error) {
         console.error('Error processing file:', error);
+        
+        // Update document status to error
+        setUploadedDocuments(prev => 
+          prev.map(doc => doc.id === newDoc.id ? { ...doc, status: 'error' } : doc)
+        );
+        
         const errorMessage: Message = {
           id: Date.now().toString() + 'err',
           type: 'system',
-          content: `❌ **Error processing ${file.name}:** Failed to analyze document. Please try again.`,
+          content: `❌ **Error processing ${file.name}:** Upload failed. Please try again.`,
           timestamp: new Date()
         };
         setMessages(prev => [...prev, errorMessage]);
@@ -206,81 +251,11 @@ export default function AICopilotPage() {
       'application/pdf': ['.pdf'],
       'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'text/plain': ['.txt'],
-      'text/markdown': ['.md'],
-      'application/rtf': ['.rtf']
+      'text/plain': ['.txt']
     },
-    maxFiles: 5,
     maxSize: 10 * 1024 * 1024, // 10MB
+    multiple: true
   });
-
-  const readFileContent = async (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target?.result as string);
-      reader.onerror = (e) => reject(e);
-      reader.readAsText(file);
-    });
-  };
-
-  const analyzeDocument = async (content: string, filename: string): Promise<DocumentAnalysis> => {
-    // Simple document analysis - in production, this would use AI/ML
-    const lowerContent = content.toLowerCase();
-    const lowerFilename = filename.toLowerCase();
-    
-    let type: DocumentAnalysis['type'] = 'other';
-    const keyInsights: string[] = [];
-    const searchableTerms: string[] = [];
-    
-    // Determine document type
-    if (lowerContent.includes('job description') || lowerContent.includes('requirements') || lowerContent.includes('responsibilities')) {
-      type = 'job_description';
-      keyInsights.push('Job description detected');
-      
-      // Extract key terms for job descriptions
-      const skillMatches = content.match(/\b(react|javascript|python|java|node\.js|typescript|aws|docker|kubernetes|sql|mongodb|postgresql|angular|vue\.js|express|spring|django|flask|git|jenkins|ci\/cd|agile|scrum|devops|machine learning|ai|data science|blockchain|cloud|microservices|rest api|graphql)\b/gi);
-      if (skillMatches) {
-        searchableTerms.push(...Array.from(new Set(skillMatches.map(s => s.toLowerCase()))));
-        keyInsights.push(`${skillMatches.length} technical skills identified`);
-      }
-      
-      const experienceMatch = content.match(/(\d+)\+?\s*years?\s*(of\s*)?experience/gi);
-      if (experienceMatch) {
-        keyInsights.push(`Experience requirement: ${experienceMatch[0]}`);
-      }
-      
-    } else if (lowerContent.includes('curriculum vitae') || lowerContent.includes('resume') || lowerFilename.includes('cv') || lowerFilename.includes('resume')) {
-      type = 'cv';
-      keyInsights.push('CV/Resume detected');
-      
-      // Extract skills and experience from CV
-      const skillMatches = content.match(/\b(react|javascript|python|java|node\.js|typescript|aws|docker|kubernetes|sql|mongodb|postgresql|angular|vue\.js|express|spring|django|flask|git|jenkins|ci\/cd|agile|scrum|devops|machine learning|ai|data science|blockchain|cloud|microservices|rest api|graphql)\b/gi);
-      if (skillMatches) {
-        searchableTerms.push(...Array.from(new Set(skillMatches.map(s => s.toLowerCase()))));
-        keyInsights.push(`${skillMatches.length} technical skills found`);
-      }
-      
-      const emailMatch = content.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-      if (emailMatch) {
-        keyInsights.push(`Contact: ${emailMatch[0]}`);
-      }
-      
-    } else if (lowerContent.includes('company') || lowerContent.includes('organization') || lowerContent.includes('policy') || lowerContent.includes('procedure')) {
-      type = 'company_document';
-      keyInsights.push('Company document detected');
-    }
-    
-    // Extract general insights
-    const wordCount = content.split(/\s+/).length;
-    keyInsights.push(`${wordCount} words`);
-    
-    return {
-      type,
-      extractedData: { content, wordCount },
-      keyInsights,
-      searchableTerms
-    };
-  };
 
   const removeDocument = (docId: string) => {
     setUploadedDocuments(prev => prev.filter(doc => doc.id !== docId));
@@ -294,201 +269,92 @@ export default function AICopilotPage() {
       type: 'user',
       content: content.trim(),
       timestamp: new Date(),
-      attachments: uploadedDocuments.length > 0 ? [...uploadedDocuments] : undefined
+      attachments: uploadedDocuments.filter(doc => doc.status === 'completed').length > 0 ? uploadedDocuments.filter(doc => doc.status === 'completed') : undefined
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
 
-    // Generate AI response based on user input and uploaded documents
-    setTimeout(async () => {
+    try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      let response;
+      
+      // Use the chat endpoint with document context if available
+      const requestBody: any = {
+        message: content.trim(),
+        context: {
+          candidateCount: candidates.length
+        }
+      };
+
+      // If there are uploaded documents, include their file IDs
+      const completedDocs = uploadedDocuments.filter(doc => doc.status === 'completed' && doc.fileId);
+      if (completedDocs.length > 0) {
+        requestBody.fileIds = completedDocs.map(doc => doc.fileId);
+      }
+
+      response = await fetch('/api/ai-copilot/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
+
+      const data = await response.json();
+      
+      let responseContent = data.message || data.response;
+
+      // If the response includes candidate data, format it nicely
+      if (data.candidates && data.candidates.length > 0) {
+        responseContent += '\n\n**📋 Matching Candidates:**\n\n';
+        data.candidates.forEach((candidate: any, index: number) => {
+          responseContent += `**${index + 1}. ${candidate.name}**\n`;
+          responseContent += `• **Skills:** ${candidate.skills?.join(', ') || 'Not specified'}\n`;
+          responseContent += `• **Experience:** ${candidate.experience || 'Not specified'}\n`;
+          responseContent += `• **Location:** ${candidate.location || 'Not specified'}\n`;
+          if (candidate.email) {
+            responseContent += `• **Contact:** ${candidate.email}\n`;
+          }
+          responseContent += '\n';
+        });
+      }
+
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: Date.now().toString() + 'ai',
         type: 'assistant',
-        content: await generateIntelligentResponse(content.trim(), uploadedDocuments, candidates),
+        content: responseContent,
         timestamp: new Date()
       };
+
       setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      const errorMessage: Message = {
+        id: Date.now().toString() + 'error',
+        type: 'system',
+        content: '❌ Sorry, I encountered an error processing your request. Please try again.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 2000);
-  };
-
-  const generateIntelligentResponse = async (userInput: string, documents: UploadedDocument[], candidateData: any[]): Promise<string> => {
-    const input = userInput.toLowerCase();
-    
-    // If documents are uploaded, prioritize document-based responses
-    if (documents.length > 0) {
-      const jobDescriptions = documents.filter(doc => doc.analysis?.type === 'job_description');
-      const cvs = documents.filter(doc => doc.analysis?.type === 'cv');
-      
-      if (jobDescriptions.length > 0) {
-        const jd = jobDescriptions[0];
-        const skills = jd.analysis?.searchableTerms || [];
-        
-        // Find matching candidates
-        const matchingCandidates = candidateData.filter(candidate => {
-          const candidateSkills = [
-            ...(candidate.technicalSkills || []),
-            ...(candidate.frameworks || []),
-            ...(candidate.programmingLanguages || []),
-            ...(candidate.toolsAndPlatforms || [])
-          ].map(s => s.toLowerCase());
-          
-          return skills.some(skill => candidateSkills.includes(skill));
-        }).slice(0, 5);
-        
-        return `## 🎯 **Job Description Analysis & Candidate Matching**
-
-**📄 Document:** ${jd.name}
-**🔍 Key Skills Identified:** ${skills.join(', ')}
-
-### **🏆 Top Matching Candidates (${matchingCandidates.length} found)**
-
-${matchingCandidates.map((candidate, index) => `
-**${index + 1}. ${candidate.firstName} ${candidate.lastName}**
-• **Title:** ${candidate.currentTitle || 'Not specified'}
-• **Experience:** ${candidate.experienceYears || 0} years
-• **Skills:** ${candidate.technicalSkills?.slice(0, 5).join(', ') || 'Not specified'}
-• **Location:** ${candidate.currentLocation || 'Not specified'}
-• **Match Score:** ${Math.floor(Math.random() * 30) + 70}% 
-• **Contact:** ${candidate.email}
-`).join('')}
-
-### **📊 Search Insights**
-- **Total candidates in database:** ${candidateData.length}
-- **Skill match rate:** ${Math.floor((matchingCandidates.length / candidateData.length) * 100)}%
-- **Recommended next steps:** 
-  1. Review detailed profiles of top 3 candidates
-  2. Schedule initial screening calls
-  3. Prepare technical assessment if needed
-
-Would you like me to draft personalized communication messages for these candidates?`;
-      }
-      
-      if (cvs.length > 0) {
-        const cv = cvs[0];
-        const skills = cv.analysis?.searchableTerms || [];
-        
-        // Find similar candidates
-        const similarCandidates = candidateData.filter(candidate => {
-          const candidateSkills = [
-            ...(candidate.technicalSkills || []),
-            ...(candidate.frameworks || []),
-            ...(candidate.programmingLanguages || [])
-          ].map(s => s.toLowerCase());
-          
-          return skills.some(skill => candidateSkills.includes(skill));
-        }).slice(0, 3);
-        
-        return `## 📋 **CV Analysis & Database Comparison**
-
-**📄 Document:** ${cv.name}
-**🔍 Skills Detected:** ${skills.join(', ')}
-
-### **👥 Similar Candidates in Database**
-
-${similarCandidates.map((candidate, index) => `
-**${index + 1}. ${candidate.firstName} ${candidate.lastName}**
-• **Similarity Score:** ${Math.floor(Math.random() * 20) + 80}%
-• **Common Skills:** ${skills.slice(0, 3).join(', ')}
-• **Experience:** ${candidate.experienceYears || 0} years
-• **Current Role:** ${candidate.currentTitle || 'Not specified'}
-`).join('')}
-
-### **💡 Recommendations**
-1. **Skill Enhancement:** Focus on ${['Machine Learning', 'Cloud Architecture', 'DevOps'].join(', ')} to increase market competitiveness
-2. **Market Position:** This profile is ${Math.random() > 0.5 ? 'above' : 'at'} average for the current market
-3. **Potential Roles:** Senior Developer, Technical Lead, Solutions Architect
-
-Would you like me to suggest specific improvement areas or find relevant job opportunities?`;
-      }
     }
-    
-    // Handle general queries
-    if (input.includes('search') || input.includes('find') || input.includes('candidate')) {
-      const skills = candidateData.reduce((acc, candidate) => {
-        return acc.concat(candidate.technicalSkills || []);
-      }, [] as string[]);
-      const topSkills = Array.from(new Set(skills)).slice(0, 10);
-      
-      return `## 🔍 **Company-wide Database Search**
-
-**📊 Current Database Overview:**
-- **Total Candidates:** ${candidateData.length}
-- **Active Candidates:** ${candidateData.filter(c => c.status === 'ACTIVE').length}
-- **New This Month:** ${candidateData.filter(c => new Date(c.createdAt) > new Date(Date.now() - 30*24*60*60*1000)).length}
-
-**🏆 Top Skills in Database:**
-${topSkills.map(skill => `• ${skill}`).join('\n')}
-
-**🎯 Advanced Search Options:**
-1. **By Skills:** "Find all React developers with 5+ years experience"
-2. **By Location:** "Show candidates in London available for remote work"
-3. **By Experience:** "List senior developers with fintech background"
-4. **By Availability:** "Find candidates available immediately"
-
-What specific criteria would you like me to search for?`;
-    }
-    
-    if (input.includes('pipeline') || input.includes('analysis') || input.includes('insights')) {
-      const statusCounts = candidateData.reduce((acc, candidate) => {
-        acc[candidate.status] = (acc[candidate.status] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      
-      return `## 📈 **Talent Pipeline Analysis**
-
-**🔥 Pipeline Health Score: ${Math.floor(Math.random() * 20) + 80}/100**
-
-### **📊 Status Breakdown:**
-${Object.entries(statusCounts).map(([status, count]) => `• **${status}:** ${count} candidates`).join('\n')}
-
-### **🎯 Key Insights:**
-- **Conversion Rate:** ${Math.floor(Math.random() * 10) + 15}% (industry avg: 12%)
-- **Time to Hire:** ${Math.floor(Math.random() * 10) + 20} days (target: 25 days)
-- **Source Performance:** LinkedIn leads with 45% of placements
-- **Skills in Demand:** React, Python, AWS, DevOps
-
-### **🚀 Recommendations:**
-1. **Expand sourcing** in cloud technologies (+25% demand)
-2. **Accelerate screening** for senior roles (current bottleneck)
-3. **Improve candidate experience** (18% drop-off at interview stage)
-
-Would you like detailed recommendations for any specific area?`;
-    }
-    
-    return `I understand you're looking for help with recruitment intelligence. Based on our database of **${candidateData.length} candidates**, I can assist you with:
-
-## 🎯 **Core Capabilities**
-
-**📋 Document Analysis**
-• Upload job descriptions → Get instant candidate matches
-• Analyze CVs → Find similar profiles and skill gaps
-• Process company documents → Extract key insights
-
-**🔍 Advanced Search & Matching**
-• Natural language candidate search
-• Cross-database skill mapping
-• Market trend analysis
-• Competitive intelligence
-
-**📊 Analytics & Insights**
-• Pipeline health monitoring
-• Conversion rate optimization
-• Market demand forecasting
-• Client success metrics
-
-**💌 Communication & Engagement**
-• Personalized message generation
-• Timing optimization
-• Multi-channel campaign planning
-
-Try uploading a document or asking a specific question about your talent pipeline!`;
   };
 
   const handleQuickAction = (action: QuickAction) => {
-    handleSendMessage(action.prompt);
+    setInputValue(action.prompt);
+    inputRef.current?.focus();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -509,7 +375,13 @@ Try uploading a document or asking a specific question about your talent pipelin
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-gradient-to-r from-primary-100 to-blue-100 rounded-xl">
-              <Bot className="w-8 h-8 text-primary-600" />
+              <Image 
+                src="/emineon-logo.png" 
+                alt="Emineon Logo" 
+                width={32} 
+                height={32} 
+                className="w-8 h-8 object-contain"
+              />
             </div>
             <div>
               <h1 className="text-3xl font-bold text-neutral-900">AI Co-pilot</h1>
@@ -534,7 +406,7 @@ Try uploading a document or asking a specific question about your talent pipelin
                   {isDragActive ? 'Drop documents here...' : 'Upload Documents for Analysis'}
                 </h3>
                 <p className="text-sm text-neutral-600">
-                  Drag & drop job descriptions, CVs, or company documents (PDF, DOC, TXT • Max 10MB each)
+                  Drag & drop job descriptions, CVs, or company documents (PDF, DOC, DOCX, TXT • Max 10MB each)
                 </p>
               </div>
               {isAnalyzing && (
@@ -554,9 +426,19 @@ Try uploading a document or asking a specific question about your talent pipelin
                   <File className="w-4 h-4 text-primary-600" />
                   <span className="text-sm font-medium">{doc.name}</span>
                   <span className="text-xs text-neutral-500">({(doc.size / 1024).toFixed(1)}KB)</span>
-                  {doc.analysis && (
+                  {doc.status === 'completed' && (
                     <span className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded">
-                      {doc.analysis.type.replace('_', ' ')}
+                      Uploaded
+                    </span>
+                  )}
+                  {doc.status === 'uploading' && (
+                    <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">
+                      Uploading...
+                    </span>
+                  )}
+                  {doc.status === 'error' && (
+                    <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+                      Error
                     </span>
                   )}
                   <button
@@ -579,7 +461,7 @@ Try uploading a document or asking a specific question about your talent pipelin
               
               {/* Category Filter */}
               <div className="flex flex-wrap gap-1 mb-4">
-                {['all', 'search', 'analysis', 'communication', 'reports'].map((category) => (
+                {['all', 'search', 'analysis', 'outreach', 'reports'].map((category) => (
                   <button
                     key={category}
                     onClick={() => setActiveCategory(category)}
@@ -633,7 +515,13 @@ Try uploading a document or asking a specific question about your talent pipelin
                         {message.type === 'system' ? (
                           <AlertCircle className="w-4 h-4 text-amber-600" />
                         ) : (
-                          <Bot className="w-4 h-4 text-primary-600" />
+                          <Image 
+                            src="/emineon-logo.png" 
+                            alt="Emineon Logo" 
+                            width={16} 
+                            height={16} 
+                            className="w-4 h-4 object-contain"
+                          />
                         )}
                       </div>
                     )}
@@ -685,7 +573,13 @@ Try uploading a document or asking a specific question about your talent pipelin
                 {isLoading && (
                   <div className="flex gap-3 justify-start">
                     <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Bot className="w-4 h-4 text-primary-600" />
+                      <Image 
+                        src="/emineon-logo.png" 
+                        alt="Emineon Logo" 
+                        width={16} 
+                        height={16} 
+                        className="w-4 h-4 object-contain"
+                      />
                     </div>
                     <div className="bg-neutral-100 rounded-xl px-4 py-3">
                       <div className="flex items-center gap-2">

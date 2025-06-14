@@ -6,6 +6,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { CreateCandidateModal } from '@/components/candidates/CreateCandidateModal';
 import { CandidateProfileDrawer } from '@/components/candidates/CandidateProfileDrawer';
 import { CandidateProfileModal } from '@/components/candidates/CandidateProfileModal';
+import { AdvancedFilterDrawer, CandidateFilters } from '@/components/candidates/AdvancedFilterDrawer';
 import { useCandidates } from '@/hooks/useCandidates';
 import { useAuth } from '@clerk/nextjs';
 import { 
@@ -28,8 +29,8 @@ import {
   MessageSquare
 } from 'lucide-react';
 
-// Swiss-themed candidate interface
-interface SwissCandidate {
+// Candidate interface
+interface Candidate {
   id: number;
   name: string;
   location: string;
@@ -74,9 +75,11 @@ export default function CandidatesPage() {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedCandidates, setSelectedCandidates] = useState<number[]>([]);
-  const [selectedCandidate, setSelectedCandidate] = useState<SwissCandidate | null>(null);
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<CandidateFilters | null>(null);
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -86,8 +89,8 @@ export default function CandidatesPage() {
     fetchToken();
   }, [getToken]);
 
-  // Swiss-themed mock candidates
-  const swissCandidates: SwissCandidate[] = [
+  // Mock candidates
+  const allCandidates: Candidate[] = [
     {
       id: 1,
       name: 'Stefan Müller',
@@ -338,22 +341,22 @@ export default function CandidatesPage() {
   };
 
   const handleSelectAll = () => {
-    if (selectedCandidates.length === swissCandidates.length) {
+    if (selectedCandidates.length === allCandidates.length) {
       setSelectedCandidates([]);
     } else {
-      setSelectedCandidates(swissCandidates.map(c => c.id));
+      setSelectedCandidates(allCandidates.map((c: Candidate) => c.id));
     }
   };
 
   const handleBulkCompetenceFiles = () => {
-    const selectedNames = swissCandidates
-      .filter(c => selectedCandidates.includes(c.id))
-      .map(c => c.name)
+    const selectedNames = allCandidates
+      .filter((c: Candidate) => selectedCandidates.includes(c.id))
+      .map((c: Candidate) => c.name)
       .join(',');
     window.location.href = `/competence-files?candidates=${encodeURIComponent(selectedNames)}`;
   };
 
-  const handleViewProfile = (candidate: SwissCandidate, openModal = false) => {
+  const handleViewProfile = (candidate: Candidate, openModal = false) => {
     setSelectedCandidate(candidate);
     if (openModal) {
       setShowModal(true);
@@ -372,14 +375,20 @@ export default function CandidatesPage() {
     setSelectedCandidate(null);
   };
 
+  const handleApplyFilters = (filters: CandidateFilters) => {
+    setAppliedFilters(filters);
+    // Here you would typically apply the filters to your candidate search/query
+    console.log('Applied filters:', filters);
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-primary-900">Swiss Talent Pipeline</h1>
+            <h1 className="text-3xl font-bold text-primary-900">Talent Pipeline</h1>
             <p className="text-secondary-600 mt-1">
-              Manage your Swiss candidates with AI-powered insights and local market expertise
+              Manage your candidates with AI-powered insights and intelligent filtering
             </p>
           </div>
           <button 
@@ -392,94 +401,116 @@ export default function CandidatesPage() {
         </div>
 
         {/* Swiss Market Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <Card variant="elevated" className="text-center p-4">
-            <div className="text-2xl font-bold text-primary-600">{swissCandidates.length}</div>
-            <div className="text-sm text-gray-600">Swiss Candidates</div>
+            <div className="text-2xl font-bold text-primary-600">{allCandidates.length}</div>
+            <div className="text-sm text-gray-600">Total Candidates</div>
           </Card>
           <Card variant="elevated" className="text-center p-4">
             <div className="text-2xl font-bold text-green-600">
-              {swissCandidates.filter(c => c.status === 'Active').length}
+              {allCandidates.filter((c: Candidate) => c.status === 'Active').length}
             </div>
             <div className="text-sm text-gray-600">Active</div>
           </Card>
           <Card variant="elevated" className="text-center p-4">
             <div className="text-2xl font-bold text-blue-600">
-              {swissCandidates.filter(c => c.status === 'Interview Scheduled').length}
+              {allCandidates.filter((c: Candidate) => c.status === 'Interview Scheduled').length}
             </div>
             <div className="text-sm text-gray-600">Interviews</div>
           </Card>
           <Card variant="elevated" className="text-center p-4">
             <div className="text-2xl font-bold text-yellow-600">
-              {swissCandidates.filter(c => c.score === 'Very strong').length}
+              {allCandidates.filter((c: Candidate) => c.score === 'Very strong').length}
             </div>
             <div className="text-sm text-gray-600">Top Matches</div>
           </Card>
         </div>
 
-        {/* Advanced Filters */}
-        <Card variant="elevated">
-          <CardContent>
-            <div className="flex flex-wrap gap-4 items-center">
-              <div className="flex-1 min-w-64">
+        {/* Enhanced Search & Filter Bar */}
+        <Card variant="elevated" className="shadow-lg border-0">
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-4">
+              {/* Main Search Bar */}
+              <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Search Swiss candidates by name, skills, location, or company..."
+                    placeholder="Search by name, title, skills, company, or keywords..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2.5 w-full border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm transition-all duration-200"
+                    className="pl-12 pr-4 py-3.5 w-full border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm transition-all duration-200 text-base bg-gray-50 focus:bg-white"
                   />
                 </div>
               </div>
               
-              <div className="flex items-center space-x-4">
+                             {/* Filter Button */}
+               <div className="flex items-center">
+                 <button
+                   onClick={() => setShowFilters(true)}
+                   className={`flex items-center space-x-2 px-6 py-3.5 border rounded-xl font-medium transition-all duration-200 ${
+                     appliedFilters ? 
+                     'bg-primary-100 border-primary-300 text-primary-700 hover:bg-primary-200' :
+                     'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
+                   }`}
+                 >
+                   <Filter className="h-5 w-5" />
+                   <span>All filters</span>
+                   {appliedFilters && (
+                     <span className="bg-primary-500 text-white text-xs rounded-full px-2 py-0.5">
+                       Active
+                     </span>
+                   )}
+                 </button>
+               </div>
+            </div>
+            
+            {/* Active Filters Display */}
+            {appliedFilters && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex items-center space-x-2">
-                  <Filter className="h-4 w-4 text-primary-600" />
-                  <select 
-                    value={selectedFilter}
-                    onChange={(e) => setSelectedFilter(e.target.value)}
-                    className="border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  >
-                    <option value="all">All Candidates</option>
-                    <option value="zurich">Zurich Region</option>
-                    <option value="geneva">Geneva Region</option>
-                    <option value="basel">Basel Region</option>
-                    <option value="available">Available Now</option>
-                    <option value="very-strong">Top Matches</option>
-                    <option value="tech">Technology</option>
-                    <option value="finance">Finance</option>
-                    <option value="pharma">Pharma</option>
-                  </select>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <MapPin className="h-4 w-4 text-neutral-500" />
-                  <select className="border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                    <option value="">Swiss Cantons</option>
-                    <option value="zurich">Zurich</option>
-                    <option value="geneva">Geneva</option>
-                    <option value="basel">Basel</option>
-                    <option value="bern">Bern</option>
-                    <option value="vaud">Vaud</option>
-                    <option value="ticino">Ticino</option>
-                  </select>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Building className="h-4 w-4 text-neutral-500" />
-                  <select className="border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                    <option value="">Industry</option>
-                    <option value="tech">Technology</option>
-                    <option value="finance">Banking & Finance</option>
-                    <option value="pharma">Pharmaceuticals</option>
-                    <option value="manufacturing">Manufacturing</option>
-                    <option value="consulting">Consulting</option>
-                  </select>
+                  <span className="text-sm font-medium text-gray-700">Active filters:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {appliedFilters.location.countries.map(country => (
+                      <span key={country} className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                        📍 {country}
+                        <button
+                          onClick={() => {
+                            const newFilters = { ...appliedFilters };
+                            newFilters.location.countries = newFilters.location.countries.filter(c => c !== country);
+                            setAppliedFilters(newFilters);
+                          }}
+                          className="ml-1 text-blue-600 hover:text-blue-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    {appliedFilters.skills.programmingLanguages.map(skill => (
+                      <span key={skill} className="inline-flex items-center px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
+                        💻 {skill}
+                        <button
+                          onClick={() => {
+                            const newFilters = { ...appliedFilters };
+                            newFilters.skills.programmingLanguages = newFilters.skills.programmingLanguages.filter(s => s !== skill);
+                            setAppliedFilters(newFilters);
+                          }}
+                          className="ml-1 text-purple-600 hover:text-purple-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    <button
+                      onClick={() => setAppliedFilters(null)}
+                      className="text-xs text-gray-500 hover:text-gray-700 underline"
+                    >
+                      Clear all
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
@@ -524,7 +555,7 @@ export default function CandidatesPage() {
             <input
               type="checkbox"
               id="select-all"
-              checked={selectedCandidates.length === swissCandidates.length && swissCandidates.length > 0}
+              checked={selectedCandidates.length === allCandidates.length && allCandidates.length > 0}
               onChange={handleSelectAll}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
@@ -533,13 +564,13 @@ export default function CandidatesPage() {
             </label>
           </div>
           <span className="text-sm text-gray-500">
-            {swissCandidates.length} Swiss candidate{swissCandidates.length > 1 ? 's' : ''} found
+            {allCandidates.length} candidate{allCandidates.length > 1 ? 's' : ''} found
           </span>
         </div>
 
         {/* Swiss Candidates List */}
         <div className="space-y-4">
-          {swissCandidates.map((candidate) => (
+          {allCandidates.map((candidate: Candidate) => (
             <Card key={candidate.id} variant="elevated" className={`hover:shadow-xl transition-all duration-300 border-l-4 group cursor-pointer ${
               selectedCandidates.includes(candidate.id) ? 'border-l-blue-500 bg-blue-50' : 'border-l-primary-500'
             }`}>
@@ -691,9 +722,9 @@ export default function CandidatesPage() {
             <CardContent>
               <div className="text-center py-12">
                 <Users className="h-16 w-16 text-secondary-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-secondary-900 mb-2">No Swiss candidates yet</h3>
+                <h3 className="text-xl font-semibold text-secondary-900 mb-2">No candidates yet</h3>
                 <p className="text-secondary-600 mb-6">
-                  Start building your Swiss talent pipeline by adding your first candidate.
+                  Start building your talent pipeline by adding your first candidate.
                 </p>
                 <button 
                   onClick={() => setShowCreateModal(true)}
@@ -707,9 +738,9 @@ export default function CandidatesPage() {
           </Card>
         )}
 
-        {/* Swiss Market Insights */}
+        {/* Talent Insights */}
         <Card variant="outlined">
-          <CardHeader title="Swiss Market Insights">
+          <CardHeader title="Talent Insights">
             <div></div>
           </CardHeader>
           <CardContent>
@@ -718,24 +749,24 @@ export default function CandidatesPage() {
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
                   <Star className="h-6 w-6 text-blue-600" />
                 </div>
-                <h4 className="font-medium text-gray-900 mb-1">Local Expertise</h4>
-                <p className="text-sm text-gray-600">Deep understanding of Swiss talent market and regulations</p>
+                <h4 className="font-medium text-gray-900 mb-1">AI-Powered Matching</h4>
+                <p className="text-sm text-gray-600">Advanced algorithms to find the best talent matches</p>
               </div>
               
               <div className="text-center p-4">
                 <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
                   <Filter className="h-6 w-6 text-green-600" />
                 </div>
-                <h4 className="font-medium text-gray-900 mb-1">Multi-lingual Talent</h4>
-                <p className="text-sm text-gray-600">Access to German, French, Italian, and English speakers</p>
+                <h4 className="font-medium text-gray-900 mb-1">Smart Filtering</h4>
+                <p className="text-sm text-gray-600">LinkedIn Recruiter-style filters for precise candidate search</p>
               </div>
               
               <div className="text-center p-4">
                 <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
                   <Users className="h-6 w-6 text-purple-600" />
                 </div>
-                <h4 className="font-medium text-gray-900 mb-1">Premium Network</h4>
-                <p className="text-sm text-gray-600">Connect with top talent from leading Swiss companies</p>
+                <h4 className="font-medium text-gray-900 mb-1">Global Network</h4>
+                <p className="text-sm text-gray-600">Connect with top talent from leading companies worldwide</p>
               </div>
             </div>
           </CardContent>
@@ -765,6 +796,13 @@ export default function CandidatesPage() {
           onClose={handleCloseModal}
         />
       )}
+
+      {/* Advanced Filter Drawer */}
+      <AdvancedFilterDrawer
+        isOpen={showFilters}
+        onClose={() => setShowFilters(false)}
+        onApplyFilters={handleApplyFilters}
+      />
     </Layout>
   );
 } 

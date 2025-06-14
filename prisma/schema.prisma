@@ -59,6 +59,20 @@ model Candidate {
   toolsAndPlatforms     String[]
   universities          String[]
   videoInterviewUrl     String?
+  
+  // Video presentation fields for client portal
+  videoUrl              String? // Short video introduction/pitch
+  videoThumbnailUrl     String?
+  videoDuration         Int? // Duration in seconds
+  videoTitle            String?
+  videoDescription      String?
+  videoUploadedAt       DateTime?
+  
+  // Professional competence files for client portal
+  competenceFileUrl     String? // Client-facing professional CV
+  competenceFileType    String? // pdf, docx, etc.
+  competenceFileUploadedAt DateTime?
+  
   workPermitType        String?
   firstName             String
   lastName              String
@@ -69,6 +83,13 @@ model Candidate {
   interviews            interviews[]
   referrals             referrals[]
   sms_messages          sms_messages[]
+  clientComments        ClientComment[]
+  clientRating          Int?
+  candidateAssessments  CandidateAssessment[]
+  interviewRequests     InterviewRequest[]
+  collaborationNotes    String?
+  clientVisible         Boolean          @default(true)
+  shareWithClient       DateTime?
 
   @@map("candidates")
 }
@@ -101,6 +122,10 @@ model Job {
   interviews         interviews[]
   job_distributions  job_distributions[]
   social_media_posts social_media_posts[]
+  clientComments      ClientComment[]
+  assessmentRequirements ClientAssessmentRequirement[]
+  candidateAssessments   CandidateAssessment[]
+  interviewRequests   InterviewRequest[]
 
   @@index([expiresAt])
   @@index([publishedAt])
@@ -329,6 +354,7 @@ enum AssessmentStatus {
   COMPLETED
   EXPIRED
   CANCELLED
+  PENDING
 }
 
 enum AssessmentType {
@@ -533,4 +559,264 @@ enum WorkSchedule {
   SHIFT_WORK
   COMPRESSED
   JOB_SHARE
+}
+
+model ClientPortalInvitation {
+  id           String   @id @default(cuid())
+  clientId     String
+  email        String
+  role         ClientPortalRole @default(VIEWER)
+  token        String   @unique
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  invitedBy    String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  inviter      User     @relation(fields: [invitedBy], references: [id])
+
+  @@map("client_portal_invitations")
+}
+
+enum ClientPortalRole {
+  VIEWER
+  COLLABORATOR
+  ADMIN
+}
+
+model ClientComment {
+  id              String   @id @default(cuid())
+  clientId        String
+  candidateId     String
+  jobId           String
+  authorEmail     String
+  content         String
+  type            CommentType @default(GENERAL)
+  rating          Int?     // 1-5 star rating
+  isPrivate       Boolean  @default(false)
+  requiresResponse Boolean @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  client          Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  candidate       Candidate  @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job             Job        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  responses       ClientCommentResponse[]
+
+  @@map("client_comments")
+}
+
+enum CommentType {
+  GENERAL
+  TECHNICAL_FEEDBACK
+  CULTURAL_FIT
+  INTERVIEW_FEEDBACK
+  ASSESSMENT_REVIEW
+  NEXT_STEPS
+}
+
+model ClientCommentResponse {
+  id              String   @id @default(cuid())
+  commentId       String
+  authorId        String
+  content         String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  comment         ClientComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  author          User          @relation(fields: [authorId], references: [id])
+
+  @@map("client_comment_responses")
+}
+
+model ClientAssessmentRequirement {
+  id              String   @id @default(cuid())
+  clientId        String
+  jobId           String?  // null = default for all jobs
+  type            String   // "Technical Coding", "System Design", "Cultural Fit", etc.
+  description     String
+  isRequired      Boolean  @default(true)
+  duration        Int?     // in minutes
+  passingScore    Int?     // percentage
+  instructions    String?
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  job             Job?     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  assessments     CandidateAssessment[]
+
+  @@map("client_assessment_requirements")
+}
+
+model CandidateAssessment {
+  id                String   @id @default(cuid())
+  candidateId       String
+  jobId             String
+  requirementId     String?  // links to ClientAssessmentRequirement
+  type              String
+  status            AssessmentStatus @default(NOT_STARTED)
+  score             Int?     // percentage
+  maxScore          Int?
+  notes             String?
+  assessorId        String?
+  reviewedByClient  Boolean  @default(false)
+  clientFeedback    String?
+  completedAt       DateTime?
+  dueDate           DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  candidate         Candidate    @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job               Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  requirement       ClientAssessmentRequirement? @relation(fields: [requirementId], references: [id])
+  assessor          User?        @relation(fields: [assessorId], references: [id])
+
+  @@map("candidate_assessments")
+}
+
+model InterviewRequest {
+  id              String   @id @default(cuid())
+  clientId        String
+  candidateId     String
+  jobId           String
+  requestedBy     String   // client email
+  interviewType   String   // "Technical", "Cultural Fit", "Final", etc.
+  preferredDates  String   // JSON array of preferred dates
+  notes           String?
+  priority        InterviewPriority @default(MEDIUM)
+  status          InterviewRequestStatus @default(PENDING)
+  scheduledDate   DateTime?
+  interviewLink   String?
+  interviewerId   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  client          Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  candidate       Candidate  @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job             Job        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  interviewer     User?      @relation(fields: [interviewerId], references: [id])
+
+  @@map("interview_requests")
+}
+
+enum InterviewPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum InterviewRequestStatus {
+  PENDING
+  APPROVED
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  REJECTED
+}
+
+model ClientActivity {
+  id              String   @id @default(cuid())
+  clientId        String
+  actorEmail      String   // who performed the action
+  action          String   // "viewed_candidate", "added_comment", "rated_candidate", etc.
+  resourceType    String   // "candidate", "job", "assessment", etc.
+  resourceId      String
+  metadata        String?  // JSON with additional details
+  createdAt       DateTime @default(now())
+
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("client_activities")
+}
+
+model PipelineStage {
+  id              String   @id @default(cuid())
+  clientId        String?  // null = default stages
+  name            String
+  description     String?
+  order           Int
+  color           String   @default("#6B7280")
+  isActive        Boolean  @default(true)
+  requiresClientAction Boolean @default(false)
+  autoAdvance     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  client          Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("pipeline_stages")
+}
+
+model ClientNotification {
+  id              String   @id @default(cuid())
+  clientId        String
+  recipientEmail  String
+  title           String
+  message         String
+  type            NotificationType @default(INFO)
+  relatedResource String?  // "candidate:123", "job:456", etc.
+  actionUrl       String?
+  isRead          Boolean  @default(false)
+  sentAt          DateTime?
+  createdAt       DateTime @default(now())
+
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("client_notifications")
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  ACTION_REQUIRED
+}
+
+model Client {
+  id              String   @id @default(cuid())
+  name            String
+  industry        String?
+  contactPerson   String?
+  email           String?
+  phone           String?
+  address         String?
+  logoUrl         String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  portalInvitations    ClientPortalInvitation[]
+  comments             ClientComment[]
+  assessmentRequirements ClientAssessmentRequirement[]
+  interviewRequests    InterviewRequest[]
+  activities           ClientActivity[]
+  stages               PipelineStage[]
+  notifications        ClientNotification[]
+
+  @@map("clients")
+}
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  firstName       String
+  lastName        String
+  role            String   @default("RECRUITER")
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  portalInvitations   ClientPortalInvitation[]
+  commentResponses    ClientCommentResponse[]
+  assessments         CandidateAssessment[]
+  interviewRequests   InterviewRequest[]
+
+  @@map("users")
 }

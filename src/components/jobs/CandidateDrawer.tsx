@@ -193,19 +193,19 @@ export function CandidateDrawer({
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
       <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose} />
-      <div className="absolute right-0 top-0 h-full w-full max-w-4xl bg-white shadow-xl">
+      <div className="absolute right-0 top-0 h-full w-full max-w-4xl bg-white shadow-large rounded-l-2xl">
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-primary-50 to-primary-100">
+          <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-teal-600 via-primary-600 to-primary-800 rounded-tl-2xl">
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white font-bold text-xl shadow-medium">
                 {candidate.firstName[0]}{candidate.lastName[0]}
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">
+                <h2 className="text-2xl font-bold text-white">
                   {candidate.firstName} {candidate.lastName}
                 </h2>
-                <p className="text-gray-600 font-medium">{candidate.currentRole}</p>
+                <p className="text-blue-100 font-medium">{candidate.currentRole}</p>
                 <div className="flex items-center space-x-4 mt-1">
                   <div className="flex items-center">
                     {[...Array(5)].map((_, i) => (
@@ -216,20 +216,20 @@ export function CandidateDrawer({
                       >
                         <Star
                           className={`h-4 w-4 cursor-pointer transition-colors ${
-                            i < candidate.rating ? 'text-yellow-400 fill-current' : 'text-gray-300 hover:text-yellow-300'
+                            i < candidate.rating ? 'text-yellow-300 fill-current' : 'text-white/40 hover:text-yellow-300'
                           }`}
                         />
                       </button>
                     ))}
-                    <span className="ml-2 text-sm text-gray-600">({candidate.rating}/5)</span>
+                    <span className="ml-2 text-sm text-white/90">({candidate.rating}/5)</span>
                   </div>
                   <select
                     value={candidate.stage}
                     onChange={(e) => onStageChange(candidate.id, e.target.value)}
-                    className="px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm bg-white"
+                    className="px-3 py-1 border border-white/20 rounded-lg focus:ring-2 focus:ring-white/50 focus:border-transparent text-sm bg-white/10 backdrop-blur-sm text-white"
                   >
                     {stages.map(stage => (
-                      <option key={stage.id} value={stage.id}>{stage.name}</option>
+                      <option key={stage.id} value={stage.id} className="text-gray-900">{stage.name}</option>
                     ))}
                   </select>
                 </div>
@@ -237,42 +237,42 @@ export function CandidateDrawer({
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-white"
+              className="p-2 text-white/80 hover:text-white transition-colors rounded-lg hover:bg-white/10 backdrop-blur-sm"
             >
               <X className="h-6 w-6" />
             </button>
           </div>
 
           {/* Quick Actions */}
-          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-neutral-50 to-neutral-100">
             <div className="flex items-center space-x-3 flex-wrap gap-y-2">
               <button 
                 onClick={() => setIsCompetenceFileModalOpen(true)}
-                className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+                className="flex items-center px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all duration-200 text-sm font-medium shadow-soft hover:shadow-medium transform hover:-translate-y-0.5"
               >
                 <FileText className="h-4 w-4 mr-2" />
                 Create Competence File
               </button>
               <button 
                 onClick={() => setIsAddToJobModalOpen(true)}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                className="flex items-center px-4 py-2 bg-gradient-to-r from-teal-600 to-teal-700 text-white rounded-xl hover:from-teal-700 hover:to-teal-800 transition-all duration-200 text-sm font-medium shadow-soft hover:shadow-medium transform hover:-translate-y-0.5"
               >
                 <UserPlus className="h-4 w-4 mr-2" />
                 Add to Job
               </button>
-              <button className="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+              <button className="flex items-center px-4 py-2 bg-gradient-to-r from-accent-600 to-accent-700 text-white rounded-xl hover:from-accent-700 hover:to-accent-800 transition-all duration-200 text-sm font-medium shadow-soft hover:shadow-medium transform hover:-translate-y-0.5">
                 <Send className="h-4 w-4 mr-2" />
                 Submit to Client
               </button>
-              <button className="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+              <button className="flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 text-sm font-medium shadow-soft hover:shadow-medium transform hover:-translate-y-0.5">
                 <CalendarPlus className="h-4 w-4 mr-2" />
                 Schedule Interview
               </button>
-              <button className="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+              <button className="flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 text-sm font-medium shadow-soft hover:shadow-medium transform hover:-translate-y-0.5">
                 <Mail className="h-4 w-4 mr-2" />
                 Send Email
               </button>
-              <button className="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+              <button className="flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 text-sm font-medium shadow-soft hover:shadow-medium transform hover:-translate-y-0.5">
                 <Phone className="h-4 w-4 mr-2" />
                 Call
               </button>
@@ -280,17 +280,17 @@ export function CandidateDrawer({
           </div>
 
           {/* Tabs */}
-          <div className="flex space-x-8 px-6 border-b border-gray-200">
+          <div className="flex space-x-8 px-6 border-b border-gray-200 bg-white">
             {tabs.map((tab) => {
               const TabIcon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 py-4 text-sm font-medium transition-colors ${
+                  className={`flex items-center space-x-2 py-4 text-sm font-medium transition-all duration-200 ${
                     activeTab === tab.id
                       ? 'text-primary-600 border-b-2 border-primary-600'
-                      : 'text-gray-500 hover:text-gray-700'
+                      : 'text-gray-500 hover:text-gray-700 hover:border-b-2 hover:border-gray-300'
                   }`}
                 >
                   <TabIcon className="h-4 w-4" />
@@ -301,26 +301,26 @@ export function CandidateDrawer({
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto bg-gradient-to-br from-neutral-50 to-neutral-100">
             {activeTab === 'overview' && (
               <div className="p-6 space-y-6">
                 {/* Contact Information */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-soft hover:shadow-medium transition-shadow duration-200">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <Mail className="h-5 w-5 mr-2 text-gray-400" />
+                    <Mail className="h-5 w-5 mr-2 text-primary-600" />
                     Contact Information
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-3">
                       <div className="flex items-center text-sm">
                         <Mail className="h-4 w-4 mr-3 text-gray-400" />
-                        <a href={`mailto:${candidate.email}`} className="text-primary-600 hover:text-primary-700">
+                        <a href={`mailto:${candidate.email}`} className="text-primary-600 hover:text-primary-700 font-medium">
                           {candidate.email}
                         </a>
                       </div>
                       <div className="flex items-center text-sm">
                         <Phone className="h-4 w-4 mr-3 text-gray-400" />
-                        <a href={`tel:${candidate.phone}`} className="text-primary-600 hover:text-primary-700">
+                        <a href={`tel:${candidate.phone}`} className="text-primary-600 hover:text-primary-700 font-medium">
                           {candidate.phone}
                         </a>
                       </div>
@@ -333,7 +333,7 @@ export function CandidateDrawer({
                       {candidate.linkedinUrl && (
                         <div className="flex items-center text-sm">
                           <LinkIcon className="h-4 w-4 mr-3 text-gray-400" />
-                          <a href={candidate.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-700 flex items-center">
+                          <a href={candidate.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-700 flex items-center font-medium">
                             LinkedIn Profile
                             <ExternalLink className="h-3 w-3 ml-1" />
                           </a>
@@ -342,7 +342,7 @@ export function CandidateDrawer({
                       {candidate.portfolioUrl && (
                         <div className="flex items-center text-sm">
                           <Globe className="h-4 w-4 mr-3 text-gray-400" />
-                          <a href={candidate.portfolioUrl} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-700 flex items-center">
+                          <a href={candidate.portfolioUrl} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-700 flex items-center font-medium">
                             Portfolio
                             <ExternalLink className="h-3 w-3 ml-1" />
                           </a>
@@ -357,9 +357,9 @@ export function CandidateDrawer({
                 </div>
 
                 {/* Professional Details */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-soft hover:shadow-medium transition-shadow duration-200">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <Briefcase className="h-5 w-5 mr-2 text-gray-400" />
+                    <Briefcase className="h-5 w-5 mr-2 text-primary-600" />
                     Professional Details
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -395,9 +395,9 @@ export function CandidateDrawer({
                 </div>
 
                 {/* Skills & Tags */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-soft hover:shadow-medium transition-shadow duration-200">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <Award className="h-5 w-5 mr-2 text-gray-400" />
+                    <Award className="h-5 w-5 mr-2 text-primary-600" />
                     Skills & Tags
                   </h3>
                   <div className="space-y-4">
@@ -407,7 +407,7 @@ export function CandidateDrawer({
                         {candidate.skills.map((skill, index) => (
                           <span
                             key={index}
-                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-soft"
                           >
                             {skill}
                           </span>
@@ -421,7 +421,7 @@ export function CandidateDrawer({
                           {candidate.tags.map((tag, index) => (
                             <span
                               key={index}
-                              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800"
+                              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 shadow-soft"
                             >
                               {tag}
                             </span>
@@ -434,9 +434,9 @@ export function CandidateDrawer({
 
                 {/* Work History */}
                 {candidate.workHistory && candidate.workHistory.length > 0 && (
-                  <div className="bg-white rounded-lg border border-gray-200 p-6">
+                  <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-soft hover:shadow-medium transition-shadow duration-200">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                      <Briefcase className="h-5 w-5 mr-2 text-gray-400" />
+                      <Briefcase className="h-5 w-5 mr-2 text-primary-600" />
                       Work History
                     </h3>
                     <div className="space-y-4">
@@ -453,9 +453,9 @@ export function CandidateDrawer({
 
                 {/* Education */}
                 {candidate.education && candidate.education.length > 0 && (
-                  <div className="bg-white rounded-lg border border-gray-200 p-6">
+                  <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-soft hover:shadow-medium transition-shadow duration-200">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                      <GraduationCap className="h-5 w-5 mr-2 text-gray-400" />
+                      <GraduationCap className="h-5 w-5 mr-2 text-primary-600" />
                       Education
                     </h3>
                     <div className="space-y-3">
@@ -473,9 +473,9 @@ export function CandidateDrawer({
 
             {activeTab === 'timeline' && (
               <div className="p-6">
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-soft hover:shadow-medium transition-shadow duration-200">
                   <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
-                    <Clock className="h-5 w-5 mr-2 text-gray-400" />
+                    <Clock className="h-5 w-5 mr-2 text-primary-600" />
                     Activity Timeline
                   </h3>
                   <div className="space-y-4">
@@ -505,9 +505,9 @@ export function CandidateDrawer({
 
             {activeTab === 'documents' && (
               <div className="p-6">
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-soft hover:shadow-medium transition-shadow duration-200">
                   <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
-                    <Download className="h-5 w-5 mr-2 text-gray-400" />
+                    <Download className="h-5 w-5 mr-2 text-primary-600" />
                     Documents & Files
                   </h3>
                   <div className="space-y-4">
@@ -548,9 +548,9 @@ export function CandidateDrawer({
 
             {activeTab === 'notes' && (
               <div className="p-6">
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-soft hover:shadow-medium transition-shadow duration-200">
                   <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
-                    <Edit3 className="h-5 w-5 mr-2 text-gray-400" />
+                    <Edit3 className="h-5 w-5 mr-2 text-primary-600" />
                     Notes & Comments
                   </h3>
                   

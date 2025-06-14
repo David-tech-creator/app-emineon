@@ -37,7 +37,10 @@ const mockCompetenceFiles = [
     updatedAt: '2024-01-15',
     version: 1,
     downloadCount: 3,
-    isAnonymized: false
+    isAnonymized: false,
+    fileName: 'Sarah_Johnson_UBS_Competence_File.pdf',
+    fileUrl: 'https://res.cloudinary.com/emineon/raw/upload/v1749930214/emineon-ats/competence-files/Test_Download_Fix_1749930214191',
+    format: 'pdf'
   },
   {
     id: '2',
@@ -51,7 +54,10 @@ const mockCompetenceFiles = [
     updatedAt: '2024-01-15',
     version: 2,
     downloadCount: 0,
-    isAnonymized: true
+    isAnonymized: true,
+    fileName: 'David_Chen_CS_Competence_File.pdf',
+    fileUrl: null, // Draft files don't have URLs yet
+    format: 'pdf'
   },
   {
     id: '3',
@@ -65,7 +71,10 @@ const mockCompetenceFiles = [
     updatedAt: '2024-01-13',
     version: 1,
     downloadCount: 7,
-    isAnonymized: false
+    isAnonymized: false,
+    fileName: 'Mike_Rodriguez_Zurich_Competence_File.pdf',
+    fileUrl: 'https://res.cloudinary.com/emineon/raw/upload/v1749930214/emineon-ats/competence-files/Test_Download_Fix_1749930214191',
+    format: 'pdf'
   }
 ];
 
@@ -85,11 +94,11 @@ export default function CompetenceFilesPage() {
   const [templates, setTemplates] = useState<any[]>([]);
 
   const filteredFiles = competenceFiles.filter(file => {
-    const matchesSearch = file.candidateName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         file.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         file.job.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (file.candidateName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+                         (file.client?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+                         (file.job?.toLowerCase() || '').includes(searchQuery.toLowerCase());
     
-    const matchesFilter = selectedFilter === 'all' || file.status.toLowerCase() === selectedFilter;
+    const matchesFilter = selectedFilter === 'all' || (file.status?.toLowerCase() || '') === selectedFilter;
     
     return matchesSearch && matchesFilter;
   });
@@ -97,11 +106,21 @@ export default function CompetenceFilesPage() {
   const handleCreateFile = (fileData: any) => {
     const newFile = {
       id: Date.now().toString(),
-      ...fileData,
+      candidateName: fileData.candidateName || 'Unknown Candidate',
+      candidateTitle: fileData.candidateTitle || 'Unknown Title',
+      template: fileData.templateName || 'Unknown Template',
+      client: fileData.client || 'Unknown Client',
+      job: fileData.job || 'Unknown Job',
+      status: 'Generated',
+      fileName: fileData.fileName,
+      fileUrl: fileData.fileUrl,
+      fileSize: fileData.fileSize,
+      format: fileData.format,
       createdAt: new Date().toISOString().split('T')[0],
       updatedAt: new Date().toISOString().split('T')[0],
       version: 1,
-      downloadCount: 0
+      downloadCount: 0,
+      isAnonymized: false
     };
     setCompetenceFiles([newFile, ...competenceFiles]);
   };
@@ -112,6 +131,41 @@ export default function CompetenceFilesPage() {
       ...templateData
     };
     setTemplates([newTemplate, ...templates]);
+  };
+
+  const handleDownload = (file: any) => {
+    if (!file.fileUrl) {
+      if (file.status === 'Draft') {
+        alert('Cannot download draft files. Please generate the file first.');
+      } else {
+        alert('File URL not available for download. Please regenerate the file.');
+      }
+      return;
+    }
+
+    try {
+      // Create a temporary link element to trigger download
+      const link = document.createElement('a');
+      link.href = file.fileUrl;
+      link.download = file.fileName || `${file.candidateName}_competence_file.${file.format || 'pdf'}`;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Update download count
+      setCompetenceFiles(files => 
+        files.map(f => 
+          f.id === file.id 
+            ? { ...f, downloadCount: (f.downloadCount || 0) + 1 }
+            : f
+        )
+      );
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Download failed. Please try again or contact support.');
+    }
   };
 
   return (
@@ -329,7 +383,13 @@ export default function CompetenceFilesPage() {
                           <Eye className="h-4 w-4 mr-1" />
                           Preview
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleDownload(file)}
+                          disabled={!file.fileUrl}
+                          className={!file.fileUrl ? 'opacity-50 cursor-not-allowed' : ''}
+                        >
                           <Download className="h-4 w-4 mr-1" />
                           Download
                         </Button>
@@ -360,7 +420,7 @@ export default function CompetenceFilesPage() {
               </div>
             ) : (
               templates.filter(template => 
-                template.name.toLowerCase().includes(searchQuery.toLowerCase())
+                (template.name?.toLowerCase() || '').includes(searchQuery.toLowerCase())
               ).map((template) => (
                 <Card key={template.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-6">
@@ -400,7 +460,7 @@ export default function CompetenceFilesPage() {
                             </div>
                             <div className="flex items-center space-x-1">
                               <Calendar className="h-3 w-3" />
-                              <span>Created {new Date(template.createdAt).toLocaleDateString()}</span>
+                              <span>Created {template.createdAt ? new Date(template.createdAt).toLocaleDateString() : 'Unknown'}</span>
                             </div>
                           </div>
                         </div>

@@ -1,13 +1,119 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  async rewrites() {
+  // Build configuration
+  reactStrictMode: true,
+  swcMinify: true,
+  compress: true,
+  
+  // Image optimization
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        port: '',
+        pathname: '/emineon/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.clerk.dev',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+    formats: ['image/webp', 'image/avif'],
+    dangerouslyAllowSVG: true,
+  },
+  
+  // Experimental features
+  experimental: {
+    optimizeCss: false, // Disable this as it's causing issues
+    serverComponentsExternalPackages: ['puppeteer'],
+  },
+  
+  // Performance optimizations  
+  poweredByHeader: false,
+  generateEtags: false,
+  
+  // Security headers
+  async headers() {
     return [
       {
-        source: '/api/:path*',
-        destination: '/api/:path*',
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
+          },
+        ],
       },
-    ]
+      {
+        source: '/api/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, must-revalidate',
+          },
+        ],
+      },
+    ];
   },
-}
+  
+  // Webpack configuration
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+      };
+    }
+    
+    // Handle PDF files
+    config.module.rules.push({
+      test: /\.pdf$/,
+      use: {
+        loader: 'file-loader',
+        options: {
+          publicPath: '/_next/static/files/',
+          outputPath: 'static/files/',
+        },
+      },
+    });
+    
+    return config;
+  },
+  
+  // Output configuration for deployment
+  output: 'standalone',
+  
+  // TypeScript configuration
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  
+  // ESLint configuration
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
+};
 
-module.exports = nextConfig 
+module.exports = nextConfig; 

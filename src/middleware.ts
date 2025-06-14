@@ -1,4 +1,5 @@
 import { authMiddleware } from '@clerk/nextjs'
+import { NextResponse } from 'next/server'
 
 export default authMiddleware({
   publicRoutes: [
@@ -12,23 +13,54 @@ export default authMiddleware({
     '/api/health',
     '/api/candidates/parse-cv',
     '/api/candidates/parse-linkedin',
-    '/api/ai/(.*)',
+    '/api/ai/job-description/(.*)',
     '/api/files/(.*)',
-    '/api/competence-files/(.*)',
+    '/api/competence-files/test-generate',
+    '/api/daily-quote',
     '/uploads/(.*)'
   ],
   ignoredRoutes: [
     '/((?!api|trpc))(_next.*|.+\\.[\\w]+$)',
-    '/api/public/(.*)',
-    '/api/apply',
     '/api/health',
-    '/api/candidates/parse-cv',
-    '/api/candidates/parse-linkedin',
-    '/api/ai/(.*)',
-    '/api/files/(.*)',
-    '/api/competence-files/(.*)',
-    '/uploads/(.*)'
+    '/api/public/(.*)',
+    '/api/daily-quote',
+    '/api/competence-files/test-generate',
+    '/uploads/(.*)',
+    // Static assets and build files
+    '/_next/(.*)',
+    '/favicon.ico',
+    '/robots.txt',
+    '/sitemap.xml'
   ],
+  
+  afterAuth(auth, req) {
+    const { pathname } = req.nextUrl;
+    
+    // For API routes, return 401 instead of redirecting
+    if (pathname.startsWith('/api/')) {
+      if (!auth.userId && !auth.isPublicRoute) {
+        return NextResponse.json(
+          { error: 'Unauthorized', message: 'Authentication required' },
+          { status: 401 }
+        );
+      }
+    }
+    
+    // For regular pages, redirect to sign-in if not authenticated
+    if (!auth.userId && !auth.isPublicRoute && !pathname.startsWith('/api/')) {
+      const signInUrl = new URL('/sign-in', req.url);
+      signInUrl.searchParams.set('redirect_url', req.url);
+      return Response.redirect(signInUrl);
+    }
+    
+    // If signed in and on a public auth route, redirect to dashboard
+    if (auth.userId && (pathname === '/sign-in' || pathname === '/sign-up')) {
+      return Response.redirect(new URL('/', req.url));
+    }
+    
+    // Allow the request to continue
+    return NextResponse.next();
+  }
 })
 
 export const config = {

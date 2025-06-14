@@ -62,6 +62,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { DashboardChatbox } from '@/components/dashboard/DashboardChatbox';
 
 interface DailyQuote {
   text: string;
@@ -180,9 +181,15 @@ export default function Dashboard() {
         // Try to fetch from API
         const response = await fetch('/api/daily-quote');
         if (response.ok) {
-          const quote = await response.json();
-          setDailyQuote(quote);
-          localStorage.setItem('dailyQuote', JSON.stringify(quote));
+          const apiResponse = await response.json();
+          // Extract the quote from the nested API response structure
+          const quoteData = {
+            text: apiResponse.data.quote.text,
+            author: apiResponse.data.quote.author,
+            date: apiResponse.data.date
+          };
+          setDailyQuote(quoteData);
+          localStorage.setItem('dailyQuote', JSON.stringify(quoteData));
           localStorage.setItem('dailyQuoteDate', today);
         } else {
           throw new Error('API unavailable');
@@ -433,98 +440,87 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
-        {/* Enhanced Header Section */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-primary-600 via-primary-500 to-teal-600 rounded-3xl mb-8">
-          <div className="absolute inset-0 bg-black opacity-5"></div>
-          
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-8 right-20 w-24 h-24 border border-white rounded-full"></div>
-            <div className="absolute bottom-8 right-40 w-16 h-16 border border-white rounded-full"></div>
-          </div>
-          
-          <div className="relative px-8 py-12">
+        {/* Header Section */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-primary-600 via-primary-500 to-teal-600 rounded-2xl mb-6">
+          <div className="relative px-6 py-6">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                {/* Date and Welcome Message */}
-                <div className="mb-6">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <div className="inline-flex items-center px-3 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      {currentDate}
+                <div className="flex items-center space-x-4 mb-3">
+                  <div className="inline-flex items-center px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    {currentDate}
+                  </div>
+                  {urgentItems.length > 0 && (
+                    <div className="inline-flex items-center px-3 py-1 bg-red-500/20 backdrop-blur-sm rounded-full text-white text-sm font-medium">
+                      <Bell className="h-4 w-4 mr-2" />
+                      {urgentItems.length} urgent items
                     </div>
-                    {urgentItems.length > 0 && (
-                      <div className="inline-flex items-center px-3 py-2 bg-red-500/20 backdrop-blur-sm rounded-full text-white text-sm font-medium">
-                        <Bell className="h-4 w-4 mr-2" />
-                        {urgentItems.length} urgent items
-                      </div>
-                    )}
-                  </div>
-                  
-                  <h1 className="text-4xl font-bold text-white leading-tight mb-4">
-                    Welcome back, {user?.firstName || 'User'}
-                  </h1>
-                  
-                  {/* Daily Quote */}
-                  <div className="p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
-                    {isLoadingQuote ? (
-                      <div className="flex items-center space-x-3">
-                        <Sparkles className="w-5 h-5 text-blue-200 animate-pulse" />
-                        <span className="text-blue-100">Loading today's inspiration...</span>
-                      </div>
-                    ) : dailyQuote ? (
-                      <div className="space-y-2">
-                        <div className="flex items-start space-x-3">
-                          <Quote className="w-5 h-5 text-blue-200 mt-1 flex-shrink-0" />
-                          <div>
-                            <p className="text-blue-50 italic text-lg leading-relaxed">
-                              "{dailyQuote.text}"
-                            </p>
-                            <p className="text-blue-200 text-sm mt-2">
-                              — {dailyQuote.author}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center space-x-3">
-                        <Quote className="w-5 h-5 text-blue-200" />
-                        <span className="text-blue-100">Quote unavailable today</span>
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
                 
-                {/* Organization Info */}
+                <h1 className="text-2xl font-bold text-white leading-tight mb-4">
+                  Welcome back, {user?.firstName || 'User'}
+                </h1>
+                
+                {/* Daily Quote in Header */}
+                <div className="mb-4 p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
+                  {isLoadingQuote ? (
+                    <div className="flex items-center space-x-3">
+                      <Sparkles className="w-5 h-5 text-blue-200 animate-pulse" />
+                      <span className="text-blue-100">Loading today's inspiration...</span>
+                    </div>
+                  ) : dailyQuote ? (
+                    <div className="space-y-2">
+                      <div className="flex items-start space-x-3">
+                        <Quote className="w-5 h-5 text-blue-200 mt-1 flex-shrink-0" />
+                        <div>
+                          <p className="text-blue-50 italic text-lg leading-relaxed">
+                            "{dailyQuote.text}"
+                          </p>
+                          <p className="text-blue-200 text-sm mt-2">
+                            — {dailyQuote.author}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-3">
+                      <Quote className="w-5 h-5 text-blue-200" />
+                      <span className="text-blue-100">Quote unavailable today</span>
+                    </div>
+                  )}
+                </div>
+                
                 {organization && (
-                  <div className="inline-flex items-center px-4 py-2 bg-white/15 backdrop-blur-sm rounded-xl text-white text-sm font-medium border border-white/20">
+                  <div className="inline-flex items-center px-3 py-1 bg-white/15 backdrop-blur-sm rounded-lg text-white text-sm font-medium border border-white/20">
                     <Building2 className="h-4 w-4 mr-2" />
                     {organization.name}
                   </div>
                 )}
               </div>
               
-              {/* Right Side - Large Logo/Graphic */}
-              <div className="hidden lg:block ml-8">
-                <div className="relative w-32 h-32 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
-                  <div className="relative w-25 h-25">
-                    <Image
-                      src="/images/logos/Emineon logo_tree_white.png"
-                      alt="Emineon Intelligence"
-                      width={100}
-                      height={100}
-                      className="object-contain opacity-90"
-                      onError={(e) => {
-                        e.currentTarget.src = "/images/logos/Emineon logo_no background.png";
-                      }}
-                    />
-                  </div>
-                  {/* Glowing Animation Ring */}
-                  <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-pulse"></div>
+              {/* Right Side - Logo */}
+              <div className="hidden lg:block ml-6">
+                <div className="relative w-16 h-16 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                  <Image
+                    src="/images/logos/Emineon logo_tree_white.png"
+                    alt="Emineon Intelligence"
+                    width={40}
+                    height={40}
+                    className="object-contain opacity-90"
+                    onError={(e) => {
+                      e.currentTarget.src = "/images/logos/Emineon logo_no background.png";
+                    }}
+                  />
                 </div>
               </div>
             </div>
           </div>
+        </div>
+
+        {/* AI Chat Bubble */}
+        <div className="mb-6">
+          <DashboardChatbox />
         </div>
 
         {/* 🎯 URGENT ITEMS - Top Priority Section */}
@@ -756,10 +752,10 @@ export default function Dashboard() {
           <div className="p-6">
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {[
+                { label: 'AI Copilot', href: '/ai-copilot', icon: Brain, color: 'indigo', description: 'Ask AI about your data' },
                 { label: 'Add Candidate', href: '/candidates/new', icon: UserPlus, color: 'blue', description: 'Import or create new candidate' },
                 { label: 'Post Job', href: '/jobs/new', icon: Plus, color: 'green', description: 'Create new job posting' },
                 { label: 'Schedule Interview', href: '/interviews/new', icon: CalendarDays, color: 'purple', description: 'Book candidate interview' },
-                { label: 'AI Search', href: '/ai-tools', icon: Brain, color: 'indigo', description: 'Find matching candidates' },
                 { label: 'Send Email', href: '/communication', icon: Mail, color: 'orange', description: 'Email candidates or clients' },
                 { label: 'View Reports', href: '/reports', icon: BarChart3, color: 'teal', description: 'Performance analytics' }
               ].map((action, index) => (

@@ -1,131 +1,106 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
-
-interface DailyQuote {
-  text: string;
-  author: string;
-  date: string;
-}
-
-// Cache quotes to avoid regenerating the same quote multiple times per day
-const quoteCache = new Map<string, DailyQuote>();
 
 export async function GET(request: NextRequest) {
   try {
-    const today = new Date().toDateString();
-    
-    // Check cache first
-    if (quoteCache.has(today)) {
-      return NextResponse.json(quoteCache.get(today));
-    }
-
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OpenAI API key not configured');
-    }
-
-    // Initialize OpenAI client inside the function
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-
-    const prompt = `Generate a single inspirational quote (max 150 characters) for recruitment professionals, HR leaders, or business executives. The quote should be about:
-    - Leadership and talent management
-    - Business success and growth
-    - Innovation and strategy
-    - Team building and culture
-    - Professional development
-    - Overcoming challenges
-    
-    Provide ONLY a JSON response in this exact format:
-    {
-      "text": "The actual quote text without quotes",
-      "author": "A real historical figure, business leader, or well-known professional (not fictional)"
-    }
-    
-    Make it motivational and relevant to professionals in talent acquisition and business leadership.`;
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: "You are a professional quote curator specializing in business leadership and talent management inspiration. Always respond with valid JSON only."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      max_tokens: 150,
-      temperature: 0.8,
-    });
-
-    const responseText = completion.choices[0]?.message?.content?.trim();
-    
-    if (!responseText) {
-      throw new Error('No response from OpenAI');
-    }
-
-    // Parse the JSON response
-    const parsedQuote = JSON.parse(responseText);
-    
-    const quote: DailyQuote = {
-      text: parsedQuote.text,
-      author: parsedQuote.author,
-      date: today
-    };
-
-    // Cache the quote
-    quoteCache.set(today, quote);
-
-    // Clean up old cache entries (keep only today's)
-    const keysToDelete = Array.from(quoteCache.keys()).filter(date => date !== today);
-    keysToDelete.forEach(date => quoteCache.delete(date));
-
-    return NextResponse.json(quote);
-
-  } catch (error) {
-    console.error('Error generating daily quote:', error);
-    
-    // Return a fallback quote based on the day
-    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
-    const fallbackQuotes = [
+    // Collection of inspirational quotes for recruitment professionals
+    const quotes = [
       {
-        text: "The best way to predict the future is to create it.",
-        author: "Peter Drucker"
-      },
-      {
-        text: "Success is not final, failure is not fatal: it is the courage to continue that counts.",
-        author: "Winston Churchill"
-      },
-      {
-        text: "Your network is your net worth.",
-        author: "Porter Gale"
+        text: "Great companies are built by great people, and great people are found by great recruiters.",
+        author: "Anonymous",
+        category: "recruitment"
       },
       {
         text: "Talent wins games, but teamwork and intelligence win championships.",
-        author: "Michael Jordan"
+        author: "Michael Jordan",
+        category: "teamwork"
       },
       {
-        text: "Innovation distinguishes between a leader and a follower.",
-        author: "Steve Jobs"
+        text: "The best way to predict the future is to create it by hiring the right people.",
+        author: "Peter Drucker (adapted)",
+        category: "hiring"
       },
       {
-        text: "The way to get started is to quit talking and begin doing.",
-        author: "Walt Disney"
+        text: "In the end, it's not about finding a job, it's about finding the right fit.",
+        author: "Anonymous",
+        category: "matching"
       },
       {
-        text: "Excellence is never an accident. It is always the result of high intention.",
-        author: "Aristotle"
+        text: "Every person you hire either helps or hurts your company culture.",
+        author: "Tony Hsieh",
+        category: "culture"
+      },
+      {
+        text: "Recruiting is not about filling positions, it's about building futures.",
+        author: "Anonymous",
+        category: "purpose"
+      },
+      {
+        text: "The art of recruitment is finding extraordinary people hiding in ordinary places.",
+        author: "Anonymous",
+        category: "discovery"
+      },
+      {
+        text: "A-players hire A-players. B-players hire C-players.",
+        author: "Steve Jobs",
+        category: "excellence"
+      },
+      {
+        text: "Your network is your net worth, especially in recruitment.",
+        author: "Porter Gale (adapted)",
+        category: "networking"
+      },
+      {
+        text: "The right person in the right role can change everything.",
+        author: "Anonymous",
+        category: "impact"
       }
     ];
 
-    const fallbackQuote = fallbackQuotes[dayOfYear % fallbackQuotes.length];
+    // Get today's date to ensure same quote for the day
+    const today = new Date();
+    const yearStart = new Date(today.getFullYear(), 0, 0);
+    const dayOfYear = Math.floor((today.getTime() - yearStart.getTime()) / (1000 * 60 * 60 * 24));
+    const quoteIndex = dayOfYear % quotes.length;
     
+    const dailyQuote = quotes[quoteIndex];
+
+    // Add some recruitment tips based on the day
+    const tips = [
+      "Focus on candidate experience - every interaction matters",
+      "Use data-driven insights to improve your hiring process",
+      "Build relationships before you need them",
+      "Personalize your outreach for better response rates",
+      "Always follow up, but respect boundaries",
+      "Quality over quantity in candidate sourcing",
+      "Embrace technology, but don't lose the human touch"
+    ];
+    
+    const tipIndex = (dayOfYear + 3) % tips.length;
+
     return NextResponse.json({
-      text: fallbackQuote.text,
-      author: fallbackQuote.author,
-      date: new Date().toDateString()
+      success: true,
+      data: {
+        quote: {
+          text: dailyQuote.text,
+          author: dailyQuote.author,
+          category: dailyQuote.category
+        },
+        tip: tips[tipIndex],
+        date: today.toISOString().split('T')[0],
+        message: "Stay motivated and keep building great teams!"
+      },
+      message: "Daily quote retrieved successfully"
     });
+
+  } catch (error) {
+    console.error('Daily quote API error:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Failed to fetch daily quote',
+        message: 'Internal server error'
+      },
+      { status: 500 }
+    );
   }
 } 

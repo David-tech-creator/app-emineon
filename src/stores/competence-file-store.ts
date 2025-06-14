@@ -48,6 +48,9 @@ interface Template {
 interface TemplateCustomization {
   colorHex: string;
   font: string;
+  fontSize?: string;
+  lineSpacing?: string;
+  margins?: string;
   logoUrl?: string;
   footerText?: string;
 }
@@ -138,6 +141,9 @@ interface CompetenceFileState {
 const defaultStyleCustomization: TemplateCustomization = {
   colorHex: '#1e40af',
   font: 'Inter',
+  fontSize: '11pt',
+  lineSpacing: '1.2',
+  margins: 'normal',
   logoUrl: '',
   footerText: 'Generated with Emineon ATS'
 };
@@ -196,6 +202,9 @@ export const useCompetenceFileStore = create<CompetenceFileState>()(
         styleCustomization: {
           colorHex: template.colorHex,
           font: template.font,
+          fontSize: defaultStyleCustomization.fontSize,
+          lineSpacing: defaultStyleCustomization.lineSpacing,
+          margins: defaultStyleCustomization.margins,
           logoUrl: template.logoUrl || '',
           footerText: template.footerText || defaultStyleCustomization.footerText
         },

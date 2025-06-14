@@ -5,7 +5,10 @@ import { z } from 'zod';
 export const runtime = 'nodejs';
 
 const parseJobDescriptionSchema = z.object({
-  jobDescription: z.string().min(10, 'Job description must be at least 10 characters'),
+  jobDescription: z.string().min(10, 'Job description must be at least 10 characters').optional(),
+  text: z.string().min(10, 'Text must be at least 10 characters').optional(),
+}).refine(data => data.jobDescription || data.text, {
+  message: "Either 'jobDescription' or 'text' field is required"
 });
 
 interface ParsedJobData {
@@ -35,13 +38,29 @@ export async function POST(request: NextRequest) {
       console.log('Auth not available, continuing without user context');
     }
 
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (jsonError) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Invalid JSON format',
+          message: 'Request body must be valid JSON'
+        },
+        { status: 400 }
+      );
+    }
+
     const validatedData = parseJobDescriptionSchema.parse(body);
+
+    // Get the job description text from either field
+    const jobDescriptionText = validatedData.jobDescription || validatedData.text || '';
 
     // Enhanced AI parsing with GPT-like intelligence (mock implementation)
     // In production, this would use actual OpenAI API
     
-    const parsedData = await parseWithAI(validatedData.jobDescription);
+    const parsedData = await parseWithAI(jobDescriptionText);
 
     return NextResponse.json({
       success: true,

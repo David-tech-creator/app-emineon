@@ -48,7 +48,6 @@ import {
   Database,
   Shield,
   Wrench,
-  HeadphonesIcon,
   Calculator,
   Megaphone,
   Truck,

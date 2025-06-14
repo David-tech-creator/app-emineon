@@ -116,6 +116,11 @@ const navigationSections: NavigationSection[] = [
         icon: Building2,
       },
       {
+        name: 'Portal Manager',
+        href: '/admin/portal-manager',
+        icon: Share2,
+      },
+      {
         name: 'Notes',
         href: '/notes',
         icon: FileText,

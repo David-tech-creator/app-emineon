@@ -31,6 +31,26 @@ interface ParsedCandidate {
   availability: string;
   expectedSalary: string;
   remotePreference: string;
+  // Additional fields from Prisma schema
+  professionalHeadline?: string;
+  nationality?: string;
+  timezone?: string;
+  workPermitType?: string;
+  availableFrom?: string;
+  graduationYear?: number;
+  educationLevel?: string;
+  functionalDomain?: string;
+  preferredContractType?: string;
+  relocationWillingness?: boolean;
+  freelancer?: boolean;
+  programmingLanguages: string[];
+  frameworks: string[];
+  toolsAndPlatforms: string[];
+  methodologies: string[];
+  certifications: string[];
+  degrees: string[];
+  universities: string[];
+  notableProjects: string[];
   workExperience: Array<{
     title: string;
     company: string;
@@ -201,6 +221,26 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
         availability: 'Available July 2025',
         expectedSalary: 'CHF 120,000 - 140,000',
         remotePreference: 'Hybrid',
+        // Additional fields
+        professionalHeadline: 'Senior IT Consultant specializing in Digital Transformation',
+        nationality: 'Swiss',
+        timezone: 'Europe/Zurich',
+        workPermitType: 'EU Citizen',
+        availableFrom: '2025-07-01',
+        graduationYear: 2018,
+        educationLevel: 'MASTERS',
+        functionalDomain: 'Information Technology',
+        preferredContractType: 'FULL_TIME',
+        relocationWillingness: true,
+        freelancer: false,
+        programmingLanguages: ['Java', 'TypeScript', 'Python', 'JavaScript'],
+        frameworks: ['Spring Boot', 'React', 'Angular', 'Express.js'],
+        toolsAndPlatforms: ['AWS', 'Docker', 'Kubernetes', 'Jenkins', 'Git'],
+        methodologies: ['Agile', 'Scrum', 'DevOps', 'CI/CD'],
+        certifications: ['AWS Certified Solutions Architect', 'Scrum Master Certification'],
+        degrees: ['Master of Computer Science', 'Bachelor of Computer Science'],
+        universities: ['ETH Zurich', 'University of Zurich'],
+        notableProjects: ['Digital Banking Platform Migration', 'Enterprise ERP Implementation'],
         workExperience: [
           {
             title: 'Senior IT Consultant',
@@ -262,7 +302,7 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
 
   const steps = [
     { id: 'intake', label: 'Smart Intake', icon: Upload },
-    { id: 'parsing', label: 'AI Parse', icon: Brain },
+    { id: 'parsing', label: 'Smart Extract', icon: Brain },
     { id: 'review', label: 'Review & Edit', icon: CheckCircle },
     { id: 'assign', label: 'Assign & Save', icon: UserPlus }
   ];
@@ -282,7 +322,7 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
               <h2 className="text-2xl font-bold text-gray-900">Add Candidate</h2>
               <p className="text-gray-600">
                 {currentStep === 'intake' && 'Upload CV, paste LinkedIn, or start manually'}
-                {currentStep === 'parsing' && 'AI is parsing candidate information...'}
+                {currentStep === 'parsing' && 'Extracting candidate information...'}
                 {currentStep === 'review' && 'Review and edit candidate profile'}
                 {currentStep === 'assign' && 'Assign to jobs and save candidate'}
               </p>
@@ -504,7 +544,7 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
                   className="btn-primary flex items-center space-x-2 disabled:opacity-50"
                 >
                   <Brain className="h-4 w-4" />
-                  <span>Parse with AI</span>
+                  <span>Extract Profile</span>
                 </button>
               </div>
             </div>
@@ -517,10 +557,10 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
                 <Brain className="h-10 w-10 text-blue-600 animate-pulse" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                AI is parsing candidate information...
+                Extracting candidate information...
               </h3>
               <p className="text-gray-600 mb-6">
-                GPT-4 is extracting and structuring the candidate profile
+                Smart AI is analyzing and structuring the candidate profile
               </p>
               <div className="flex items-center justify-center space-x-2">
                 <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
@@ -619,20 +659,63 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
                 </div>
               </div>
 
-              {/* Skills */}
+              {/* Enhanced Skills & Technologies */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <h4 className="font-semibold text-gray-900 mb-4">Skills & Technologies</h4>
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  
+                  {/* Programming Languages */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Technical Skills</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                      <span className="w-3 h-3 bg-purple-500 rounded-full mr-2"></span>
+                      Programming Languages
+                    </label>
                     <div className="flex flex-wrap gap-2 mb-2">
-                      {parsedCandidate.technicalSkills.map((skill, index) => (
+                      {parsedCandidate.programmingLanguages?.map((skill, index) => (
+                        <span key={index} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm flex items-center">
+                          {skill}
+                          <button
+                            onClick={() => {
+                              const newSkills = parsedCandidate.programmingLanguages?.filter((_, i) => i !== index) || [];
+                              setParsedCandidate({...parsedCandidate, programmingLanguages: newSkills});
+                            }}
+                            className="ml-2 text-purple-600 hover:text-purple-800"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Add programming language..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                          setParsedCandidate({
+                            ...parsedCandidate,
+                            programmingLanguages: [...(parsedCandidate.programmingLanguages || []), e.currentTarget.value.trim()]
+                          });
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Frameworks */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                      <span className="w-3 h-3 bg-blue-500 rounded-full mr-2"></span>
+                      Frameworks & Libraries
+                    </label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {parsedCandidate.frameworks?.map((skill, index) => (
                         <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm flex items-center">
                           {skill}
                           <button
                             onClick={() => {
-                              const newSkills = parsedCandidate.technicalSkills.filter((_, i) => i !== index);
-                              setParsedCandidate({...parsedCandidate, technicalSkills: newSkills});
+                              const newSkills = parsedCandidate.frameworks?.filter((_, i) => i !== index) || [];
+                              setParsedCandidate({...parsedCandidate, frameworks: newSkills});
                             }}
                             className="ml-2 text-blue-600 hover:text-blue-800"
                           >
@@ -643,22 +726,64 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
                     </div>
                     <input
                       type="text"
-                      placeholder="Add technical skill..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      placeholder="Add framework..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                       onKeyPress={(e) => {
                         if (e.key === 'Enter' && e.currentTarget.value.trim()) {
                           setParsedCandidate({
                             ...parsedCandidate,
-                            technicalSkills: [...parsedCandidate.technicalSkills, e.currentTarget.value.trim()]
+                            frameworks: [...(parsedCandidate.frameworks || []), e.currentTarget.value.trim()]
                           });
                           e.currentTarget.value = '';
                         }
                       }}
                     />
                   </div>
-                  
+
+                  {/* Tools & Platforms */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Soft Skills</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                      <span className="w-3 h-3 bg-orange-500 rounded-full mr-2"></span>
+                      Tools & Platforms
+                    </label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {parsedCandidate.toolsAndPlatforms?.map((skill, index) => (
+                        <span key={index} className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm flex items-center">
+                          {skill}
+                          <button
+                            onClick={() => {
+                              const newSkills = parsedCandidate.toolsAndPlatforms?.filter((_, i) => i !== index) || [];
+                              setParsedCandidate({...parsedCandidate, toolsAndPlatforms: newSkills});
+                            }}
+                            className="ml-2 text-orange-600 hover:text-orange-800"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Add tool or platform..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                          setParsedCandidate({
+                            ...parsedCandidate,
+                            toolsAndPlatforms: [...(parsedCandidate.toolsAndPlatforms || []), e.currentTarget.value.trim()]
+                          });
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Soft Skills */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                      <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                      Soft Skills
+                    </label>
                     <div className="flex flex-wrap gap-2 mb-2">
                       {parsedCandidate.softSkills.map((skill, index) => (
                         <span key={index} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm flex items-center">
@@ -675,20 +800,159 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
                         </span>
                       ))}
                     </div>
+                    <input
+                      type="text"
+                      placeholder="Add soft skill..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                          setParsedCandidate({
+                            ...parsedCandidate,
+                            softSkills: [...parsedCandidate.softSkills, e.currentTarget.value.trim()]
+                          });
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Preferences */}
+              {/* Professional Details */}
               <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-semibold text-gray-900 mb-4">Preferences & Availability</h4>
+                <h4 className="font-semibold text-gray-900 mb-4">Professional Details</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Availability</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Professional Headline</label>
                     <input
                       type="text"
-                      value={parsedCandidate.availability}
-                      onChange={(e) => setParsedCandidate({...parsedCandidate, availability: e.target.value})}
+                      value={parsedCandidate.professionalHeadline || ''}
+                      onChange={(e) => setParsedCandidate({...parsedCandidate, professionalHeadline: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      placeholder="e.g. Senior Software Engineer specializing in React"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Years of Experience</label>
+                    <input
+                      type="number"
+                      value={parsedCandidate.experienceYears}
+                      onChange={(e) => setParsedCandidate({...parsedCandidate, experienceYears: parseInt(e.target.value) || 0})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Seniority Level</label>
+                    <select
+                      value={parsedCandidate.seniorityLevel}
+                      onChange={(e) => setParsedCandidate({...parsedCandidate, seniorityLevel: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="ENTRY">Entry Level</option>
+                      <option value="JUNIOR">Junior</option>
+                      <option value="MID">Mid-level</option>
+                      <option value="SENIOR">Senior</option>
+                      <option value="LEAD">Lead</option>
+                      <option value="PRINCIPAL">Principal</option>
+                      <option value="DIRECTOR">Director</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Primary Industry</label>
+                    <input
+                      type="text"
+                      value={parsedCandidate.primaryIndustry}
+                      onChange={(e) => setParsedCandidate({...parsedCandidate, primaryIndustry: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Functional Domain</label>
+                    <input
+                      type="text"
+                      value={parsedCandidate.functionalDomain || ''}
+                      onChange={(e) => setParsedCandidate({...parsedCandidate, functionalDomain: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      placeholder="e.g. Software Development, Product Management"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">LinkedIn URL</label>
+                    <input
+                      type="url"
+                      value={parsedCandidate.linkedinUrl || ''}
+                      onChange={(e) => setParsedCandidate({...parsedCandidate, linkedinUrl: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Work Preferences */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-4">Work Preferences</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Remote Preference</label>
+                    <select
+                      value={parsedCandidate.remotePreference}
+                      onChange={(e) => setParsedCandidate({...parsedCandidate, remotePreference: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="REMOTE_ONLY">Remote Only</option>
+                      <option value="HYBRID">Hybrid</option>
+                      <option value="ON_SITE">On-site</option>
+                      <option value="NO_PREFERENCE">No Preference</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Contract Type</label>
+                    <select
+                      value={parsedCandidate.preferredContractType || ''}
+                      onChange={(e) => setParsedCandidate({...parsedCandidate, preferredContractType: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="">Select...</option>
+                      <option value="FULL_TIME">Full Time</option>
+                      <option value="PART_TIME">Part Time</option>
+                      <option value="CONTRACT">Contract</option>
+                      <option value="FREELANCE">Freelance</option>
+                      <option value="INTERNSHIP">Internship</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center space-x-4 pt-6">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={parsedCandidate.relocationWillingness || false}
+                        onChange={(e) => setParsedCandidate({...parsedCandidate, relocationWillingness: e.target.checked})}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <span className="text-sm text-gray-700">Open to relocation</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={parsedCandidate.freelancer || false}
+                        onChange={(e) => setParsedCandidate({...parsedCandidate, freelancer: e.target.checked})}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <span className="text-sm text-gray-700">Available for freelance</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Availability & Compensation */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-4">Availability & Compensation</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Available From</label>
+                    <input
+                      type="date"
+                      value={parsedCandidate.availableFrom || ''}
+                      onChange={(e) => setParsedCandidate({...parsedCandidate, availableFrom: e.target.value})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     />
                   </div>
@@ -699,36 +963,159 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
                       value={parsedCandidate.expectedSalary}
                       onChange={(e) => setParsedCandidate({...parsedCandidate, expectedSalary: e.target.value})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      placeholder="e.g. CHF 100,000 - 120,000"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Personal Information */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-4">Personal Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nationality</label>
+                    <input
+                      type="text"
+                      value={parsedCandidate.nationality || ''}
+                      onChange={(e) => setParsedCandidate({...parsedCandidate, nationality: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Remote Preference</label>
-                    <select
-                      value={parsedCandidate.remotePreference}
-                      onChange={(e) => setParsedCandidate({...parsedCandidate, remotePreference: e.target.value})}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+                    <input
+                      type="text"
+                      value={parsedCandidate.timezone || ''}
+                      onChange={(e) => setParsedCandidate({...parsedCandidate, timezone: e.target.value})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    >
-                      <option value="Remote">Remote</option>
-                      <option value="Hybrid">Hybrid</option>
-                      <option value="On-site">On-site</option>
-                      <option value="Flexible">Flexible</option>
-                    </select>
+                      placeholder="e.g. Europe/Zurich"
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Seniority Level</label>
-                    <select
-                      value={parsedCandidate.seniorityLevel}
-                      onChange={(e) => setParsedCandidate({...parsedCandidate, seniorityLevel: e.target.value})}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Work Permit</label>
+                    <input
+                      type="text"
+                      value={parsedCandidate.workPermitType || ''}
+                      onChange={(e) => setParsedCandidate({...parsedCandidate, workPermitType: e.target.value})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    >
-                      <option value="Junior">Junior</option>
-                      <option value="Mid-level">Mid-level</option>
-                      <option value="Senior">Senior</option>
-                      <option value="Lead">Lead</option>
-                      <option value="Principal">Principal</option>
-                    </select>
+                      placeholder="e.g. EU Citizen, Work Permit B"
+                    />
                   </div>
                 </div>
+              </div>
+
+              {/* Education & Certifications */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-4">Education & Certifications</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* Education Level */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Education Level</label>
+                    <select
+                      value={parsedCandidate.educationLevel || ''}
+                      onChange={(e) => setParsedCandidate({...parsedCandidate, educationLevel: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
+                    >
+                      <option value="">Select...</option>
+                      <option value="HIGH_SCHOOL">High School</option>
+                      <option value="BACHELORS">Bachelor's Degree</option>
+                      <option value="MASTERS">Master's Degree</option>
+                      <option value="PHD">PhD</option>
+                      <option value="PROFESSIONAL">Professional Certification</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+
+                    {/* Degrees */}
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Degrees</label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {parsedCandidate.degrees?.map((degree, index) => (
+                        <span key={index} className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm flex items-center">
+                          {degree}
+                          <button
+                            onClick={() => {
+                              const newDegrees = parsedCandidate.degrees?.filter((_, i) => i !== index) || [];
+                              setParsedCandidate({...parsedCandidate, degrees: newDegrees});
+                            }}
+                            className="ml-2 text-indigo-600 hover:text-indigo-800"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Add degree..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                          setParsedCandidate({
+                            ...parsedCandidate,
+                            degrees: [...(parsedCandidate.degrees || []), e.currentTarget.value.trim()]
+                          });
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Certifications */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Graduation Year</label>
+                    <input
+                      type="number"
+                      value={parsedCandidate.graduationYear || ''}
+                      onChange={(e) => setParsedCandidate({...parsedCandidate, graduationYear: parseInt(e.target.value) || undefined})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
+                      placeholder="e.g. 2020"
+                    />
+
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Certifications</label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {parsedCandidate.certifications?.map((cert, index) => (
+                        <span key={index} className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm flex items-center">
+                          {cert}
+                          <button
+                            onClick={() => {
+                              const newCerts = parsedCandidate.certifications?.filter((_, i) => i !== index) || [];
+                              setParsedCandidate({...parsedCandidate, certifications: newCerts});
+                            }}
+                            className="ml-2 text-yellow-600 hover:text-yellow-800"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Add certification..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                          setParsedCandidate({
+                            ...parsedCandidate,
+                            certifications: [...(parsedCandidate.certifications || []), e.currentTarget.value.trim()]
+                          });
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-4">Professional Summary</h4>
+                <textarea
+                  value={parsedCandidate.summary}
+                  onChange={(e) => setParsedCandidate({...parsedCandidate, summary: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg h-24 resize-none"
+                  placeholder="Brief professional summary..."
+                />
               </div>
 
               {/* Action Buttons */}

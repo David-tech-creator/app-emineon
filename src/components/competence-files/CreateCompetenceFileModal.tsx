@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -53,9 +53,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import {
-  useSortable,
-} from '@dnd-kit/sortable';
+import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useDropzone } from 'react-dropzone';
 import { useCompetenceFileStore, type CandidateData } from '@/stores/competence-file-store';
@@ -234,13 +232,13 @@ function SortableSectionItem({
                   }`}>
                     {section.label}
                   </h4>
-                                     <button
-                     onClick={onStartEdit}
-                     className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded hover:bg-gray-100"
-                     title="Edit section name"
-                   >
-                     <Edit3 className="h-3 w-3" />
-                   </button>
+                  <button
+                    onClick={onStartEdit}
+                    className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded hover:bg-gray-100"
+                    title="Edit section name"
+                  >
+                    <Edit3 className="h-3 w-3" />
+                  </button>
                 </div>
               )}
               <p className="text-sm text-gray-500">
@@ -251,7 +249,10 @@ function SortableSectionItem({
         </div>
         
         <div className="flex items-center space-x-2">
-          <Badge variant={section.show ? 'default' : 'outline'}>
+          <Badge 
+            variant={section.show ? 'default' : 'outline'}
+            className={section.show ? 'bg-primary-600 text-white hover:bg-primary-700' : 'text-gray-600 border-gray-300'}
+          >
             {section.show ? 'Included' : 'Hidden'}
           </Badge>
           
@@ -279,6 +280,10 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
   const [editingLabel, setEditingLabel] = useState('');
   const [newSectionLabel, setNewSectionLabel] = useState('');
   const [showAddSection, setShowAddSection] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  
+  // File input ref for logo upload
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
 
   // Effect to handle preselected candidate
   useEffect(() => {
@@ -354,7 +359,6 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
     store.removeSection(sectionKey);
   };
 
-  // Check if section can be removed (custom sections only)
   const canRemoveSection = (sectionKey: string) => {
     return sectionKey.startsWith('custom_');
   };
@@ -368,75 +372,42 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
     store.setProcessingCandidate(true);
 
     try {
-      // Extract text from file (PDF/DOCX)
+      console.log('📄 Processing uploaded file:', file.name);
+      
+      // Create FormData for file upload
       const formData = new FormData();
       formData.append('file', file);
 
-      // First extract text from the file
-      const extractResponse = await fetch('/api/files/extract-text', {
+      // Call the new parse-resume API endpoint
+      const response = await fetch('/api/competence-files/parse-resume', {
         method: 'POST',
         body: formData,
       });
 
-      if (!extractResponse.ok) {
-        throw new Error('Failed to extract text from file');
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || 'Failed to process resume');
       }
 
-      const { text } = await extractResponse.json();
-
-      // Parse CV using OpenAI
-      const parseResponse = await fetch('/api/ai/cv-parse', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          cvText: text,
-          source: 'upload',
-        }),
-      });
-
-      if (!parseResponse.ok) {
-        throw new Error('Failed to parse CV');
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to parse resume');
       }
 
-      const { candidateData } = await parseResponse.json();
+      console.log('✅ Resume parsed successfully:', result.data);
       
-      store.setCandidateData(candidateData);
+      // Set the parsed candidate data
+      store.setCandidateData(result.data);
       store.setProcessingCandidate(false);
       store.nextStep();
       
     } catch (error) {
-      console.error('CV processing error:', error);
+      console.error('💥 CV processing error:', error);
       store.setProcessingCandidate(false);
       
-      // Fallback to mock data for demo
-      const mockCandidate: CandidateData = {
-        id: 'uploaded',
-        fullName: 'John Doe',
-        currentTitle: 'Software Engineer',
-        email: 'john.doe@email.com',
-        phone: '+41 79 345 6789',
-        location: 'Geneva, Switzerland',
-        yearsOfExperience: 5,
-        skills: ['Java', 'Spring Boot', 'MySQL', 'Docker'],
-        certifications: ['Oracle Java Certified'],
-        experience: [
-          {
-            company: 'Software Solutions Ltd',
-            title: 'Software Engineer',
-            startDate: '2019-06',
-            endDate: 'Present',
-            responsibilities: 'Developed enterprise applications using Java and Spring framework'
-          }
-        ],
-        education: ['BSc Computer Science'],
-        languages: ['English (Professional)', 'German (Intermediate)'],
-        summary: 'Experienced software engineer with backend expertise'
-      };
-      
-      store.setCandidateData(mockCandidate);
-      store.nextStep();
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to process resume: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
     }
   }, [store]);
 
@@ -456,59 +427,43 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
     store.setProcessingCandidate(true);
     
     try {
-      // Parse LinkedIn text using OpenAI
-      const response = await fetch('/api/ai/cv-parse', {
+      console.log('🔗 Processing LinkedIn text...');
+      
+      // Call the new parse-linkedin API endpoint
+      const response = await fetch('/api/competence-files/parse-linkedin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          cvText: store.linkedinText,
-          source: 'linkedin',
+          linkedinText: store.linkedinText
         }),
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to parse LinkedIn data');
+        throw new Error(result.message || result.error || 'Failed to process LinkedIn profile');
       }
 
-      const { candidateData } = await response.json();
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to parse LinkedIn profile');
+      }
+
+      console.log('✅ LinkedIn profile parsed successfully:', result.data);
       
-      store.setCandidateData(candidateData);
+      // Set the parsed candidate data
+      store.setCandidateData(result.data);
       store.setProcessingCandidate(false);
       store.nextStep();
       
     } catch (error) {
-      console.error('LinkedIn parsing error:', error);
+      console.error('💥 LinkedIn parsing error:', error);
       store.setProcessingCandidate(false);
       
-      // Fallback to mock data for demo
-      const mockCandidate: CandidateData = {
-        id: 'linkedin',
-        fullName: 'Jane Smith',
-        currentTitle: 'Product Manager',
-        email: 'jane.smith@email.com',
-        phone: '+41 79 456 7890',
-        location: 'Bern, Switzerland',
-        yearsOfExperience: 7,
-        skills: ['Product Strategy', 'Agile', 'Data Analysis', 'Leadership'],
-        certifications: ['Scrum Master', 'Product Management Professional'],
-        experience: [
-          {
-            company: 'Innovation Hub',
-            title: 'Senior Product Manager',
-            startDate: '2020-01',
-            endDate: 'Present',
-            responsibilities: 'Led product strategy and roadmap for B2B SaaS platform'
-          }
-        ],
-        education: ['MBA, University of St. Gallen'],
-        languages: ['English (Professional)', 'German (Native)', 'French (Professional)'],
-        summary: 'Strategic product manager with proven track record in tech companies'
-      };
-      
-      store.setCandidateData(mockCandidate);
-      store.nextStep();
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to process LinkedIn profile: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
     }
   };
 
@@ -518,60 +473,116 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
     store.setGenerating(true);
     
     try {
-      // Generate competence file using real API
-      const response = await fetch('/api/competence-files/generate', {
+      console.log('🚀 Starting generation with test endpoint...');
+      
+      // Use the test endpoint for simplified generation
+      const response = await fetch('/api/competence-files/test-generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           candidateData: store.candidateData,
-          template: store.selectedTemplate,
-          customization: store.styleCustomization,
-          sections: store.sections,
-          outputFormat: store.outputFormat,
+          format: store.outputFormat
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to generate competence file');
+      console.log('📡 Response status:', response.status);
+      const responseText = await response.text();
+      console.log('📡 Response text:', responseText);
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('❌ Failed to parse response as JSON:', parseError);
+        throw new Error(`Invalid response format: ${responseText.substring(0, 100)}...`);
       }
 
-      const result = await response.json();
-      
-      store.setGeneratedFileUrl(result.file.downloadUrl);
+      if (!response.ok) {
+        console.error('❌ API error:', result);
+        throw new Error(result.error || `API error: ${response.status}`);
+      }
+
+      if (!result.success) {
+        console.error('❌ Generation failed:', result);
+        throw new Error(result.error || 'Generation failed');
+      }
+
+      console.log('✅ Generation successful:', result);
+
+      // Set the file URL and show success
+      store.setGeneratedFileUrl(result.data.fileUrl);
       store.setGenerating(false);
       
-      // Call success handler
-      onSuccess({
-        candidateId: store.candidateData.id,
-        templateId: store.templateId,
-        fileName: result.file.fileName,
-        format: store.outputFormat,
-        downloadUrl: result.file.downloadUrl,
-        fileId: result.file.id,
-      });
-      
-    } catch (error) {
-      console.error('File generation error:', error);
-      store.setGenerating(false);
-      
-      // Show error or fallback to mock for demo
-      const fileName = `${store.candidateData?.fullName || 'Candidate'}_Competence_File.${store.outputFormat}`;
-      store.setGeneratedFileUrl(`/downloads/${fileName}`);
-      
+      // Call success callback
       onSuccess({
         candidateId: store.candidateData?.id,
+        candidateName: store.candidateData?.fullName || 'Unknown Candidate',
+        candidateTitle: store.candidateData?.currentTitle || 'Unknown Title',
         templateId: store.templateId,
-        fileName,
-        format: store.outputFormat
+        templateName: store.selectedTemplate?.name || 'Unknown Template',
+        client: 'Unknown Client', // TODO: Add client selection to the modal
+        job: 'Unknown Job', // TODO: Add job selection to the modal
+        fileName: result.data.fileName,
+        format: result.data.format,
+        fileUrl: result.data.fileUrl,
+        fileSize: result.data.fileSize
       });
+
+      // Show success message if there's a warning
+      if (result.warning) {
+        console.warn('⚠️ Generation warning:', result.warning);
+      }
+
+    } catch (error) {
+      console.error('💥 Generation error:', error);
+      store.setGenerating(false);
+      
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to generate competence file: ${errorMessage}\n\nPlease check the console for more details.`);
     }
   };
 
   const handleClose = () => {
     store.resetWizard();
     onClose();
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      alert('Please upload a PNG, JPG, SVG, or WebP image');
+      return;
+    }
+
+    // Validate file size (2MB limit)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Logo file size must be less than 2MB');
+      return;
+    }
+
+    setIsUploadingLogo(true);
+
+    try {
+      // Convert to base64 for preview
+      const reader = new FileReader();
+      reader.onload = () => {
+        const logoUrl = reader.result as string;
+        store.updateStyleCustomization({ logoUrl });
+        setIsUploadingLogo(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Logo upload error:', error);
+      setIsUploadingLogo(false);
+      alert('Failed to upload logo');
+    }
   };
 
   if (!isOpen) return null;
@@ -823,8 +834,8 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
                   </Button>
                 </div>
               )}
-            </div>
-          )}
+                         </div>
+           )}
 
           {/* Step 2: Template Selection */}
           {store.currentStep === 2 && (
@@ -877,86 +888,53 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
                 </div>
               </div>
 
-              {/* Templates Horizontal Scroll */}
-              <div className="relative">
-                {/* Scroll indicators */}
-                <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
-                <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
-                
-                {(() => {
-                  const filteredTemplates = predefinedTemplates.filter((template) => {
-                    const searchTerm = (store.templateSearch || '').toLowerCase();
-                    const matchesSearch = !searchTerm || 
-                      template.name.toLowerCase().includes(searchTerm) ||
-                      template.category.toLowerCase().includes(searchTerm) ||
-                      template.client?.toLowerCase().includes(searchTerm) ||
-                      template.description.toLowerCase().includes(searchTerm);
-                    
-                    const matchesCategory = !store.templateCategory || template.category === store.templateCategory;
-                    
-                    return matchesSearch && matchesCategory;
-                  });
-
-                  if (filteredTemplates.length === 0) {
-                    return (
-                      <div className="w-full text-center py-12">
-                        <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No templates found</h3>
-                        <p className="text-gray-600">Try adjusting your search or filter criteria</p>
+              {/* Templates Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {predefinedTemplates.slice(0, 6).map((template) => (
+                  <Card 
+                    key={template.id}
+                    className={`cursor-pointer transition-all hover:shadow-lg ${
+                      store.selectedTemplate?.id === template.id ? 'ring-2 ring-primary-500 bg-primary-50' : 'hover:shadow-md'
+                    }`}
+                    onClick={() => store.setSelectedTemplate(template)}
+                  >
+                    <CardContent className="p-6">
+                      {/* Template Preview */}
+                      <div className="w-full h-32 bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                        <div className="text-center">
+                          <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                          <p className="text-xs text-gray-500">Template Preview</p>
+                        </div>
                       </div>
-                    );
-                  }
-
-                  return (
-                    <div className="flex space-x-6 overflow-x-auto pb-4 px-4 scrollbar-visible">
-                      {filteredTemplates.map((template) => (
-                    <Card 
-                      key={template.id}
-                      className={`cursor-pointer transition-all hover:shadow-lg flex-shrink-0 w-80 ${
-                        store.selectedTemplate?.id === template.id ? 'ring-2 ring-primary-500 bg-primary-50' : 'hover:shadow-md'
-                      }`}
-                      onClick={() => store.setSelectedTemplate(template)}
-                    >
-                      <CardContent className="p-6">
-                        {/* Template Preview */}
-                        <div className="w-full h-40 bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
-                          <div className="text-center">
-                            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                            <p className="text-sm text-gray-500">Template Preview</p>
-                          </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-gray-900 truncate">{template.name}</h3>
+                          <div 
+                            className="w-3 h-3 rounded-full border border-gray-300"
+                            style={{ backgroundColor: template.colorHex }}
+                          />
                         </div>
                         
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-gray-900 truncate">{template.name}</h3>
-                            <div 
-                              className="w-4 h-4 rounded-full border-2 border-gray-300 flex-shrink-0"
-                              style={{ backgroundColor: template.colorHex }}
-                            />
-                          </div>
-                          
-                          <p className="text-sm text-gray-600 line-clamp-2">{template.description}</p>
-                          
-                          <div className="flex items-center justify-between">
-                            <Badge variant="outline" className="text-xs">
-                              {template.category}
-                            </Badge>
-                            <span className="text-xs text-gray-500 font-medium">{template.font}</span>
-                          </div>
-                          
-                          {template.client && (
-                            <div className="flex items-center space-x-2">
-                              <Building2 className="h-3 w-3 text-gray-400" />
-                              <span className="text-xs text-gray-600 truncate">{template.client}</span>
-                            </div>
-                          )}
+                        <p className="text-sm text-gray-600 line-clamp-2">{template.description}</p>
+                        
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline" className="text-xs">
+                            {template.category}
+                          </Badge>
+                          <span className="text-xs text-gray-500 font-medium">{template.font}</span>
                         </div>
-                        </CardContent>
-                      </Card>
-                      ))}
-                    </div>
-                  );
-                })()}
+                        
+                        {template.client && (
+                          <div className="flex items-center space-x-2">
+                            <Building2 className="h-3 w-3 text-gray-400" />
+                            <span className="text-xs text-gray-600 truncate">{template.client}</span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
 
               {store.selectedTemplate && (
@@ -967,126 +945,269 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
                   </p>
                 </div>
               )}
-            </div>
-          )}
+                         </div>
+           )}
 
-          {/* Step 3: Style Customization */}
+          {/* Step 3: Styling & Branding */}
           {store.currentStep === 3 && (
             <div className="space-y-6">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <div className="flex items-center space-x-2">
-                  <Palette className="h-5 w-5 text-blue-600" />
-                  <span className="text-blue-800 font-medium">Customize the visual style and branding</span>
+                <div className="flex items-start space-x-3">
+                  <Palette className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <h3 className="text-blue-800 font-medium mb-1">Customize Styling & Branding</h3>
+                    <p className="text-blue-700 text-sm">
+                      Design your document with professional styling options and branding elements.
+                    </p>
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Style Controls */}
                 <div className="space-y-6">
-                  {/* Color Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Brand Color</label>
-                    <div className="grid grid-cols-4 gap-3">
-                      {colorPresets.map((preset) => (
-                        <button
-                          key={preset.value}
-                          onClick={() => store.updateStyleCustomization({ colorHex: preset.value })}
-                          className={`w-full h-12 rounded-lg border-2 transition-all ${
-                            store.styleCustomization.colorHex === preset.value
-                              ? 'border-gray-900 scale-105'
-                              : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                          style={{ backgroundColor: preset.color }}
-                          title={preset.label}
-                        />
-                      ))}
-                    </div>
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <Palette className="h-5 w-5 mr-2 text-primary-600" />
+                      Typography & Colors
+                    </h4>
                     
-                    <div className="mt-3">
-                      <Input
-                        type="text"
-                        placeholder="Custom hex color (e.g., #1e40af)"
-                        value={store.styleCustomization.colorHex}
-                        onChange={(e) => store.updateStyleCustomization({ colorHex: e.target.value })}
-                        className="font-mono text-sm"
-                      />
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Font Family</label>
+                        <select
+                          value={store.styleCustomization.font}
+                          onChange={(e) => store.updateStyleCustomization({ font: e.target.value })}
+                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                        >
+                          {fontOptions.map((font) => (
+                            <option key={font.value} value={font.value}>
+                              {font.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Font Size</label>
+                          <select
+                            value={store.styleCustomization.fontSize || '11pt'}
+                            onChange={(e) => store.updateStyleCustomization({ fontSize: e.target.value })}
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 text-sm"
+                          >
+                            <option value="9pt">9pt</option>
+                            <option value="10pt">10pt</option>
+                            <option value="11pt">11pt (Default)</option>
+                            <option value="12pt">12pt</option>
+                            <option value="14pt">14pt</option>
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Line Spacing</label>
+                          <select
+                            value={store.styleCustomization.lineSpacing || '1.2'}
+                            onChange={(e) => store.updateStyleCustomization({ lineSpacing: e.target.value })}
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 text-sm"
+                          >
+                            <option value="1.0">Single</option>
+                            <option value="1.15">1.15</option>
+                            <option value="1.2">1.2 (Default)</option>
+                            <option value="1.5">1.5</option>
+                            <option value="2.0">Double</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Color Selection */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-3">Brand Color</label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {colorPresets.map((preset) => (
+                            <button
+                              key={preset.value}
+                              onClick={() => store.updateStyleCustomization({ colorHex: preset.value })}
+                              className={`w-full h-8 rounded border-2 transition-all ${
+                                store.styleCustomization.colorHex === preset.value
+                                  ? 'border-gray-900 scale-105'
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                              style={{ backgroundColor: preset.color }}
+                              title={preset.label}
+                            />
+                          ))}
+                        </div>
+                        
+                        <div className="mt-2">
+                          <Input
+                            type="text"
+                            placeholder="#1e40af"
+                            value={store.styleCustomization.colorHex}
+                            onChange={(e) => store.updateStyleCustomization({ colorHex: e.target.value })}
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Logo Upload */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-3">Company Logo</label>
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                          {store.styleCustomization.logoUrl ? (
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <img 
+                                  src={store.styleCustomization.logoUrl} 
+                                  alt="Company logo" 
+                                  className="w-12 h-12 object-contain rounded border"
+                                />
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">Logo uploaded</p>
+                                  <p className="text-xs text-gray-500">Click to change</p>
+                                </div>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => store.updateStyleCustomization({ logoUrl: '' })}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="text-center">
+                              <Image className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                              <p className="text-sm text-gray-600 mb-2">Upload company logo</p>
+                              <p className="text-xs text-gray-500">PNG, JPG, SVG up to 2MB</p>
+                            </div>
+                          )}
+                          
+                          <input
+                            ref={logoFileInputRef}
+                            type="file"
+                            accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+                            onChange={handleLogoUpload}
+                            className="hidden"
+                          />
+                          
+                          <Button
+                            onClick={() => logoFileInputRef.current?.click()}
+                            variant="outline"
+                            size="sm"
+                            disabled={isUploadingLogo}
+                            className="w-full mt-3"
+                          >
+                            {isUploadingLogo ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-4 w-4 mr-2" />
+                                {store.styleCustomization.logoUrl ? 'Change Logo' : 'Upload Logo'}
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Footer Text */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Footer Text</label>
+                        <Input
+                          placeholder="© 2024 Your Company Name - Confidential"
+                          value={store.styleCustomization.footerText || ''}
+                          onChange={(e) => store.updateStyleCustomization({ footerText: e.target.value })}
+                          className="text-sm"
+                        />
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Font Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Font Family</label>
-                    <select
-                      value={store.styleCustomization.font}
-                      onChange={(e) => store.updateStyleCustomization({ font: e.target.value })}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      {fontOptions.map((font) => (
-                        <option key={font.value} value={font.value}>
-                          {font.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Logo Upload */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Company Logo (Optional)</label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                      <Image className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-600">Click to upload logo</p>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Footer Text */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Footer Text</label>
-                    <Input
-                      type="text"
-                      placeholder="Footer text (optional)"
-                      value={store.styleCustomization.footerText || ''}
-                      onChange={(e) => store.updateStyleCustomization({ footerText: e.target.value })}
-                    />
                   </div>
                 </div>
 
-                {/* Preview */}
+                {/* Live Preview */}
                 <div className="space-y-4">
-                  <h4 className="text-lg font-semibold text-gray-900">Preview</h4>
+                  <h4 className="text-lg font-semibold text-gray-900">Live Preview</h4>
                   <Card>
                     <CardContent className="p-6">
                       <div 
-                        className="w-full h-80 bg-white border-2 border-gray-200 rounded-lg p-4 overflow-hidden"
+                        className="w-full h-80 bg-white border-2 border-gray-200 rounded-lg p-4 overflow-hidden relative"
                         style={{ 
                           fontFamily: store.styleCustomization.font,
-                          borderColor: store.styleCustomization.colorHex 
+                          fontSize: store.styleCustomization.fontSize || '11pt',
+                          lineHeight: store.styleCustomization.lineSpacing || '1.2'
                         }}
                       >
-                        {/* Mock document preview */}
-                        <div className="space-y-3">
-                          <div 
-                            className="h-4 w-full rounded"
-                            style={{ backgroundColor: store.styleCustomization.colorHex }}
-                          />
-                          <div className="space-y-2">
-                            <div className="h-3 w-3/4 bg-gray-300 rounded" />
-                            <div className="h-3 w-1/2 bg-gray-200 rounded" />
+                        {/* Header */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <div 
+                              className="h-2 w-full mb-2"
+                              style={{ backgroundColor: store.styleCustomization.colorHex }}
+                            />
+                            <h1 
+                              className="text-lg font-bold mb-1"
+                              style={{ color: store.styleCustomization.colorHex }}
+                            >
+                              COMPETENCE FILE
+                            </h1>
+                            <p className="text-xs text-gray-600">Professional Skills Assessment</p>
                           </div>
-                          <div className="space-y-1">
-                            <div className="h-2 w-full bg-gray-100 rounded" />
-                            <div className="h-2 w-5/6 bg-gray-100 rounded" />
-                            <div className="h-2 w-4/5 bg-gray-100 rounded" />
+                          <div className="w-12 h-12 bg-gray-100 rounded border flex items-center justify-center ml-4">
+                            {store.styleCustomization.logoUrl ? (
+                              <img 
+                                src={store.styleCustomization.logoUrl} 
+                                alt="Company logo" 
+                                className="w-full h-full object-contain rounded"
+                              />
+                            ) : (
+                              <Image className="h-6 w-6 text-gray-400" />
+                            )}
                           </div>
                         </div>
-                        
+
+                        {/* Sample Content */}
+                        <div className="space-y-3">
+                          <div>
+                            <h2 
+                              className="text-sm font-semibold mb-1 pb-1 border-b"
+                              style={{ color: store.styleCustomization.colorHex, borderColor: store.styleCustomization.colorHex }}
+                            >
+                              {store.candidateData?.fullName || 'Candidate Name'}
+                            </h2>
+                            <div className="text-xs text-gray-700 space-y-1">
+                              <p><strong>Position:</strong> {store.candidateData?.currentTitle || 'Job Title'}</p>
+                              <p><strong>Experience:</strong> {store.candidateData?.yearsOfExperience || 'X'} years</p>
+                            </div>
+                          </div>
+
+                          <div>
+                            <h3 
+                              className="text-xs font-semibold mb-1 pb-1 border-b"
+                              style={{ color: store.styleCustomization.colorHex, borderColor: store.styleCustomization.colorHex }}
+                            >
+                              Key Skills
+                            </h3>
+                            <div className="flex flex-wrap gap-1">
+                              {(store.candidateData?.skills || ['Skill 1', 'Skill 2', 'Skill 3']).slice(0, 4).map((skill, i) => (
+                                <span key={i} className="px-1 py-0.5 bg-gray-100 rounded text-xs">
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Footer */}
                         {store.styleCustomization.footerText && (
-                          <div className="absolute bottom-4 left-4 right-4">
-                            <div className="text-xs text-gray-500 text-center">
+                          <div className="absolute bottom-2 left-4 right-4">
+                            <div 
+                              className="text-xs text-center pt-1 border-t"
+                              style={{ borderColor: store.styleCustomization.colorHex }}
+                            >
                               {store.styleCustomization.footerText}
                             </div>
                           </div>
@@ -1096,10 +1217,10 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
                   </Card>
                 </div>
               </div>
-            </div>
-          )}
+                         </div>
+           )}
 
-          {/* Step 4: Section Configuration */}
+          {/* Step 4: Document Sections */}
           {store.currentStep === 4 && (
             <div className="space-y-6">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -1108,138 +1229,300 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
                   <div>
                     <h3 className="text-blue-800 font-medium mb-1">Configure Document Sections</h3>
                     <p className="text-blue-700 text-sm">
-                      Customize which sections appear in your document and their order. 
-                      Drag sections to reorder, click checkboxes to toggle visibility, and edit custom section names.
+                      Customize which sections appear in your document and their order. Watch the preview update in real-time.
                     </p>
                   </div>
                 </div>
               </div>
 
-              <DndContext 
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext 
-                  items={store.sections.map(s => s.key)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-3">
-                    {store.sections
-                      .sort((a, b) => a.order - b.order)
-                      .map((section) => (
-                        <SortableSectionItem
-                          key={section.key}
-                          section={section}
-                          isEditing={editingSectionKey === section.key}
-                          editingLabel={editingLabel}
-                          onToggle={() => store.toggleSection(section.key)}
-                          onStartEdit={() => handleStartEdit(section.key, section.label)}
-                          onSaveEdit={handleSaveEdit}
-                          onCancelEdit={handleCancelEdit}
-                          onLabelChange={setEditingLabel}
-                          onRemove={() => handleRemoveSection(section.key)}
-                          canRemove={canRemoveSection(section.key)}
-                        />
-                      ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-
-              {/* Add Custom Section */}
-              <div className="border-t pt-4">
-                {showAddSection ? (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <Input
-                        value={newSectionLabel}
-                        onChange={(e) => setNewSectionLabel(e.target.value)}
-                        placeholder="Enter section name or select from suggestions below"
-                        className="flex-1"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleAddSection();
-                          if (e.key === 'Escape') setShowAddSection(false);
-                        }}
-                        autoFocus
-                      />
-                      <Button
-                        onClick={handleAddSection}
-                        disabled={!newSectionLabel.trim()}
-                        size="sm"
-                      >
-                        <Check className="h-4 w-4 mr-1" />
-                        Add
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setShowAddSection(false);
-                          setNewSectionLabel('');
-                        }}
-                        variant="outline"
-                        size="sm"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Sections Configuration */}
+                <div className="space-y-6">
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <Settings className="h-5 w-5 mr-2 text-primary-600" />
+                      Document Sections
+                    </h4>
                     
-                    {/* Section Suggestions */}
-                    <div>
-                      <p className="text-sm text-gray-600 mb-2">Quick suggestions:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {sectionSuggestions
-                          .filter(suggestion => 
-                            !store.sections.some(section => 
-                              section.label.toLowerCase() === suggestion.toLowerCase()
-                            )
-                          )
-                          .slice(0, 8)
-                          .map((suggestion) => (
-                            <button
-                              key={suggestion}
-                              onClick={() => setNewSectionLabel(suggestion)}
-                              className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-full hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                    <DndContext 
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext 
+                        items={store.sections.map(s => s.key)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-3">
+                          {store.sections
+                            .sort((a, b) => a.order - b.order)
+                            .map((section) => (
+                              <SortableSectionItem
+                                key={section.key}
+                                section={section}
+                                isEditing={editingSectionKey === section.key}
+                                editingLabel={editingLabel}
+                                onToggle={() => store.toggleSection(section.key)}
+                                onStartEdit={() => handleStartEdit(section.key, section.label)}
+                                onSaveEdit={handleSaveEdit}
+                                onCancelEdit={handleCancelEdit}
+                                onLabelChange={setEditingLabel}
+                                onRemove={() => handleRemoveSection(section.key)}
+                                canRemove={canRemoveSection(section.key)}
+                              />
+                            ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
+
+                    {/* Add Custom Section */}
+                    <div className="border-t pt-4 mt-4">
+                      {showAddSection ? (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
+                          <div className="flex items-center space-x-3">
+                            <Input
+                              value={newSectionLabel}
+                              onChange={(e) => setNewSectionLabel(e.target.value)}
+                              placeholder="Enter section name or select from suggestions below"
+                              className="flex-1"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleAddSection();
+                                if (e.key === 'Escape') setShowAddSection(false);
+                              }}
+                              autoFocus
+                            />
+                            <Button
+                              onClick={handleAddSection}
+                              disabled={!newSectionLabel.trim()}
+                              size="sm"
                             >
-                              {suggestion}
-                            </button>
-                          ))}
+                              <Check className="h-4 w-4 mr-1" />
+                              Add
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                setShowAddSection(false);
+                                setNewSectionLabel('');
+                              }}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          
+                          {/* Section Suggestions */}
+                          <div>
+                            <p className="text-sm text-gray-600 mb-2">Quick suggestions:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {sectionSuggestions
+                                .filter(suggestion => 
+                                  !store.sections.some(section => 
+                                    section.label.toLowerCase() === suggestion.toLowerCase()
+                                  )
+                                )
+                                .slice(0, 8)
+                                .map((suggestion) => (
+                                  <button
+                                    key={suggestion}
+                                    onClick={() => setNewSectionLabel(suggestion)}
+                                    className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-full hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                                  >
+                                    {suggestion}
+                                  </button>
+                                ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={() => setShowAddSection(true)}
+                          variant="outline"
+                          className="w-full border-dashed border-2 border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-700"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Custom Section
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Summary */}
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
+                      <div className="flex items-start space-x-3">
+                        <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-green-800 font-medium">
+                              {store.sections.filter(s => s.show).length} of {store.sections.length} sections will be included
+                            </span>
+                            <Badge variant="outline" className="bg-primary-100 text-primary-700 border-primary-300">
+                              {store.sections.filter(s => s.key.startsWith('custom_')).length} custom
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-green-700">
+                            <strong>Tips:</strong> Drag sections by the grip handle to reorder • Click checkboxes to toggle visibility • Click edit icon to rename custom sections
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                ) : (
-                  <Button
-                    onClick={() => setShowAddSection(true)}
-                    variant="outline"
-                    className="w-full border-dashed border-2 border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-700"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Custom Section
-                  </Button>
-                )}
-              </div>
+                </div>
 
-              {/* Summary */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-green-800 font-medium">
-                        {store.sections.filter(s => s.show).length} of {store.sections.length} sections will be included
-                      </span>
-                      <Badge variant="outline" className="text-green-700 border-green-300">
-                        {store.sections.filter(s => s.key.startsWith('custom_')).length} custom
-                      </Badge>
-                    </div>
-                    <div className="text-sm text-green-700">
-                      <strong>Tips:</strong> Drag sections by the grip handle to reorder • Click checkboxes to toggle visibility • Click edit icon to rename custom sections
+                {/* Live Preview */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                    <Eye className="h-5 w-5 mr-2 text-primary-600" />
+                    Live Preview
+                  </h4>
+                  
+                  <div className="border border-gray-300 rounded-lg overflow-hidden bg-white shadow-sm">
+                    <div 
+                      className="w-full h-[600px] bg-white p-8 overflow-y-auto text-black"
+                      style={{ 
+                        fontFamily: store.styleCustomization.font || 'Times New Roman',
+                        fontSize: store.styleCustomization.fontSize || '11pt',
+                        lineHeight: store.styleCustomization.lineSpacing || '1.2'
+                      }}
+                    >
+                      {/* Header with company branding */}
+                      <div className="flex items-start justify-between mb-6">
+                        <div className="flex-1">
+                          <div 
+                            className="h-1 w-full mb-3"
+                            style={{ backgroundColor: store.styleCustomization.colorHex }}
+                          />
+                          <h1 
+                            className="text-2xl font-bold mb-1"
+                            style={{ color: store.styleCustomization.colorHex }}
+                          >
+                            COMPETENCE FILE
+                          </h1>
+                          <p className="text-sm text-gray-600 mb-4">Professional Skills Assessment</p>
+                        </div>
+                        <div className="w-16 h-16 bg-gray-100 rounded border flex items-center justify-center">
+                          {store.styleCustomization.logoUrl ? (
+                            <img 
+                              src={store.styleCustomization.logoUrl} 
+                              alt="Company logo" 
+                              className="w-full h-full object-contain rounded"
+                            />
+                          ) : (
+                            <Image className="h-8 w-8 text-gray-400" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Candidate Information */}
+                      {store.candidateData && (
+                        <div className="mb-6">
+                          <h2 
+                            className="text-lg font-semibold mb-3 pb-1 border-b"
+                            style={{ color: store.styleCustomization.colorHex, borderColor: store.styleCustomization.colorHex }}
+                          >
+                            {store.candidateData.fullName}
+                          </h2>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <strong>Position:</strong> {store.candidateData.currentTitle}
+                            </div>
+                            <div>
+                              <strong>Location:</strong> {store.candidateData.location}
+                            </div>
+                            <div>
+                              <strong>Email:</strong> {store.candidateData.email}
+                            </div>
+                            <div>
+                              <strong>Experience:</strong> {store.candidateData.yearsOfExperience} years
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Dynamic Sections Preview */}
+                      {store.sections
+                        .filter(section => section.show)
+                        .sort((a, b) => a.order - b.order)
+                        .map((section, index) => (
+                          <div key={section.key} className="mb-4">
+                            <h3 
+                              className="text-base font-semibold mb-2 pb-1 border-b"
+                              style={{ color: store.styleCustomization.colorHex, borderColor: store.styleCustomization.colorHex }}
+                            >
+                              {section.label}
+                            </h3>
+                            <div className="text-sm text-gray-700">
+                              {section.key === 'skills' && store.candidateData?.skills && (
+                                <div className="flex flex-wrap gap-1">
+                                  {store.candidateData.skills.slice(0, 6).map(skill => (
+                                    <span key={skill} className="px-2 py-1 bg-gray-100 rounded text-xs">
+                                      {skill}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              {section.key === 'experience' && store.candidateData?.experience && (
+                                <div>
+                                  {store.candidateData.experience.slice(0, 2).map((exp, i) => (
+                                    <div key={i} className="mb-2">
+                                      <div className="font-medium">{exp.title} - {exp.company}</div>
+                                      <div className="text-xs text-gray-600">{exp.startDate} - {exp.endDate}</div>
+                                      <div className="text-xs">{exp.responsibilities}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {section.key === 'education' && store.candidateData?.education && (
+                                <div>
+                                  {store.candidateData.education.slice(0, 2).map((edu, i) => (
+                                    <div key={i} className="text-sm">{edu}</div>
+                                  ))}
+                                </div>
+                              )}
+                              {section.key === 'summary' && store.candidateData?.summary && (
+                                <p className="text-sm">{store.candidateData.summary}</p>
+                              )}
+                              {section.key === 'certifications' && store.candidateData?.certifications && (
+                                <div className="space-y-1">
+                                  {store.candidateData.certifications.map((cert, i) => (
+                                    <div key={i} className="text-sm flex items-center">
+                                      <Award className="h-3 w-3 mr-2 text-yellow-600" />
+                                      {cert}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {section.key === 'languages' && store.candidateData?.languages && (
+                                <div className="space-y-1">
+                                  {store.candidateData.languages.map((lang, i) => (
+                                    <div key={i} className="text-sm">{lang}</div>
+                                  ))}
+                                </div>
+                              )}
+                              {!['skills', 'experience', 'education', 'summary', 'certifications', 'languages'].includes(section.key) && (
+                                <div className="text-xs text-gray-500 italic">
+                                  {section.label} content will be populated here...
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+
+                      {/* Footer */}
+                      {store.styleCustomization.footerText && (
+                        <div className="mt-8 pt-4 border-t" style={{ borderColor: store.styleCustomization.colorHex }}>
+                          <div className="text-xs text-center text-gray-600">
+                            {store.styleCustomization.footerText}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+                         </div>
+           )}
 
-          {/* Step 5: Generate */}
+          {/* Step 5: Generate & Download */}
           {store.currentStep === 5 && (
             <div className="space-y-6">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
@@ -1337,7 +1620,18 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
                 <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
                   <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-3" />
                   <p className="text-green-800 font-medium mb-3">File generated successfully!</p>
-                  <Button variant="outline">
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      // Create download link and trigger download
+                      const link = document.createElement('a');
+                      link.href = store.generatedFileUrl!;
+                      link.download = `${store.candidateData?.fullName || 'Candidate'}_Competence_File.${store.outputFormat}`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                  >
                     <Download className="h-4 w-4 mr-2" />
                     Download File
                   </Button>
@@ -1345,6 +1639,7 @@ export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselec
               )}
             </div>
           )}
+
         </div>
 
         {/* Footer */}

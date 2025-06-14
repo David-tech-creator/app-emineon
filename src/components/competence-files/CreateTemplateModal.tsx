@@ -23,6 +23,7 @@ import {
   BookOpen,
   Languages,
   Briefcase,
+  Building2,
   Star,
   Tag,
   Globe,
@@ -52,18 +53,9 @@ const templateSchema = z.object({
     required: z.boolean(),
     weight: z.number().min(1).max(10)
   })).min(1, 'At least one competency is required'),
-  assessmentCriteria: z.object({
-    scoringSystem: z.enum(['scale_1_5', 'percentage', 'pass_fail']),
-    proficiencyLevels: z.array(z.string()),
-    assessmentMethods: z.array(z.string())
-  }),
   configuration: z.object({
-    autoScoring: z.boolean(),
-    minThreshold: z.number().optional(),
-    integrationSettings: z.object({
-      linkToJobs: z.boolean(),
-      teamAccess: z.boolean()
-    })
+    clientId: z.string().optional(),
+    jobId: z.string().optional()
   })
 });
 
@@ -152,11 +144,34 @@ const industries = [
   'Other'
 ];
 
+// Mock data for clients and jobs
+const mockClients = [
+  { id: '1', name: 'TechCorp Solutions', industry: 'Technology', logo: null },
+  { id: '2', name: 'FinanceFirst Bank', industry: 'Financial Services', logo: null },
+  { id: '3', name: 'HealthPlus Medical', industry: 'Healthcare', logo: null },
+  { id: '4', name: 'ConsultPro Group', industry: 'Consulting', logo: null },
+  { id: '5', name: 'ManufacturePlus Inc', industry: 'Manufacturing', logo: null },
+  { id: '6', name: 'RetailMax Chain', industry: 'Retail', logo: null }
+];
+
+const mockJobs = [
+  { id: '1', title: 'Senior Software Engineer', clientId: '1', department: 'Engineering', level: 'Senior', status: 'Active' },
+  { id: '2', title: 'Frontend Developer', clientId: '1', department: 'Engineering', level: 'Mid-level', status: 'Active' },
+  { id: '3', title: 'Data Analyst', clientId: '2', department: 'Data Science', level: 'Junior', status: 'Active' },
+  { id: '4', title: 'Product Manager', clientId: '1', department: 'Product', level: 'Senior', status: 'Active' },
+  { id: '5', title: 'UX Designer', clientId: '3', department: 'Design', level: 'Mid-level', status: 'Active' },
+  { id: '6', title: 'DevOps Engineer', clientId: '1', department: 'Engineering', level: 'Senior', status: 'Active' }
+];
+
 export function CreateTemplateModal({ open, onClose, onSave }: CreateTemplateModalProps) {
-  const [currentStep, setCurrentStep] = useState<'basics' | 'competencies' | 'assessment' | 'configuration' | 'preview'>('basics');
+  const [currentStep, setCurrentStep] = useState<'basics' | 'competencies' | 'configuration' | 'preview'>('basics');
   const [competencies, setCompetencies] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<keyof typeof skillCategories>('technical');
+  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [clientSearchQuery, setClientSearchQuery] = useState('');
+  const [jobSearchQuery, setJobSearchQuery] = useState('');
 
   const {
     register,
@@ -173,18 +188,9 @@ export function CreateTemplateModal({ open, onClose, onSave }: CreateTemplateMod
       targetLevel: '',
       industry: '',
       competencies: [],
-      assessmentCriteria: {
-        scoringSystem: 'scale_1_5',
-        proficiencyLevels: ['Beginner', 'Intermediate', 'Advanced', 'Expert'],
-        assessmentMethods: ['Interview', 'Technical Test', 'Portfolio Review']
-      },
       configuration: {
-        autoScoring: true,
-        minThreshold: 60,
-        integrationSettings: {
-          linkToJobs: true,
-          teamAccess: true
-        }
+        clientId: '',
+        jobId: ''
       }
     }
   });
@@ -213,6 +219,12 @@ export function CreateTemplateModal({ open, onClose, onSave }: CreateTemplateMod
     const templateData = {
       ...data,
       competencies,
+      configuration: {
+        clientId: selectedClient?.id || '',
+        jobId: selectedJob?.id || ''
+      },
+      linkedClient: selectedClient,
+      linkedJob: selectedJob,
       createdAt: new Date().toISOString(),
       id: Date.now().toString()
     };
@@ -225,12 +237,16 @@ export function CreateTemplateModal({ open, onClose, onSave }: CreateTemplateMod
     setCurrentStep('basics');
     setCompetencies([]);
     setSearchQuery('');
+    setSelectedClient(null);
+    setSelectedJob(null);
+    setClientSearchQuery('');
+    setJobSearchQuery('');
     reset();
     onClose();
   };
 
   const nextStep = () => {
-    const steps = ['basics', 'competencies', 'assessment', 'configuration', 'preview'] as const;
+    const steps = ['basics', 'competencies', 'configuration', 'preview'] as const;
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex < steps.length - 1) {
       setCurrentStep(steps[currentIndex + 1]);
@@ -238,7 +254,7 @@ export function CreateTemplateModal({ open, onClose, onSave }: CreateTemplateMod
   };
 
   const prevStep = () => {
-    const steps = ['basics', 'competencies', 'assessment', 'configuration', 'preview'] as const;
+    const steps = ['basics', 'competencies', 'configuration', 'preview'] as const;
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(steps[currentIndex - 1]);
@@ -246,12 +262,12 @@ export function CreateTemplateModal({ open, onClose, onSave }: CreateTemplateMod
   };
 
   const getStepNumber = (step: string) => {
-    const steps = ['basics', 'competencies', 'assessment', 'configuration', 'preview'];
+    const steps = ['basics', 'competencies', 'configuration', 'preview'];
     return steps.indexOf(step) + 1;
   };
 
   const isStepCompleted = (step: string) => {
-    const steps = ['basics', 'competencies', 'assessment', 'configuration', 'preview'];
+    const steps = ['basics', 'competencies', 'configuration', 'preview'];
     return steps.indexOf(step) < steps.indexOf(currentStep);
   };
 
@@ -271,8 +287,7 @@ export function CreateTemplateModal({ open, onClose, onSave }: CreateTemplateMod
               <p className="text-gray-600">
                 {currentStep === 'basics' && 'Define template fundamentals'}
                 {currentStep === 'competencies' && 'Build your competency framework'}
-                {currentStep === 'assessment' && 'Set evaluation criteria'}
-                {currentStep === 'configuration' && 'Configure rules and automation'}
+                {currentStep === 'configuration' && 'Configure client and job links'}
                 {currentStep === 'preview' && 'Review and publish template'}
               </p>
             </div>
@@ -291,7 +306,6 @@ export function CreateTemplateModal({ open, onClose, onSave }: CreateTemplateMod
             {[
               { key: 'basics', label: 'Template Basics', icon: FileText },
               { key: 'competencies', label: 'Competency Framework', icon: Target },
-              { key: 'assessment', label: 'Assessment Criteria', icon: Star },
               { key: 'configuration', label: 'Configuration', icon: Settings },
               { key: 'preview', label: 'Preview & Publish', icon: Eye }
             ].map((step, index) => {
@@ -311,7 +325,7 @@ export function CreateTemplateModal({ open, onClose, onSave }: CreateTemplateMod
                     </div>
                     <span className="font-medium hidden sm:block">{step.label}</span>
                   </div>
-                  {index < 4 && <ChevronRight className="h-4 w-4 text-gray-400 mx-2" />}
+                  {index < 3 && <ChevronRight className="h-4 w-4 text-gray-400 mx-2" />}
                 </div>
               );
             })}
@@ -554,221 +568,231 @@ export function CreateTemplateModal({ open, onClose, onSave }: CreateTemplateMod
             </div>
           )}
 
-          {/* Step 3: Assessment Criteria */}
-          {currentStep === 'assessment' && (
-            <div className="space-y-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <div className="flex items-center space-x-2">
-                  <Star className="h-5 w-5 text-blue-600" />
-                  <span className="text-blue-800 font-medium">Define how competencies will be evaluated and scored</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Scoring System</label>
-                    <div className="space-y-3">
-                      {[
-                        { value: 'scale_1_5', label: '1-5 Scale', desc: 'Rate skills from 1 (beginner) to 5 (expert)' },
-                        { value: 'percentage', label: 'Percentage', desc: 'Score from 0% to 100%' },
-                        { value: 'pass_fail', label: 'Pass/Fail', desc: 'Simple binary assessment' }
-                      ].map(option => (
-                        <label key={option.value} className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:border-primary-300 cursor-pointer">
-                          <input
-                            type="radio"
-                            {...register('assessmentCriteria.scoringSystem')}
-                            value={option.value}
-                            className="mt-1 text-primary-600 focus:ring-primary-500"
-                          />
-                          <div>
-                            <div className="font-medium text-gray-900">{option.label}</div>
-                            <div className="text-sm text-gray-600">{option.desc}</div>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Assessment Methods</label>
-                    <div className="space-y-2">
-                      {[
-                        { value: 'interview', label: 'Interview Assessment' },
-                        { value: 'technical_test', label: 'Technical Test' },
-                        { value: 'portfolio', label: 'Portfolio Review' },
-                        { value: 'presentation', label: 'Presentation/Demo' },
-                        { value: 'peer_review', label: 'Peer Review' }
-                      ].map(method => (
-                        <label key={method.value} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            value={method.value}
-                            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                          />
-                          <span className="text-gray-700">{method.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Proficiency Levels</label>
-                    <div className="space-y-2">
-                      {['Beginner', 'Intermediate', 'Advanced', 'Expert'].map((level, index) => (
-                        <div key={level} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                          <div className="w-8 h-8 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-sm font-medium">
-                            {index + 1}
-                          </div>
-                          <span className="font-medium text-gray-900">{level}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <div className="flex items-start space-x-2">
-                      <Zap className="h-5 w-5 text-yellow-600 mt-0.5" />
-                      <div>
-                        <h4 className="font-medium text-yellow-800">Assessment Tips</h4>
-                        <ul className="text-sm text-yellow-700 mt-2 space-y-1">
-                          <li>• Use consistent criteria across all assessments</li>
-                          <li>• Provide clear examples for each proficiency level</li>
-                          <li>• Consider multiple assessment methods for accuracy</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 4: Configuration */}
+          {/* Step 3: Configuration */}
           {currentStep === 'configuration' && (
             <div className="space-y-6">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <div className="flex items-center space-x-2">
-                  <Settings className="h-5 w-5 text-blue-600" />
-                  <span className="text-blue-800 font-medium">Configure template rules, automation, and integration settings</span>
+                <div className="flex items-start space-x-3">
+                  <Settings className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <h3 className="text-blue-800 font-medium mb-1">Link Template to Client & Job</h3>
+                    <p className="text-blue-700 text-sm">
+                      Connect this template to specific clients and job postings for targeted competence assessments.
+                    </p>
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Link to Client */}
                 <Card>
                   <CardContent className="p-6">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-                      <Zap className="h-5 w-5 text-primary-600" />
-                      <span>Automation Settings</span>
+                      <Building2 className="h-5 w-5 text-primary-600" />
+                      <span>Link to Client</span>
                     </h4>
                     
-                    <div className="space-y-4">
-                      <label className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          {...register('configuration.autoScoring')}
-                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                        />
-                        <div>
-                          <div className="font-medium text-gray-900">Auto-scoring</div>
-                          <div className="text-sm text-gray-600">Automatically calculate overall scores</div>
+                    {!selectedClient ? (
+                      <div className="space-y-4">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <input
+                            type="text"
+                            value={clientSearchQuery}
+                            onChange={(e) => setClientSearchQuery(e.target.value)}
+                            placeholder="Search clients..."
+                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          />
                         </div>
-                      </label>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Minimum Threshold (%)
-                        </label>
-                        <input
-                          type="number"
-                          {...register('configuration.minThreshold')}
-                          min="0"
-                          max="100"
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                          placeholder="60"
-                        />
-                        <p className="text-sm text-gray-500 mt-1">
-                          Minimum score required for qualification
-                        </p>
+                        
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {mockClients
+                            .filter(client => 
+                              client.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+                              client.industry.toLowerCase().includes(clientSearchQuery.toLowerCase())
+                            )
+                            .map(client => (
+                              <button
+                                key={client.id}
+                                onClick={() => setSelectedClient(client)}
+                                className="w-full text-left p-3 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
+                              >
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                                    <Building2 className="h-5 w-5 text-gray-500" />
+                                  </div>
+                                  <div>
+                                    <div className="font-medium text-gray-900">{client.name}</div>
+                                    <div className="text-sm text-gray-500">{client.industry}</div>
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                        </div>
+                        
+                        {clientSearchQuery && mockClients.filter(client => 
+                          client.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+                          client.industry.toLowerCase().includes(clientSearchQuery.toLowerCase())
+                        ).length === 0 && (
+                          <div className="text-center py-4 text-gray-500">
+                            <Building2 className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                            <p>No clients found</p>
+                          </div>
+                        )}
                       </div>
-                    </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                <Building2 className="h-5 w-5 text-green-600" />
+                              </div>
+                              <div>
+                                <div className="font-medium text-green-900">{selectedClient.name}</div>
+                                <div className="text-sm text-green-700">{selectedClient.industry}</div>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => setSelectedClient(null)}
+                              className="text-green-600 hover:text-green-800"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
+                {/* Link to Job */}
                 <Card>
                   <CardContent className="p-6">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-                      <Globe className="h-5 w-5 text-primary-600" />
-                      <span>Integration Settings</span>
+                      <Briefcase className="h-5 w-5 text-primary-600" />
+                      <span>Link to Job</span>
                     </h4>
                     
-                    <div className="space-y-4">
-                      <label className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          {...register('configuration.integrationSettings.linkToJobs')}
-                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                        />
-                        <div>
-                          <div className="font-medium text-gray-900">Link to Job Postings</div>
-                          <div className="text-sm text-gray-600">Connect with job requirements</div>
+                    {!selectedJob ? (
+                      <div className="space-y-4">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <input
+                            type="text"
+                            value={jobSearchQuery}
+                            onChange={(e) => setJobSearchQuery(e.target.value)}
+                            placeholder="Search jobs..."
+                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          />
                         </div>
-                      </label>
-
-                      <label className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          {...register('configuration.integrationSettings.teamAccess')}
-                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                        />
-                        <div>
-                          <div className="font-medium text-gray-900">Team Access</div>
-                          <div className="text-sm text-gray-600">Allow team members to use this template</div>
+                        
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {mockJobs
+                            .filter(job => {
+                              const matchesSearch = job.title.toLowerCase().includes(jobSearchQuery.toLowerCase()) ||
+                                                   job.department.toLowerCase().includes(jobSearchQuery.toLowerCase()) ||
+                                                   job.level.toLowerCase().includes(jobSearchQuery.toLowerCase());
+                              const matchesClient = !selectedClient || job.clientId === selectedClient.id;
+                              return matchesSearch && matchesClient;
+                            })
+                            .map(job => {
+                              const client = mockClients.find(c => c.id === job.clientId);
+                              return (
+                                <button
+                                  key={job.id}
+                                  onClick={() => setSelectedJob(job)}
+                                  className="w-full text-left p-3 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
+                                >
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                                      <Briefcase className="h-5 w-5 text-gray-500" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <div className="font-medium text-gray-900">{job.title}</div>
+                                      <div className="text-sm text-gray-500">
+                                        {client?.name} • {job.department} • {job.level}
+                                      </div>
+                                    </div>
+                                    <span className={`px-2 py-1 text-xs rounded-full ${
+                                      job.status === 'Active' 
+                                        ? 'bg-green-100 text-green-700' 
+                                        : 'bg-gray-100 text-gray-700'
+                                    }`}>
+                                      {job.status}
+                                    </span>
+                                  </div>
+                                </button>
+                              );
+                            })}
                         </div>
-                      </label>
-                    </div>
+                        
+                        {jobSearchQuery && mockJobs.filter(job => {
+                          const matchesSearch = job.title.toLowerCase().includes(jobSearchQuery.toLowerCase()) ||
+                                               job.department.toLowerCase().includes(jobSearchQuery.toLowerCase()) ||
+                                               job.level.toLowerCase().includes(jobSearchQuery.toLowerCase());
+                          const matchesClient = !selectedClient || job.clientId === selectedClient.id;
+                          return matchesSearch && matchesClient;
+                        }).length === 0 && (
+                          <div className="text-center py-4 text-gray-500">
+                            <Briefcase className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                            <p>No jobs found</p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                <Briefcase className="h-5 w-5 text-green-600" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-medium text-green-900">{selectedJob.title}</div>
+                                <div className="text-sm text-green-700">
+                                  {mockClients.find(c => c.id === selectedJob.clientId)?.name} • {selectedJob.department}
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => setSelectedJob(null)}
+                              className="text-green-600 hover:text-green-800"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
 
-              <Card>
-                <CardContent className="p-6">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Template Rules</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Summary */}
+              {(selectedClient || selectedJob) && (
+                <Card>
+                  <CardContent className="p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Template Links Summary</h4>
                     <div className="space-y-3">
-                      <h5 className="font-medium text-gray-900">Required Competencies</h5>
-                      <p className="text-sm text-gray-600">
-                        {competencies.filter(c => c.required).length} out of {competencies.length} competencies are required
-                      </p>
-                      <div className="space-y-1">
-                        {competencies.filter(c => c.required).slice(0, 3).map(comp => (
-                          <div key={comp.id} className="text-sm text-gray-700 flex items-center space-x-2">
-                            <CheckCircle className="h-3 w-3 text-green-600" />
-                            <span>{comp.name}</span>
-                          </div>
-                        ))}
-                        {competencies.filter(c => c.required).length > 3 && (
-                          <div className="text-sm text-gray-500">
-                            +{competencies.filter(c => c.required).length - 3} more...
-                          </div>
-                        )}
-                      </div>
+                      {selectedClient && (
+                        <div className="flex items-center space-x-3 text-sm">
+                          <Building2 className="h-4 w-4 text-gray-500" />
+                          <span className="text-gray-600">Client:</span>
+                          <span className="font-medium text-gray-900">{selectedClient.name}</span>
+                        </div>
+                      )}
+                      {selectedJob && (
+                        <div className="flex items-center space-x-3 text-sm">
+                          <Briefcase className="h-4 w-4 text-gray-500" />
+                          <span className="text-gray-600">Job:</span>
+                          <span className="font-medium text-gray-900">{selectedJob.title}</span>
+                        </div>
+                      )}
                     </div>
-                    
-                    <div className="space-y-3">
-                      <h5 className="font-medium text-gray-900">Weighted Scoring</h5>
-                      <p className="text-sm text-gray-600">
-                        Total weight: {competencies.reduce((sum, c) => sum + c.weight, 0)} points
-                      </p>
-                      <div className="text-sm text-gray-600">
-                        High-weight competencies will have more impact on overall score
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
 
