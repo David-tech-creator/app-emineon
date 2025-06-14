@@ -18,6 +18,7 @@ export default authMiddleware({
     '/api/competence-files/test-generate',
     '/api/competence-files/test-linkedin',
     '/api/competence-files/test-logo-upload',
+    '/api/competence-files/simple-logo-test',
     '/api/competence-files/parse-linkedin',
     '/api/competence-files/parse-resume',
     '/api/competence-files/download',
@@ -33,6 +34,7 @@ export default authMiddleware({
     '/api/competence-files/test-generate',
     '/api/competence-files/test-linkedin',
     '/api/competence-files/test-logo-upload',
+    '/api/competence-files/simple-logo-test',
     '/api/competence-files/parse-resume',
     '/api/competence-files/download',
     '/api/competence-files/upload-logo',
@@ -53,6 +55,7 @@ export default authMiddleware({
         pathname === '/api/competence-files/test-generate' ||
         pathname === '/api/competence-files/test-linkedin' ||
         pathname === '/api/competence-files/test-logo-upload' ||
+        pathname === '/api/competence-files/simple-logo-test' ||
         pathname === '/api/competence-files/parse-resume' ||
         pathname === '/api/competence-files/download') {
       return NextResponse.next();
