@@ -447,48 +447,48 @@ export default function Dashboard() {
               <div className="flex-1">
                 <div className="flex items-center space-x-4 mb-3">
                   <div className="inline-flex items-center px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    {currentDate}
-                  </div>
-                  {urgentItems.length > 0 && (
-                    <div className="inline-flex items-center px-3 py-1 bg-red-500/20 backdrop-blur-sm rounded-full text-white text-sm font-medium">
-                      <Bell className="h-4 w-4 mr-2" />
-                      {urgentItems.length} urgent items
+                      <Calendar className="h-4 w-4 mr-2" />
+                      {currentDate}
                     </div>
-                  )}
-                </div>
-                
+                    {urgentItems.length > 0 && (
+                    <div className="inline-flex items-center px-3 py-1 bg-red-500/20 backdrop-blur-sm rounded-full text-white text-sm font-medium">
+                        <Bell className="h-4 w-4 mr-2" />
+                        {urgentItems.length} urgent items
+                      </div>
+                    )}
+                  </div>
+                  
                 <h1 className="text-2xl font-bold text-white leading-tight mb-4">
-                  Welcome back, {user?.firstName || 'User'}
-                </h1>
-                
+                    Welcome back, {user?.firstName || 'User'}
+                  </h1>
+                  
                 {/* Daily Quote in Header */}
                 <div className="mb-4 p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
-                  {isLoadingQuote ? (
-                    <div className="flex items-center space-x-3">
-                      <Sparkles className="w-5 h-5 text-blue-200 animate-pulse" />
-                      <span className="text-blue-100">Loading today's inspiration...</span>
-                    </div>
-                  ) : dailyQuote ? (
-                    <div className="space-y-2">
-                      <div className="flex items-start space-x-3">
-                        <Quote className="w-5 h-5 text-blue-200 mt-1 flex-shrink-0" />
-                        <div>
-                          <p className="text-blue-50 italic text-lg leading-relaxed">
-                            "{dailyQuote.text}"
-                          </p>
-                          <p className="text-blue-200 text-sm mt-2">
-                            — {dailyQuote.author}
-                          </p>
+                    {isLoadingQuote ? (
+                      <div className="flex items-center space-x-3">
+                        <Sparkles className="w-5 h-5 text-blue-200 animate-pulse" />
+                        <span className="text-blue-100">Loading today's inspiration...</span>
+                      </div>
+                    ) : dailyQuote ? (
+                      <div className="space-y-2">
+                        <div className="flex items-start space-x-3">
+                          <Quote className="w-5 h-5 text-blue-200 mt-1 flex-shrink-0" />
+                          <div>
+                            <p className="text-blue-50 italic text-lg leading-relaxed">
+                              "{dailyQuote.text}"
+                            </p>
+                            <p className="text-blue-200 text-sm mt-2">
+                              — {dailyQuote.author}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-3">
-                      <Quote className="w-5 h-5 text-blue-200" />
-                      <span className="text-blue-100">Quote unavailable today</span>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="flex items-center space-x-3">
+                        <Quote className="w-5 h-5 text-blue-200" />
+                        <span className="text-blue-100">Quote unavailable today</span>
+                      </div>
+                    )}
                 </div>
                 
                 {organization && (
@@ -502,16 +502,16 @@ export default function Dashboard() {
               {/* Right Side - Logo */}
               <div className="hidden lg:block ml-6">
                 <div className="relative w-16 h-16 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
-                  <Image
-                    src="/images/logos/Emineon logo_tree_white.png"
-                    alt="Emineon Intelligence"
+                    <Image
+                      src="/images/logos/Emineon logo_tree_white.png"
+                      alt="Emineon Intelligence"
                     width={40}
                     height={40}
-                    className="object-contain opacity-90"
-                    onError={(e) => {
-                      e.currentTarget.src = "/images/logos/Emineon logo_no background.png";
-                    }}
-                  />
+                      className="object-contain opacity-90"
+                      onError={(e) => {
+                        e.currentTarget.src = "/images/logos/Emineon logo_no background.png";
+                      }}
+                    />
                 </div>
               </div>
             </div>

@@ -10,12 +10,12 @@ if (process.env.CLOUDINARY_URL) {
 } else {
   // Fallback to individual environment variables
   console.log('🔧 Using individual environment variables');
-  cloudinary.config({
+cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'emineon',
     api_key: process.env.CLOUDINARY_API_KEY || '452814944399829',
     api_secret: process.env.CLOUDINARY_API_SECRET || 'c1vCg07L1avVzo-WludXlXhYgDs',
-    secure: true,
-  });
+  secure: true,
+});
 }
 
 // Verify configuration

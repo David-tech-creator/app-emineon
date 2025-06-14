@@ -65,38 +65,11 @@ export async function POST(request: NextRequest) {
 
     console.log(`📁 Processing file: ${file.name} (${file.size} bytes, ${file.type})`);
 
-    // First, try the Responses API approach
     let candidateData;
     let uploadedFileId: string | null = null;
 
-    try {
-      // Upload file to OpenAI with user_data purpose
-      console.log('☁️ Uploading file to OpenAI...');
-      
-      const uploadedFile = await openai.files.create({
-        file: file,
-        purpose: "user_data",
-      });
-
-      uploadedFileId = uploadedFile.id;
-      console.log(`✅ File uploaded to OpenAI: ${uploadedFile.id}`);
-
-      // Use the new Responses API with the uploaded file
-      console.log('🤖 Processing document with Responses API...');
-      
-      const response = await openai.responses.create({
-        model: "gpt-4o",
-        input: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "input_file",
-                file_id: uploadedFile.id,
-              },
-              {
-                type: "input_text",
-                text: `Please analyze this resume document and extract structured information. The document may be in PDF, DOCX, TXT, MD, or HTML format.
+    // Define the prompt for structured extraction
+    const extractionPrompt = `Please analyze this resume document and extract structured information. The document may be in PDF, DOCX, TXT, MD, or HTML format.
 
 Extract all available information and return a JSON object with the following structure:
 
@@ -131,74 +104,199 @@ Instructions:
 - Ensure all text is properly formatted and clean
 - Return ONLY the JSON object, no additional text or formatting
 
-Return the JSON object now:`
-              }
-            ]
-          }
-        ]
-      });
+Return the JSON object now:`;
 
-      const responseContent = response.output_text;
-      
-      if (!responseContent) {
-        throw new Error('No response from OpenAI Responses API');
-      }
+    // Try different approaches based on file type
+    const isPdfOrDocx = file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
-      console.log('📋 Raw OpenAI response length:', responseContent.length);
-
-      // Check if the response looks like an error message
-      if (responseContent.toLowerCase().includes('error') && !responseContent.trim().startsWith('{')) {
-        console.warn('⚠️ Responses API returned error message, will try fallback');
-        throw new Error('Responses API returned error: ' + responseContent.substring(0, 200));
-      }
-
-      // Parse the JSON response
+    if (isPdfOrDocx) {
+      // For PDF/DOCX files, try the new Responses API with file upload first
       try {
-        // Clean the response in case there's any markdown formatting
-        const cleanedResponse = responseContent.replace(/```json\n?|\n?```/g, '').trim();
-        candidateData = JSON.parse(cleanedResponse);
-        console.log('✅ Successfully parsed with Responses API');
-      } catch (parseError) {
-        console.error('❌ Failed to parse Responses API response as JSON:', parseError);
-        console.log('Raw response preview:', responseContent.substring(0, 200) + '...');
+        console.log('☁️ Uploading file to OpenAI for PDF/DOCX processing...');
         
-        // Fallback: Try to extract JSON from the response
-        const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
+        const uploadedFile = await openai.files.create({
+          file: file,
+          purpose: "user_data",
+        });
+
+        uploadedFileId = uploadedFile.id;
+        console.log(`✅ File uploaded to OpenAI: ${uploadedFile.id}`);
+
+        // Use the Responses API with the uploaded file
+        console.log('🤖 Processing PDF/DOCX with Responses API (file upload method)...');
+        
+        const response = await openai.responses.create({
+          model: "gpt-4o",
+          input: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "input_file",
+                  file_id: uploadedFile.id,
+                },
+                {
+                  type: "input_text",
+                  text: extractionPrompt
+                }
+              ]
+            }
+          ]
+        });
+
+        const responseContent = response.output_text;
+        
+        if (!responseContent) {
+          throw new Error('No response from OpenAI Responses API');
+        }
+
+        console.log('📋 Raw OpenAI response length:', responseContent.length);
+
+        // Parse the JSON response
+        try {
+          const cleanedResponse = responseContent.replace(/```json\n?|\n?```/g, '').trim();
+          candidateData = JSON.parse(cleanedResponse);
+          console.log('✅ Successfully parsed PDF/DOCX with Responses API (file upload)');
+        } catch (parseError) {
+          console.error('❌ Failed to parse Responses API response as JSON:', parseError);
+          
+          // Try to extract JSON from the response
+          const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
             candidateData = JSON.parse(jsonMatch[0]);
             console.log('✅ Successfully extracted JSON from Responses API response');
-          } catch (fallbackError) {
-            console.warn('⚠️ JSON extraction failed, will try Chat Completions fallback');
-            throw new Error('Failed to parse Responses API JSON');
+          } else {
+            throw new Error('No valid JSON found in Responses API response');
           }
-        } else {
-          console.warn('⚠️ No JSON found in Responses API response, will try Chat Completions fallback');
-          throw new Error('No valid JSON found in Responses API response');
+        }
+
+      } catch (fileUploadError: any) {
+        console.warn('⚠️ File upload method failed, trying base64 method:', fileUploadError.message);
+        
+        // Fallback to base64 encoding for PDF/DOCX
+        try {
+          console.log('🔄 Converting PDF/DOCX to base64 for Responses API...');
+          
+          const arrayBuffer = await file.arrayBuffer();
+          const base64String = Buffer.from(arrayBuffer).toString('base64');
+          
+          console.log('🤖 Processing PDF/DOCX with Responses API (base64 method)...');
+          
+          const response = await openai.responses.create({
+            model: "gpt-4o",
+            input: [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "input_file",
+                    filename: file.name,
+                    file_data: `data:${file.type};base64,${base64String}`,
+                  },
+                  {
+                    type: "input_text",
+                    text: extractionPrompt
+                  }
+                ]
+              }
+            ]
+          });
+
+          const responseContent = response.output_text;
+          
+          if (!responseContent) {
+            throw new Error('No response from OpenAI Responses API (base64)');
+          }
+
+          console.log('📋 Base64 response length:', responseContent.length);
+
+          // Parse the JSON response
+          try {
+            const cleanedResponse = responseContent.replace(/```json\n?|\n?```/g, '').trim();
+            candidateData = JSON.parse(cleanedResponse);
+            console.log('✅ Successfully parsed PDF/DOCX with Responses API (base64)');
+          } catch (parseError) {
+            console.error('❌ Failed to parse base64 response as JSON:', parseError);
+            
+            // Try to extract JSON from the response
+            const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              candidateData = JSON.parse(jsonMatch[0]);
+              console.log('✅ Successfully extracted JSON from base64 response');
+            } else {
+              throw new Error('No valid JSON found in base64 response');
+            }
+          }
+
+        } catch (base64Error: any) {
+          console.warn('⚠️ Base64 method also failed, trying Chat Completions fallback:', base64Error.message);
+          throw new Error('Both Responses API methods failed');
         }
       }
-
-    } catch (responsesApiError: any) {
-      console.warn('⚠️ Responses API failed, trying Chat Completions fallback:', responsesApiError.message);
-      
-      // Fallback to Chat Completions API with file content
+    } else {
+      // For text files (TXT, MD, HTML), use Responses API with base64 encoding
       try {
-        console.log('🔄 Converting file to text for Chat Completions API...');
+        console.log('🔄 Converting text file to base64 for Responses API...');
         
-        // Convert file to base64 for text extraction
         const arrayBuffer = await file.arrayBuffer();
-        const base64 = Buffer.from(arrayBuffer).toString('base64');
+        const base64String = Buffer.from(arrayBuffer).toString('base64');
         
-        // For text files, we can process directly
-        let fileContent = '';
-        if (file.type === 'text/plain' || file.type === 'text/markdown' || file.type === 'text/html') {
-          fileContent = new TextDecoder().decode(arrayBuffer);
-        } else {
-          // For PDF/DOCX, we'll ask GPT to extract what it can from the base64
-          fileContent = `[${file.type} file - ${file.name} - ${file.size} bytes - base64: ${base64.substring(0, 1000)}...]`;
+        console.log('🤖 Processing text file with Responses API...');
+        
+        const response = await openai.responses.create({
+          model: "gpt-4o",
+          input: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "input_file",
+                  filename: file.name,
+                  file_data: `data:${file.type};base64,${base64String}`,
+                },
+                {
+                  type: "input_text",
+                  text: extractionPrompt
+                }
+              ]
+            }
+          ]
+        });
+
+        const responseContent = response.output_text;
+        
+        if (!responseContent) {
+          throw new Error('No response from OpenAI Responses API');
         }
 
-        console.log('🤖 Processing with Chat Completions API...');
+        console.log('📋 Text file response length:', responseContent.length);
+
+        // Parse the JSON response
+        try {
+          const cleanedResponse = responseContent.replace(/```json\n?|\n?```/g, '').trim();
+          candidateData = JSON.parse(cleanedResponse);
+          console.log('✅ Successfully parsed text file with Responses API');
+        } catch (parseError) {
+          console.error('❌ Failed to parse text file response as JSON:', parseError);
+          
+          // Try to extract JSON from the response
+          const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            candidateData = JSON.parse(jsonMatch[0]);
+            console.log('✅ Successfully extracted JSON from text file response');
+          } else {
+            throw new Error('No valid JSON found in text file response');
+          }
+        }
+
+      } catch (textFileError: any) {
+        console.warn('⚠️ Text file processing failed, trying Chat Completions fallback:', textFileError.message);
+        
+        // Fallback to Chat Completions for text files
+        const arrayBuffer = await file.arrayBuffer();
+        const fileContent = new TextDecoder().decode(arrayBuffer);
+        
+        console.log('🤖 Processing text file with Chat Completions API...');
         
         const completion = await openai.chat.completions.create({
           model: "gpt-4o",
@@ -208,42 +306,9 @@ Return the JSON object now:`
               content: `Please analyze this resume content and extract structured information. 
 
 File: ${file.name} (${file.type})
-Content: ${fileContent.substring(0, 8000)}
+Content: ${fileContent}
 
-Extract all available information and return a JSON object with the following structure:
-
-{
-  "fullName": "string",
-  "currentTitle": "string", 
-  "email": "string",
-  "phone": "string",
-  "location": "string",
-  "yearsOfExperience": number,
-  "skills": ["string"],
-  "certifications": ["string"],
-  "experience": [
-    {
-      "company": "string",
-      "title": "string", 
-      "startDate": "YYYY-MM",
-      "endDate": "YYYY-MM or Present",
-      "responsibilities": "string"
-    }
-  ],
-  "education": ["string"],
-  "languages": ["string"],
-  "summary": "string"
-}
-
-Instructions:
-- Extract all available information from the document content
-- If some fields are not available, use empty strings or arrays
-- For yearsOfExperience, calculate based on work history (if not explicitly stated)
-- For summary, create a brief professional summary based on the resume content
-- Ensure all text is properly formatted and clean
-- Return ONLY the JSON object, no additional text or formatting
-
-Return the JSON object now:`
+${extractionPrompt}`
             }
           ],
           temperature: 0.1,
@@ -261,28 +326,19 @@ Return the JSON object now:`
         try {
           const cleanedResponse = chatResponse.replace(/```json\n?|\n?```/g, '').trim();
           candidateData = JSON.parse(cleanedResponse);
-          console.log('✅ Successfully parsed with Chat Completions API fallback');
+          console.log('✅ Successfully parsed text file with Chat Completions API fallback');
         } catch (parseError) {
           console.error('❌ Failed to parse Chat Completions response as JSON:', parseError);
-          console.log('Raw response preview:', chatResponse.substring(0, 200) + '...');
           
           // Final fallback: Try to extract JSON from the response
           const jsonMatch = chatResponse.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
-            try {
-              candidateData = JSON.parse(jsonMatch[0]);
-              console.log('✅ Successfully extracted JSON from Chat Completions response');
-            } catch (finalError) {
-              throw new Error('Failed to parse resume content. The AI response was not in the expected JSON format.');
-            }
+            candidateData = JSON.parse(jsonMatch[0]);
+            console.log('✅ Successfully extracted JSON from Chat Completions response');
           } else {
             throw new Error('Failed to parse resume content. No valid JSON found in response.');
           }
         }
-
-      } catch (chatApiError: any) {
-        console.error('❌ Chat Completions API also failed:', chatApiError);
-        throw new Error('Both Responses API and Chat Completions API failed to process the resume');
       }
     }
 

@@ -132,12 +132,12 @@ export async function POST(request: NextRequest) {
         <div class="header">
           ${logoUrl ? `<img src="${logoUrl}" alt="Company Logo" class="logo" />` : ''}
           <div class="header-content">
-            <div class="name">${candidateData.fullName}</div>
-            <div class="title">${candidateData.currentTitle || 'Professional'}</div>
-            <div class="contact-info">
-              ${candidateData.email ? `<div class="contact-item">📧 ${candidateData.email}</div>` : ''}
-              ${candidateData.phone ? `<div class="contact-item">📞 ${candidateData.phone}</div>` : ''}
-              ${candidateData.location ? `<div class="contact-item">📍 ${candidateData.location}</div>` : ''}
+          <div class="name">${candidateData.fullName}</div>
+          <div class="title">${candidateData.currentTitle || 'Professional'}</div>
+          <div class="contact-info">
+            ${candidateData.email ? `<div class="contact-item">📧 ${candidateData.email}</div>` : ''}
+            ${candidateData.phone ? `<div class="contact-item">📞 ${candidateData.phone}</div>` : ''}
+            ${candidateData.location ? `<div class="contact-item">📍 ${candidateData.location}</div>` : ''}
             </div>
           </div>
         </div>

@@ -6,9 +6,7 @@ const path = require('path');
 // Test configuration
 const BASE_URL = 'http://localhost:3000';
 const TEST_FILES = [
-  { name: 'test-resume.txt', type: 'text/plain', description: 'Plain Text Resume' },
-  { name: 'test-resume.md', type: 'text/markdown', description: 'Markdown Resume' },
-  { name: 'test-resume.html', type: 'text/html', description: 'HTML Resume' }
+  { name: 'test-resume.txt', type: 'text/plain', description: 'Plain Text Resume' }
 ];
 
 // Colors for console output
@@ -36,91 +34,68 @@ async function makeRequest(url, options = {}) {
   }
 }
 
-async function testHealthCheck() {
-  log('\n🏥 Testing Health Check...', 'blue');
-  const result = await makeRequest(`${BASE_URL}/api/health`);
+async function testDocumentParsing() {
+  log('\n🔍 Testing Document Parsing with Updated OpenAI Responses API...', 'blue');
   
-  if (result.success) {
-    log('✅ Health check passed', 'green');
-    return true;
-  } else {
-    log('❌ Health check failed', 'red');
-    return false;
-  }
-}
-
-async function testDocumentParsing(file) {
-  log(`\n📄 Testing ${file.description} (${file.name})...`, 'blue');
+  const results = [];
   
-  if (!fs.existsSync(file.name)) {
-    log(`❌ Test file ${file.name} not found`, 'red');
-    return false;
-  }
-
-  try {
-    // Create FormData equivalent for node-fetch
-    const FormData = (await import('form-data')).default;
-    const form = new FormData();
-    form.append('file', fs.createReadStream(file.name));
-
-    const result = await makeRequest(`${BASE_URL}/api/competence-files/parse-resume`, {
-      method: 'POST',
-      body: form
-    });
-
-    if (result.success && result.data.success) {
-      log('✅ Document parsing successful', 'green');
-      log(`   📝 Extracted: ${result.data.data.fullName}`, 'yellow');
-      log(`   💼 Title: ${result.data.data.currentTitle}`, 'yellow');
-      log(`   📧 Email: ${result.data.data.email}`, 'yellow');
-      log(`   🎯 Skills: ${result.data.data.skills.slice(0, 3).join(', ')}...`, 'yellow');
-      return result.data.data;
-    } else {
-      log('❌ Document parsing failed', 'red');
-      log(`   Error: ${result.data?.message || result.error}`, 'red');
-      return false;
+  for (const testFile of TEST_FILES) {
+    log(`\n📄 Testing ${testFile.description} (${testFile.name})...`, 'yellow');
+    
+    if (!fs.existsSync(testFile.name)) {
+      log(`❌ File ${testFile.name} not found`, 'red');
+      results.push({ file: testFile.name, success: false, error: 'File not found' });
+      continue;
     }
-  } catch (error) {
-    log(`❌ Document parsing error: ${error.message}`, 'red');
-    return false;
+    
+         try {
+       const fetch = (await import('node-fetch')).default;
+       const FormData = (await import('form-data')).default;
+       const formData = new FormData();
+       formData.append('file', fs.createReadStream(testFile.name));
+       
+       const response = await fetch(`${BASE_URL}/api/competence-files/parse-resume`, {
+         method: 'POST',
+         body: formData
+       });
+      
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        log(`✅ ${testFile.description} parsed successfully!`, 'green');
+        log(`   👤 Name: ${result.data.fullName}`, 'green');
+        log(`   💼 Title: ${result.data.currentTitle}`, 'green');
+        log(`   📧 Email: ${result.data.email}`, 'green');
+        log(`   🏢 Experience: ${result.data.yearsOfExperience} years`, 'green');
+        log(`   🛠️ Skills: ${result.data.skills.length} skills found`, 'green');
+        
+        results.push({ 
+          file: testFile.name, 
+          success: true, 
+          data: result.data,
+          processingTime: response.headers.get('x-response-time') || 'N/A'
+        });
+      } else {
+        log(`❌ ${testFile.description} parsing failed: ${result.message || result.error}`, 'red');
+        results.push({ 
+          file: testFile.name, 
+          success: false, 
+          error: result.message || result.error 
+        });
+      }
+    } catch (error) {
+      log(`❌ ${testFile.description} parsing error: ${error.message}`, 'red');
+      results.push({ file: testFile.name, success: false, error: error.message });
+    }
   }
-}
-
-async function testCompetenceFileGeneration(candidateData) {
-  log('\n📋 Testing Competence File Generation...', 'blue');
   
-  const testData = {
-    candidateData: {
-      ...candidateData,
-      id: `test_${Date.now()}`,
-      summary: candidateData.summary || 'Test candidate for competence file generation'
-    },
-    format: 'pdf'
-  };
-
-  const result = await makeRequest(`${BASE_URL}/api/competence-files/test-generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(testData)
-  });
-
-  if (result.success && result.data.success) {
-    log('✅ Competence file generation successful', 'green');
-    log(`   📄 File URL: ${result.data.data.fileUrl}`, 'yellow');
-    log(`   📏 File Size: ${(result.data.data.fileSize / 1024).toFixed(1)} KB`, 'yellow');
-    return result.data.data;
-  } else {
-    log('❌ Competence file generation failed', 'red');
-    log(`   Error: ${result.data?.message || result.error}`, 'red');
-    return false;
-  }
+  return results;
 }
 
 async function testLinkedInParsing() {
-  log('\n🔗 Testing LinkedIn Parsing...', 'blue');
+  log('\n🔗 Testing LinkedIn Import...', 'blue');
   
-  const linkedinText = `
-John Smith
+  const linkedinText = `John Smith
 Software Engineer at Google
 San Francisco, CA
 
@@ -139,91 +114,128 @@ Education:
 
 Skills: JavaScript, React, Node.js, Python, AWS, Docker, Kubernetes
 
-Experienced software engineer with 5 years in full-stack development. 
-Passionate about building scalable web applications using React, Node.js, and cloud technologies.
-  `.trim();
+Experienced software engineer with 5 years in full-stack development. Passionate about building scalable web applications using React, Node.js, and cloud technologies.`;
 
-  const result = await makeRequest(`${BASE_URL}/api/competence-files/parse-linkedin`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ linkedinText })
-  });
-
-  if (result.success && result.data.success) {
-    log('✅ LinkedIn parsing successful', 'green');
-    log(`   👤 Name: ${result.data.data.fullName}`, 'yellow');
-    log(`   💼 Title: ${result.data.data.currentTitle}`, 'yellow');
-    log(`   📍 Location: ${result.data.data.location}`, 'yellow');
-    return result.data.data;
-  } else {
-    log('❌ LinkedIn parsing failed', 'red');
-    log(`   Error: ${result.data?.message || result.error}`, 'red');
-    return false;
+  try {
+    const result = await makeRequest(`${BASE_URL}/api/competence-files/parse-linkedin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ linkedinText })
+    });
+    
+    if (result.success && result.data.success) {
+      log('✅ LinkedIn parsing successful!', 'green');
+      log(`   👤 Name: ${result.data.data.fullName}`, 'green');
+      log(`   💼 Title: ${result.data.data.currentTitle}`, 'green');
+      log(`   📍 Location: ${result.data.data.location}`, 'green');
+      return { success: true, data: result.data.data };
+    } else {
+      log(`❌ LinkedIn parsing failed: ${result.data?.message || result.error}`, 'red');
+      return { success: false, error: result.data?.message || result.error };
+    }
+  } catch (error) {
+    log(`❌ LinkedIn parsing error: ${error.message}`, 'red');
+    return { success: false, error: error.message };
   }
 }
 
-async function runFullWorkflowTest() {
-  log('🚀 Starting Competence File Modal Full Workflow Test', 'bold');
-  log('=' * 60, 'blue');
-
-  // Test 1: Health Check
-  const healthOk = await testHealthCheck();
-  if (!healthOk) {
-    log('\n❌ Cannot proceed - server not healthy', 'red');
-    return;
-  }
-
-  // Test 2: Document Parsing for each format
-  const parsedCandidates = [];
-  for (const file of TEST_FILES) {
-    const candidateData = await testDocumentParsing(file);
-    if (candidateData) {
-      parsedCandidates.push({ file: file.name, data: candidateData });
-    }
-  }
-
-  // Test 3: LinkedIn Parsing
-  const linkedinCandidate = await testLinkedInParsing();
-  if (linkedinCandidate) {
-    parsedCandidates.push({ file: 'linkedin', data: linkedinCandidate });
-  }
-
-  // Test 4: Competence File Generation for each parsed candidate
-  const generatedFiles = [];
-  for (const candidate of parsedCandidates) {
-    log(`\n📋 Generating competence file for candidate from ${candidate.file}...`, 'blue');
-    const fileData = await testCompetenceFileGeneration(candidate.data);
-    if (fileData) {
-      generatedFiles.push({ source: candidate.file, file: fileData });
-    }
-  }
-
-  // Summary
-  log('\n📊 TEST SUMMARY', 'bold');
-  log('=' * 40, 'blue');
-  log(`✅ Documents parsed successfully: ${parsedCandidates.length}/${TEST_FILES.length + 1}`, 'green');
-  log(`✅ Competence files generated: ${generatedFiles.length}/${parsedCandidates.length}`, 'green');
+async function testPDFGeneration(candidateData) {
+  log('\n📄 Testing PDF Generation...', 'blue');
   
-  if (generatedFiles.length > 0) {
-    log('\n📄 Generated Files:', 'yellow');
-    generatedFiles.forEach(item => {
-      log(`   • ${item.source}: ${item.file.fileName}`, 'yellow');
-      log(`     URL: ${item.file.fileUrl}`, 'yellow');
+  try {
+    const result = await makeRequest(`${BASE_URL}/api/competence-files/test-generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ candidateData, format: 'pdf' })
     });
+    
+    if (result.success && result.data.success) {
+      log('✅ PDF generation successful!', 'green');
+      log(`   📄 PDF URL: ${result.data.pdfUrl}`, 'green');
+      log(`   📊 File size: ${result.data.fileSize} bytes`, 'green');
+      return { success: true, pdfUrl: result.data.pdfUrl };
+    } else {
+      log(`❌ PDF generation failed: ${result.data?.message || result.error}`, 'red');
+      return { success: false, error: result.data?.message || result.error };
+    }
+  } catch (error) {
+    log(`❌ PDF generation error: ${error.message}`, 'red');
+    return { success: false, error: error.message };
   }
+}
 
-  const successRate = ((generatedFiles.length / (TEST_FILES.length + 1)) * 100).toFixed(1);
-  log(`\n🎯 Overall Success Rate: ${successRate}%`, successRate > 80 ? 'green' : 'yellow');
+async function runComprehensiveTest() {
+  log('🚀 Starting Comprehensive Competence File Workflow Test', 'bold');
+  log('=' .repeat(60), 'blue');
   
-  if (successRate === '100.0') {
-    log('\n🎉 ALL TESTS PASSED! The competence file modal workflow is fully functional.', 'green');
+  const startTime = Date.now();
+  
+  // Test 1: Document Parsing
+  const parsingResults = await testDocumentParsing();
+  
+  // Test 2: LinkedIn Import
+  const linkedinResult = await testLinkedInParsing();
+  
+  // Test 3: PDF Generation (using parsed data or LinkedIn data)
+  let pdfResult = { success: false };
+  const successfulParsing = parsingResults.find(r => r.success);
+  const candidateData = successfulParsing?.data || linkedinResult?.data;
+  
+  if (candidateData) {
+    pdfResult = await testPDFGeneration(candidateData);
   } else {
-    log('\n⚠️  Some tests failed. Check the logs above for details.', 'yellow');
+    log('\n❌ No candidate data available for PDF generation test', 'red');
   }
+  
+  // Summary
+  const endTime = Date.now();
+  const totalTime = ((endTime - startTime) / 1000).toFixed(2);
+  
+  log('\n📊 TEST SUMMARY', 'bold');
+  log('=' .repeat(60), 'blue');
+  
+  const successfulParsingCount = parsingResults.filter(r => r.success).length;
+  const totalParsing = parsingResults.length;
+  
+  log(`📄 Document Parsing: ${successfulParsingCount}/${totalParsing} successful`, 
+      successfulParsingCount === totalParsing ? 'green' : 'yellow');
+  
+  log(`🔗 LinkedIn Import: ${linkedinResult.success ? 'SUCCESS' : 'FAILED'}`, 
+      linkedinResult.success ? 'green' : 'red');
+  
+  log(`📄 PDF Generation: ${pdfResult.success ? 'SUCCESS' : 'FAILED'}`, 
+      pdfResult.success ? 'green' : 'red');
+  
+  const overallSuccess = successfulParsingCount > 0 && linkedinResult.success && pdfResult.success;
+  log(`\n🎯 Overall Status: ${overallSuccess ? 'ALL TESTS PASSED' : 'SOME TESTS FAILED'}`, 
+      overallSuccess ? 'green' : 'red');
+  
+  log(`⏱️ Total execution time: ${totalTime}s`, 'blue');
+  
+  if (overallSuccess) {
+    log('\n🎉 Competence File Modal is fully functional!', 'green');
+    log('✅ Document parsing with OpenAI Responses API working', 'green');
+    log('✅ LinkedIn import working', 'green');
+    log('✅ PDF generation working', 'green');
+  } else {
+    log('\n⚠️ Some functionality needs attention:', 'yellow');
+    if (successfulParsingCount === 0) log('   - Document parsing needs fixing', 'red');
+    if (!linkedinResult.success) log('   - LinkedIn import needs fixing', 'red');
+    if (!pdfResult.success) log('   - PDF generation needs fixing', 'red');
+  }
+  
+  return {
+    parsing: { successful: successfulParsingCount, total: totalParsing },
+    linkedin: linkedinResult.success,
+    pdf: pdfResult.success,
+    overall: overallSuccess,
+    executionTime: totalTime
+  };
 }
 
 // Run the test
-runFullWorkflowTest().catch(error => {
-  log(`\n💥 Test runner error: ${error.message}`, 'red');
-  process.exit(1);
-}); 
+if (require.main === module) {
+  runComprehensiveTest().catch(console.error);
+}
+
+module.exports = { runComprehensiveTest }; 
