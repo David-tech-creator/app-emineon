@@ -18,6 +18,18 @@
     },
     "app/api/candidates/parse-linkedin/route.js": {
       "maxDuration": 60
+    },
+    "src/app/api/competence-files/test-generate/route.ts": {
+      "memory": 1024,
+      "maxDuration": 30
+    },
+    "src/app/api/competence-files/parse-resume/route.ts": {
+      "memory": 512,
+      "maxDuration": 30
+    },
+    "src/app/api/competence-files/parse-linkedin/route.ts": {
+      "memory": 512,
+      "maxDuration": 30
     }
   },
   "headers": [
@@ -53,5 +65,10 @@
       "source": "/health",
       "destination": "/api/health"
     }
-  ]
+  ],
+  "build": {
+    "env": {
+      "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true"
+    }
+  }
 } 
