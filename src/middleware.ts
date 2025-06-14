@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+// Force deployment refresh - Updated: 2025-06-14 23:20
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  
+  console.log(`🔍 Middleware processing: ${pathname}`);
   
   // Bypass authentication entirely for these endpoints
   const bypassPaths = [
@@ -23,9 +26,11 @@ export function middleware(request: NextRequest) {
   
   // If the path matches any bypass path, allow it through without authentication
   if (bypassPaths.includes(pathname) || pathname.startsWith('/api/competence-files/')) {
+    console.log(`✅ Bypassing authentication for: ${pathname}`);
     return NextResponse.next();
   }
   
+  console.log(`⚠️ No bypass for: ${pathname}`);
   // For all other routes, we would normally use Clerk middleware
   // But for now, let's allow everything to test
   return NextResponse.next();
