@@ -1,5 +1,6 @@
 import { authMiddleware } from '@clerk/nextjs'
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
 export default authMiddleware({
   publicRoutes: [
@@ -15,7 +16,9 @@ export default authMiddleware({
     '/api/candidates/parse-linkedin',
     '/api/ai/job-description/(.*)',
     '/api/files/(.*)',
-    // Explicitly list all competence-files endpoints
+    '/api/daily-quote',
+    '/uploads/(.*)',
+    // Make ALL competence-files endpoints public
     '/api/competence-files/test-generate',
     '/api/competence-files/test-linkedin',
     '/api/competence-files/test-logo-upload',
@@ -25,16 +28,15 @@ export default authMiddleware({
     '/api/competence-files/download',
     '/api/competence-files/upload-logo',
     '/api/competence-files/generate',
-    '/api/competence-files/enhanced-generate',
-    '/api/daily-quote',
-    '/uploads/(.*)'
+    '/api/competence-files/enhanced-generate'
   ],
   ignoredRoutes: [
     '/((?!api|trpc))(_next.*|.+\\.[\\w]+$)',
     '/api/health',
     '/api/public/(.*)',
     '/api/daily-quote',
-    // Explicitly list all competence-files endpoints
+    '/uploads/(.*)',
+    // Ignore ALL competence-files endpoints
     '/api/competence-files/test-generate',
     '/api/competence-files/test-linkedin',
     '/api/competence-files/test-logo-upload',
@@ -45,7 +47,6 @@ export default authMiddleware({
     '/api/competence-files/upload-logo',
     '/api/competence-files/generate',
     '/api/competence-files/enhanced-generate',
-    '/uploads/(.*)',
     // Static assets and build files
     '/_next/(.*)',
     '/favicon.ico',
@@ -53,20 +54,16 @@ export default authMiddleware({
     '/sitemap.xml'
   ],
   
-  beforeAuth: (req) => {
-    // Skip auth entirely for competence-files endpoints
-    if (req.nextUrl.pathname.startsWith('/api/competence-files/')) {
-      return NextResponse.next();
-    }
-  },
-  
   afterAuth(auth, req) {
     const { pathname } = req.nextUrl;
     
-    // Always allow health check, daily quote, and ALL competence-files endpoints
-    if (pathname === '/api/health' || 
-        pathname === '/api/daily-quote' ||
-        pathname.startsWith('/api/competence-files/')) {
+    // ALWAYS allow competence-files endpoints regardless of auth status
+    if (pathname.startsWith('/api/competence-files/')) {
+      return NextResponse.next();
+    }
+    
+    // Always allow health check and daily quote
+    if (pathname === '/api/health' || pathname === '/api/daily-quote') {
       return NextResponse.next();
     }
     
