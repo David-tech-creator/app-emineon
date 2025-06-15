@@ -84,6 +84,7 @@ import {
   Image as ImageIcon,
   Trash2
 } from 'lucide-react';
+import { JobPreviewModal } from './JobPreviewModal';
 
 // Enhanced form schema following E2E flow
 const jobSchema = z.object({
@@ -165,7 +166,7 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoUrl, setLogoUrl] = useState<string>('');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  const [showJobPreview, setShowJobPreview] = useState(true);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   
   // Field selection state for template customization
   const [selectedFields, setSelectedFields] = useState({
@@ -507,7 +508,7 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
       
       const result = await response.json();
       if (result.success) {
-        setLogoUrl(result.data.url);
+        setLogoUrl(result.data.logoUrl);
         setLogoFile(file);
       } else {
         throw new Error(result.error || 'Upload failed');
@@ -833,7 +834,7 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-primary-50 to-blue-50">
           <div className="flex items-center space-x-3">
@@ -892,7 +893,7 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+        <div className="p-6 overflow-y-auto max-h-[calc(95vh-200px)]">
           {/* Step 1: Smart Job Intake - Chat Interface */}
           {currentStep === 'intake' && (
             <div className="space-y-6">
@@ -1443,118 +1444,53 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
                    </Card>
                  </div>
 
-                 {/* Right Column: Live Preview */}
+                 {/* Right Column: Preview Actions */}
                  <div className="space-y-6">
                    <Card className="sticky top-4">
                      <CardContent className="p-6">
-                       <div className="flex items-center justify-between mb-4">
-                         <h4 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-                           <Eye className="h-5 w-5 text-primary-600" />
-                           <span>Live Preview</span>
-                         </h4>
-                         <div className="flex items-center space-x-2">
-                           <Button
-                             type="button"
-                             variant="outline"
-                             size="sm"
-                             onClick={() => downloadJobDescription('pdf')}
-                           >
-                             <FileDown className="h-4 w-4 mr-1" />
-                             PDF
-                           </Button>
-                           <Button
-                             type="button"
-                             variant="outline"
-                             size="sm"
-                             onClick={() => downloadJobDescription('docx')}
-                           >
-                             <FileDown className="h-4 w-4 mr-1" />
-                             Word
-                           </Button>
+                       <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                         <Eye className="h-5 w-5 text-primary-600" />
+                         <span>Preview & Download</span>
+                       </h4>
+                       
+                       <div className="space-y-4">
+                         <Button
+                           type="button"
+                           onClick={() => setShowPreviewModal(true)}
+                           className="w-full bg-primary-600 hover:bg-primary-700 text-white"
+                           size="lg"
+                         >
+                           <Eye className="h-5 w-5 mr-2" />
+                           Preview Job Description
+                         </Button>
+                         
+                         <div className="text-center text-sm text-gray-500">
+                           Preview your job description with logo and selected fields before downloading
                          </div>
-                       </div>
-
-                       {/* Live Job Preview */}
-                       <div className="border border-gray-200 rounded-lg p-6 bg-white max-h-[600px] overflow-y-auto">
-                         <div className="flex items-start justify-between mb-6">
-                           <div>
-                             {selectedFields.title && (
-                               <h1 className="text-2xl font-bold text-gray-900">{watch('title') || 'Job Title'}</h1>
-                             )}
-                             {selectedFields.company && (
-                               <p className="text-lg text-gray-600">{watch('company') || 'Company Name'}</p>
-                             )}
-                             {selectedFields.location && (
-                               <p className="text-gray-500 flex items-center mt-2">
-                                 <MapPin className="h-4 w-4 mr-1" />
-                                 {watch('location') || 'Location'}
-                               </p>
-                             )}
+                         
+                         <div className="border-t pt-4">
+                           <p className="text-sm font-medium text-gray-700 mb-3">Quick Download:</p>
+                           <div className="grid grid-cols-2 gap-3">
+                             <Button
+                               type="button"
+                               variant="outline"
+                               onClick={() => downloadJobDescription('pdf')}
+                               className="w-full"
+                             >
+                               <FileDown className="h-4 w-4 mr-2" />
+                               PDF
+                             </Button>
+                             <Button
+                               type="button"
+                               variant="outline"
+                               onClick={() => downloadJobDescription('docx')}
+                               className="w-full"
+                             >
+                               <FileDown className="h-4 w-4 mr-2" />
+                               Word
+                             </Button>
                            </div>
-                           {logoUrl && (
-                             <img 
-                               src={logoUrl} 
-                               alt="Company logo" 
-                               className="h-16 w-auto object-contain"
-                             />
-                           )}
                          </div>
-
-                         <div className="grid grid-cols-2 gap-4 mb-6">
-                           {selectedFields.contractType && (
-                             <div className="bg-gray-50 p-3 rounded-lg">
-                               <p className="text-sm text-gray-500">Contract Type</p>
-                               <p className="font-medium capitalize">{watch('contractType') || 'Permanent'}</p>
-                             </div>
-                           )}
-                           {selectedFields.workMode && (
-                             <div className="bg-gray-50 p-3 rounded-lg">
-                               <p className="text-sm text-gray-500">Work Mode</p>
-                               <p className="font-medium capitalize">{watch('workMode') || 'Hybrid'}</p>
-                             </div>
-                           )}
-                           {selectedFields.department && (
-                             <div className="bg-gray-50 p-3 rounded-lg">
-                               <p className="text-sm text-gray-500">Department</p>
-                               <p className="font-medium">{watch('department') || 'Technology'}</p>
-                             </div>
-                           )}
-                           {selectedFields.salary && (
-                             <div className="bg-gray-50 p-3 rounded-lg">
-                               <p className="text-sm text-gray-500">Salary</p>
-                               <p className="font-medium">{watch('salary') || 'Competitive'}</p>
-                             </div>
-                           )}
-                         </div>
-
-                         {selectedFields.description && (
-                           <div className="mb-6">
-                             <h3 className="text-lg font-semibold mb-3">Job Description</h3>
-                             <div className="prose max-w-none">
-                               <p className="text-gray-700 whitespace-pre-wrap">{watch('description') || 'Job description will appear here...'}</p>
-                             </div>
-                           </div>
-                         )}
-
-                         {selectedFields.skills && watch('skills') && watch('skills').length > 0 && (
-                           <div className="mb-6">
-                             <h3 className="text-lg font-semibold mb-3">Required Skills</h3>
-                             <div className="flex flex-wrap gap-2">
-                               {watch('skills').map((skill, index) => (
-                                 <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                                   {skill}
-                                 </span>
-                               ))}
-                             </div>
-                           </div>
-                         )}
-
-                         {selectedFields.startDate && (
-                           <div className="mb-4">
-                             <h3 className="text-lg font-semibold mb-2">Start Date</h3>
-                             <p className="text-gray-700">{watch('startDate') ? new Date(watch('startDate')).toLocaleDateString() : 'To be determined'}</p>
-                           </div>
-                         )}
                        </div>
                      </CardContent>
                    </Card>
@@ -2121,6 +2057,29 @@ Apply now 👉 [link]
           )}
          </div>
        </div>
+       
+       {/* Job Preview Modal */}
+       <JobPreviewModal
+         isOpen={showPreviewModal}
+         onClose={() => setShowPreviewModal(false)}
+         jobData={{
+           title: watch('title') || '',
+           company: watch('company') || '',
+           location: watch('location') || '',
+           contractType: watch('contractType') || 'permanent',
+           workMode: watch('workMode') || 'hybrid',
+           description: watch('description') || '',
+           skills: watch('skills') || [],
+           salary: watch('salary'),
+           department: watch('department'),
+           startDate: watch('startDate'),
+           languages: watch('languages') || [],
+           priority: watch('priority')
+         }}
+         logoUrl={logoUrl}
+         selectedFields={selectedFields}
+         onDownload={downloadJobDescription}
+       />
      </div>
   );
 }
