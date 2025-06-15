@@ -18,6 +18,8 @@ import {
   Share2,
   ChevronRight,
   ChevronLeft,
+  ChevronUp,
+  ChevronDown,
   Check,
   Paperclip,
   Building2,
@@ -80,7 +82,21 @@ import { useCompetenceFileStore, type CandidateData } from '@/stores/competence-
 import { predefinedTemplates, fontOptions, colorPresets } from '@/data/templates';
 
 // Lexical imports
-import { $getRoot, $getSelection, EditorState, LexicalEditor, FORMAT_TEXT_COMMAND, SELECTION_CHANGE_COMMAND, $isRangeSelection } from 'lexical';
+import { 
+  $getRoot, 
+  $getSelection, 
+  EditorState, 
+  LexicalEditor, 
+  FORMAT_TEXT_COMMAND, 
+  SELECTION_CHANGE_COMMAND, 
+  $isRangeSelection,
+  $createParagraphNode,
+  $createTextNode,
+  DecoratorNode,
+  NodeKey,
+  LexicalNode,
+  $getNodeByKey
+} from 'lexical';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
@@ -90,6 +106,182 @@ import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $generateHtmlFromNodes } from '@lexical/html';
 import { mergeRegister } from '@lexical/utils';
+import { ListPlugin } from '@lexical/react/LexicalListPlugin';
+import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
+import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
+import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
+
+import { 
+  INSERT_ORDERED_LIST_COMMAND,
+  INSERT_UNORDERED_LIST_COMMAND,
+  REMOVE_LIST_COMMAND,
+  $isListNode,
+  ListNode,
+  ListItemNode
+} from '@lexical/list';
+
+// Custom Decorator Nodes for enhanced blocks
+class SkillsSummaryNode extends DecoratorNode<JSX.Element> {
+  __skills: string[];
+
+  static getType(): string {
+    return 'skills-summary';
+  }
+
+  static clone(node: SkillsSummaryNode): SkillsSummaryNode {
+    return new SkillsSummaryNode(node.__skills, node.__key);
+  }
+
+  constructor(skills: string[], key?: NodeKey) {
+    super(key);
+    this.__skills = skills;
+  }
+
+  createDOM(): HTMLElement {
+    const div = document.createElement('div');
+    div.className = 'skills-summary-node p-4 border border-gray-200 rounded-lg bg-blue-50';
+    return div;
+  }
+
+  updateDOM(): false {
+    return false;
+  }
+
+  setSkills(skills: string[]): void {
+    const writable = this.getWritable();
+    writable.__skills = skills;
+  }
+
+  getSkills(): string[] {
+    return this.__skills;
+  }
+
+  decorate(): JSX.Element {
+    return <SkillsSummaryComponent skills={this.__skills} node={this} />;
+  }
+
+  static importJSON(serializedNode: any): SkillsSummaryNode {
+    const { skills } = serializedNode;
+    return new SkillsSummaryNode(skills);
+  }
+
+  exportJSON() {
+    return {
+      skills: this.__skills,
+      type: 'skills-summary',
+      version: 1,
+    };
+  }
+}
+
+class CertificationsTableNode extends DecoratorNode<JSX.Element> {
+  __certifications: Array<{name: string, issuer: string, date: string}>;
+
+  static getType(): string {
+    return 'certifications-table';
+  }
+
+  static clone(node: CertificationsTableNode): CertificationsTableNode {
+    return new CertificationsTableNode(node.__certifications, node.__key);
+  }
+
+  constructor(certifications: Array<{name: string, issuer: string, date: string}>, key?: NodeKey) {
+    super(key);
+    this.__certifications = certifications;
+  }
+
+  createDOM(): HTMLElement {
+    const div = document.createElement('div');
+    div.className = 'certifications-table-node p-4 border border-gray-200 rounded-lg bg-green-50';
+    return div;
+  }
+
+  updateDOM(): false {
+    return false;
+  }
+
+  setCertifications(certifications: Array<{name: string, issuer: string, date: string}>): void {
+    const writable = this.getWritable();
+    writable.__certifications = certifications;
+  }
+
+  getCertifications(): Array<{name: string, issuer: string, date: string}> {
+    return this.__certifications;
+  }
+
+  decorate(): JSX.Element {
+    return <CertificationsTableComponent certifications={this.__certifications} node={this} />;
+  }
+
+  static importJSON(serializedNode: any): CertificationsTableNode {
+    const { certifications } = serializedNode;
+    return new CertificationsTableNode(certifications);
+  }
+
+  exportJSON() {
+    return {
+      certifications: this.__certifications,
+      type: 'certifications-table',
+      version: 1,
+    };
+  }
+}
+
+// GPT Suggestion Node
+class GPTSuggestionNode extends DecoratorNode<JSX.Element> {
+  __suggestion: string;
+  __context: string;
+
+  static getType(): string {
+    return 'gpt-suggestion';
+  }
+
+  static clone(node: GPTSuggestionNode): GPTSuggestionNode {
+    return new GPTSuggestionNode(node.__suggestion, node.__context, node.__key);
+  }
+
+  constructor(suggestion: string, context: string, key?: NodeKey) {
+    super(key);
+    this.__suggestion = suggestion;
+    this.__context = context;
+  }
+
+  createDOM(): HTMLElement {
+    const div = document.createElement('div');
+    div.className = 'gpt-suggestion-node p-3 border border-purple-200 rounded-lg bg-purple-50 relative';
+    return div;
+  }
+
+  updateDOM(): false {
+    return false;
+  }
+
+  getSuggestion(): string {
+    return this.__suggestion;
+  }
+
+  getContext(): string {
+    return this.__context;
+  }
+
+  decorate(): JSX.Element {
+    return <GPTSuggestionComponent suggestion={this.__suggestion} context={this.__context} node={this} />;
+  }
+
+  static importJSON(serializedNode: any): GPTSuggestionNode {
+    const { suggestion, context } = serializedNode;
+    return new GPTSuggestionNode(suggestion, context);
+  }
+
+  exportJSON() {
+    return {
+      suggestion: this.__suggestion,
+      context: this.__context,
+      type: 'gpt-suggestion',
+      version: 1,
+    };
+  }
+}
 
 interface CreateCompetenceFileModalProps {
   isOpen: boolean;
@@ -112,6 +304,13 @@ interface DocumentSection {
 // Lexical Editor Configuration
 const editorConfig = {
   namespace: 'CompetenceFileEditor',
+  nodes: [
+    SkillsSummaryNode,
+    CertificationsTableNode,
+    GPTSuggestionNode,
+    ListNode,
+    ListItemNode
+  ],
   theme: {
     root: 'p-4 border-gray-300 border-2 rounded-lg focus-within:border-blue-500 min-h-[200px]',
     text: {
@@ -142,12 +341,13 @@ const editorConfig = {
   },
 };
 
-// Toolbar Component
-function EditorToolbar() {
+// Enhanced Toolbar Component with AI Features
+function EnhancedEditorToolbar({ selectedCandidate }: { selectedCandidate?: CandidateData | null }) {
   const [editor] = useLexicalComposerContext();
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
   const [isUnderline, setIsUnderline] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
   useEffect(() => {
     return mergeRegister(
@@ -171,14 +371,89 @@ function EditorToolbar() {
     editor.dispatchCommand(FORMAT_TEXT_COMMAND, format);
   };
 
+  const insertList = (type: 'ul' | 'ol') => {
+    if (type === 'ul') {
+      editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
+    } else {
+      editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
+    }
+  };
+
+  const insertSkillsSummary = () => {
+    if (!selectedCandidate) return;
+    
+    editor.update(() => {
+      const skillsNode = new SkillsSummaryNode(selectedCandidate.skills);
+      const selection = $getSelection();
+      if ($isRangeSelection(selection)) {
+        selection.insertNodes([skillsNode]);
+      }
+    });
+  };
+
+  const insertCertificationsTable = () => {
+    if (!selectedCandidate) return;
+    
+    editor.update(() => {
+      const certifications = selectedCandidate.certifications.map(cert => ({
+        name: cert,
+        issuer: 'Unknown',
+        date: 'N/A'
+      }));
+      const certsNode = new CertificationsTableNode(certifications);
+      const selection = $getSelection();
+      if ($isRangeSelection(selection)) {
+        selection.insertNodes([certsNode]);
+      }
+    });
+  };
+
+  const generateAISuggestion = async () => {
+    setIsGeneratingAI(true);
+    try {
+      const selection = $getSelection();
+      let context = '';
+      
+      if ($isRangeSelection(selection)) {
+        context = selection.getTextContent();
+      }
+      
+      const response = await fetch('/api/ai/generate-suggestion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          context, 
+          candidateData: selectedCandidate,
+          sectionType: 'general'
+        })
+      });
+      
+      const { suggestion } = await response.json();
+      
+      editor.update(() => {
+        const suggestionNode = new GPTSuggestionNode(suggestion, context);
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          selection.insertNodes([suggestionNode]);
+        }
+      });
+    } catch (error) {
+      console.error('Failed to generate AI suggestion:', error);
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
   return (
-    <div className="flex items-center space-x-2 p-3 border-b border-gray-200 bg-gray-50">
+    <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50">
+      {/* Basic Formatting */}
       <div className="flex items-center space-x-1">
         <Button
           variant={isBold ? "primary" : "outline"}
           size="sm"
           onClick={() => formatText('bold')}
           className="p-2"
+          title="Bold"
         >
           <Bold className="h-4 w-4" />
         </Button>
@@ -187,6 +462,7 @@ function EditorToolbar() {
           size="sm"
           onClick={() => formatText('italic')}
           className="p-2"
+          title="Italic"
         >
           <Italic className="h-4 w-4" />
         </Button>
@@ -195,45 +471,76 @@ function EditorToolbar() {
           size="sm"
           onClick={() => formatText('underline')}
           className="p-2"
+          title="Underline"
         >
           <Underline className="h-4 w-4" />
         </Button>
-      </div>
-      
-      <div className="w-px h-6 bg-gray-300" />
-      
-      <div className="flex items-center space-x-1">
-        <Button variant="outline" size="sm" className="p-2">
-          <AlignLeft className="h-4 w-4" />
-        </Button>
-        <Button variant="outline" size="sm" className="p-2">
-          <AlignCenter className="h-4 w-4" />
-        </Button>
-        <Button variant="outline" size="sm" className="p-2">
-          <AlignRight className="h-4 w-4" />
-        </Button>
-      </div>
-      
-      <div className="w-px h-6 bg-gray-300" />
-      
-      <div className="flex items-center space-x-1">
-        <Button variant="outline" size="sm" className="p-2">
+        
+        <div className="w-px h-6 bg-gray-300 mx-2" />
+        
+        {/* Lists */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => insertList('ul')}
+          className="p-2"
+          title="Bullet List"
+        >
           <List className="h-4 w-4" />
         </Button>
-        <Button variant="outline" size="sm" className="p-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => insertList('ol')}
+          className="p-2"
+          title="Numbered List"
+        >
           <ListOrdered className="h-4 w-4" />
         </Button>
-        <Button variant="outline" size="sm" className="p-2">
-          <Quote className="h-4 w-4" />
+      </div>
+
+      {/* AI-Enhanced Features */}
+      <div className="flex items-center space-x-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={insertSkillsSummary}
+          disabled={!selectedCandidate}
+          className="text-xs"
+          title="Insert Skills Summary Block"
+        >
+          <Award className="h-3 w-3 mr-1" />
+          Skills
+        </Button>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={insertCertificationsTable}
+          disabled={!selectedCandidate}
+          className="text-xs"
+          title="Insert Certifications Table"
+        >
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Certs
+        </Button>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={generateAISuggestion}
+          disabled={isGeneratingAI}
+          className="text-xs"
+          title="Generate AI Suggestion"
+        >
+          {isGeneratingAI ? (
+            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+          ) : (
+            <Sparkles className="h-3 w-3 mr-1" />
+          )}
+          AI Assist
         </Button>
       </div>
-      
-      <div className="w-px h-6 bg-gray-300" />
-      
-      <Button variant="outline" size="sm" className="p-2">
-        <Sparkles className="h-4 w-4" />
-        <span className="ml-1 text-xs">AI Assist</span>
-      </Button>
     </div>
   );
 }
@@ -315,7 +622,7 @@ function DocumentSectionComponent({
             editorState: section.content
           }}>
             <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
-              <EditorToolbar />
+              <EnhancedEditorToolbar selectedCandidate={selectedCandidate} />
               <RichTextPlugin
                 contentEditable={<ContentEditable className="min-h-[100px] p-4 focus:outline-none" />}
                 placeholder={<div className="absolute top-4 left-4 text-gray-400 pointer-events-none">Start typing...</div>}
@@ -323,6 +630,10 @@ function DocumentSectionComponent({
               />
               <HistoryPlugin />
               <OnChangePlugin onChange={handleContentChange} />
+              <ListPlugin />
+              <LinkPlugin />
+              <MarkdownShortcutPlugin />
+              <TablePlugin />
             </div>
           </LexicalComposer>
         </div>
@@ -888,4 +1199,270 @@ function ErrorBoundary({ children }: { children: React.ReactNode }) {
   }
 
   return <>{children}</>;
+}
+
+// React Components for Decorator Nodes
+function SkillsSummaryComponent({ skills, node }: { skills: string[], node: SkillsSummaryNode }) {
+  const [editor] = useLexicalComposerContext();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedSkills, setEditedSkills] = useState(skills.join(', '));
+
+  const handleSave = () => {
+    const newSkills = editedSkills.split(',').map(s => s.trim()).filter(s => s);
+    editor.update(() => {
+      node.setSkills(newSkills);
+    });
+    setIsEditing(false);
+  };
+
+  const handleAIEnhance = async () => {
+    try {
+      // Call AI service to enhance skills
+      const response = await fetch('/api/ai/enhance-skills', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skills })
+      });
+      const { enhancedSkills } = await response.json();
+      
+      editor.update(() => {
+        node.setSkills(enhancedSkills);
+      });
+    } catch (error) {
+      console.error('Failed to enhance skills:', error);
+    }
+  };
+
+  return (
+    <div className="skills-summary-component">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="font-semibold text-gray-900 flex items-center">
+          <Award className="h-4 w-4 mr-2" />
+          Skills Summary
+        </h4>
+        <div className="flex space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAIEnhance}
+            className="text-xs"
+          >
+            <Sparkles className="h-3 w-3 mr-1" />
+            AI Enhance
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditing(!isEditing)}
+            className="text-xs"
+          >
+            <Edit3 className="h-3 w-3 mr-1" />
+            Edit
+          </Button>
+        </div>
+      </div>
+      
+      {isEditing ? (
+        <div className="space-y-3">
+          <Input
+            value={editedSkills}
+            onChange={(e) => setEditedSkills(e.target.value)}
+            placeholder="Enter skills separated by commas"
+            className="text-sm"
+          />
+          <div className="flex space-x-2">
+            <Button size="sm" onClick={handleSave}>Save</Button>
+            <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>Cancel</Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {skills.map((skill, index) => (
+            <Badge key={index} variant="secondary" className="text-xs">
+              {skill}
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CertificationsTableComponent({ 
+  certifications, 
+  node 
+}: { 
+  certifications: Array<{name: string, issuer: string, date: string}>, 
+  node: CertificationsTableNode 
+}) {
+  const [editor] = useLexicalComposerContext();
+  const [isEditing, setIsEditing] = useState(false);
+
+  const handleAIGenerate = async () => {
+    try {
+      // Call AI service to suggest certifications
+      const response = await fetch('/api/ai/suggest-certifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentCertifications: certifications })
+      });
+      const { suggestedCertifications } = await response.json();
+      
+      editor.update(() => {
+        node.setCertifications([...certifications, ...suggestedCertifications]);
+      });
+    } catch (error) {
+      console.error('Failed to generate certifications:', error);
+    }
+  };
+
+  return (
+    <div className="certifications-table-component">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="font-semibold text-gray-900 flex items-center">
+          <Award className="h-4 w-4 mr-2" />
+          Certifications
+        </h4>
+        <div className="flex space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAIGenerate}
+            className="text-xs"
+          >
+            <Sparkles className="h-3 w-3 mr-1" />
+            AI Suggest
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditing(!isEditing)}
+            className="text-xs"
+          >
+            <Edit3 className="h-3 w-3 mr-1" />
+            Edit
+          </Button>
+        </div>
+      </div>
+      
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200">
+              <th className="text-left py-2 font-medium text-gray-700">Certification</th>
+              <th className="text-left py-2 font-medium text-gray-700">Issuer</th>
+              <th className="text-left py-2 font-medium text-gray-700">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {certifications.map((cert, index) => (
+              <tr key={index} className="border-b border-gray-100">
+                <td className="py-2 text-gray-900">{cert.name}</td>
+                <td className="py-2 text-gray-600">{cert.issuer}</td>
+                <td className="py-2 text-gray-600">{cert.date}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function GPTSuggestionComponent({ 
+  suggestion, 
+  context, 
+  node 
+}: { 
+  suggestion: string, 
+  context: string, 
+  node: GPTSuggestionNode 
+}) {
+  const [editor] = useLexicalComposerContext();
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const handleAccept = () => {
+    editor.update(() => {
+      const paragraph = $createParagraphNode();
+      paragraph.append($createTextNode(suggestion));
+      node.replace(paragraph);
+    });
+  };
+
+  const handleReject = () => {
+    editor.update(() => {
+      node.remove();
+    });
+  };
+
+  const handleRegenerate = async () => {
+    try {
+      const response = await fetch('/api/ai/regenerate-suggestion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context, currentSuggestion: suggestion })
+      });
+      const { newSuggestion } = await response.json();
+      
+      editor.update(() => {
+        const newNode = new GPTSuggestionNode(newSuggestion, context);
+        node.replace(newNode);
+      });
+    } catch (error) {
+      console.error('Failed to regenerate suggestion:', error);
+    }
+  };
+
+  return (
+    <div className="gpt-suggestion-component">
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex items-center">
+          <Sparkles className="h-4 w-4 text-purple-600 mr-2" />
+          <span className="text-sm font-medium text-purple-800">AI Suggestion</span>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="p-1"
+        >
+          {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </Button>
+      </div>
+      
+      <div className={`text-sm text-gray-700 mb-3 ${isExpanded ? '' : 'line-clamp-2'}`}>
+        {suggestion}
+      </div>
+      
+      <div className="flex space-x-2">
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={handleAccept}
+          className="text-xs"
+        >
+          <Check className="h-3 w-3 mr-1" />
+          Accept
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRegenerate}
+          className="text-xs"
+        >
+          <RotateCcw className="h-3 w-3 mr-1" />
+          Regenerate
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleReject}
+          className="text-xs text-red-600 hover:text-red-700"
+        >
+          <X className="h-3 w-3 mr-1" />
+          Reject
+        </Button>
+      </div>
+    </div>
+  );
 } 
