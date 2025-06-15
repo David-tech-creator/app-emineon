@@ -1216,286 +1216,169 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
                 </div>
               </div>
 
-              {/* Two-column layout: Fields on left, Preview on right */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Left Column: Form Fields */}
-                <div className="space-y-6">
-                  {/* Logo Upload Section */}
-                  <Card>
-                    <CardContent className="p-6">
-                      <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-                        <ImageIcon className="h-5 w-5 text-primary-600" />
-                        <span>Company Logo</span>
-                      </h4>
-                      <div className="flex items-center space-x-4">
-                        {logoUrl ? (
-                          <div className="relative">
-                            <img 
-                              src={logoUrl} 
-                              alt="Company logo" 
-                              className="h-16 w-16 object-contain border border-gray-200 rounded-lg"
-                            />
-                            <button
-                              type="button"
-                              onClick={handleLogoRemove}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="h-16 w-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                            <ImageIcon className="h-6 w-6 text-gray-400" />
-                          </div>
-                        )}
-                        
-                        <div>
+              {/* Single column layout for all form fields */}
+              <div className="space-y-6">
+                {/* Field Selection */}
+                <Card>
+                  <CardContent className="p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                      <Settings className="h-5 w-5 text-primary-600" />
+                      <span>Template Fields</span>
+                    </h4>
+                    <p className="text-sm text-gray-600 mb-4">Select which fields to include in your job posting template:</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {Object.entries(selectedFields).map(([field, selected]) => (
+                        <label key={field} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
                           <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleLogoUpload(file);
-                            }}
-                            className="hidden"
-                            id="logo-upload"
+                            type="checkbox"
+                            checked={selected}
+                            onChange={(e) => setSelectedFields(prev => ({ ...prev, [field]: e.target.checked }))}
+                            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                           />
-                          <label
-                            htmlFor="logo-upload"
-                            className="cursor-pointer inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                          >
-                            {isUploadingLogo ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Uploading...
-                              </>
-                            ) : (
-                              <>
-                                <Upload className="h-4 w-4 mr-2" />
-                                Upload Logo
-                              </>
-                            )}
-                          </label>
-                          <p className="text-xs text-gray-500 mt-1">PNG, JPG, SVG up to 2MB</p>
+                          <span className="text-sm font-medium capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Basic Information */}
+                <Card>
+                  <CardContent className="p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                      <Briefcase className="h-5 w-5 text-primary-600" />
+                      <span>Basic Information</span>
+                    </h4>
+                    
+                    <div className="space-y-4">
+                      {selectedFields.title && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Job Title *</label>
+                          <input
+                            {...register('title')}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            placeholder="e.g., Senior Software Engineer"
+                          />
+                          {errors.title && <p className="text-red-600 text-sm mt-1">{errors.title.message}</p>}
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      )}
 
-                                     {/* Field Selection */}
-                   <Card>
-                     <CardContent className="p-6">
-                       <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-                         <Settings className="h-5 w-5 text-primary-600" />
-                         <span>Template Fields</span>
-                       </h4>
-                       <p className="text-sm text-gray-600 mb-4">Select which fields to include in your job posting template:</p>
-                       <div className="grid grid-cols-2 gap-3">
-                         {Object.entries(selectedFields).map(([field, selected]) => (
-                           <label key={field} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
-                             <input
-                               type="checkbox"
-                               checked={selected}
-                               onChange={(e) => setSelectedFields(prev => ({ ...prev, [field]: e.target.checked }))}
-                               className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                             />
-                             <span className="text-sm font-medium capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}</span>
-                           </label>
-                         ))}
-                       </div>
-                     </CardContent>
-                   </Card>
+                      {selectedFields.company && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Company *</label>
+                          <input
+                            {...register('company')}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            placeholder="e.g., Tech Corp"
+                          />
+                          {errors.company && <p className="text-red-600 text-sm mt-1">{errors.company.message}</p>}
+                        </div>
+                      )}
 
-                   {/* Basic Information */}
-                   <Card>
-                     <CardContent className="p-6">
-                       <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-                         <Briefcase className="h-5 w-5 text-primary-600" />
-                         <span>Basic Information</span>
-                       </h4>
-                       
-                       <div className="space-y-4">
-                         {selectedFields.title && (
-                           <div>
-                             <label className="block text-sm font-medium text-gray-700 mb-1">Job Title *</label>
-                             <input
-                               {...register('title')}
-                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                               placeholder="e.g., Senior Software Engineer"
-                             />
-                             {errors.title && <p className="text-red-600 text-sm mt-1">{errors.title.message}</p>}
-                           </div>
-                         )}
+                      {selectedFields.location && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Location *</label>
+                          <input
+                            {...register('location')}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            placeholder="e.g., Zurich, Switzerland"
+                          />
+                          {errors.location && <p className="text-red-600 text-sm mt-1">{errors.location.message}</p>}
+                        </div>
+                      )}
 
-                         {selectedFields.company && (
-                           <div>
-                             <label className="block text-sm font-medium text-gray-700 mb-1">Company *</label>
-                             <input
-                               {...register('company')}
-                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                               placeholder="e.g., Tech Corp"
-                             />
-                             {errors.company && <p className="text-red-600 text-sm mt-1">{errors.company.message}</p>}
-                           </div>
-                         )}
+                      {selectedFields.contractType && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Contract Type *</label>
+                          <select
+                            {...register('contractType')}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          >
+                            <option value="permanent">Permanent</option>
+                            <option value="freelance">Freelance</option>
+                            <option value="fixed-term">Fixed-term</option>
+                            <option value="internship">Internship</option>
+                          </select>
+                        </div>
+                      )}
 
-                         {selectedFields.location && (
-                           <div>
-                             <label className="block text-sm font-medium text-gray-700 mb-1">Location *</label>
-                             <input
-                               {...register('location')}
-                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                               placeholder="e.g., Zurich, Switzerland"
-                             />
-                             {errors.location && <p className="text-red-600 text-sm mt-1">{errors.location.message}</p>}
-                           </div>
-                         )}
+                      {selectedFields.workMode && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Work Mode</label>
+                          <select
+                            {...register('workMode')}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          >
+                            <option value="hybrid">Hybrid</option>
+                            <option value="remote">Remote</option>
+                            <option value="on-site">On-site</option>
+                          </select>
+                        </div>
+                      )}
 
-                         {selectedFields.contractType && (
-                           <div>
-                             <label className="block text-sm font-medium text-gray-700 mb-1">Contract Type *</label>
-                             <select
-                               {...register('contractType')}
-                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                             >
-                               <option value="permanent">Permanent</option>
-                               <option value="freelance">Freelance</option>
-                               <option value="fixed-term">Fixed-term</option>
-                               <option value="internship">Internship</option>
-                             </select>
-                           </div>
-                         )}
+                      {selectedFields.startDate && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
+                          <input
+                            type="date"
+                            {...register('startDate')}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          />
+                          {errors.startDate && <p className="text-red-600 text-sm mt-1">{errors.startDate.message}</p>}
+                        </div>
+                      )}
 
-                         {selectedFields.workMode && (
-                           <div>
-                             <label className="block text-sm font-medium text-gray-700 mb-1">Work Mode</label>
-                             <select
-                               {...register('workMode')}
-                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                             >
-                               <option value="hybrid">Hybrid</option>
-                               <option value="remote">Remote</option>
-                               <option value="on-site">On-site</option>
-                             </select>
-                           </div>
-                         )}
+                      {selectedFields.salary && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Salary Range</label>
+                          <input
+                            {...register('salary')}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            placeholder="e.g., CHF 80k - 120k"
+                          />
+                        </div>
+                      )}
 
-                         {selectedFields.startDate && (
-                           <div>
-                             <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
-                             <input
-                               type="date"
-                               {...register('startDate')}
-                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                             />
-                             {errors.startDate && <p className="text-red-600 text-sm mt-1">{errors.startDate.message}</p>}
-                           </div>
-                         )}
+                      {selectedFields.department && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                          <select
+                            {...register('department')}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          >
+                            <option value="">Select Department</option>
+                            <option value="Technology">Technology</option>
+                            <option value="Product">Product</option>
+                            <option value="Design">Design</option>
+                            <option value="Marketing">Marketing</option>
+                            <option value="Sales">Sales</option>
+                            <option value="Data & Analytics">Data & Analytics</option>
+                            <option value="Operations">Operations</option>
+                            <option value="Finance">Finance</option>
+                            <option value="Human Resources">Human Resources</option>
+                            <option value="Legal">Legal</option>
+                            <option value="Customer Success">Customer Success</option>
+                            <option value="Business Development">Business Development</option>
+                          </select>
+                        </div>
+                      )}
 
-                         {selectedFields.salary && (
-                           <div>
-                             <label className="block text-sm font-medium text-gray-700 mb-1">Salary Range</label>
-                             <input
-                               {...register('salary')}
-                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                               placeholder="e.g., CHF 80k - 120k"
-                             />
-                           </div>
-                         )}
-
-                         {selectedFields.department && (
-                           <div>
-                             <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                             <select
-                               {...register('department')}
-                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                             >
-                               <option value="">Select Department</option>
-                               <option value="Technology">Technology</option>
-                               <option value="Product">Product</option>
-                               <option value="Design">Design</option>
-                               <option value="Marketing">Marketing</option>
-                               <option value="Sales">Sales</option>
-                               <option value="Data & Analytics">Data & Analytics</option>
-                               <option value="Operations">Operations</option>
-                               <option value="Finance">Finance</option>
-                               <option value="Human Resources">Human Resources</option>
-                               <option value="Legal">Legal</option>
-                               <option value="Customer Success">Customer Success</option>
-                               <option value="Business Development">Business Development</option>
-                             </select>
-                           </div>
-                         )}
-
-                         {selectedFields.description && (
-                           <div>
-                             <label className="block text-sm font-medium text-gray-700 mb-1">Job Description *</label>
-                             <textarea
-                               {...register('description')}
-                               rows={8}
-                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                               placeholder="Describe the role, responsibilities, and requirements..."
-                             />
-                             {errors.description && <p className="text-red-600 text-sm mt-1">{errors.description.message}</p>}
-                           </div>
-                         )}
-                       </div>
-                     </CardContent>
-                   </Card>
-                 </div>
-
-                 {/* Right Column: Preview Actions */}
-                 <div className="space-y-6">
-                   <Card className="sticky top-4">
-                     <CardContent className="p-6">
-                       <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-                         <Eye className="h-5 w-5 text-primary-600" />
-                         <span>Preview & Download</span>
-                       </h4>
-                       
-                       <div className="space-y-4">
-                         <Button
-                           type="button"
-                           onClick={() => setShowPreviewModal(true)}
-                           className="w-full bg-primary-600 hover:bg-primary-700 text-white"
-                           size="lg"
-                         >
-                           <Eye className="h-5 w-5 mr-2" />
-                           Preview Job Description
-                         </Button>
-                         
-                         <div className="text-center text-sm text-gray-500">
-                           Preview your job description with logo and selected fields before downloading
-                         </div>
-                         
-                         <div className="border-t pt-4">
-                           <p className="text-sm font-medium text-gray-700 mb-3">Quick Download:</p>
-                           <div className="grid grid-cols-2 gap-3">
-                             <Button
-                               type="button"
-                               variant="outline"
-                               onClick={() => downloadJobDescription('pdf')}
-                               className="w-full"
-                             >
-                               <FileDown className="h-4 w-4 mr-2" />
-                               PDF
-                             </Button>
-                             <Button
-                               type="button"
-                               variant="outline"
-                               onClick={() => downloadJobDescription('docx')}
-                               className="w-full"
-                             >
-                               <FileDown className="h-4 w-4 mr-2" />
-                               Word
-                             </Button>
-                           </div>
-                         </div>
-                       </div>
-                     </CardContent>
-                   </Card>
-                 </div>
-               </div>
+                      {selectedFields.description && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Job Description *</label>
+                          <textarea
+                            {...register('description')}
+                            rows={8}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            placeholder="Describe the role, responsibilities, and requirements..."
+                          />
+                          {errors.description && <p className="text-red-600 text-sm mt-1">{errors.description.message}</p>}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
               {/* Additional fields for skills and other details */}
               <Card>
@@ -1636,6 +1519,114 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Preview & Download Section with Company Logo */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center space-x-4">
+                      <h4 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                        <Eye className="h-5 w-5 text-primary-600" />
+                        <span>Preview & Download</span>
+                      </h4>
+                    </div>
+                    
+                    {/* Company Logo Section on the same line */}
+                    <div className="flex items-center space-x-4">
+                      <span className="text-sm font-medium text-gray-700">Company Logo:</span>
+                      {logoUrl ? (
+                        <div className="relative">
+                          <img 
+                            src={logoUrl} 
+                            alt="Company logo" 
+                            className="h-12 w-12 object-contain border border-gray-200 rounded-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleLogoRemove}
+                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <Trash2 className="h-2 w-2" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="h-12 w-12 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+                          <ImageIcon className="h-5 w-5 text-gray-400" />
+                        </div>
+                      )}
+                      
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleLogoUpload(file);
+                          }}
+                          className="hidden"
+                          id="logo-upload-preview"
+                        />
+                        <label
+                          htmlFor="logo-upload-preview"
+                          className="cursor-pointer inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                        >
+                          {isUploadingLogo ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-4 w-4 mr-2" />
+                              Upload Logo
+                            </>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <Button
+                      type="button"
+                      onClick={() => setShowPreviewModal(true)}
+                      className="w-full bg-primary-600 hover:bg-primary-700 text-white"
+                      size="lg"
+                    >
+                      <Eye className="h-5 w-5 mr-2" />
+                      Preview Job Description
+                    </Button>
+                    
+                    <div className="text-center text-sm text-gray-500">
+                      Preview your job description with logo and selected fields before downloading
+                    </div>
+                    
+                    <div className="border-t pt-4">
+                      <p className="text-sm font-medium text-gray-700 mb-3">Quick Download:</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => downloadJobDescription('pdf')}
+                          className="w-full"
+                        >
+                          <FileDown className="h-4 w-4 mr-2" />
+                          PDF
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => downloadJobDescription('docx')}
+                          className="w-full"
+                        >
+                          <FileDown className="h-4 w-4 mr-2" />
+                          Word
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Action Buttons */}
               <div className="flex justify-between pt-6 border-t border-gray-200">
