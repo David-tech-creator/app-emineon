@@ -57,6 +57,40 @@ const downloadJobSchema = z.object({
     colorHex: z.string(),
     font: z.string(),
   }).optional(),
+  customStyleConfig: z.object({
+    titleFont: z.string(),
+    titleSize: z.string(),
+    titleWeight: z.string(),
+    titleColor: z.string(),
+    subtitleFont: z.string(),
+    subtitleSize: z.string(),
+    subtitleWeight: z.string(),
+    subtitleColor: z.string(),
+    bodyFont: z.string(),
+    bodySize: z.string(),
+    bodyWeight: z.string(),
+    bodyColor: z.string(),
+    primaryColor: z.string(),
+    secondaryColor: z.string(),
+    accentColor: z.string(),
+    backgroundColor: z.string(),
+    borderColor: z.string(),
+    spacing: z.enum(['compact', 'normal', 'spacious']),
+    borderRadius: z.string(),
+    borderWidth: z.string(),
+    sectionHeaderFont: z.string(),
+    sectionHeaderSize: z.string(),
+    sectionHeaderWeight: z.string(),
+    sectionHeaderColor: z.string(),
+    sectionHeaderBackground: z.string(),
+    bulletStyle: z.enum(['disc', 'circle', 'square', 'none', 'custom']),
+    bulletColor: z.string(),
+    listIndent: z.string(),
+    tagBackground: z.string(),
+    tagColor: z.string(),
+    tagBorder: z.string(),
+    tagBorderRadius: z.string(),
+  }).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -73,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const validatedData = downloadJobSchema.parse(body);
-    const { jobData, format, selectedTemplate } = validatedData;
+    const { jobData, format, selectedTemplate, customStyleConfig } = validatedData;
 
     // Generate HTML content for the job description
     const selectedFields = validatedData.selectedFields || jobData.selectedFields || {
@@ -91,7 +125,7 @@ export async function POST(request: NextRequest) {
       duration: false,
       priority: false
     };
-    const htmlContent = generateJobDescriptionHTML(jobData, selectedFields, selectedTemplate);
+    const htmlContent = generateJobDescriptionHTML(jobData, selectedFields, selectedTemplate, customStyleConfig);
 
     if (format === 'pdf') {
       // For PDF generation, we'll use a simple HTML to PDF conversion
@@ -133,10 +167,33 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function generateJobDescriptionHTML(jobData: any, selectedFields: any, selectedTemplate?: any): string {
-  // Get template styling or use defaults
-  const primaryColor = selectedTemplate?.colorHex || '#007bff';
-  const fontFamily = selectedTemplate?.font || 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
+function generateJobDescriptionHTML(jobData: any, selectedFields: any, selectedTemplate?: any, customStyleConfig?: any): string {
+  // Use custom style config if available, otherwise fall back to template or defaults
+  const styleConfig = customStyleConfig || selectedTemplate?.styleConfig;
+  const primaryColor = styleConfig?.primaryColor || selectedTemplate?.colorHex || '#007bff';
+  const titleFont = styleConfig?.titleFont || selectedTemplate?.font || 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
+  const bodyFont = styleConfig?.bodyFont || selectedTemplate?.font || 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
+  const titleColor = styleConfig?.titleColor || primaryColor;
+  const titleSize = styleConfig?.titleSize || '28px';
+  const titleWeight = styleConfig?.titleWeight || '700';
+  const subtitleColor = styleConfig?.subtitleColor || '#666';
+  const subtitleFont = styleConfig?.subtitleFont || titleFont;
+  const subtitleSize = styleConfig?.subtitleSize || '20px';
+  const subtitleWeight = styleConfig?.subtitleWeight || '600';
+  const bodyColor = styleConfig?.bodyColor || '#333';
+  const bodySize = styleConfig?.bodySize || '16px';
+  const bodyWeight = styleConfig?.bodyWeight || '400';
+  const sectionHeaderColor = styleConfig?.sectionHeaderColor || primaryColor;
+  const sectionHeaderFont = styleConfig?.sectionHeaderFont || titleFont;
+  const sectionHeaderSize = styleConfig?.sectionHeaderSize || '20px';
+  const sectionHeaderWeight = styleConfig?.sectionHeaderWeight || '600';
+  const sectionHeaderBackground = styleConfig?.sectionHeaderBackground || '#f8f9fa';
+  const borderColor = styleConfig?.borderColor || primaryColor;
+  const borderRadius = styleConfig?.borderRadius || '8px';
+  const tagBackground = styleConfig?.tagBackground || primaryColor;
+  const tagColor = styleConfig?.tagColor || '#ffffff';
+  const tagBorderRadius = styleConfig?.tagBorderRadius || '20px';
+
   return `
     <!DOCTYPE html>
     <html>
@@ -145,9 +202,11 @@ function generateJobDescriptionHTML(jobData: any, selectedFields: any, selectedT
       <title>${jobData.title} - ${jobData.company}</title>
       <style>
         body {
-          font-family: ${fontFamily};
+          font-family: ${bodyFont};
           line-height: 1.6;
-          color: #333;
+          color: ${bodyColor};
+          font-size: ${bodySize};
+          font-weight: ${bodyWeight};
           max-width: 800px;
           margin: 0 auto;
           padding: 40px 20px;
@@ -157,23 +216,26 @@ function generateJobDescriptionHTML(jobData: any, selectedFields: any, selectedT
           justify-content: space-between;
           align-items: flex-start;
           margin-bottom: 30px;
-          border-bottom: 2px solid ${primaryColor};
+          border-bottom: 2px solid ${borderColor};
           padding-bottom: 20px;
         }
         .header-content h1 {
           margin: 0 0 10px 0;
-          color: ${primaryColor};
-          font-size: 28px;
+          color: ${titleColor};
+          font-family: ${titleFont};
+          font-size: ${titleSize};
+          font-weight: ${titleWeight};
         }
         .header-content h2 {
           margin: 0 0 10px 0;
-          color: #666;
-          font-size: 20px;
-          font-weight: normal;
+          color: ${subtitleColor};
+          font-family: ${subtitleFont};
+          font-size: ${subtitleSize};
+          font-weight: ${subtitleWeight};
         }
         .header-content .location {
-          color: #888;
-          font-size: 16px;
+          color: ${bodyColor};
+          font-size: ${bodySize};
         }
         .logo {
           max-height: 80px;
@@ -185,56 +247,78 @@ function generateJobDescriptionHTML(jobData: any, selectedFields: any, selectedT
           gap: 20px;
           margin: 30px 0;
           padding: 20px;
-          background-color: #f8f9fa;
-          border-radius: 8px;
+          background-color: ${sectionHeaderBackground};
+          border-radius: ${borderRadius};
         }
         .detail-item {
           text-align: center;
         }
         .detail-label {
           font-weight: bold;
-          color: #666;
+          color: ${sectionHeaderColor};
           font-size: 14px;
           margin-bottom: 5px;
         }
         .detail-value {
-          color: #333;
-          font-size: 16px;
-          text-transform: capitalize;
+          color: ${bodyColor};
+          font-size: ${bodySize};
         }
         .section {
           margin: 30px 0;
         }
         .section h3 {
-          color: ${primaryColor};
-          border-bottom: 1px solid #ddd;
-          padding-bottom: 10px;
+          color: ${sectionHeaderColor};
+          font-family: ${sectionHeaderFont};
+          font-size: ${sectionHeaderSize};
+          font-weight: ${sectionHeaderWeight};
           margin-bottom: 15px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid ${borderColor};
         }
         .description {
           white-space: pre-wrap;
-          line-height: 1.8;
+          line-height: 1.7;
+          color: ${bodyColor};
+          font-size: ${bodySize};
         }
         .skills {
           display: flex;
           flex-wrap: wrap;
-          gap: 10px;
+          gap: 8px;
           margin-top: 15px;
         }
         .skill-tag {
-          background-color: ${primaryColor};
-          color: white;
-          padding: 5px 12px;
-          border-radius: 20px;
+          background-color: ${tagBackground};
+          color: ${tagColor};
+          padding: 6px 12px;
+          border-radius: ${tagBorderRadius};
           font-size: 14px;
+          font-weight: 500;
         }
-        .footer {
-          margin-top: 50px;
-          text-align: center;
-          color: #888;
-          font-size: 12px;
-          border-top: 1px solid #ddd;
-          padding-top: 20px;
+        .languages {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 15px;
+        }
+        .language-tag {
+          background-color: ${tagBackground};
+          color: ${tagColor};
+          padding: 6px 12px;
+          border-radius: ${tagBorderRadius};
+          font-size: 14px;
+          font-weight: 500;
+        }
+        @media print {
+          body {
+            padding: 20px;
+          }
+          .header {
+            page-break-inside: avoid;
+          }
+          .section {
+            page-break-inside: avoid;
+          }
         }
       </style>
     </head>
@@ -245,67 +329,72 @@ function generateJobDescriptionHTML(jobData: any, selectedFields: any, selectedT
           ${selectedFields.company ? `<h2>${jobData.company || 'Company Name'}</h2>` : ''}
           ${selectedFields.location ? `<div class="location">📍 ${jobData.location || 'Location'}</div>` : ''}
         </div>
-        ${jobData.logoUrl ? `<img src="${jobData.logoUrl}" alt="Company Logo" class="logo">` : ''}
+        ${jobData.logoUrl ? `<img src="${jobData.logoUrl}" alt="Company logo" class="logo">` : ''}
       </div>
 
       <div class="job-details">
         ${selectedFields.contractType ? `
-        <div class="detail-item">
-          <div class="detail-label">Contract Type</div>
-          <div class="detail-value">${jobData.contractType || 'Permanent'}</div>
-        </div>` : ''}
+          <div class="detail-item">
+            <div class="detail-label">Contract Type</div>
+            <div class="detail-value">${jobData.contractType || 'Permanent'}</div>
+          </div>
+        ` : ''}
         ${selectedFields.workMode ? `
-        <div class="detail-item">
-          <div class="detail-label">Work Mode</div>
-          <div class="detail-value">${jobData.workMode || 'Hybrid'}</div>
-        </div>` : ''}
+          <div class="detail-item">
+            <div class="detail-label">Work Mode</div>
+            <div class="detail-value">${jobData.workMode || 'Hybrid'}</div>
+          </div>
+        ` : ''}
         ${selectedFields.department && jobData.department ? `
-        <div class="detail-item">
-          <div class="detail-label">Department</div>
-          <div class="detail-value">${jobData.department}</div>
-        </div>` : ''}
+          <div class="detail-item">
+            <div class="detail-label">Department</div>
+            <div class="detail-value">${jobData.department}</div>
+          </div>
+        ` : ''}
         ${selectedFields.salary && jobData.salary ? `
-        <div class="detail-item">
-          <div class="detail-label">Salary</div>
-          <div class="detail-value">${jobData.salary}</div>
-        </div>` : ''}
+          <div class="detail-item">
+            <div class="detail-label">Salary</div>
+            <div class="detail-value">${jobData.salary}</div>
+          </div>
+        ` : ''}
         ${selectedFields.startDate && jobData.startDate ? `
-        <div class="detail-item">
-          <div class="detail-label">Start Date</div>
-          <div class="detail-value">${new Date(jobData.startDate).toLocaleDateString()}</div>
-        </div>` : ''}
+          <div class="detail-item">
+            <div class="detail-label">Start Date</div>
+            <div class="detail-value">${new Date(jobData.startDate).toLocaleDateString()}</div>
+          </div>
+        ` : ''}
         ${selectedFields.priority && jobData.priority ? `
-        <div class="detail-item">
-          <div class="detail-label">Priority</div>
-          <div class="detail-value">${jobData.priority}</div>
-        </div>` : ''}
+          <div class="detail-item">
+            <div class="detail-label">Priority</div>
+            <div class="detail-value">${jobData.priority}</div>
+          </div>
+        ` : ''}
       </div>
 
       ${selectedFields.description ? `
-      <div class="section">
-        <h3>Job Description</h3>
-        <div class="description">${jobData.description || 'Job description will be provided.'}</div>
-      </div>` : ''}
+        <div class="section">
+          <h3>Job Description</h3>
+          <div class="description">${jobData.description || 'Job description will be provided.'}</div>
+        </div>
+      ` : ''}
 
       ${selectedFields.skills && jobData.skills && jobData.skills.length > 0 ? `
-      <div class="section">
-        <h3>Required Skills</h3>
-        <div class="skills">
-          ${jobData.skills.map((skill: string) => `<span class="skill-tag">${skill}</span>`).join('')}
+        <div class="section">
+          <h3>Required Skills</h3>
+          <div class="skills">
+            ${jobData.skills.map((skill: string) => `<span class="skill-tag">${skill}</span>`).join('')}
+          </div>
         </div>
-      </div>` : ''}
+      ` : ''}
 
       ${selectedFields.languages && jobData.languages && jobData.languages.length > 0 ? `
-      <div class="section">
-        <h3>Languages</h3>
-        <div class="skills">
-          ${jobData.languages.map((language: string) => `<span class="skill-tag">${language}</span>`).join('')}
+        <div class="section">
+          <h3>Language Requirements</h3>
+          <div class="languages">
+            ${jobData.languages.map((language: string) => `<span class="language-tag">${language}</span>`).join('')}
+          </div>
         </div>
-      </div>` : ''}
-
-      <div class="footer">
-        Generated on ${new Date().toLocaleDateString()} | ${jobData.company}
-      </div>
+      ` : ''}
     </body>
     </html>
   `;

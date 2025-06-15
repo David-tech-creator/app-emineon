@@ -87,7 +87,8 @@ import {
   Filter
 } from 'lucide-react';
 import { JobPreviewModal } from './JobPreviewModal';
-import { jobTemplates, jobTemplateCategories, type JobTemplate } from '@/data/job-templates';
+import { jobTemplates, jobTemplateCategories, type JobTemplate, type StyleConfig, stylePresets } from '@/data/job-templates';
+import StyleCustomizer from './StyleCustomizer';
 
 // Enhanced form schema following E2E flow
 const jobSchema = z.object({
@@ -175,6 +176,10 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<JobTemplate | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [templateSearchQuery, setTemplateSearchQuery] = useState('');
+  
+  // Style customization state
+  const [customStyleConfig, setCustomStyleConfig] = useState<StyleConfig>(stylePresets.modern);
+  const [showStyleCustomizer, setShowStyleCustomizer] = useState(false);
   
   // Field selection state for template customization
   const [selectedFields, setSelectedFields] = useState({
@@ -265,7 +270,21 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
 
   const handleTemplateConfirm = () => {
     if (selectedTemplate) {
+      // Set initial style config from template
+      setCustomStyleConfig(selectedTemplate.styleConfig);
       setCurrentStep('intake');
+    }
+  };
+
+  // Style customization handlers
+  const handleStyleChange = (newStyle: StyleConfig) => {
+    setCustomStyleConfig(newStyle);
+  };
+
+  const handlePresetChange = (presetName: string) => {
+    const preset = stylePresets[presetName];
+    if (preset) {
+      setCustomStyleConfig(preset);
     }
   };
 
@@ -598,7 +617,8 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
           format,
           logoUrl,
           selectedFields,
-          selectedTemplate
+          selectedTemplate,
+          customStyleConfig
         }),
       });
 
@@ -866,6 +886,8 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
     setSelectedTemplate(null);
     setSelectedCategory('All');
     setTemplateSearchQuery('');
+    setCustomStyleConfig(stylePresets.modern);
+    setShowStyleCustomizer(false);
     setLogoFile(null);
     setLogoUrl('');
     setShowPreviewModal(false);
@@ -1417,6 +1439,63 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
                         </label>
                       ))}
                     </div>
+                  </CardContent>
+                </Card>
+
+                {/* Style Customization */}
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                        <Palette className="h-5 w-5 text-primary-600" />
+                        <span>Style Customization</span>
+                      </h4>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowStyleCustomizer(!showStyleCustomizer)}
+                      >
+                        {showStyleCustomizer ? (
+                          <>
+                            <ChevronUp className="h-4 w-4 mr-1" />
+                            Hide Customizer
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-4 w-4 mr-1" />
+                            Customize Style
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    
+                    {showStyleCustomizer && (
+                      <StyleCustomizer
+                        styleConfig={customStyleConfig}
+                        onStyleChange={handleStyleChange}
+                        onPresetChange={handlePresetChange}
+                        className="mt-4"
+                      />
+                    )}
+                    
+                    {!showStyleCustomizer && (
+                      <div className="text-sm text-gray-600">
+                        <p className="mb-2">Current style: <span className="font-medium">{selectedTemplate?.name || 'Modern'}</span></p>
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center space-x-2">
+                            <div 
+                              className="w-4 h-4 rounded-full border border-gray-300"
+                              style={{ backgroundColor: customStyleConfig.primaryColor }}
+                            />
+                            <span className="text-xs">Primary Color</span>
+                          </div>
+                          <div className="text-xs" style={{ fontFamily: customStyleConfig.titleFont }}>
+                            {customStyleConfig.titleFont} Font
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -2248,6 +2327,7 @@ Apply now 👉 [link]
          logoUrl={logoUrl}
          selectedFields={selectedFields}
          selectedTemplate={selectedTemplate}
+        customStyleConfig={customStyleConfig}
          onDownload={downloadJobDescription}
        />
      </div>

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { X, Download, Eye, FileText, Image } from 'lucide-react';
-import { type JobTemplate } from '@/data/job-templates';
+import { type JobTemplate, type StyleConfig } from '@/data/job-templates';
 
 interface JobPreviewModalProps {
   isOpen: boolean;
@@ -40,6 +40,7 @@ interface JobPreviewModalProps {
     priority: boolean;
   };
   selectedTemplate?: JobTemplate | null;
+  customStyleConfig?: StyleConfig;
   onDownload: (format: 'pdf' | 'docx') => void;
 }
 
@@ -50,13 +51,25 @@ export function JobPreviewModal({
   logoUrl, 
   selectedFields, 
   selectedTemplate,
+  customStyleConfig,
   onDownload 
 }: JobPreviewModalProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   
-  // Get template colors or use default blue
-  const primaryColor = selectedTemplate?.colorHex || '#3B82F6';
-  const fontFamily = selectedTemplate?.font || 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
+  // Use custom style config if available, otherwise fall back to template or defaults
+  const styleConfig = customStyleConfig || selectedTemplate?.styleConfig;
+  const primaryColor = styleConfig?.primaryColor || selectedTemplate?.colorHex || '#3B82F6';
+  const titleFont = styleConfig?.titleFont || selectedTemplate?.font || 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
+  const bodyFont = styleConfig?.bodyFont || selectedTemplate?.font || 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
+  const titleColor = styleConfig?.titleColor || primaryColor;
+  const subtitleColor = styleConfig?.subtitleColor || '#6B7280';
+  const bodyColor = styleConfig?.bodyColor || '#374151';
+  const sectionHeaderColor = styleConfig?.sectionHeaderColor || primaryColor;
+  const borderColor = styleConfig?.borderColor || primaryColor;
+  const tagBackground = styleConfig?.tagBackground || '#EFF6FF';
+  const tagColor = styleConfig?.tagColor || primaryColor;
+  const tagBorder = styleConfig?.tagBorder || '#DBEAFE';
+  const tagBorderRadius = styleConfig?.tagBorderRadius || '0.375rem';
 
   if (!isOpen) return null;
 
@@ -112,31 +125,48 @@ export function JobPreviewModal({
               <div 
                 className="w-full bg-white text-black"
                 style={{ 
-                  fontFamily: fontFamily,
-                  lineHeight: '1.6'
+                  fontFamily: bodyFont,
+                  lineHeight: '1.6',
+                  color: bodyColor
                 }}
               >
                 {/* Header */}
                 <div 
                   className="flex items-start justify-between mb-8 pb-6 border-b-2"
-                  style={{ borderColor: primaryColor }}
+                  style={{ borderColor: borderColor }}
                 >
                   <div className="flex-1">
                     {selectedFields.title && (
                       <h1 
                         className="text-3xl font-bold mb-2"
-                        style={{ color: primaryColor }}
+                        style={{ 
+                          color: titleColor,
+                          fontFamily: titleFont,
+                          fontSize: styleConfig?.titleSize || '2rem',
+                          fontWeight: styleConfig?.titleWeight || '700'
+                        }}
                       >
                         {jobData.title || 'Job Title'}
                       </h1>
                     )}
                     {selectedFields.company && (
-                      <h2 className="text-xl text-gray-600 mb-2 font-normal">
+                      <h2 
+                        className="text-xl mb-2 font-normal"
+                        style={{ 
+                          color: subtitleColor,
+                          fontFamily: styleConfig?.subtitleFont || titleFont,
+                          fontSize: styleConfig?.subtitleSize || '1.25rem',
+                          fontWeight: styleConfig?.subtitleWeight || '600'
+                        }}
+                      >
                         {jobData.company || 'Company Name'}
                       </h2>
                     )}
                     {selectedFields.location && (
-                      <div className="text-gray-500 text-base">
+                      <div 
+                        className="text-base"
+                        style={{ color: bodyColor }}
+                      >
                         📍 {jobData.location || 'Location'}
                       </div>
                     )}
@@ -157,47 +187,83 @@ export function JobPreviewModal({
                 </div>
 
                 {/* Job Details Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8 p-6 bg-gray-50 rounded-lg">
+                <div 
+                  className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8 p-6 rounded-lg"
+                  style={{ 
+                    backgroundColor: styleConfig?.sectionHeaderBackground || '#F9FAFB',
+                    borderRadius: styleConfig?.borderRadius || '0.5rem'
+                  }}
+                >
                   {selectedFields.contractType && (
                     <div className="text-center">
-                      <div className="font-bold text-gray-600 text-sm mb-1">Contract Type</div>
-                      <div className="text-gray-900 capitalize">
+                      <div 
+                        className="font-bold text-sm mb-1"
+                        style={{ color: sectionHeaderColor }}
+                      >
+                        Contract Type
+                      </div>
+                      <div style={{ color: bodyColor }} className="capitalize">
                         {jobData.contractType || 'Permanent'}
                       </div>
                     </div>
                   )}
                   {selectedFields.workMode && (
                     <div className="text-center">
-                      <div className="font-bold text-gray-600 text-sm mb-1">Work Mode</div>
-                      <div className="text-gray-900 capitalize">
+                      <div 
+                        className="font-bold text-sm mb-1"
+                        style={{ color: sectionHeaderColor }}
+                      >
+                        Work Mode
+                      </div>
+                      <div style={{ color: bodyColor }} className="capitalize">
                         {jobData.workMode || 'Hybrid'}
                       </div>
                     </div>
                   )}
                   {selectedFields.department && jobData.department && (
                     <div className="text-center">
-                      <div className="font-bold text-gray-600 text-sm mb-1">Department</div>
-                      <div className="text-gray-900">{jobData.department}</div>
+                      <div 
+                        className="font-bold text-sm mb-1"
+                        style={{ color: sectionHeaderColor }}
+                      >
+                        Department
+                      </div>
+                      <div style={{ color: bodyColor }}>{jobData.department}</div>
                     </div>
                   )}
                   {selectedFields.salary && jobData.salary && (
                     <div className="text-center">
-                      <div className="font-bold text-gray-600 text-sm mb-1">Salary</div>
-                      <div className="text-gray-900">{jobData.salary}</div>
+                      <div 
+                        className="font-bold text-sm mb-1"
+                        style={{ color: sectionHeaderColor }}
+                      >
+                        Salary
+                      </div>
+                      <div style={{ color: bodyColor }}>{jobData.salary}</div>
                     </div>
                   )}
                   {selectedFields.startDate && jobData.startDate && (
                     <div className="text-center">
-                      <div className="font-bold text-gray-600 text-sm mb-1">Start Date</div>
-                      <div className="text-gray-900">
+                      <div 
+                        className="font-bold text-sm mb-1"
+                        style={{ color: sectionHeaderColor }}
+                      >
+                        Start Date
+                      </div>
+                      <div style={{ color: bodyColor }}>
                         {new Date(jobData.startDate).toLocaleDateString()}
                       </div>
                     </div>
                   )}
                   {selectedFields.priority && jobData.priority && (
                     <div className="text-center">
-                      <div className="font-bold text-gray-600 text-sm mb-1">Priority</div>
-                      <div className="text-gray-900 capitalize">{jobData.priority}</div>
+                      <div 
+                        className="font-bold text-sm mb-1"
+                        style={{ color: sectionHeaderColor }}
+                      >
+                        Priority
+                      </div>
+                      <div style={{ color: bodyColor }} className="capitalize">{jobData.priority}</div>
                     </div>
                   )}
                 </div>
@@ -206,32 +272,54 @@ export function JobPreviewModal({
                 {selectedFields.description && (
                   <div className="mb-8">
                     <h3 
-                      className="text-xl font-semibold mb-4 pb-2 border-b border-gray-300"
-                      style={{ color: primaryColor }}
+                      className="text-xl font-semibold mb-4"
+                      style={{ 
+                        color: sectionHeaderColor,
+                        fontFamily: styleConfig?.sectionHeaderFont || titleFont,
+                        fontSize: styleConfig?.sectionHeaderSize || '1.125rem',
+                        fontWeight: styleConfig?.sectionHeaderWeight || '600'
+                      }}
                     >
                       Job Description
                     </h3>
-                    <div className="text-gray-700 whitespace-pre-wrap leading-relaxed">
-                      {jobData.description || 'Job description will be provided.'}
+                    <div 
+                      className="text-base leading-relaxed whitespace-pre-wrap"
+                      style={{ 
+                        color: bodyColor,
+                        fontFamily: bodyFont,
+                        fontSize: styleConfig?.bodySize || '1rem'
+                      }}
+                    >
+                      {jobData.description || 'Job description will appear here...'}
                     </div>
                   </div>
                 )}
 
-                {/* Required Skills */}
+                {/* Skills */}
                 {selectedFields.skills && jobData.skills && jobData.skills.length > 0 && (
                   <div className="mb-8">
                     <h3 
-                      className="text-xl font-semibold mb-4 pb-2 border-b border-gray-300"
-                      style={{ color: primaryColor }}
+                      className="text-xl font-semibold mb-4"
+                      style={{ 
+                        color: sectionHeaderColor,
+                        fontFamily: styleConfig?.sectionHeaderFont || titleFont,
+                        fontSize: styleConfig?.sectionHeaderSize || '1.125rem',
+                        fontWeight: styleConfig?.sectionHeaderWeight || '600'
+                      }}
                     >
                       Required Skills
                     </h3>
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-2">
                       {jobData.skills.map((skill, index) => (
-                        <span 
+                        <span
                           key={index}
-                          className="text-white px-3 py-1 rounded-full text-sm"
-                          style={{ backgroundColor: primaryColor }}
+                          className="px-3 py-1 text-sm font-medium border"
+                          style={{
+                            backgroundColor: tagBackground,
+                            color: tagColor,
+                            borderColor: tagBorder,
+                            borderRadius: tagBorderRadius
+                          }}
                         >
                           {skill}
                         </span>
@@ -244,17 +332,27 @@ export function JobPreviewModal({
                 {selectedFields.languages && jobData.languages && jobData.languages.length > 0 && (
                   <div className="mb-8">
                     <h3 
-                      className="text-xl font-semibold mb-4 pb-2 border-b border-gray-300"
-                      style={{ color: primaryColor }}
+                      className="text-xl font-semibold mb-4"
+                      style={{ 
+                        color: sectionHeaderColor,
+                        fontFamily: styleConfig?.sectionHeaderFont || titleFont,
+                        fontSize: styleConfig?.sectionHeaderSize || '1.125rem',
+                        fontWeight: styleConfig?.sectionHeaderWeight || '600'
+                      }}
                     >
-                      Languages
+                      Language Requirements
                     </h3>
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-2">
                       {jobData.languages.map((language, index) => (
-                        <span 
+                        <span
                           key={index}
-                          className="text-white px-3 py-1 rounded-full text-sm"
-                          style={{ backgroundColor: primaryColor }}
+                          className="px-3 py-1 text-sm font-medium border"
+                          style={{
+                            backgroundColor: tagBackground,
+                            color: tagColor,
+                            borderColor: tagBorder,
+                            borderRadius: tagBorderRadius
+                          }}
                         >
                           {language}
                         </span>
@@ -262,11 +360,6 @@ export function JobPreviewModal({
                     </div>
                   </div>
                 )}
-
-                {/* Footer */}
-                <div className="mt-12 pt-6 border-t border-gray-300 text-center text-gray-500 text-sm">
-                  Generated on {new Date().toLocaleDateString()} | {jobData.company}
-                </div>
               </div>
             </CardContent>
           </Card>

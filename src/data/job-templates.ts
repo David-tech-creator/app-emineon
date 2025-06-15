@@ -1,3 +1,51 @@
+export interface StyleConfig {
+  // Typography
+  titleFont: string;
+  titleSize: string;
+  titleWeight: string;
+  titleColor: string;
+  
+  subtitleFont: string;
+  subtitleSize: string;
+  subtitleWeight: string;
+  subtitleColor: string;
+  
+  bodyFont: string;
+  bodySize: string;
+  bodyWeight: string;
+  bodyColor: string;
+  
+  // Colors
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  backgroundColor: string;
+  borderColor: string;
+  
+  // Layout
+  spacing: 'compact' | 'normal' | 'spacious';
+  borderRadius: string;
+  borderWidth: string;
+  
+  // Section styling
+  sectionHeaderFont: string;
+  sectionHeaderSize: string;
+  sectionHeaderWeight: string;
+  sectionHeaderColor: string;
+  sectionHeaderBackground: string;
+  
+  // List styling
+  bulletStyle: 'disc' | 'circle' | 'square' | 'none' | 'custom';
+  bulletColor: string;
+  listIndent: string;
+  
+  // Skills/Tags styling
+  tagBackground: string;
+  tagColor: string;
+  tagBorder: string;
+  tagBorderRadius: string;
+}
+
 export interface JobTemplate {
   id: string;
   name: string;
@@ -7,6 +55,10 @@ export interface JobTemplate {
   colorHex: string;
   font: string;
   previewImage?: string;
+  
+  // Enhanced styling configuration
+  styleConfig: StyleConfig;
+  
   sections: {
     key: string;
     label: string;
@@ -22,6 +74,233 @@ export interface JobTemplate {
   };
 }
 
+// Font options
+export const fontOptions = [
+  { value: 'Inter', label: 'Inter (Modern Sans-serif)' },
+  { value: 'Helvetica', label: 'Helvetica (Classic Sans-serif)' },
+  { value: 'Times New Roman', label: 'Times New Roman (Serif)' },
+  { value: 'Georgia', label: 'Georgia (Readable Serif)' },
+  { value: 'Arial', label: 'Arial (Universal Sans-serif)' },
+  { value: 'Roboto', label: 'Roboto (Google Sans-serif)' },
+  { value: 'Open Sans', label: 'Open Sans (Friendly Sans-serif)' },
+  { value: 'Lato', label: 'Lato (Humanist Sans-serif)' },
+  { value: 'Montserrat', label: 'Montserrat (Geometric Sans-serif)' },
+  { value: 'Playfair Display', label: 'Playfair Display (Elegant Serif)' }
+];
+
+// Color palette options
+export const colorPalettes = [
+  {
+    name: 'Professional Blue',
+    primary: '#1E40AF',
+    secondary: '#3B82F6',
+    accent: '#60A5FA'
+  },
+  {
+    name: 'Tech Purple',
+    primary: '#6366F1',
+    secondary: '#8B5CF6',
+    accent: '#A78BFA'
+  },
+  {
+    name: 'Success Green',
+    primary: '#059669',
+    secondary: '#10B981',
+    accent: '#34D399'
+  },
+  {
+    name: 'Creative Orange',
+    primary: '#EA580C',
+    secondary: '#F97316',
+    accent: '#FB923C'
+  },
+  {
+    name: 'Elegant Red',
+    primary: '#DC2626',
+    secondary: '#EF4444',
+    accent: '#F87171'
+  },
+  {
+    name: 'Minimal Gray',
+    primary: '#374151',
+    secondary: '#6B7280',
+    accent: '#9CA3AF'
+  }
+];
+
+// Predefined style presets
+export const stylePresets: Record<string, StyleConfig> = {
+  modern: {
+    titleFont: 'Inter',
+    titleSize: '2rem',
+    titleWeight: '700',
+    titleColor: '#1F2937',
+    
+    subtitleFont: 'Inter',
+    subtitleSize: '1.25rem',
+    subtitleWeight: '600',
+    subtitleColor: '#374151',
+    
+    bodyFont: 'Inter',
+    bodySize: '1rem',
+    bodyWeight: '400',
+    bodyColor: '#6B7280',
+    
+    primaryColor: '#3B82F6',
+    secondaryColor: '#6366F1',
+    accentColor: '#10B981',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E5E7EB',
+    
+    spacing: 'normal',
+    borderRadius: '0.5rem',
+    borderWidth: '1px',
+    
+    sectionHeaderFont: 'Inter',
+    sectionHeaderSize: '1.125rem',
+    sectionHeaderWeight: '600',
+    sectionHeaderColor: '#1F2937',
+    sectionHeaderBackground: '#F9FAFB',
+    
+    bulletStyle: 'disc',
+    bulletColor: '#3B82F6',
+    listIndent: '1.5rem',
+    
+    tagBackground: '#EFF6FF',
+    tagColor: '#1D4ED8',
+    tagBorder: '#DBEAFE',
+    tagBorderRadius: '0.375rem'
+  },
+  
+  classic: {
+    titleFont: 'Times New Roman',
+    titleSize: '2.25rem',
+    titleWeight: '700',
+    titleColor: '#1F2937',
+    
+    subtitleFont: 'Times New Roman',
+    subtitleSize: '1.5rem',
+    subtitleWeight: '600',
+    subtitleColor: '#374151',
+    
+    bodyFont: 'Times New Roman',
+    bodySize: '1.125rem',
+    bodyWeight: '400',
+    bodyColor: '#4B5563',
+    
+    primaryColor: '#1E40AF',
+    secondaryColor: '#1E3A8A',
+    accentColor: '#059669',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D1D5DB',
+    
+    spacing: 'spacious',
+    borderRadius: '0.25rem',
+    borderWidth: '2px',
+    
+    sectionHeaderFont: 'Times New Roman',
+    sectionHeaderSize: '1.25rem',
+    sectionHeaderWeight: '700',
+    sectionHeaderColor: '#1E40AF',
+    sectionHeaderBackground: '#F8FAFC',
+    
+    bulletStyle: 'square',
+    bulletColor: '#1E40AF',
+    listIndent: '2rem',
+    
+    tagBackground: '#F1F5F9',
+    tagColor: '#1E40AF',
+    tagBorder: '#CBD5E1',
+    tagBorderRadius: '0.25rem'
+  },
+  
+  minimal: {
+    titleFont: 'Helvetica',
+    titleSize: '1.875rem',
+    titleWeight: '300',
+    titleColor: '#111827',
+    
+    subtitleFont: 'Helvetica',
+    subtitleSize: '1.125rem',
+    subtitleWeight: '400',
+    subtitleColor: '#374151',
+    
+    bodyFont: 'Helvetica',
+    bodySize: '0.875rem',
+    bodyWeight: '400',
+    bodyColor: '#6B7280',
+    
+    primaryColor: '#000000',
+    secondaryColor: '#374151',
+    accentColor: '#6B7280',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#F3F4F6',
+    
+    spacing: 'compact',
+    borderRadius: '0rem',
+    borderWidth: '1px',
+    
+    sectionHeaderFont: 'Helvetica',
+    sectionHeaderSize: '1rem',
+    sectionHeaderWeight: '500',
+    sectionHeaderColor: '#111827',
+    sectionHeaderBackground: 'transparent',
+    
+    bulletStyle: 'none',
+    bulletColor: '#000000',
+    listIndent: '1rem',
+    
+    tagBackground: '#F9FAFB',
+    tagColor: '#374151',
+    tagBorder: '#E5E7EB',
+    tagBorderRadius: '0rem'
+  },
+  
+  creative: {
+    titleFont: 'Inter',
+    titleSize: '2.5rem',
+    titleWeight: '800',
+    titleColor: '#7C3AED',
+    
+    subtitleFont: 'Inter',
+    subtitleSize: '1.375rem',
+    subtitleWeight: '600',
+    subtitleColor: '#A855F7',
+    
+    bodyFont: 'Inter',
+    bodySize: '1rem',
+    bodyWeight: '400',
+    bodyColor: '#4B5563',
+    
+    primaryColor: '#7C3AED',
+    secondaryColor: '#A855F7',
+    accentColor: '#EC4899',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E879F9',
+    
+    spacing: 'normal',
+    borderRadius: '1rem',
+    borderWidth: '2px',
+    
+    sectionHeaderFont: 'Inter',
+    sectionHeaderSize: '1.25rem',
+    sectionHeaderWeight: '700',
+    sectionHeaderColor: '#7C3AED',
+    sectionHeaderBackground: '#FAF5FF',
+    
+    bulletStyle: 'circle',
+    bulletColor: '#A855F7',
+    listIndent: '1.5rem',
+    
+    tagBackground: '#F3E8FF',
+    tagColor: '#7C3AED',
+    tagBorder: '#DDD6FE',
+    tagBorderRadius: '0.75rem'
+  }
+};
+
+
+
 export const jobTemplates: JobTemplate[] = [
   {
     id: 'tech-startup',
@@ -32,6 +311,12 @@ export const jobTemplates: JobTemplate[] = [
     colorHex: '#6366F1',
     font: 'Inter',
     previewImage: '/templates/tech-startup-preview.png',
+    styleConfig: {
+      ...stylePresets.modern,
+      primaryColor: '#6366F1',
+      secondaryColor: '#8B5CF6',
+      accentColor: '#A78BFA'
+    },
     sections: [
       { key: 'title', label: 'Job Title', show: true, order: 1 },
       { key: 'company', label: 'Company Information', show: true, order: 2 },
@@ -79,6 +364,15 @@ export const jobTemplates: JobTemplate[] = [
     colorHex: '#1E40AF',
     font: 'Helvetica',
     previewImage: '/templates/corporate-finance-preview.png',
+    styleConfig: {
+      ...stylePresets.classic,
+      primaryColor: '#1E40AF',
+      secondaryColor: '#1E3A8A',
+      titleFont: 'Helvetica',
+      subtitleFont: 'Helvetica',
+      bodyFont: 'Helvetica',
+      sectionHeaderFont: 'Helvetica'
+    },
     sections: [
       { key: 'title', label: 'Position Title', show: true, order: 1 },
       { key: 'company', label: 'Institution', show: true, order: 2 },
@@ -126,6 +420,12 @@ export const jobTemplates: JobTemplate[] = [
     colorHex: '#059669',
     font: 'Times New Roman',
     previewImage: '/templates/consulting-strategy-preview.png',
+    styleConfig: {
+      ...stylePresets.classic,
+      primaryColor: '#059669',
+      secondaryColor: '#047857',
+      accentColor: '#10B981'
+    },
     sections: [
       { key: 'title', label: 'Role Title', show: true, order: 1 },
       { key: 'company', label: 'Firm Information', show: true, order: 2 },
@@ -173,6 +473,16 @@ export const jobTemplates: JobTemplate[] = [
     colorHex: '#DC2626',
     font: 'Open Sans',
     previewImage: '/templates/healthcare-medical-preview.png',
+    styleConfig: {
+      ...stylePresets.modern,
+      primaryColor: '#DC2626',
+      secondaryColor: '#EF4444',
+      accentColor: '#F87171',
+      titleFont: 'Open Sans',
+      subtitleFont: 'Open Sans',
+      bodyFont: 'Open Sans',
+      sectionHeaderFont: 'Open Sans'
+    },
     sections: [
       { key: 'title', label: 'Position', show: true, order: 1 },
       { key: 'company', label: 'Healthcare Institution', show: true, order: 2 },
@@ -220,6 +530,12 @@ export const jobTemplates: JobTemplate[] = [
     colorHex: '#7C3AED',
     font: 'Inter',
     previewImage: '/templates/creative-design-preview.png',
+    styleConfig: {
+      ...stylePresets.creative,
+      primaryColor: '#7C3AED',
+      secondaryColor: '#A855F7',
+      accentColor: '#EC4899'
+    },
     sections: [
       { key: 'title', label: 'Creative Role', show: true, order: 1 },
       { key: 'company', label: 'Agency/Company', show: true, order: 2 },
@@ -261,53 +577,60 @@ export const jobTemplates: JobTemplate[] = [
   {
     id: 'sales-business',
     name: 'Sales & Business Development',
-    description: 'Results-focused template for sales and business development roles',
+    description: 'Results-driven template for sales and business development positions',
     category: 'Sales',
     industry: 'Sales & Business Development',
     colorHex: '#EA580C',
     font: 'Roboto',
     previewImage: '/templates/sales-business-preview.png',
+    styleConfig: {
+      ...stylePresets.modern,
+      primaryColor: '#EA580C',
+      secondaryColor: '#F59E0B',
+      accentColor: '#F97316'
+    },
     sections: [
       { key: 'title', label: 'Sales Position', show: true, order: 1 },
       { key: 'company', label: 'Company', show: true, order: 2 },
       { key: 'location', label: 'Territory/Location', show: true, order: 3 },
-      { key: 'description', label: 'Opportunity Overview', show: true, order: 4 },
+      { key: 'description', label: 'Role Overview', show: true, order: 4 },
       { key: 'responsibilities', label: 'Sales Responsibilities', show: true, order: 5 },
-      { key: 'requirements', label: 'Sales Experience', show: true, order: 6 },
+      { key: 'requirements', label: 'Requirements', show: true, order: 6 },
       { key: 'skills', label: 'Sales Skills', show: true, order: 7 },
       { key: 'benefits', label: 'Compensation & Benefits', show: true, order: 8 },
-      { key: 'salary', label: 'Earning Potential', show: true, order: 9 },
+      { key: 'salary', label: 'Base + Commission', show: true, order: 9 },
       { key: 'languages', label: 'Language Skills', show: false, order: 10 },
     ],
     sampleContent: {
       title: 'Senior Sales Executive',
-      description: 'Drive revenue growth and build lasting client relationships in this exciting sales opportunity. We offer unlimited earning potential and career advancement for top performers.',
+      description: 'Drive revenue growth and build lasting client relationships in this exciting sales role. We\'re looking for a results-oriented professional who thrives in a competitive environment.',
       responsibilities: [
-        'Generate new business and expand existing accounts',
-        'Develop and execute strategic sales plans',
-        'Build relationships with key decision makers',
-        'Negotiate contracts and close deals',
-        'Collaborate with internal teams to deliver solutions'
+        'Generate new business opportunities and leads',
+        'Manage full sales cycle from prospect to close',
+        'Build and maintain strong client relationships',
+        'Achieve and exceed quarterly sales targets',
+        'Collaborate with marketing and product teams'
       ],
       requirements: [
         '5+ years of B2B sales experience',
-        'Proven track record of exceeding quotas',
+        'Proven track record of exceeding targets',
         'Strong negotiation and closing skills',
         'Experience with CRM systems',
         'Excellent communication and presentation abilities'
       ],
       benefits: [
-        'Uncapped commission structure',
-        'Base salary plus performance bonuses',
-        'Comprehensive benefits package',
-        'Sales training and development',
-        'Career advancement opportunities'
+        'Competitive base salary plus commission',
+        'Uncapped earning potential',
+        'Sales incentive trips and bonuses',
+        'Professional development opportunities',
+        'Comprehensive benefits package'
       ]
     }
   }
 ];
 
 export const jobTemplateCategories = [
+  'All',
   'Technology',
   'Finance',
   'Consulting',
@@ -318,26 +641,4 @@ export const jobTemplateCategories = [
   'Marketing',
   'Legal',
   'Education'
-];
-
-export const fontOptions = [
-  { name: 'Inter', label: 'Inter (Modern)' },
-  { name: 'Helvetica', label: 'Helvetica (Classic)' },
-  { name: 'Times New Roman', label: 'Times New Roman (Traditional)' },
-  { name: 'Open Sans', label: 'Open Sans (Friendly)' },
-  { name: 'Roboto', label: 'Roboto (Clean)' },
-  { name: 'Lato', label: 'Lato (Professional)' }
-];
-
-export const colorPresets = [
-  { name: 'Primary Blue', hex: '#3B82F6' },
-  { name: 'Corporate Navy', hex: '#1E40AF' },
-  { name: 'Tech Purple', hex: '#6366F1' },
-  { name: 'Finance Blue', hex: '#0EA5E9' },
-  { name: 'Consulting Green', hex: '#059669' },
-  { name: 'Healthcare Red', hex: '#DC2626' },
-  { name: 'Creative Purple', hex: '#7C3AED' },
-  { name: 'Sales Orange', hex: '#EA580C' },
-  { name: 'Professional Gray', hex: '#6B7280' },
-  { name: 'Success Green', hex: '#10B981' }
 ]; 

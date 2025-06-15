@@ -90,6 +90,7 @@ model Candidate {
   collaborationNotes    String?
   clientVisible         Boolean          @default(true)
   shareWithClient       DateTime?
+  competenceFiles       CompetenceFile[]
 
   @@map("candidates")
 }
@@ -803,20 +804,97 @@ model Client {
 }
 
 model User {
-  id              String   @id @default(cuid())
-  email           String   @unique
-  firstName       String
-  lastName        String
-  role            String   @default("RECRUITER")
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  portalInvitations   ClientPortalInvitation[]
-  commentResponses    ClientCommentResponse[]
-  assessments         CandidateAssessment[]
-  interviewRequests   InterviewRequest[]
+  id                    String                     @id @default(cuid())
+  email                 String                     @unique
+  firstName             String
+  lastName              String
+  role                  String                     @default("user")
+  isActive              Boolean                    @default(true)
+  lastLoginAt           DateTime?
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  clientCommentResponses ClientCommentResponse[]
+  portalInvitations      ClientPortalInvitation[]
+  assessments            CandidateAssessment[]
+  interviewRequests      InterviewRequest[]
 
   @@map("users")
+}
+
+// Template models for distinguishing between job and competence file templates
+model JobTemplate {
+  id                String   @id @default(cuid())
+  name              String
+  description       String?
+  category          String   // e.g., "Technology", "Finance", "Healthcare"
+  industry          String?
+  features          String[] // Template-specific features
+  colorScheme       Json     // Color configuration
+  styleConfig       Json     // Typography, layout, etc.
+  sections          Json     // Section configuration
+  sampleContent     Json?    // Sample job posting content
+  isActive          Boolean  @default(true)
+  isDefault         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?  // User ID who created the template
+  
+  @@map("job_templates")
+}
+
+model CompetenceFileTemplate {
+  id                String   @id @default(cuid())
+  name              String
+  description       String?
+  category          String   // e.g., "Modern Tech", "Executive", "Creative"
+  industry          String?  // Target industry
+  features          String[] // Template-specific features
+  colorScheme       Json     // Color configuration
+  styleConfig       Json     // Typography, layout, etc.
+  sections          Json     // Section configuration for competence files
+  isActive          Boolean  @default(true)
+  isDefault         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?  // User ID who created the template
+  
+  // Relations to track usage
+  competenceFiles   CompetenceFile[]
+  
+  @@map("competence_file_templates")
+}
+
+model CompetenceFile {
+  id                String                   @id @default(cuid())
+  candidateId       String
+  templateId        String?
+  fileName          String
+  filePath          String
+  downloadUrl       String
+  format            String                   // 'pdf', 'docx', etc.
+  fileSize          Int?
+  status            CompetenceFileStatus     @default(GENERATED)
+  version           Int                      @default(1)
+  downloadCount     Int                      @default(0)
+  isAnonymized      Boolean                  @default(false)
+  metadata          Json?                    // Additional file metadata
+  styleConfig       Json?                    // Custom styling used
+  sectionsConfig    Json?                    // Sections configuration used
+  logoUrl           String?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  generatedBy       String?                  // User ID who generated the file
+  
+  // Relations
+  candidate         Candidate                @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  template          CompetenceFileTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  
+  @@map("competence_files")
+}
+
+enum CompetenceFileStatus {
+  DRAFT
+  GENERATED
+  ARCHIVED
+  FAILED
 }
