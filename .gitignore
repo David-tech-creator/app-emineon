@@ -116,3 +116,4 @@ logs
 # Keep migrations but ignore generated client temporarily during development
 # /prisma/migrations/ 
 .vercel
+open-puppeteer/
