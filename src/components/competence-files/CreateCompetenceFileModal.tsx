@@ -317,14 +317,8 @@ function DocumentSectionComponent({
             <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
               <EditorToolbar />
               <RichTextPlugin
-                contentEditable={
-                  <ContentEditable className="min-h-[120px] p-6 focus:outline-none prose prose-sm max-w-none" />
-                }
-                placeholder={
-                  <div className="absolute top-16 left-6 text-gray-400 pointer-events-none">
-                    Click to start editing {section.title.toLowerCase()}...
-                  </div>
-                }
+                contentEditable={<ContentEditable className="min-h-[100px] p-4 focus:outline-none" />}
+                placeholder={<div className="absolute top-4 left-4 text-gray-400 pointer-events-none">Start typing...</div>}
                 ErrorBoundary={SimpleErrorBoundary}
               />
               <HistoryPlugin />
@@ -568,221 +562,205 @@ export function CreateCompetenceFileModal({
     : "bg-white rounded-lg shadow-xl w-[95vw] h-[95vh] flex flex-col";
 
   return (
-    <div className={modalClasses}>
-      <div className={contentClasses}>
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center space-x-4">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Create Competence File
-            </h2>
-            {selectedCandidate && (
-              <Badge variant="secondary">
-                {selectedCandidate.fullName}
-              </Badge>
-            )}
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            {/* Zoom Controls */}
-            <div className="flex items-center space-x-1 bg-white rounded-lg border border-gray-200 p-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleZoomOut}
-                className="p-1"
-              >
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              <span className="px-2 text-sm font-medium min-w-[50px] text-center">
-                {zoomLevel}%
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleZoomIn}
-                className="p-1"
-              >
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleResetZoom}
-                className="p-1"
-              >
-                <RotateCcw className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            {/* Fullscreen Toggle */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleFullscreen}
-              className="p-2"
-            >
-              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </Button>
-            
-            {/* Save Button */}
-            <Button
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              className="flex items-center space-x-2"
-            >
-              {isGenerating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
+    <ErrorBoundary>
+      <div className={modalClasses}>
+        <div className={contentClasses}>
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
+            <div className="flex items-center space-x-4">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Create Competence File
+              </h2>
+              {selectedCandidate && (
+                <Badge variant="secondary">
+                  {selectedCandidate.fullName}
+                </Badge>
               )}
-              <span>{isGenerating ? 'Generating...' : 'Generate PDF'}</span>
-            </Button>
-            
-            {/* Close Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onClose}
-              className="p-2"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Sidebar - Document Structure */}
-          <div className="w-80 border-r border-gray-200 bg-gray-50 flex flex-col">
-            <div className="p-4 border-b border-gray-200">
-              <h3 className="font-medium text-gray-900 mb-3">Document Sections</h3>
-              <Button
-                onClick={addSection}
-                variant="outline"
-                size="sm"
-                className="w-full flex items-center space-x-2"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add Section</span>
-              </Button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-4">
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={documentSections.map(s => s.id)}
-                  strategy={verticalListSortingStrategy}
+            <div className="flex items-center space-x-2">
+              {/* Zoom Controls */}
+              <div className="flex items-center space-x-1 bg-white rounded-lg border border-gray-200 p-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleZoomOut}
+                  className="p-1"
                 >
-                  {documentSections
-                    .sort((a, b) => a.order - b.order)
-                    .map((section) => (
-                      <div key={section.id} className="mb-2">
-                        <SortableSectionItem
-                          section={section}
-                          onToggle={() => {
-                            setDocumentSections(sections =>
-                              sections.map(s =>
-                                s.id === section.id ? { ...s, visible: !s.visible } : s
-                              )
-                            );
-                          }}
-                          onRemove={() => removeSection(section.id)}
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+                <span className="px-2 text-sm font-medium min-w-[50px] text-center">
+                  {zoomLevel}%
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleZoomIn}
+                  className="p-1"
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetZoom}
+                  className="p-1"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              {/* Fullscreen Toggle */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleFullscreen}
+                className="p-2"
+              >
+                {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </Button>
+              
+              {/* Save Button */}
+              <Button
+                onClick={handleGenerate}
+                disabled={isGenerating}
+                className="flex items-center space-x-2"
+              >
+                {isGenerating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                <span>{isGenerating ? 'Generating...' : 'Generate PDF'}</span>
+              </Button>
+              
+              {/* Close Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onClose}
+                className="p-2"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Sidebar - Document Structure */}
+            <div className="w-80 border-r border-gray-200 bg-gray-50 flex flex-col">
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="font-medium text-gray-900 mb-3">Document Sections</h3>
+                <Button
+                  onClick={addSection}
+                  variant="outline"
+                  size="sm"
+                  className="w-full flex items-center space-x-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add Section</span>
+                </Button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={documentSections.map(s => s.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {documentSections
+                      .sort((a, b) => a.order - b.order)
+                      .map((section) => (
+                        <div key={section.id} className="mb-2">
+                          <SortableSectionItem
+                            section={section}
+                            onToggle={() => {
+                              setDocumentSections(sections =>
+                                sections.map(s =>
+                                  s.id === section.id ? { ...s, visible: !s.visible } : s
+                                )
+                              );
+                            }}
+                            onRemove={() => removeSection(section.id)}
+                          />
+                        </div>
+                      ))}
+                  </SortableContext>
+                </DndContext>
+              </div>
+            </div>
+
+            {/* Main Editor Area */}
+            <div className="flex-1 flex flex-col overflow-hidden bg-gray-100">
+              {/* Document Preview */}
+              <div 
+                className="flex-1 overflow-auto p-8 bg-gradient-to-br from-gray-50 to-gray-100"
+                style={{ 
+                  zoom: `${zoomLevel}%`,
+                  scrollBehavior: 'smooth'
+                }}
+              >
+                <div className="max-w-[210mm] mx-auto bg-white shadow-2xl border border-gray-200 min-h-[297mm] relative">
+                  {/* Document Header with Logo */}
+                  <div className="relative">
+                    {logoUrl && (
+                      <div className="absolute top-8 right-8 z-10">
+                        <img 
+                          src={logoUrl} 
+                          alt="Company Logo" 
+                          className="h-12 w-auto object-contain opacity-90"
                         />
                       </div>
-                    ))}
-                </SortableContext>
-              </DndContext>
-            </div>
-          </div>
-
-          {/* Main Editor Area */}
-          <div className="flex-1 flex flex-col overflow-hidden bg-gray-100">
-            {/* Document Preview */}
-            <div 
-              className="flex-1 overflow-auto p-8 bg-gradient-to-br from-gray-50 to-gray-100"
-              style={{ 
-                zoom: `${zoomLevel}%`,
-                scrollBehavior: 'smooth'
-              }}
-            >
-              <div className="max-w-[210mm] mx-auto bg-white shadow-2xl border border-gray-200 min-h-[297mm] relative">
-                {/* Document Header with Logo */}
-                <div className="relative">
-                  {logoUrl && (
-                    <div className="absolute top-8 right-8 z-10">
-                      <img 
-                        src={logoUrl} 
-                        alt="Company Logo" 
-                        className="h-12 w-auto object-contain opacity-90"
-                      />
+                    )}
+                    
+                    {/* Logo Upload Area */}
+                    <div className="absolute top-4 left-4 z-10">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="opacity-70 hover:opacity-100 transition-opacity"
+                        onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = 'image/*';
+                          input.onchange = (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (e) => {
+                                setLogoUrl(e.target?.result as string);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          };
+                          input.click();
+                        }}
+                      >
+                        <Image className="h-4 w-4 mr-1" />
+                        Logo
+                      </Button>
                     </div>
-                  )}
-                  
-                  {/* Logo Upload Area */}
-                  <div className="absolute top-4 left-4 z-10">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="opacity-70 hover:opacity-100 transition-opacity"
-                      onClick={() => {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = 'image/*';
-                        input.onchange = (e) => {
-                          const file = (e.target as HTMLInputElement).files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (e) => {
-                              setLogoUrl(e.target?.result as string);
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        };
-                        input.click();
-                      }}
-                    >
-                      <Image className="h-4 w-4 mr-1" />
-                      Logo
-                    </Button>
                   </div>
-                </div>
-                
-                {/* Document Content */}
-                <div className="p-12 pt-16">
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <SortableContext
-                      items={documentSections.map(s => s.id)}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      {documentSections
-                        .sort((a, b) => a.order - b.order)
-                        .map((section) => (
-                          <DocumentSectionComponent
-                            key={section.id}
-                            section={section}
-                            onUpdate={updateSectionContent}
-                            onRemove={removeSection}
-                            selectedCandidate={selectedCandidate}
-                          />
-                        ))}
-                    </SortableContext>
-                  </DndContext>
-                </div>
-                
-                {/* Document Footer */}
-                <div className="absolute bottom-4 left-12 right-12 text-xs text-gray-400 border-t border-gray-200 pt-2">
-                  <div className="flex justify-between items-center">
-                    <span>Generated by Emineon ATS</span>
-                    <span>{new Date().toLocaleDateString()}</span>
+
+                  {/* Document Content */}
+                  <div className="p-8 pt-16">
+                    {documentSections
+                      .filter(section => section.visible)
+                      .sort((a, b) => a.order - b.order)
+                      .map((section) => (
+                        <DocumentSectionComponent
+                          key={section.id}
+                          section={section}
+                          onUpdate={updateSectionContent}
+                          onRemove={removeSection}
+                          selectedCandidate={selectedCandidate}
+                        />
+                      ))}
                   </div>
                 </div>
               </div>
@@ -790,7 +768,7 @@ export function CreateCompetenceFileModal({
           </div>
         </div>
       </div>
-    </div>
+    </ErrorBoundary>
   );
 }
 
@@ -870,5 +848,44 @@ function SortableSectionItem({
 
 // Simple Error Boundary Component
 function SimpleErrorBoundary({ children }: { children: React.ReactNode }) {
-  return <div>{children}</div>;
+  try {
+    return <div>{children}</div>;
+  } catch (error) {
+    console.error('Error in component:', error);
+    return <div className="p-4 text-red-600">Error loading component. Please refresh the page.</div>;
+  }
+}
+
+// Enhanced Error Boundary with state
+function ErrorBoundary({ children }: { children: React.ReactNode }) {
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    const handleError = (error: ErrorEvent) => {
+      console.error('Caught error:', error);
+      setHasError(true);
+    };
+
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
+  if (hasError) {
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+        <h3 className="text-red-800 font-medium">Something went wrong</h3>
+        <p className="text-red-600 text-sm mt-1">Please refresh the page and try again.</p>
+        <Button 
+          onClick={() => setHasError(false)} 
+          variant="outline" 
+          size="sm" 
+          className="mt-2"
+        >
+          Try Again
+        </Button>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
 } 
