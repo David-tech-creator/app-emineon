@@ -13,10 +13,43 @@ const downloadJobSchema = z.object({
     skills: z.array(z.string()),
     salary: z.string().optional(),
     department: z.string().optional(),
+    startDate: z.string().optional(),
+    languages: z.array(z.string()).optional(),
+    priority: z.string().optional(),
     logoUrl: z.string().optional(),
+    selectedFields: z.object({
+      title: z.boolean(),
+      company: z.boolean(),
+      location: z.boolean(),
+      contractType: z.boolean(),
+      workMode: z.boolean(),
+      department: z.boolean(),
+      salary: z.boolean(),
+      description: z.boolean(),
+      skills: z.boolean(),
+      languages: z.boolean(),
+      startDate: z.boolean(),
+      duration: z.boolean(),
+      priority: z.boolean(),
+    }).optional(),
   }),
   format: z.enum(['pdf', 'docx']),
   logoUrl: z.string().optional(),
+  selectedFields: z.object({
+    title: z.boolean(),
+    company: z.boolean(),
+    location: z.boolean(),
+    contractType: z.boolean(),
+    workMode: z.boolean(),
+    department: z.boolean(),
+    salary: z.boolean(),
+    description: z.boolean(),
+    skills: z.boolean(),
+    languages: z.boolean(),
+    startDate: z.boolean(),
+    duration: z.boolean(),
+    priority: z.boolean(),
+  }).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -36,7 +69,22 @@ export async function POST(request: NextRequest) {
     const { jobData, format } = validatedData;
 
     // Generate HTML content for the job description
-    const htmlContent = generateJobDescriptionHTML(jobData);
+    const selectedFields = validatedData.selectedFields || jobData.selectedFields || {
+      title: true,
+      company: true,
+      location: true,
+      contractType: true,
+      workMode: true,
+      department: true,
+      salary: true,
+      description: true,
+      skills: true,
+      languages: true,
+      startDate: true,
+      duration: false,
+      priority: false
+    };
+    const htmlContent = generateJobDescriptionHTML(jobData, selectedFields);
 
     if (format === 'pdf') {
       // For PDF generation, we'll use a simple HTML to PDF conversion
@@ -78,7 +126,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function generateJobDescriptionHTML(jobData: any): string {
+function generateJobDescriptionHTML(jobData: any, selectedFields: any): string {
   return `
     <!DOCTYPE html>
     <html>
@@ -183,49 +231,67 @@ function generateJobDescriptionHTML(jobData: any): string {
     <body>
       <div class="header">
         <div class="header-content">
-          <h1>${jobData.title}</h1>
-          <h2>${jobData.company}</h2>
-          <div class="location">📍 ${jobData.location}</div>
+          ${selectedFields.title ? `<h1>${jobData.title || 'Job Title'}</h1>` : ''}
+          ${selectedFields.company ? `<h2>${jobData.company || 'Company Name'}</h2>` : ''}
+          ${selectedFields.location ? `<div class="location">📍 ${jobData.location || 'Location'}</div>` : ''}
         </div>
         ${jobData.logoUrl ? `<img src="${jobData.logoUrl}" alt="Company Logo" class="logo">` : ''}
       </div>
 
       <div class="job-details">
+        ${selectedFields.contractType ? `
         <div class="detail-item">
           <div class="detail-label">Contract Type</div>
-          <div class="detail-value">${jobData.contractType}</div>
-        </div>
+          <div class="detail-value">${jobData.contractType || 'Permanent'}</div>
+        </div>` : ''}
+        ${selectedFields.workMode ? `
         <div class="detail-item">
           <div class="detail-label">Work Mode</div>
-          <div class="detail-value">${jobData.workMode}</div>
-        </div>
-        ${jobData.department ? `
+          <div class="detail-value">${jobData.workMode || 'Hybrid'}</div>
+        </div>` : ''}
+        ${selectedFields.department && jobData.department ? `
         <div class="detail-item">
           <div class="detail-label">Department</div>
           <div class="detail-value">${jobData.department}</div>
-        </div>
-        ` : ''}
-        ${jobData.salary ? `
+        </div>` : ''}
+        ${selectedFields.salary && jobData.salary ? `
         <div class="detail-item">
           <div class="detail-label">Salary</div>
           <div class="detail-value">${jobData.salary}</div>
-        </div>
-        ` : ''}
+        </div>` : ''}
+        ${selectedFields.startDate && jobData.startDate ? `
+        <div class="detail-item">
+          <div class="detail-label">Start Date</div>
+          <div class="detail-value">${new Date(jobData.startDate).toLocaleDateString()}</div>
+        </div>` : ''}
+        ${selectedFields.priority && jobData.priority ? `
+        <div class="detail-item">
+          <div class="detail-label">Priority</div>
+          <div class="detail-value">${jobData.priority}</div>
+        </div>` : ''}
       </div>
 
+      ${selectedFields.description ? `
       <div class="section">
         <h3>Job Description</h3>
-        <div class="description">${jobData.description}</div>
-      </div>
+        <div class="description">${jobData.description || 'Job description will be provided.'}</div>
+      </div>` : ''}
 
-      ${jobData.skills && jobData.skills.length > 0 ? `
+      ${selectedFields.skills && jobData.skills && jobData.skills.length > 0 ? `
       <div class="section">
         <h3>Required Skills</h3>
         <div class="skills">
           ${jobData.skills.map((skill: string) => `<span class="skill-tag">${skill}</span>`).join('')}
         </div>
-      </div>
-      ` : ''}
+      </div>` : ''}
+
+      ${selectedFields.languages && jobData.languages && jobData.languages.length > 0 ? `
+      <div class="section">
+        <h3>Languages</h3>
+        <div class="skills">
+          ${jobData.languages.map((language: string) => `<span class="skill-tag">${language}</span>`).join('')}
+        </div>
+      </div>` : ''}
 
       <div class="footer">
         Generated on ${new Date().toLocaleDateString()} | ${jobData.company}

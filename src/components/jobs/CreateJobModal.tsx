@@ -165,7 +165,24 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoUrl, setLogoUrl] = useState<string>('');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  const [showJobPreview, setShowJobPreview] = useState(false);
+  const [showJobPreview, setShowJobPreview] = useState(true);
+  
+  // Field selection state for template customization
+  const [selectedFields, setSelectedFields] = useState({
+    title: true,
+    company: true,
+    location: true,
+    contractType: true,
+    workMode: true,
+    department: true,
+    salary: true,
+    description: true,
+    skills: true,
+    languages: true,
+    startDate: true,
+    duration: false,
+    priority: false
+  });
 
   const {
     register,
@@ -512,17 +529,23 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
   const downloadJobDescription = async (format: 'pdf' | 'docx') => {
     try {
       const jobData = {
-        title: watch('title'),
-        company: watch('company'),
-        location: watch('location'),
-        contractType: watch('contractType'),
-        workMode: watch('workMode'),
-        description: watch('description'),
-        skills: watch('skills'),
-        salary: watch('salary'),
-        department: watch('department'),
-        logoUrl: logoUrl
+        title: selectedFields.title ? watch('title') : '',
+        company: selectedFields.company ? watch('company') : '',
+        location: selectedFields.location ? watch('location') : '',
+        contractType: selectedFields.contractType ? watch('contractType') : '',
+        workMode: selectedFields.workMode ? watch('workMode') : '',
+        description: selectedFields.description ? watch('description') : '',
+        skills: selectedFields.skills ? watch('skills') : [],
+        salary: selectedFields.salary ? watch('salary') : '',
+        department: selectedFields.department ? watch('department') : '',
+        startDate: selectedFields.startDate ? watch('startDate') : '',
+        languages: selectedFields.languages ? watch('languages') : [],
+        priority: selectedFields.priority ? watch('priority') : '',
+        logoUrl: logoUrl,
+        selectedFields: selectedFields
       };
+
+      console.log('Downloading job description with data:', jobData);
 
       const response = await fetch('/api/jobs/download', {
         method: 'POST',
@@ -532,15 +555,22 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
         body: JSON.stringify({
           jobData,
           format,
-          logoUrl
+          logoUrl,
+          selectedFields
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate document');
+        const errorText = await response.text();
+        console.error('Download error response:', errorText);
+        throw new Error(`Failed to generate document: ${response.status}`);
       }
 
       const blob = await response.blob();
+      if (blob.size === 0) {
+        throw new Error('Generated document is empty');
+      }
+      
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.style.display = 'none';
@@ -552,7 +582,7 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
       document.body.removeChild(a);
     } catch (error) {
       console.error('Download error:', error);
-      alert('Failed to download document. Please try again.');
+      alert(`Failed to download document: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -1185,359 +1215,445 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
                 </div>
               </div>
 
-              {/* Job Description Preview */}
+              {/* Two-column layout: Fields on left, Preview on right */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left Column: Form Fields */}
+                <div className="space-y-6">
+                  {/* Logo Upload Section */}
+                  <Card>
+                    <CardContent className="p-6">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                        <ImageIcon className="h-5 w-5 text-primary-600" />
+                        <span>Company Logo</span>
+                      </h4>
+                      <div className="flex items-center space-x-4">
+                        {logoUrl ? (
+                          <div className="relative">
+                            <img 
+                              src={logoUrl} 
+                              alt="Company logo" 
+                              className="h-16 w-16 object-contain border border-gray-200 rounded-lg"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleLogoRemove}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="h-16 w-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+                            <ImageIcon className="h-6 w-6 text-gray-400" />
+                          </div>
+                        )}
+                        
+                        <div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleLogoUpload(file);
+                            }}
+                            className="hidden"
+                            id="logo-upload"
+                          />
+                          <label
+                            htmlFor="logo-upload"
+                            className="cursor-pointer inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                          >
+                            {isUploadingLogo ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-4 w-4 mr-2" />
+                                Upload Logo
+                              </>
+                            )}
+                          </label>
+                          <p className="text-xs text-gray-500 mt-1">PNG, JPG, SVG up to 2MB</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                                     {/* Field Selection */}
+                   <Card>
+                     <CardContent className="p-6">
+                       <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                         <Settings className="h-5 w-5 text-primary-600" />
+                         <span>Template Fields</span>
+                       </h4>
+                       <p className="text-sm text-gray-600 mb-4">Select which fields to include in your job posting template:</p>
+                       <div className="grid grid-cols-2 gap-3">
+                         {Object.entries(selectedFields).map(([field, selected]) => (
+                           <label key={field} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
+                             <input
+                               type="checkbox"
+                               checked={selected}
+                               onChange={(e) => setSelectedFields(prev => ({ ...prev, [field]: e.target.checked }))}
+                               className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                             />
+                             <span className="text-sm font-medium capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}</span>
+                           </label>
+                         ))}
+                       </div>
+                     </CardContent>
+                   </Card>
+
+                   {/* Basic Information */}
+                   <Card>
+                     <CardContent className="p-6">
+                       <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                         <Briefcase className="h-5 w-5 text-primary-600" />
+                         <span>Basic Information</span>
+                       </h4>
+                       
+                       <div className="space-y-4">
+                         {selectedFields.title && (
+                           <div>
+                             <label className="block text-sm font-medium text-gray-700 mb-1">Job Title *</label>
+                             <input
+                               {...register('title')}
+                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                               placeholder="e.g., Senior Software Engineer"
+                             />
+                             {errors.title && <p className="text-red-600 text-sm mt-1">{errors.title.message}</p>}
+                           </div>
+                         )}
+
+                         {selectedFields.company && (
+                           <div>
+                             <label className="block text-sm font-medium text-gray-700 mb-1">Company *</label>
+                             <input
+                               {...register('company')}
+                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                               placeholder="e.g., Tech Corp"
+                             />
+                             {errors.company && <p className="text-red-600 text-sm mt-1">{errors.company.message}</p>}
+                           </div>
+                         )}
+
+                         {selectedFields.location && (
+                           <div>
+                             <label className="block text-sm font-medium text-gray-700 mb-1">Location *</label>
+                             <input
+                               {...register('location')}
+                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                               placeholder="e.g., Zurich, Switzerland"
+                             />
+                             {errors.location && <p className="text-red-600 text-sm mt-1">{errors.location.message}</p>}
+                           </div>
+                         )}
+
+                         {selectedFields.contractType && (
+                           <div>
+                             <label className="block text-sm font-medium text-gray-700 mb-1">Contract Type *</label>
+                             <select
+                               {...register('contractType')}
+                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                             >
+                               <option value="permanent">Permanent</option>
+                               <option value="freelance">Freelance</option>
+                               <option value="fixed-term">Fixed-term</option>
+                               <option value="internship">Internship</option>
+                             </select>
+                           </div>
+                         )}
+
+                         {selectedFields.workMode && (
+                           <div>
+                             <label className="block text-sm font-medium text-gray-700 mb-1">Work Mode</label>
+                             <select
+                               {...register('workMode')}
+                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                             >
+                               <option value="hybrid">Hybrid</option>
+                               <option value="remote">Remote</option>
+                               <option value="on-site">On-site</option>
+                             </select>
+                           </div>
+                         )}
+
+                         {selectedFields.startDate && (
+                           <div>
+                             <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
+                             <input
+                               type="date"
+                               {...register('startDate')}
+                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                             />
+                             {errors.startDate && <p className="text-red-600 text-sm mt-1">{errors.startDate.message}</p>}
+                           </div>
+                         )}
+
+                         {selectedFields.salary && (
+                           <div>
+                             <label className="block text-sm font-medium text-gray-700 mb-1">Salary Range</label>
+                             <input
+                               {...register('salary')}
+                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                               placeholder="e.g., CHF 80k - 120k"
+                             />
+                           </div>
+                         )}
+
+                         {selectedFields.department && (
+                           <div>
+                             <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                             <select
+                               {...register('department')}
+                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                             >
+                               <option value="">Select Department</option>
+                               <option value="Technology">Technology</option>
+                               <option value="Product">Product</option>
+                               <option value="Design">Design</option>
+                               <option value="Marketing">Marketing</option>
+                               <option value="Sales">Sales</option>
+                               <option value="Data & Analytics">Data & Analytics</option>
+                               <option value="Operations">Operations</option>
+                               <option value="Finance">Finance</option>
+                               <option value="Human Resources">Human Resources</option>
+                               <option value="Legal">Legal</option>
+                               <option value="Customer Success">Customer Success</option>
+                               <option value="Business Development">Business Development</option>
+                             </select>
+                           </div>
+                         )}
+
+                         {selectedFields.description && (
+                           <div>
+                             <label className="block text-sm font-medium text-gray-700 mb-1">Job Description *</label>
+                             <textarea
+                               {...register('description')}
+                               rows={8}
+                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                               placeholder="Describe the role, responsibilities, and requirements..."
+                             />
+                             {errors.description && <p className="text-red-600 text-sm mt-1">{errors.description.message}</p>}
+                           </div>
+                         )}
+                       </div>
+                     </CardContent>
+                   </Card>
+                 </div>
+
+                 {/* Right Column: Live Preview */}
+                 <div className="space-y-6">
+                   <Card className="sticky top-4">
+                     <CardContent className="p-6">
+                       <div className="flex items-center justify-between mb-4">
+                         <h4 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                           <Eye className="h-5 w-5 text-primary-600" />
+                           <span>Live Preview</span>
+                         </h4>
+                         <div className="flex items-center space-x-2">
+                           <Button
+                             type="button"
+                             variant="outline"
+                             size="sm"
+                             onClick={() => downloadJobDescription('pdf')}
+                           >
+                             <FileDown className="h-4 w-4 mr-1" />
+                             PDF
+                           </Button>
+                           <Button
+                             type="button"
+                             variant="outline"
+                             size="sm"
+                             onClick={() => downloadJobDescription('docx')}
+                           >
+                             <FileDown className="h-4 w-4 mr-1" />
+                             Word
+                           </Button>
+                         </div>
+                       </div>
+
+                       {/* Live Job Preview */}
+                       <div className="border border-gray-200 rounded-lg p-6 bg-white max-h-[600px] overflow-y-auto">
+                         <div className="flex items-start justify-between mb-6">
+                           <div>
+                             {selectedFields.title && (
+                               <h1 className="text-2xl font-bold text-gray-900">{watch('title') || 'Job Title'}</h1>
+                             )}
+                             {selectedFields.company && (
+                               <p className="text-lg text-gray-600">{watch('company') || 'Company Name'}</p>
+                             )}
+                             {selectedFields.location && (
+                               <p className="text-gray-500 flex items-center mt-2">
+                                 <MapPin className="h-4 w-4 mr-1" />
+                                 {watch('location') || 'Location'}
+                               </p>
+                             )}
+                           </div>
+                           {logoUrl && (
+                             <img 
+                               src={logoUrl} 
+                               alt="Company logo" 
+                               className="h-16 w-auto object-contain"
+                             />
+                           )}
+                         </div>
+
+                         <div className="grid grid-cols-2 gap-4 mb-6">
+                           {selectedFields.contractType && (
+                             <div className="bg-gray-50 p-3 rounded-lg">
+                               <p className="text-sm text-gray-500">Contract Type</p>
+                               <p className="font-medium capitalize">{watch('contractType') || 'Permanent'}</p>
+                             </div>
+                           )}
+                           {selectedFields.workMode && (
+                             <div className="bg-gray-50 p-3 rounded-lg">
+                               <p className="text-sm text-gray-500">Work Mode</p>
+                               <p className="font-medium capitalize">{watch('workMode') || 'Hybrid'}</p>
+                             </div>
+                           )}
+                           {selectedFields.department && (
+                             <div className="bg-gray-50 p-3 rounded-lg">
+                               <p className="text-sm text-gray-500">Department</p>
+                               <p className="font-medium">{watch('department') || 'Technology'}</p>
+                             </div>
+                           )}
+                           {selectedFields.salary && (
+                             <div className="bg-gray-50 p-3 rounded-lg">
+                               <p className="text-sm text-gray-500">Salary</p>
+                               <p className="font-medium">{watch('salary') || 'Competitive'}</p>
+                             </div>
+                           )}
+                         </div>
+
+                         {selectedFields.description && (
+                           <div className="mb-6">
+                             <h3 className="text-lg font-semibold mb-3">Job Description</h3>
+                             <div className="prose max-w-none">
+                               <p className="text-gray-700 whitespace-pre-wrap">{watch('description') || 'Job description will appear here...'}</p>
+                             </div>
+                           </div>
+                         )}
+
+                         {selectedFields.skills && watch('skills') && watch('skills').length > 0 && (
+                           <div className="mb-6">
+                             <h3 className="text-lg font-semibold mb-3">Required Skills</h3>
+                             <div className="flex flex-wrap gap-2">
+                               {watch('skills').map((skill, index) => (
+                                 <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                                   {skill}
+                                 </span>
+                               ))}
+                             </div>
+                           </div>
+                         )}
+
+                         {selectedFields.startDate && (
+                           <div className="mb-4">
+                             <h3 className="text-lg font-semibold mb-2">Start Date</h3>
+                             <p className="text-gray-700">{watch('startDate') ? new Date(watch('startDate')).toLocaleDateString() : 'To be determined'}</p>
+                           </div>
+                         )}
+                       </div>
+                     </CardContent>
+                   </Card>
+                 </div>
+               </div>
+
+              {/* Additional fields for skills and other details */}
               <Card>
                 <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-                      <Eye className="h-5 w-5 text-primary-600" />
-                      <span>Job Description Preview</span>
-                    </h4>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowJobPreview(!showJobPreview)}
-                      >
-                        {showJobPreview ? 'Hide Preview' : 'Show Preview'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => downloadJobDescription('pdf')}
-                      >
-                        <FileDown className="h-4 w-4 mr-1" />
-                        PDF
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => downloadJobDescription('docx')}
-                      >
-                        <FileDown className="h-4 w-4 mr-1" />
-                        Word
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Logo Upload Section */}
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Company Logo (Optional)</label>
-                    <div className="flex items-center space-x-4">
-                      {logoUrl ? (
-                        <div className="relative">
-                          <img 
-                            src={logoUrl} 
-                            alt="Company logo" 
-                            className="h-16 w-16 object-contain border border-gray-200 rounded-lg"
-                          />
-                          <button
-                            type="button"
-                            onClick={handleLogoRemove}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="h-16 w-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                          <ImageIcon className="h-6 w-6 text-gray-400" />
-                        </div>
-                      )}
-                      
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                    <Target className="h-5 w-5 text-primary-600" />
+                    <span>Additional Details</span>
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {selectedFields.priority && (
                       <div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleLogoUpload(file);
-                          }}
-                          className="hidden"
-                          id="logo-upload"
-                        />
-                        <label
-                          htmlFor="logo-upload"
-                          className="cursor-pointer inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                        <select
+                          {...register('priority')}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                         >
-                          {isUploadingLogo ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Uploading...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-4 w-4 mr-2" />
-                              Upload Logo
-                            </>
-                          )}
-                        </label>
-                        <p className="text-xs text-gray-500 mt-1">PNG, JPG, SVG up to 2MB</p>
+                          <option value="low">Low</option>
+                          <option value="medium">Medium</option>
+                          <option value="high">High</option>
+                        </select>
                       </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Job Owner *</label>
+                      <input
+                        {...register('owner')}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        placeholder="e.g., Sarah Johnson"
+                      />
+                      {errors.owner && <p className="text-red-600 text-sm mt-1">{errors.owner.message}</p>}
                     </div>
                   </div>
-
-                  {/* Job Preview */}
-                  {showJobPreview && (
-                    <div className="border border-gray-200 rounded-lg p-6 bg-white">
-                      <div className="flex items-start justify-between mb-6">
-                        <div>
-                          <h1 className="text-2xl font-bold text-gray-900">{watch('title') || 'Job Title'}</h1>
-                          <p className="text-lg text-gray-600">{watch('company') || 'Company Name'}</p>
-                          <p className="text-gray-500 flex items-center mt-2">
-                            <MapPin className="h-4 w-4 mr-1" />
-                            {watch('location') || 'Location'}
-                          </p>
-                        </div>
-                        {logoUrl && (
-                          <img 
-                            src={logoUrl} 
-                            alt="Company logo" 
-                            className="h-16 w-auto object-contain"
-                          />
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <p className="text-sm text-gray-500">Contract Type</p>
-                          <p className="font-medium capitalize">{watch('contractType') || 'Permanent'}</p>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <p className="text-sm text-gray-500">Work Mode</p>
-                          <p className="font-medium capitalize">{watch('workMode') || 'Hybrid'}</p>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <p className="text-sm text-gray-500">Department</p>
-                          <p className="font-medium">{watch('department') || 'Technology'}</p>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <p className="text-sm text-gray-500">Salary</p>
-                          <p className="font-medium">{watch('salary') || 'Competitive'}</p>
-                        </div>
-                      </div>
-
-                      <div className="mb-6">
-                        <h3 className="text-lg font-semibold mb-3">Job Description</h3>
-                        <div className="prose max-w-none">
-                          <p className="text-gray-700 whitespace-pre-wrap">{watch('description') || 'Job description will appear here...'}</p>
-                        </div>
-                      </div>
-
-                      {watch('skills') && watch('skills').length > 0 && (
-                        <div className="mb-6">
-                          <h3 className="text-lg font-semibold mb-3">Required Skills</h3>
-                          <div className="flex flex-wrap gap-2">
-                            {watch('skills').map((skill, index) => (
-                              <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                                {skill}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Basic Information */}
-                <div className="space-y-4">
-                  <h4 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-                    <Briefcase className="h-5 w-5 text-primary-600" />
-                    <span>Basic Information</span>
-                  </h4>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Job Title *</label>
-                    <input
-                      {...register('title')}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="e.g., Senior Software Engineer"
-                    />
-                    {errors.title && <p className="text-red-600 text-sm mt-1">{errors.title.message}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Company *</label>
-                    <input
-                      {...register('company')}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="e.g., Tech Corp"
-                    />
-                    {errors.company && <p className="text-red-600 text-sm mt-1">{errors.company.message}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Location *</label>
-                    <input
-                      {...register('location')}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="e.g., Zurich, Switzerland"
-                    />
-                    {errors.location && <p className="text-red-600 text-sm mt-1">{errors.location.message}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Contract Type *</label>
-                    <select
-                      {...register('contractType')}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      <option value="permanent">Permanent</option>
-                      <option value="freelance">Freelance</option>
-                      <option value="fixed-term">Fixed-term</option>
-                      <option value="internship">Internship</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Work Mode</label>
-                    <select
-                      {...register('workMode')}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      <option value="hybrid">Hybrid</option>
-                      <option value="remote">Remote</option>
-                      <option value="on-site">On-site</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Additional Details */}
-                <div className="space-y-4">
-                  <h4 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-                    <Settings className="h-5 w-5 text-primary-600" />
-                    <span>Additional Details</span>
-                  </h4>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
-                    <input
-                      type="date"
-                      {...register('startDate')}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    />
-                    {errors.startDate && <p className="text-red-600 text-sm mt-1">{errors.startDate.message}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Salary Range</label>
-                    <input
-                      {...register('salary')}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="e.g., CHF 80k - 120k"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                    <select
-                      {...register('department')}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      <option value="">Select Department</option>
-                      <option value="Technology">Technology</option>
-                      <option value="Product">Product</option>
-                      <option value="Design">Design</option>
-                      <option value="Marketing">Marketing</option>
-                      <option value="Sales">Sales</option>
-                      <option value="Data & Analytics">Data & Analytics</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                    <select
-                      {...register('priority')}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Job Owner *</label>
-                    <input
-                      {...register('owner')}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="e.g., Sarah Johnson"
-                    />
-                    {errors.owner && <p className="text-red-600 text-sm mt-1">{errors.owner.message}</p>}
-                  </div>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Job Description *</label>
-                <textarea
-                  {...register('description')}
-                  rows={6}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="Detailed job description..."
-                />
-                {errors.description && <p className="text-red-600 text-sm mt-1">{errors.description.message}</p>}
-              </div>
-
               {/* Skills Tags */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Required Skills</label>
-                <div className="space-y-3">
-                  {/* Display current skills */}
-                  <div className="flex flex-wrap gap-2 min-h-[40px] p-3 border border-gray-300 rounded-lg bg-gray-50">
-                    {(watch('skills') || []).length > 0 ? (
-                      (watch('skills') || []).map((skill, index) => (
-                        <span 
-                          key={index} 
-                          className="flex items-center space-x-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm"
-                        >
-                          <span>{skill}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const currentSkills = watch('skills') || [];
-                              const newSkills = currentSkills.filter((_, i) => i !== index);
-                              setValue('skills', newSkills);
-                            }}
-                            className="ml-1 text-primary-600 hover:text-primary-800"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-gray-500 text-sm">No skills added yet</span>
-                    )}
-                  </div>
-                  
-                  {/* Add new skill input */}
-                  <div className="flex space-x-2">
-                    <input
-                      type="text"
-                      placeholder="Add a skill (e.g., React, Python, Leadership)"
-                      className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          const value = (e.target as HTMLInputElement).value.trim();
-                          if (value) {
-                            const currentSkills = watch('skills') || [];
-                            if (!currentSkills.includes(value)) {
-                              setValue('skills', [...currentSkills, value]);
-                              (e.target as HTMLInputElement).value = '';
+              {selectedFields.skills && (
+                <Card>
+                  <CardContent className="p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                      <Code className="h-5 w-5 text-primary-600" />
+                      <span>Required Skills</span>
+                    </h4>
+                    <div className="space-y-3">
+                      {/* Display current skills */}
+                      <div className="flex flex-wrap gap-2 min-h-[40px] p-3 border border-gray-300 rounded-lg bg-gray-50">
+                        {(watch('skills') || []).length > 0 ? (
+                          (watch('skills') || []).map((skill, index) => (
+                            <span 
+                              key={index} 
+                              className="flex items-center space-x-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm"
+                            >
+                              <span>{skill}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const currentSkills = watch('skills') || [];
+                                  const newSkills = currentSkills.filter((_, i) => i !== index);
+                                  setValue('skills', newSkills);
+                                }}
+                                className="ml-1 text-primary-600 hover:text-primary-800"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-gray-500 text-sm">No skills added yet</span>
+                        )}
+                      </div>
+                      
+                      {/* Add new skill input */}
+                      <div className="flex space-x-2">
+                        <input
+                          type="text"
+                          placeholder="Add a skill (e.g., React, Python, Leadership)"
+                          className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const value = (e.target as HTMLInputElement).value.trim();
+                              if (value) {
+                                const currentSkills = watch('skills') || [];
+                                if (!currentSkills.includes(value)) {
+                                  setValue('skills', [...currentSkills, value]);
+                                  (e.target as HTMLInputElement).value = '';
+                                }
+                              }
                             }
-                          }
-                        }
-                      }}
-                    />
-                    <Button
+                          }}
+                        />
+                        <Button
                       type="button"
                       variant="outline"
                       onClick={(e) => {
@@ -1580,8 +1696,10 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
                       </div>
                     </div>
                   )}
-                </div>
-              </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Action Buttons */}
               <div className="flex justify-between pt-6 border-t border-gray-200">
