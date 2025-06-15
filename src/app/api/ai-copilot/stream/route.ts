@@ -202,33 +202,18 @@ Always be professional, data-driven, and provide actionable insights. Structure 
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication (allow bypass for testing and development)
-    let userId = null;
-    try {
-      const authResult = auth();
-      userId = authResult.userId;
-      if (userId) {
-        console.log('✅ User authenticated for streaming:', userId);
-      } else {
-        console.log('⚠️ No authentication found for streaming, proceeding for testing purposes');
-      }
-    } catch (authError) {
-      console.log('⚠️ Authentication check failed for streaming, proceeding for testing purposes:', authError);
-    }
-
-    // Allow bypass in development, preview, or for AI copilot functionality
-    const allowBypass = process.env.NODE_ENV === 'development' || 
-                       process.env.BYPASS_AUTH === 'true' || 
-                       process.env.VERCEL_ENV === 'preview' ||
-                       true; // Always allow AI copilot access for now
+    // Require authentication
+    const { userId } = await auth();
     
-    if (!userId && !allowBypass) {
-      console.log('❌ Authentication required and no bypass allowed for streaming');
+    if (!userId) {
+      console.log('❌ Authentication required for AI copilot streaming');
       return NextResponse.json(
         { success: false, error: 'Authentication required' },
         { status: 401 }
       );
     }
+
+    console.log('✅ User authenticated for AI copilot streaming:', userId);
 
     // Parse the request body
     const body = await request.json() as { 
