@@ -12,6 +12,8 @@ export function middleware(request: NextRequest) {
     '/api/health',
     '/api/daily-quote',
     '/api/test-bypass',
+    '/api/ai-copilot/chat',
+    '/api/ai-copilot/stream',
     '/api/competence-files/test-generate',
     '/api/competence-files/test-linkedin',
     '/api/competence-files/test-logo-upload',
@@ -25,7 +27,7 @@ export function middleware(request: NextRequest) {
   ];
   
   // If the path matches any bypass path, allow it through without authentication
-  if (bypassPaths.includes(pathname) || pathname.startsWith('/api/competence-files/')) {
+  if (bypassPaths.includes(pathname) || pathname.startsWith('/api/competence-files/') || pathname.startsWith('/api/ai-copilot/')) {
     console.log(`✅ Bypassing authentication for: ${pathname}`);
     return NextResponse.next();
   }
