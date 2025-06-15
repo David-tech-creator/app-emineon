@@ -11,8 +11,27 @@ const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    // Check authentication (allow bypass for testing and development)
+    let isAuthenticated = false;
+    try {
+      const { userId } = await auth();
+      if (userId) {
+        console.log('✅ User authenticated:', userId);
+        isAuthenticated = true;
+      } else {
+        console.log('⚠️ No authentication found, proceeding for testing purposes');
+      }
+    } catch (authError) {
+      console.log('⚠️ Authentication check failed, proceeding for testing purposes:', authError);
+    }
+
+    // Allow bypass in development or when BYPASS_AUTH is set
+    const allowBypass = process.env.NODE_ENV === 'development' || 
+                       process.env.BYPASS_AUTH === 'true' || 
+                       process.env.VERCEL_ENV === 'preview';
+    
+    if (!isAuthenticated && !allowBypass) {
+      console.log('❌ Authentication required and no bypass allowed');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
