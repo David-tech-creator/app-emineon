@@ -51,6 +51,12 @@ const downloadJobSchema = z.object({
     duration: z.boolean(),
     priority: z.boolean(),
   }).optional(),
+  selectedTemplate: z.object({
+    id: z.string(),
+    name: z.string(),
+    colorHex: z.string(),
+    font: z.string(),
+  }).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -67,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const validatedData = downloadJobSchema.parse(body);
-    const { jobData, format } = validatedData;
+    const { jobData, format, selectedTemplate } = validatedData;
 
     // Generate HTML content for the job description
     const selectedFields = validatedData.selectedFields || jobData.selectedFields || {
@@ -85,7 +91,7 @@ export async function POST(request: NextRequest) {
       duration: false,
       priority: false
     };
-    const htmlContent = generateJobDescriptionHTML(jobData, selectedFields);
+    const htmlContent = generateJobDescriptionHTML(jobData, selectedFields, selectedTemplate);
 
     if (format === 'pdf') {
       // For PDF generation, we'll use a simple HTML to PDF conversion
@@ -127,7 +133,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function generateJobDescriptionHTML(jobData: any, selectedFields: any): string {
+function generateJobDescriptionHTML(jobData: any, selectedFields: any, selectedTemplate?: any): string {
+  // Get template styling or use defaults
+  const primaryColor = selectedTemplate?.colorHex || '#007bff';
+  const fontFamily = selectedTemplate?.font || 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
   return `
     <!DOCTYPE html>
     <html>
@@ -136,7 +145,7 @@ function generateJobDescriptionHTML(jobData: any, selectedFields: any): string {
       <title>${jobData.title} - ${jobData.company}</title>
       <style>
         body {
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          font-family: ${fontFamily};
           line-height: 1.6;
           color: #333;
           max-width: 800px;
@@ -148,12 +157,12 @@ function generateJobDescriptionHTML(jobData: any, selectedFields: any): string {
           justify-content: space-between;
           align-items: flex-start;
           margin-bottom: 30px;
-          border-bottom: 2px solid #007bff;
+          border-bottom: 2px solid ${primaryColor};
           padding-bottom: 20px;
         }
         .header-content h1 {
           margin: 0 0 10px 0;
-          color: #007bff;
+          color: ${primaryColor};
           font-size: 28px;
         }
         .header-content h2 {
@@ -197,7 +206,7 @@ function generateJobDescriptionHTML(jobData: any, selectedFields: any): string {
           margin: 30px 0;
         }
         .section h3 {
-          color: #007bff;
+          color: ${primaryColor};
           border-bottom: 1px solid #ddd;
           padding-bottom: 10px;
           margin-bottom: 15px;
@@ -213,7 +222,7 @@ function generateJobDescriptionHTML(jobData: any, selectedFields: any): string {
           margin-top: 15px;
         }
         .skill-tag {
-          background-color: #007bff;
+          background-color: ${primaryColor};
           color: white;
           padding: 5px 12px;
           border-radius: 20px;

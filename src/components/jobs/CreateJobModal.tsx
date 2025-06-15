@@ -82,9 +82,12 @@ import {
   Download,
   FileDown,
   Image as ImageIcon,
-  Trash2
+  Trash2,
+  Layout,
+  Filter
 } from 'lucide-react';
 import { JobPreviewModal } from './JobPreviewModal';
+import { jobTemplates, jobTemplateCategories, type JobTemplate } from '@/data/job-templates';
 
 // Enhanced form schema following E2E flow
 const jobSchema = z.object({
@@ -151,7 +154,7 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [titleSuggestions, setTitleSuggestions] = useState<string[]>([]);
   const [clientSuggestions, setClientSuggestions] = useState<string[]>([]);
-  const [currentStep, setCurrentStep] = useState<'intake' | 'parsing' | 'review' | 'configure' | 'success'>('intake');
+  const [currentStep, setCurrentStep] = useState<'template' | 'intake' | 'parsing' | 'review' | 'configure' | 'success'>('template');
 
   const [jobDescription, setJobDescription] = useState('');
   const [isParsingAI, setIsParsingAI] = useState(false);
@@ -167,6 +170,11 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
   const [logoUrl, setLogoUrl] = useState<string>('');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  
+  // Template selection state
+  const [selectedTemplate, setSelectedTemplate] = useState<JobTemplate | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [templateSearchQuery, setTemplateSearchQuery] = useState('');
   
   // Field selection state for template customization
   const [selectedFields, setSelectedFields] = useState({
@@ -236,6 +244,38 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
       setClientSuggestions([]);
     }
   };
+
+  // Template selection functions
+  const handleTemplateSelect = (template: JobTemplate) => {
+    setSelectedTemplate(template);
+    
+    // Update selected fields based on template
+    const newSelectedFields = { ...selectedFields };
+    template.sections.forEach(section => {
+      if (section.key in newSelectedFields) {
+        newSelectedFields[section.key as keyof typeof selectedFields] = section.show;
+      }
+    });
+    setSelectedFields(newSelectedFields);
+    
+    // Pre-fill form with template sample content
+    setValue('title', template.sampleContent.title);
+    setValue('description', template.sampleContent.description);
+  };
+
+  const handleTemplateConfirm = () => {
+    if (selectedTemplate) {
+      setCurrentStep('intake');
+    }
+  };
+
+  const filteredTemplates = jobTemplates.filter(template => {
+    const matchesCategory = selectedCategory === 'All' || template.category === selectedCategory;
+    const matchesSearch = template.name.toLowerCase().includes(templateSearchQuery.toLowerCase()) ||
+                         template.description.toLowerCase().includes(templateSearchQuery.toLowerCase()) ||
+                         template.industry?.toLowerCase().includes(templateSearchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   // Enhanced AI parsing function with real GPT integration
   const parseJobDescription = async (text: string) => {
@@ -557,7 +597,8 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
           jobData,
           format,
           logoUrl,
-          selectedFields
+          selectedFields,
+          selectedTemplate
         }),
       });
 
@@ -813,7 +854,7 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
   };
 
   const resetModal = () => {
-    setCurrentStep('intake');
+    setCurrentStep('template');
     setChatInput('');
     setJobDescription('');
     setParsedData(null);
@@ -822,6 +863,12 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
     if (mediaRecorder) {
       mediaRecorder.stop();
     }
+    setSelectedTemplate(null);
+    setSelectedCategory('All');
+    setTemplateSearchQuery('');
+    setLogoFile(null);
+    setLogoUrl('');
+    setShowPreviewModal(false);
     reset();
   };
 
@@ -844,6 +891,7 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
             <div>
               <h2 className="text-2xl font-bold text-gray-900">Create a Job</h2>
               <p className="text-gray-600">
+                {currentStep === 'template' && 'Choose a template that matches your job posting style'}
                 {currentStep === 'intake' && 'Chat with AI to create your job posting'}
                 {currentStep === 'parsing' && 'Analyzing your job description...'}
                 {currentStep === 'review' && 'Review and edit the extracted information'}
@@ -861,7 +909,14 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
 
         {/* Progress Steps */}
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
+            <div className={`flex items-center space-x-2 ${currentStep === 'template' ? 'text-primary-600' : currentStep === 'intake' || currentStep === 'parsing' || currentStep === 'review' || currentStep === 'configure' ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep === 'template' ? 'bg-primary-100 text-primary-600' : currentStep === 'intake' || currentStep === 'parsing' || currentStep === 'review' || currentStep === 'configure' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                {currentStep === 'intake' || currentStep === 'parsing' || currentStep === 'review' || currentStep === 'configure' ? <CheckCircle className="h-4 w-4" /> : <Layout className="h-4 w-4" />}
+              </div>
+              <span className="font-medium">Template</span>
+            </div>
+            <ArrowRight className="h-4 w-4 text-gray-400" />
             <div className={`flex items-center space-x-2 ${currentStep === 'intake' ? 'text-primary-600' : currentStep === 'parsing' || currentStep === 'review' || currentStep === 'configure' ? 'text-green-600' : 'text-gray-400'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep === 'intake' ? 'bg-primary-100 text-primary-600' : currentStep === 'parsing' || currentStep === 'review' || currentStep === 'configure' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
                 {currentStep === 'parsing' || currentStep === 'review' || currentStep === 'configure' ? <CheckCircle className="h-4 w-4" /> : '1'}
@@ -894,6 +949,129 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(95vh-200px)]">
+          {/* Step 0: Template Selection */}
+          {currentStep === 'template' && (
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Layout className="h-8 w-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Choose Your Job Template</h3>
+                <p className="text-gray-600 max-w-2xl mx-auto">
+                  Select a professional template that matches your industry and company style. Each template is optimized for different types of roles and organizations.
+                </p>
+              </div>
+
+              {/* Search and Filter */}
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search templates..."
+                    value={templateSearchQuery}
+                    onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Filter className="h-4 w-4 text-gray-500" />
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="All">All Categories</option>
+                    {jobTemplateCategories.map(category => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Template Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredTemplates.map((template) => (
+                  <div
+                    key={template.id}
+                    onClick={() => handleTemplateSelect(template)}
+                    className={`relative cursor-pointer rounded-xl border-2 transition-all duration-200 hover:shadow-lg ${
+                      selectedTemplate?.id === template.id
+                        ? 'border-blue-500 bg-blue-50 shadow-md'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    {/* Template Preview */}
+                    <div className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div 
+                          className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-lg"
+                          style={{ backgroundColor: template.colorHex }}
+                        >
+                          {template.name.charAt(0)}
+                        </div>
+                        {selectedTemplate?.id === template.id && (
+                          <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                            <Check className="h-4 w-4 text-white" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <h4 className="font-semibold text-gray-900 mb-2">{template.name}</h4>
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{template.description}</p>
+                      
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
+                          {template.category}
+                        </span>
+                        <span className="text-gray-500" style={{ fontFamily: template.font }}>
+                          {template.font}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Sample Content Preview */}
+                    <div className="border-t border-gray-200 p-4 bg-gray-50">
+                      <div className="text-xs text-gray-600 space-y-1">
+                        <div className="font-medium" style={{ color: template.colorHex }}>
+                          {template.sampleContent.title}
+                        </div>
+                        <div className="line-clamp-2">
+                          {template.sampleContent.description}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+                <div className="text-sm text-gray-500">
+                  {selectedTemplate ? `Selected: ${selectedTemplate.name}` : 'Please select a template to continue'}
+                </div>
+                <div className="flex space-x-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentStep('intake')}
+                    className="px-6"
+                  >
+                    Skip Template
+                  </Button>
+                  <Button
+                    onClick={handleTemplateConfirm}
+                    disabled={!selectedTemplate}
+                    className="px-6"
+                  >
+                    Continue with Template
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Step 1: Smart Job Intake - Chat Interface */}
           {currentStep === 'intake' && (
             <div className="space-y-6">
@@ -2069,6 +2247,7 @@ Apply now 👉 [link]
          }}
          logoUrl={logoUrl}
          selectedFields={selectedFields}
+         selectedTemplate={selectedTemplate}
          onDownload={downloadJobDescription}
        />
      </div>

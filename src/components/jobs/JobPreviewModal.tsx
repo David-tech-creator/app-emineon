@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { X, Download, Eye, FileText, Image } from 'lucide-react';
+import { type JobTemplate } from '@/data/job-templates';
 
 interface JobPreviewModalProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ interface JobPreviewModalProps {
     duration: boolean;
     priority: boolean;
   };
+  selectedTemplate?: JobTemplate | null;
   onDownload: (format: 'pdf' | 'docx') => void;
 }
 
@@ -47,9 +49,14 @@ export function JobPreviewModal({
   jobData, 
   logoUrl, 
   selectedFields, 
+  selectedTemplate,
   onDownload 
 }: JobPreviewModalProps) {
   const [isDownloading, setIsDownloading] = useState(false);
+  
+  // Get template colors or use default blue
+  const primaryColor = selectedTemplate?.colorHex || '#3B82F6';
+  const fontFamily = selectedTemplate?.font || 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
 
   if (!isOpen) return null;
 
@@ -105,15 +112,21 @@ export function JobPreviewModal({
               <div 
                 className="w-full bg-white text-black"
                 style={{ 
-                  fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
+                  fontFamily: fontFamily,
                   lineHeight: '1.6'
                 }}
               >
                 {/* Header */}
-                <div className="flex items-start justify-between mb-8 pb-6 border-b-2 border-blue-600">
+                <div 
+                  className="flex items-start justify-between mb-8 pb-6 border-b-2"
+                  style={{ borderColor: primaryColor }}
+                >
                   <div className="flex-1">
                     {selectedFields.title && (
-                      <h1 className="text-3xl font-bold text-blue-600 mb-2">
+                      <h1 
+                        className="text-3xl font-bold mb-2"
+                        style={{ color: primaryColor }}
+                      >
                         {jobData.title || 'Job Title'}
                       </h1>
                     )}
@@ -192,7 +205,10 @@ export function JobPreviewModal({
                 {/* Job Description */}
                 {selectedFields.description && (
                   <div className="mb-8">
-                    <h3 className="text-xl font-semibold text-blue-600 mb-4 pb-2 border-b border-gray-300">
+                    <h3 
+                      className="text-xl font-semibold mb-4 pb-2 border-b border-gray-300"
+                      style={{ color: primaryColor }}
+                    >
                       Job Description
                     </h3>
                     <div className="text-gray-700 whitespace-pre-wrap leading-relaxed">
@@ -204,14 +220,18 @@ export function JobPreviewModal({
                 {/* Required Skills */}
                 {selectedFields.skills && jobData.skills && jobData.skills.length > 0 && (
                   <div className="mb-8">
-                    <h3 className="text-xl font-semibold text-blue-600 mb-4 pb-2 border-b border-gray-300">
+                    <h3 
+                      className="text-xl font-semibold mb-4 pb-2 border-b border-gray-300"
+                      style={{ color: primaryColor }}
+                    >
                       Required Skills
                     </h3>
                     <div className="flex flex-wrap gap-3">
                       {jobData.skills.map((skill, index) => (
                         <span 
                           key={index}
-                          className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm"
+                          className="text-white px-3 py-1 rounded-full text-sm"
+                          style={{ backgroundColor: primaryColor }}
                         >
                           {skill}
                         </span>
@@ -223,14 +243,18 @@ export function JobPreviewModal({
                 {/* Languages */}
                 {selectedFields.languages && jobData.languages && jobData.languages.length > 0 && (
                   <div className="mb-8">
-                    <h3 className="text-xl font-semibold text-blue-600 mb-4 pb-2 border-b border-gray-300">
+                    <h3 
+                      className="text-xl font-semibold mb-4 pb-2 border-b border-gray-300"
+                      style={{ color: primaryColor }}
+                    >
                       Languages
                     </h3>
                     <div className="flex flex-wrap gap-3">
                       {jobData.languages.map((language, index) => (
                         <span 
                           key={index}
-                          className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm"
+                          className="text-white px-3 py-1 rounded-full text-sm"
+                          style={{ backgroundColor: primaryColor }}
                         >
                           {language}
                         </span>
