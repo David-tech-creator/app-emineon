@@ -12,8 +12,9 @@ const fs = require('fs');
 const path = require('path');
 
 // Configuration
-const PRODUCTION_URL = 'https://app-emineon-ev5r7gkyt-david-bicrawais-projects.vercel.app';
+const PRODUCTION_URL = 'https://app-emineon.vercel.app';
 const LOCAL_URL = 'http://localhost:3000';
+const TEST_TIMEOUT = 30000; // 30 seconds
 
 // Test data
 const TEST_CANDIDATE = {
@@ -77,30 +78,57 @@ function log(message, color = 'reset') {
   console.log(`${colors[color]}${message}${colors.reset}`);
 }
 
-function makeRequest(url, options = {}) {
+function makeRequest(url, method = 'GET', data = null) {
   return new Promise((resolve, reject) => {
-    const isHttps = url.startsWith('https');
-    const client = isHttps ? https : require('http');
-    
-    const req = client.request(url, options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
+    const urlObj = new URL(url);
+    const options = {
+      hostname: urlObj.hostname,
+      port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+      path: urlObj.pathname + urlObj.search,
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Production-Test-Script/1.0'
+      },
+      timeout: TEST_TIMEOUT
+    };
+
+    if (data) {
+      const postData = JSON.stringify(data);
+      options.headers['Content-Length'] = Buffer.byteLength(postData);
+    }
+
+    const client = urlObj.protocol === 'https:' ? https : require('http');
+    const req = client.request(options, (res) => {
+      let body = '';
+      res.on('data', (chunk) => body += chunk);
       res.on('end', () => {
         try {
-          const jsonData = JSON.parse(data);
-          resolve({ status: res.statusCode, data: jsonData, headers: res.headers });
+          const jsonBody = body ? JSON.parse(body) : {};
+          resolve({
+            statusCode: res.statusCode,
+            headers: res.headers,
+            body: jsonBody
+          });
         } catch (e) {
-          resolve({ status: res.statusCode, data: data, headers: res.headers });
+          resolve({
+            statusCode: res.statusCode,
+            headers: res.headers,
+            body: body
+          });
         }
       });
     });
-    
+
     req.on('error', reject);
-    
-    if (options.body) {
-      req.write(options.body);
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Request timeout'));
+    });
+
+    if (data) {
+      req.write(JSON.stringify(data));
     }
-    
     req.end();
   });
 }
@@ -111,27 +139,27 @@ async function testEndpoint(name, url, options = {}) {
   
   try {
     const startTime = Date.now();
-    const response = await makeRequest(url, options);
+    const response = await makeRequest(url, options.method, options.body);
     const duration = Date.now() - startTime;
     
     log(`⏱️  Response time: ${duration}ms`, 'yellow');
-    log(`📊 Status: ${response.status}`, response.status === 200 ? 'green' : 'red');
+    log(`📊 Status: ${response.statusCode}`, response.statusCode === 200 ? 'green' : 'red');
     
-    if (response.status === 200) {
+    if (response.statusCode === 200) {
       log(`✅ ${name} - SUCCESS`, 'green');
-      if (response.data && typeof response.data === 'object') {
-        if (response.data.data && response.data.data.fileUrl) {
-          log(`🔗 File URL: ${response.data.data.fileUrl}`, 'blue');
+      if (response.body && typeof response.body === 'object') {
+        if (response.body.data && response.body.data.fileUrl) {
+          log(`🔗 File URL: ${response.body.data.fileUrl}`, 'blue');
         }
-        if (response.data.message) {
-          log(`💬 Message: ${response.data.message}`, 'cyan');
+        if (response.body.message) {
+          log(`💬 Message: ${response.body.message}`, 'cyan');
         }
       }
       return { success: true, response, duration };
     } else {
-      log(`❌ ${name} - FAILED (${response.status})`, 'red');
-      if (response.data) {
-        log(`📝 Response: ${JSON.stringify(response.data, null, 2)}`, 'yellow');
+      log(`❌ ${name} - FAILED (${response.statusCode})`, 'red');
+      if (response.body) {
+        log(`📝 Response: ${JSON.stringify(response.body, null, 2)}`, 'yellow');
       }
       return { success: false, response, duration };
     }
@@ -145,6 +173,7 @@ async function runProductionTests() {
   log('🚀 EMINEON ATS PRODUCTION DEPLOYMENT TEST SUITE', 'bright');
   log('=' .repeat(60), 'cyan');
   log(`🌐 Testing production URL: ${PRODUCTION_URL}`, 'blue');
+  log(`⏱️  Timeout: ${TEST_TIMEOUT}ms`, 'yellow');
   log(`📅 Test started: ${new Date().toISOString()}`, 'yellow');
   
   const results = {
@@ -218,7 +247,7 @@ async function runProductionTests() {
     }
   );
   
-  if (parseResult.success && parseResult.response.data && parseResult.response.data.candidateData) {
+  if (parseResult.success && parseResult.response.body && parseResult.response.body.candidateData) {
     // Then generate PDF from parsed data
     const generateResult = await testEndpoint(
       'E2E: Generate PDF from Parsed Data',
@@ -229,7 +258,7 @@ async function runProductionTests() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          candidateData: parseResult.response.data.candidateData,
+          candidateData: parseResult.response.body.candidateData,
           format: 'pdf'
         })
       }
@@ -289,12 +318,42 @@ async function runProductionTests() {
   return results;
 }
 
-// Run the tests
-if (require.main === module) {
-  runProductionTests().catch(error => {
-    log(`💥 Test suite failed: ${error.message}`, 'red');
-    process.exit(1);
-  });
+// Handle command line arguments
+if (process.argv.includes('--help') || process.argv.includes('-h')) {
+  console.log(`
+🚀 EMINEON ATS PRODUCTION DEPLOYMENT TEST SUITE
+
+Usage: node test-production-deployment.js [options]
+
+Options:
+  --help, -h     Show this help message
+  --url <url>    Override production URL (default: ${PRODUCTION_URL})
+  --timeout <ms> Override timeout (default: ${TEST_TIMEOUT}ms)
+
+Examples:
+  node test-production-deployment.js
+  node test-production-deployment.js --url https://your-app.vercel.app
+  node test-production-deployment.js --timeout 60000
+`);
+  process.exit(0);
 }
+
+// Override URL if provided
+const urlIndex = process.argv.indexOf('--url');
+if (urlIndex !== -1 && process.argv[urlIndex + 1]) {
+  PRODUCTION_URL = process.argv[urlIndex + 1];
+}
+
+// Override timeout if provided
+const timeoutIndex = process.argv.indexOf('--timeout');
+if (timeoutIndex !== -1 && process.argv[timeoutIndex + 1]) {
+  TEST_TIMEOUT = parseInt(process.argv[timeoutIndex + 1]) || TEST_TIMEOUT;
+}
+
+// Run the tests
+runProductionTests().catch(error => {
+  log(`💥 Test suite failed: ${error.message}`, 'red');
+  process.exit(1);
+});
 
 module.exports = { runProductionTests, testEndpoint }; 
