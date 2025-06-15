@@ -30,13 +30,13 @@ export function DashboardChatbox() {
         <div className="p-2 bg-blue-50 rounded-lg">
           <div className="relative w-5 h-5">
             <Image
-              src="/images/logos/Emineon logo_tree.png"
+              src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj.png"
               alt="Emineon"
               width={20}
               height={20}
               className="object-contain"
               onError={(e) => {
-                e.currentTarget.src = "/images/logos/Emineon logo_no background.png";
+                e.currentTarget.src = "https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj.png";
               }}
             />
           </div>

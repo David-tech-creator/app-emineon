@@ -1,67 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadToCloudinary } from '@/lib/cloudinary-config';
-
-// Serverless-compatible Puppeteer setup
-async function getPuppeteerConfig() {
-  // Check if we're in a serverless environment (Vercel)
-  const isServerless = process.env.VERCEL || process.env.NODE_ENV === 'production';
-  
-  if (isServerless) {
-    // Production/Serverless: Use serverless Chromium
-    console.log('🔧 Using serverless Chromium for production/Vercel environment');
-    const chromium = require('@sparticuz/chromium');
-    const puppeteer = require('puppeteer-core');
-    
-    // Optimize for serverless
-    chromium.setHeadlessMode = true;
-    chromium.setGraphicsMode = false;
-    
-    return {
-      puppeteer,
-      launchOptions: {
-        args: [
-          ...chromium.args,
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu',
-          '--single-process',
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-renderer-backgrounding'
-        ],
-        defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath(),
-        headless: chromium.headless,
-        ignoreHTTPSErrors: true,
-        timeout: 0,
-      }
-    };
-  } else {
-    // Development: Use regular Puppeteer
-    console.log('🔧 Using regular Puppeteer for development environment');
-    const puppeteer = require('puppeteer');
-    
-    return {
-      puppeteer,
-      launchOptions: {
-        headless: true,
-        args: [
-          '--no-sandbox', 
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu'
-        ]
-      }
-    };
-  }
-}
+import { generatePDF } from '@/lib/pdf-service';
 
 export async function POST(request: NextRequest) {
   console.log('🧪 Test generate endpoint called');
@@ -264,40 +203,11 @@ export async function POST(request: NextRequest) {
     console.log('📄 HTML content generated, length:', htmlContent.length);
 
     if (format === 'pdf') {
-      // Try to generate PDF using serverless-compatible Puppeteer
+      // Use the new PDF service
       try {
-        console.log('🔧 Configuring Puppeteer for environment:', process.env.NODE_ENV);
-        const { puppeteer, launchOptions } = await getPuppeteerConfig();
-        console.log('✅ Puppeteer configured successfully');
-        
-        console.log('🚀 Launching browser with serverless config...');
-        const browser = await puppeteer.launch(launchOptions);
-        console.log('✅ Browser launched successfully');
-
-        const page = await browser.newPage();
-        console.log('📃 Setting page content...');
-        
-        await page.setContent(htmlContent, { 
-          waitUntil: 'networkidle0',
-          timeout: 30000 
-        });
-        console.log('✅ Page content set');
-        
-        console.log('🖨️ Generating PDF...');
-        const pdfBuffer = await page.pdf({
-          format: 'A4',
-          printBackground: true,
-          margin: {
-            top: '20mm',
-            right: '15mm',
-            bottom: '20mm',
-            left: '15mm'
-          }
-        });
-        console.log('✅ PDF generated, size:', pdfBuffer.length, 'bytes');
-
-        await browser.close();
-        console.log('✅ Browser closed');
+        console.log('🚀 Generating PDF with new service...');
+        const pdfBuffer = await generatePDF(htmlContent);
+        console.log('✅ PDF generated successfully, size:', pdfBuffer.length, 'bytes');
 
         // Upload to Cloudinary with proper filename
         console.log('☁️ Uploading to Cloudinary...');
@@ -321,9 +231,9 @@ export async function POST(request: NextRequest) {
           message: 'PDF generated and uploaded successfully'
         });
 
-      } catch (puppeteerError: unknown) {
-        console.error('❌ Puppeteer error:', puppeteerError);
-        console.error('❌ Error stack:', puppeteerError instanceof Error ? puppeteerError.stack : 'No stack trace');
+      } catch (pdfError: unknown) {
+        console.error('❌ PDF generation error:', pdfError);
+        console.error('❌ Error stack:', pdfError instanceof Error ? pdfError.stack : 'No stack trace');
         
         // Fallback: return HTML content as file
         console.log('🔄 Falling back to HTML generation...');
@@ -347,8 +257,8 @@ export async function POST(request: NextRequest) {
               format: 'html'
             },
             message: 'HTML file generated as fallback (PDF generation failed)',
-            warning: `PDF generation failed: ${puppeteerError instanceof Error ? puppeteerError.message : String(puppeteerError)}`,
-            error: puppeteerError instanceof Error ? puppeteerError.message : String(puppeteerError)
+            warning: `PDF generation failed: ${pdfError instanceof Error ? pdfError.message : String(pdfError)}`,
+            error: pdfError instanceof Error ? pdfError.message : String(pdfError)
           });
         } catch (uploadError) {
           console.error('❌ HTML upload also failed:', uploadError);

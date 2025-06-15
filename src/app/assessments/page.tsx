@@ -1140,22 +1140,18 @@ export default function AssessmentsPage() {
                   <h4 className="text-sm font-medium text-gray-700 mb-3">Logo</h4>
                   <div className="border border-gray-300 rounded-lg p-4">
                     <div className="flex items-center space-x-4">
-                      <div className="w-16 h-16 bg-gray-900 rounded flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">Emineon</span>
+                      <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
+                        <img 
+                          src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj.png"
+                          alt="Emineon Logo"
+                          className="w-full h-full object-contain"
+                        />
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-600 mb-2">
-                          <strong>Maximum weight:</strong> 4 Mo<br />
-                          <strong>Recommended size:</strong> 500 x 500 px<br />
-                          <strong>Supported document type:</strong> JPG, PNG, GIF
-                        </p>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-2">4MB max • 500x500px • JPG, PNG, GIF</p>
                         <div className="flex space-x-2">
-                          <Button className="bg-blue-500 hover:bg-blue-600 text-white">
-                            Upload
-                          </Button>
-                          <Button variant="outline">
-                            Delete
-                          </Button>
+                          <Button variant="outline" size="sm">Upload</Button>
+                          <Button variant="outline" size="sm">Delete</Button>
                         </div>
                       </div>
                     </div>
@@ -1839,8 +1835,12 @@ export default function AssessmentsPage() {
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-3">Logo</label>
                               <div className="flex items-center space-x-4">
-                                <div className="w-16 h-16 bg-gray-900 rounded flex items-center justify-center text-sm font-bold">
-                                  Emineon
+                                <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
+                                  <img 
+                                    src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj.png"
+                                    alt="Emineon Logo"
+                                    className="w-full h-full object-contain"
+                                  />
                                 </div>
                                 <div>
                                   <p className="text-xs text-gray-500 mb-2">4MB max • 500x500px • JPG, PNG, GIF</p>

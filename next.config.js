@@ -5,6 +5,9 @@ const nextConfig = {
   swcMinify: true,
   compress: true,
   
+  // External packages for serverless
+  serverExternalPackages: ["puppeteer-core", "@sparticuz/chromium-min"],
+  
   // Image optimization
   images: {
     remotePatterns: [
@@ -28,7 +31,6 @@ const nextConfig = {
   // Experimental features
   experimental: {
     optimizeCss: false, // Disable this as it's causing issues
-    serverComponentsExternalPackages: ['puppeteer'],
   },
   
   // Performance optimizations  

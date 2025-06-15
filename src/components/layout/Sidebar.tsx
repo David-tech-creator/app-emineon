@@ -223,13 +223,13 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           <Link href="/" className="flex items-center group">
             <div className="relative w-8 h-8 mr-2 transition-transform group-hover:scale-105">
               <Image
-                src="/images/logos/Emineon logo_tree.png"
+                src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj.png"
                 alt="Emineon ATS"
                 width={32}
                 height={32}
                 className="object-contain"
                 onError={(e) => {
-                  e.currentTarget.src = "/images/logos/Emineon logo_no background.png";
+                  e.currentTarget.src = "https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj.png";
                 }}
               />
             </div>
@@ -262,21 +262,19 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           <Link href="/" className="group">
             <div className="relative w-8 h-8 transition-transform group-hover:scale-105">
               <Image
-                src="/images/logos/Emineon logo_tree.png"
+                src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj.png"
                 alt="Emineon ATS"
                 width={32}
                 height={32}
                 className="object-contain"
                 onError={(e) => {
-                  e.currentTarget.src = "/images/logos/Emineon logo_no background.png";
+                  e.currentTarget.src = "https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj.png";
                 }}
               />
             </div>
           </Link>
         </div>
       )}
-
-
 
       {/* Navigation - Scrollable */}
       <nav className="flex-1 px-2 pb-4 space-y-2 overflow-y-auto overflow-x-hidden">

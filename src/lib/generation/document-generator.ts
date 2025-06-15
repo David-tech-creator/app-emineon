@@ -1,5 +1,6 @@
 import { CandidateData } from '@/stores/competence-file-store';
 import { uploadToCloudinary } from '@/lib/cloudinary-config';
+import { generatePDF } from '@/lib/pdf-service';
 
 export interface GenerationOptions {
   format: 'pdf' | 'docx';
@@ -152,7 +153,7 @@ export class DocumentGenerationEngine {
   }
 
   /**
-   * Method 1: Puppeteer (Best for PDF)
+   * Method 1: Puppeteer (Best for PDF) - Updated to use new PDF service
    */
   private async generateWithPuppeteer(
     candidateData: CandidateData,
@@ -161,12 +162,6 @@ export class DocumentGenerationEngine {
     onProgress?: ProgressCallback
   ): Promise<GenerationResult> {
     try {
-      // Check if Puppeteer is available
-      const puppeteer = await this.loadPuppeteer();
-      if (!puppeteer) {
-        throw new Error('Puppeteer not available');
-      }
-
       onProgress?.({
         stage: 'html-generation',
         progress: 40,
@@ -179,30 +174,12 @@ export class DocumentGenerationEngine {
       onProgress?.({
         stage: 'pdf-conversion',
         progress: 70,
-        message: 'Converting to PDF...'
+        message: 'Converting to PDF using new service...'
       });
 
-      // Launch browser and generate PDF
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-      });
-
-      const page = await browser.newPage();
-      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-      
-      const pdfBuffer = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        margin: {
-          top: '20mm',
-          right: '15mm',
-          bottom: '20mm',
-          left: '15mm'
-        }
-      });
-
-      await browser.close();
+      // Use the new PDF service instead of launching browser manually
+      console.log('🚀 Using new PDF service for document generation...');
+      const pdfBuffer = await generatePDF(htmlContent);
 
       onProgress?.({
         stage: 'upload',
@@ -210,12 +187,12 @@ export class DocumentGenerationEngine {
         message: 'Uploading to cloud storage...'
       });
 
-             // Upload to Cloudinary
-       const uploadResult = await uploadToCloudinary(
-         Buffer.from(pdfBuffer),
-         fileName,
-         'competence-files'
-       );
+      // Upload to Cloudinary
+      const uploadResult = await uploadToCloudinary(
+        pdfBuffer,
+        fileName,
+        'competence-files'
+      );
 
       return {
         success: true,
@@ -227,6 +204,7 @@ export class DocumentGenerationEngine {
       };
 
     } catch (error) {
+      console.error('❌ PDF generation with new service failed:', error);
       return {
         success: false,
         generationMethod: 'puppeteer',
@@ -631,18 +609,7 @@ export class DocumentGenerationEngine {
     return `${baseName}_Competence_File_${timestamp}.${extension}`;
   }
 
-  /**
-   * Lazy load Puppeteer
-   */
-  private async loadPuppeteer() {
-    try {
-      const puppeteer = await import('puppeteer');
-      return puppeteer.default;
-    } catch (error) {
-      console.warn('Puppeteer not available:', error);
-      return null;
-    }
-  }
+
 
   /**
    * Convert DOCX buffer to PDF using available methods

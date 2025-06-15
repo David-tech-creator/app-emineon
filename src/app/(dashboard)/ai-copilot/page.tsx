@@ -376,7 +376,7 @@ export default function AICopilotPage() {
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-gradient-to-r from-primary-100 to-blue-100 rounded-xl">
               <Image 
-                src="/emineon-logo.png" 
+                src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj.png" 
                 alt="Emineon Logo" 
                 width={32} 
                 height={32} 
@@ -516,7 +516,7 @@ export default function AICopilotPage() {
                           <AlertCircle className="w-4 h-4 text-amber-600" />
                         ) : (
                           <Image 
-                            src="/emineon-logo.png" 
+                            src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj.png" 
                             alt="Emineon Logo" 
                             width={16} 
                             height={16} 
@@ -574,7 +574,7 @@ export default function AICopilotPage() {
                   <div className="flex gap-3 justify-start">
                     <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
                       <Image 
-                        src="/emineon-logo.png" 
+                        src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj.png" 
                         alt="Emineon Logo" 
                         width={16} 
                         height={16} 
