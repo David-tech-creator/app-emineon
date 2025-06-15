@@ -501,15 +501,15 @@ export default function Dashboard() {
               
               {/* Right Side - Logo */}
               <div className="hidden lg:block ml-6">
-                <div className="relative w-16 h-16 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <div className="relative w-20 h-20 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
                     <Image
-                      src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj.png"
+                      src="https://res.cloudinary.com/emineon/image/upload/v1749943343/emineon-ats/images/test-logo-1749943343720.png"
                       alt="Emineon Intelligence"
-                    width={40}
-                    height={40}
-                      className="object-contain opacity-90"
+                    width={48}
+                    height={48}
+                      className="object-contain opacity-95"
                       onError={(e) => {
-                        e.currentTarget.src = "https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj.png";
+                        e.currentTarget.src = "https://res.cloudinary.com/emineon/image/upload/v1749943343/emineon-ats/images/test-logo-1749943343720.png";
                       }}
                     />
                 </div>
