@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
@@ -7,6 +8,18 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication - REQUIRED for all users
+    const { userId } = auth();
+    
+    if (!userId) {
+      console.log('❌ Authentication required for test LinkedIn parsing');
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        message: 'Authentication required to access this endpoint'
+      }, { status: 401 });
+    }
+
+    console.log('✅ User authenticated for test LinkedIn parsing:', userId);
     console.log('🔗 Test LinkedIn parsing endpoint called');
 
     const body = await request.json();
@@ -137,6 +150,6 @@ export async function GET() {
   return NextResponse.json({
     message: 'Test LinkedIn parsing endpoint',
     methods: ['POST'],
-    description: 'Parse LinkedIn profile text to extract candidate information (no auth required)'
+    description: 'Parse LinkedIn profile text to extract candidate information (authentication required)'
   });
 } 

@@ -19,16 +19,18 @@ const SUPPORTED_FILE_TYPES = {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication (allow bypass for testing)
-    try {
-      const { userId } = auth();
-      if (!userId) {
-        console.log('⚠️ No authentication found, proceeding for testing purposes');
-      }
-    } catch (authError) {
-      console.log('⚠️ Authentication check failed, proceeding for testing purposes:', authError);
+    // Check authentication - REQUIRED for all users
+    const { userId } = auth();
+    
+    if (!userId) {
+      console.log('❌ Authentication required for resume parsing');
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        message: 'Authentication required to access this endpoint'
+      }, { status: 401 });
     }
 
+    console.log('✅ User authenticated for resume parsing:', userId);
     console.log('📄 Resume parsing endpoint called');
 
     // Get the uploaded file from FormData

@@ -4,28 +4,19 @@ import { uploadImageToCloudinary } from '@/lib/cloudinary-config';
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication with better error handling
-    let userId: string | null = null;
-    try {
-      const authResult = auth();
-      userId = authResult.userId;
-    } catch (authError) {
-      console.error('❌ Authentication error:', authError);
-      // In development or testing, allow bypass
-      if (process.env.NODE_ENV === 'development' || process.env.BYPASS_AUTH === 'true') {
-        console.log('⚠️ Bypassing authentication for development/testing');
-        userId = 'dev-user';
-      }
-    }
+    // Check authentication - REQUIRED for all users
+    const { userId } = auth();
 
     if (!userId) {
+      console.log('❌ Authentication required for logo upload');
       return NextResponse.json({ 
         error: 'Unauthorized',
         message: 'Authentication required to upload logo'
       }, { status: 401 });
     }
 
-    console.log('📤 Logo upload endpoint called for user:', userId);
+    console.log('✅ User authenticated for logo upload:', userId);
+    console.log('📤 Logo upload endpoint called');
 
     // Get the uploaded file from FormData
     const formData = await request.formData();

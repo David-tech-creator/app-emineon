@@ -8,33 +8,18 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication (allow bypass for testing and production)
-    let isAuthenticated = false;
-    try {
-      const { userId } = auth();
-      if (userId) {
-        console.log('✅ User authenticated:', userId);
-        isAuthenticated = true;
-      } else {
-        console.log('⚠️ No authentication found, proceeding for testing purposes');
-      }
-    } catch (authError) {
-      console.log('⚠️ Authentication check failed, proceeding for testing purposes:', authError);
-    }
-
-    // Allow bypass in development or when BYPASS_AUTH is set
-    const allowBypass = process.env.NODE_ENV === 'development' || 
-                       process.env.BYPASS_AUTH === 'true' || 
-                       process.env.VERCEL_ENV === 'preview';
+    // Check authentication - REQUIRED for all users
+    const { userId } = auth();
     
-    if (!isAuthenticated && !allowBypass) {
-      console.log('❌ Authentication required and no bypass allowed');
+    if (!userId) {
+      console.log('❌ Authentication required for LinkedIn parsing');
       return NextResponse.json({ 
         error: 'Unauthorized',
         message: 'Authentication required to access this endpoint'
       }, { status: 401 });
     }
 
+    console.log('✅ User authenticated for LinkedIn parsing:', userId);
     console.log('🔗 LinkedIn parsing endpoint called');
 
     const body = await request.json();

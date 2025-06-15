@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs';
 import { uploadToCloudinary } from '@/lib/cloudinary-config';
 import { generatePDF } from '@/lib/pdf-service';
 
 export async function POST(request: NextRequest) {
-  console.log('🧪 Test generate endpoint called');
-  
   try {
+    // Check authentication - REQUIRED for all users
+    const { userId } = auth();
+    
+    if (!userId) {
+      console.log('❌ Authentication required for test generate');
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        message: 'Authentication required to access this endpoint'
+      }, { status: 401 });
+    }
+
+    console.log('✅ User authenticated for test generate:', userId);
+    console.log('🧪 Test generate endpoint called');
+  
     let body;
     try {
       body = await request.json();

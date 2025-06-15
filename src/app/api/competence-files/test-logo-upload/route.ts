@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs';
 import { uploadImageToCloudinary } from '@/lib/cloudinary-config';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication - REQUIRED for all users
+    const { userId } = auth();
+    
+    if (!userId) {
+      console.log('❌ Authentication required for test logo upload');
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        message: 'Authentication required to access this endpoint'
+      }, { status: 401 });
+    }
+
+    console.log('✅ User authenticated for test logo upload:', userId);
     console.log('🧪 Test logo upload endpoint called');
 
     // Get the uploaded file from FormData
@@ -93,7 +106,7 @@ export async function GET() {
     message: 'Test logo upload endpoint',
     supportedFormats: ['PNG', 'JPG', 'SVG', 'WebP'],
     maxFileSize: '2MB',
-    authentication: 'not required',
+    authentication: 'required',
     endpoint: '/api/competence-files/test-logo-upload',
     status: 'active'
   });
