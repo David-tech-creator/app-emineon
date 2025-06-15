@@ -503,14 +503,14 @@ export default function Dashboard() {
               <div className="hidden lg:block ml-6">
                 <div className="relative w-20 h-20 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
                     <Image
-                      src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj.png"
+                      src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_white_agxlqt.png"
                       alt="Emineon Intelligence"
                     width={48}
                     height={48}
                       className="object-contain opacity-95"
                       onError={(e) => {
                         console.error('Logo failed to load:', e);
-                        e.currentTarget.src = "https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj.png";
+                        e.currentTarget.src = "https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_white_agxlqt.png";
                       }}
                     />
                 </div>
