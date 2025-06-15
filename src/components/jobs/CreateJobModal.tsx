@@ -78,7 +78,11 @@ import {
   Facebook,
   Instagram,
   Search,
-  MapPin as LocationPin
+  MapPin as LocationPin,
+  Download,
+  FileDown,
+  Image as ImageIcon,
+  Trash2
 } from 'lucide-react';
 
 // Enhanced form schema following E2E flow
@@ -156,6 +160,12 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [chatInput, setChatInput] = useState('');
+  
+  // New state for logo upload and preview
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string>('');
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [showJobPreview, setShowJobPreview] = useState(false);
 
   const {
     register,
@@ -323,8 +333,6 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
           console.log('Setting startDate:', aiParsedData.startDate);
           setValue('startDate', aiParsedData.startDate, { shouldValidate: true, shouldDirty: true });
         }
-        
-        console.log('✅ All form values set!');
       }, 100);
       
     } catch (error) {
@@ -460,6 +468,92 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
     if (/sales/i.test(text)) return 'Sales';
     if (/design|ux|ui/i.test(text)) return 'Design';
     return 'Technology';
+  };
+
+  // Logo upload functionality
+  const handleLogoUpload = async (file: File) => {
+    if (!file) return;
+    
+    setIsUploadingLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/competence-files/upload-logo', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload logo');
+      }
+      
+      const result = await response.json();
+      if (result.success) {
+        setLogoUrl(result.data.url);
+        setLogoFile(file);
+      } else {
+        throw new Error(result.error || 'Upload failed');
+      }
+    } catch (error) {
+      console.error('Logo upload error:', error);
+      alert('Failed to upload logo. Please try again.');
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  const handleLogoRemove = () => {
+    setLogoFile(null);
+    setLogoUrl('');
+  };
+
+  // Download job description functionality
+  const downloadJobDescription = async (format: 'pdf' | 'docx') => {
+    try {
+      const jobData = {
+        title: watch('title'),
+        company: watch('company'),
+        location: watch('location'),
+        contractType: watch('contractType'),
+        workMode: watch('workMode'),
+        description: watch('description'),
+        skills: watch('skills'),
+        salary: watch('salary'),
+        department: watch('department'),
+        logoUrl: logoUrl
+      };
+
+      const response = await fetch('/api/jobs/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jobData,
+          format,
+          logoUrl
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate document');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `${watch('title') || 'job-description'}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Failed to download document. Please try again.');
+    }
   };
 
   // Helper function to format date for input field
@@ -1091,51 +1185,164 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
                 </div>
               </div>
 
-              {/* Extraction Summary */}
-              {parsedData && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                  <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center space-x-2">
-                    <Sparkles className="h-4 w-4" />
-                    <span>AI Extracted Information</span>
-                  </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                    <div className="flex items-center space-x-1">
-                      <div className={`w-2 h-2 rounded-full ${parsedData.title ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <span className={parsedData.title ? 'text-green-700' : 'text-gray-500'}>Job Title</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <div className={`w-2 h-2 rounded-full ${parsedData.company ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <span className={parsedData.company ? 'text-green-700' : 'text-gray-500'}>Company</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <div className={`w-2 h-2 rounded-full ${parsedData.location ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <span className={parsedData.location ? 'text-green-700' : 'text-gray-500'}>Location</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <div className={`w-2 h-2 rounded-full ${parsedData.skills && parsedData.skills.length > 0 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <span className={parsedData.skills && parsedData.skills.length > 0 ? 'text-green-700' : 'text-gray-500'}>
-                        Skills ({parsedData.skills?.length || 0})
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <div className={`w-2 h-2 rounded-full ${parsedData.salary ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <span className={parsedData.salary ? 'text-green-700' : 'text-gray-500'}>Salary</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <div className={`w-2 h-2 rounded-full ${parsedData.department ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <span className={parsedData.department ? 'text-green-700' : 'text-gray-500'}>Department</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <div className={`w-2 h-2 rounded-full ${parsedData.contractType ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <span className={parsedData.contractType ? 'text-green-700' : 'text-gray-500'}>Contract Type</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <div className={`w-2 h-2 rounded-full ${parsedData.workMode ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                      <span className={parsedData.workMode ? 'text-green-700' : 'text-gray-500'}>Work Mode</span>
+              {/* Job Description Preview */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                      <Eye className="h-5 w-5 text-primary-600" />
+                      <span>Job Description Preview</span>
+                    </h4>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowJobPreview(!showJobPreview)}
+                      >
+                        {showJobPreview ? 'Hide Preview' : 'Show Preview'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => downloadJobDescription('pdf')}
+                      >
+                        <FileDown className="h-4 w-4 mr-1" />
+                        PDF
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => downloadJobDescription('docx')}
+                      >
+                        <FileDown className="h-4 w-4 mr-1" />
+                        Word
+                      </Button>
                     </div>
                   </div>
-                </div>
-              )}
+
+                  {/* Logo Upload Section */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Company Logo (Optional)</label>
+                    <div className="flex items-center space-x-4">
+                      {logoUrl ? (
+                        <div className="relative">
+                          <img 
+                            src={logoUrl} 
+                            alt="Company logo" 
+                            className="h-16 w-16 object-contain border border-gray-200 rounded-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleLogoRemove}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="h-16 w-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+                          <ImageIcon className="h-6 w-6 text-gray-400" />
+                        </div>
+                      )}
+                      
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleLogoUpload(file);
+                          }}
+                          className="hidden"
+                          id="logo-upload"
+                        />
+                        <label
+                          htmlFor="logo-upload"
+                          className="cursor-pointer inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                        >
+                          {isUploadingLogo ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-4 w-4 mr-2" />
+                              Upload Logo
+                            </>
+                          )}
+                        </label>
+                        <p className="text-xs text-gray-500 mt-1">PNG, JPG, SVG up to 2MB</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Job Preview */}
+                  {showJobPreview && (
+                    <div className="border border-gray-200 rounded-lg p-6 bg-white">
+                      <div className="flex items-start justify-between mb-6">
+                        <div>
+                          <h1 className="text-2xl font-bold text-gray-900">{watch('title') || 'Job Title'}</h1>
+                          <p className="text-lg text-gray-600">{watch('company') || 'Company Name'}</p>
+                          <p className="text-gray-500 flex items-center mt-2">
+                            <MapPin className="h-4 w-4 mr-1" />
+                            {watch('location') || 'Location'}
+                          </p>
+                        </div>
+                        {logoUrl && (
+                          <img 
+                            src={logoUrl} 
+                            alt="Company logo" 
+                            className="h-16 w-auto object-contain"
+                          />
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-sm text-gray-500">Contract Type</p>
+                          <p className="font-medium capitalize">{watch('contractType') || 'Permanent'}</p>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-sm text-gray-500">Work Mode</p>
+                          <p className="font-medium capitalize">{watch('workMode') || 'Hybrid'}</p>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-sm text-gray-500">Department</p>
+                          <p className="font-medium">{watch('department') || 'Technology'}</p>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-sm text-gray-500">Salary</p>
+                          <p className="font-medium">{watch('salary') || 'Competitive'}</p>
+                        </div>
+                      </div>
+
+                      <div className="mb-6">
+                        <h3 className="text-lg font-semibold mb-3">Job Description</h3>
+                        <div className="prose max-w-none">
+                          <p className="text-gray-700 whitespace-pre-wrap">{watch('description') || 'Job description will appear here...'}</p>
+                        </div>
+                      </div>
+
+                      {watch('skills') && watch('skills').length > 0 && (
+                        <div className="mb-6">
+                          <h3 className="text-lg font-semibold mb-3">Required Skills</h3>
+                          <div className="flex flex-wrap gap-2">
+                            {watch('skills').map((skill, index) => (
+                              <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Basic Information */}
