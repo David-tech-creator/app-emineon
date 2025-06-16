@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 // Swiss-themed mock candidates data
 const swissCandidates = [
@@ -276,5 +280,150 @@ export async function GET(request: NextRequest) {
       { error: 'Failed to fetch candidates' },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // Check authentication
+    const { userId } = auth();
+    
+    if (!userId) {
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        message: 'Authentication required to create candidates'
+      }, { status: 401 });
+    }
+
+    console.log('✅ User authenticated for candidate creation:', userId);
+
+    const body = await request.json();
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      currentTitle,
+      currentLocation,
+      summary,
+      experienceYears,
+      technicalSkills,
+      softSkills,
+      spokenLanguages,
+      linkedinUrl,
+      githubUrl,
+      portfolioUrl,
+      seniorityLevel,
+      primaryIndustry,
+      availability,
+      expectedSalary,
+      remotePreference,
+      professionalHeadline,
+      nationality,
+      timezone,
+      workPermitType,
+      availableFrom,
+      graduationYear,
+      educationLevel,
+      functionalDomain,
+      preferredContractType,
+      relocationWillingness,
+      freelancer,
+      programmingLanguages,
+      frameworks,
+      toolsAndPlatforms,
+      methodologies,
+      certifications,
+      degrees,
+      universities,
+      notableProjects,
+      workExperience,
+      education,
+      tags,
+      notes,
+      source
+    } = body;
+
+    // Validate required fields
+    if (!firstName || !lastName || !email) {
+      return NextResponse.json({
+        error: 'Missing required fields',
+        message: 'First name, last name, and email are required'
+      }, { status: 400 });
+    }
+
+    console.log(`📝 Creating candidate: ${firstName} ${lastName} (${email})`);
+
+    // Create candidate in database
+    const candidate = await prisma.candidate.create({
+      data: {
+        firstName,
+        lastName,
+        email,
+        phone: phone || null,
+        currentTitle: currentTitle || null,
+        currentLocation: currentLocation || null,
+        summary: summary || null,
+        experienceYears: experienceYears || null,
+        technicalSkills: technicalSkills || [],
+        softSkills: softSkills || [],
+        spokenLanguages: spokenLanguages || [],
+        linkedinUrl: linkedinUrl || null,
+        githubUrl: githubUrl || null,
+        portfolioUrl: portfolioUrl || null,
+        seniorityLevel: seniorityLevel as any || null,
+        primaryIndustry: primaryIndustry || null,
+        expectedSalary: expectedSalary || null,
+        remotePreference: remotePreference as any || null,
+        professionalHeadline: professionalHeadline || null,
+        nationality: nationality || null,
+        timezone: timezone || null,
+        workPermitType: workPermitType || null,
+        availableFrom: availableFrom ? new Date(availableFrom) : null,
+        graduationYear: graduationYear || null,
+        educationLevel: educationLevel as any || null,
+        functionalDomain: functionalDomain || null,
+        preferredContractType: preferredContractType as any || null,
+        relocationWillingness: relocationWillingness || false,
+        freelancer: freelancer || false,
+        programmingLanguages: programmingLanguages || [],
+        frameworks: frameworks || [],
+        toolsAndPlatforms: toolsAndPlatforms || [],
+        methodologies: methodologies || [],
+        certifications: certifications || [],
+        degrees: degrees || [],
+        universities: universities || [],
+        notableProjects: notableProjects || [],
+        tags: tags || [],
+        recruiterNotes: notes ? [notes] : [],
+        source: source || 'manual',
+        lastUpdated: new Date(),
+        status: 'NEW'
+      }
+    });
+
+    console.log('✅ Candidate created successfully:', candidate.id);
+
+    return NextResponse.json({
+      success: true,
+      data: candidate,
+      message: 'Candidate created successfully'
+    });
+
+  } catch (error: any) {
+    console.error('💥 Error creating candidate:', error);
+    
+    if (error.code === 'P2002' && error.meta?.target?.includes('email')) {
+      return NextResponse.json({
+        error: 'Email already exists',
+        message: 'A candidate with this email address already exists'
+      }, { status: 409 });
+    }
+    
+    return NextResponse.json({
+      error: 'Internal server error',
+      message: 'Failed to create candidate. Please try again.',
+      details: error.message
+    }, { status: 500 });
   }
 } 

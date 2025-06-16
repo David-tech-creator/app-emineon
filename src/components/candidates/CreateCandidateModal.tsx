@@ -201,91 +201,207 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
     setIsParsing(true);
     setCurrentStep('parsing');
 
-    // Simulate AI parsing
-    setTimeout(() => {
-      const mockParsedData: ParsedCandidate = {
-        firstName: 'David',
-        lastName: 'Vinkenroye',
-        email: 'david.vinkenroye@example.com',
-        phone: '+41 79 123 4567',
-        currentTitle: 'Senior IT Consultant',
-        currentLocation: 'Zurich, Switzerland',
-        summary: 'Experienced IT consultant with 8+ years in enterprise software development and digital transformation projects.',
-        experienceYears: 8,
-        technicalSkills: ['Java', 'Spring Boot', 'React', 'TypeScript', 'AWS', 'Docker', 'Kubernetes'],
-        softSkills: ['Leadership', 'Communication', 'Problem Solving', 'Team Management'],
-        spokenLanguages: ['English', 'German', 'French'],
-        linkedinUrl: 'https://linkedin.com/in/davidvinkenroye',
-        seniorityLevel: 'Senior',
-        primaryIndustry: 'Technology',
-        availability: 'Available July 2025',
-        expectedSalary: 'CHF 120,000 - 140,000',
-        remotePreference: 'Hybrid',
-        // Additional fields
-        professionalHeadline: 'Senior IT Consultant specializing in Digital Transformation',
-        nationality: 'Swiss',
-        timezone: 'Europe/Zurich',
-        workPermitType: 'EU Citizen',
-        availableFrom: '2025-07-01',
-        graduationYear: 2018,
-        educationLevel: 'MASTERS',
-        functionalDomain: 'Information Technology',
-        preferredContractType: 'FULL_TIME',
-        relocationWillingness: true,
-        freelancer: false,
-        programmingLanguages: ['Java', 'TypeScript', 'Python', 'JavaScript'],
-        frameworks: ['Spring Boot', 'React', 'Angular', 'Express.js'],
-        toolsAndPlatforms: ['AWS', 'Docker', 'Kubernetes', 'Jenkins', 'Git'],
-        methodologies: ['Agile', 'Scrum', 'DevOps', 'CI/CD'],
-        certifications: ['AWS Certified Solutions Architect', 'Scrum Master Certification'],
-        degrees: ['Master of Computer Science', 'Bachelor of Computer Science'],
-        universities: ['ETH Zurich', 'University of Zurich'],
-        notableProjects: ['Digital Banking Platform Migration', 'Enterprise ERP Implementation'],
-        workExperience: [
-          {
-            title: 'Senior IT Consultant',
-            company: 'Accenture',
-            duration: '2020 - Present',
-            description: 'Leading digital transformation projects for Fortune 500 clients'
+    try {
+      let parsedData: any = null;
+      
+      if (inputMethod === 'upload' && uploadedFile) {
+        // Parse uploaded file
+        const formData = new FormData();
+        formData.append('file', uploadedFile);
+        
+        const response = await fetch('/api/competence-files/parse-resume', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to parse uploaded file');
+        }
+        
+        const result = await response.json();
+        if (result.success) {
+          parsedData = result.data;
+        } else {
+          throw new Error(result.message || 'Failed to parse file');
+        }
+      } else if (inputMethod === 'linkedin' && linkedinUrl) {
+        // Parse LinkedIn profile text
+        const response = await fetch('/api/competence-files/parse-linkedin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
           },
-          {
-            title: 'Software Developer',
-            company: 'Credit Suisse',
-            duration: '2018 - 2020',
-            description: 'Developed trading platform components using Java and React'
-          }
-        ],
-        education: [
-          {
-            degree: 'Master of Computer Science',
-            university: 'ETH Zurich',
-            year: '2018'
-          }
-        ]
-      };
+          body: JSON.stringify({ text: linkedinUrl }),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to parse LinkedIn profile text');
+        }
+        
+        const result = await response.json();
+        if (result.success) {
+          parsedData = result.data;
+        } else {
+          throw new Error(result.message || 'Failed to parse LinkedIn profile');
+        }
+      } else if (inputMethod === 'manual' && manualInput) {
+        // Parse manual text input
+        const response = await fetch('/api/competence-files/parse-resume', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text: manualInput }),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to parse text input');
+        }
+        
+        const result = await response.json();
+        if (result.success) {
+          parsedData = result.data;
+        } else {
+          throw new Error(result.message || 'Failed to parse text');
+        }
+      } else {
+        throw new Error('Please provide input data to parse');
+      }
 
-      setParsedCandidate(mockParsedData);
+      if (parsedData) {
+        // Map the parsed data to our candidate structure
+        const mappedCandidate: ParsedCandidate = {
+          // Split fullName into first and last name
+          firstName: parsedData.fullName?.split(' ')[0] || '',
+          lastName: parsedData.fullName?.split(' ').slice(1).join(' ') || '',
+          email: parsedData.email || '',
+          phone: parsedData.phone || '',
+          currentTitle: parsedData.currentTitle || '',
+          currentLocation: parsedData.location || '',
+          summary: parsedData.summary || '',
+          experienceYears: parsedData.yearsOfExperience || 0,
+          technicalSkills: parsedData.skills || [],
+          softSkills: [], // Will be filled from skills analysis
+          spokenLanguages: parsedData.languages || [],
+          linkedinUrl: linkedinUrl || '',
+          seniorityLevel: parsedData.yearsOfExperience > 5 ? 'Senior' : parsedData.yearsOfExperience > 2 ? 'Mid' : 'Junior',
+          primaryIndustry: 'Technology', // Default - could be enhanced with AI classification
+          availability: 'Available',
+          expectedSalary: '',
+          remotePreference: 'Hybrid',
+          // Additional fields matching Prisma schema
+          professionalHeadline: parsedData.currentTitle || '',
+          nationality: '',
+          timezone: '',
+          workPermitType: '',
+          availableFrom: '',
+          graduationYear: new Date().getFullYear(),
+          educationLevel: 'BACHELORS',
+          functionalDomain: '',
+          preferredContractType: 'FULL_TIME',
+          relocationWillingness: false,
+          freelancer: false,
+          programmingLanguages: parsedData.skills?.filter((skill: string) => 
+            ['javascript', 'typescript', 'python', 'java', 'c#', 'php', 'ruby', 'go', 'rust', 'swift', 'kotlin'].includes(skill.toLowerCase())
+          ) || [],
+          frameworks: parsedData.skills?.filter((skill: string) => 
+            ['react', 'angular', 'vue', 'spring', 'django', 'express', 'laravel', 'rails'].includes(skill.toLowerCase())
+          ) || [],
+          toolsAndPlatforms: parsedData.skills?.filter((skill: string) => 
+            ['aws', 'azure', 'gcp', 'docker', 'kubernetes', 'jenkins', 'git'].includes(skill.toLowerCase())
+          ) || [],
+          methodologies: parsedData.skills?.filter((skill: string) => 
+            ['agile', 'scrum', 'devops', 'tdd', 'ci/cd'].includes(skill.toLowerCase())
+          ) || [],
+          certifications: parsedData.certifications || [],
+          degrees: parsedData.education || [],
+          universities: parsedData.education?.map((edu: string) => {
+            // Extract university name from education string
+            const parts = edu.split(' - ');
+            return parts.length > 1 ? parts[1] : edu;
+          }) || [],
+          notableProjects: [],
+          workExperience: parsedData.experience?.map((exp: any) => ({
+            title: exp.title || '',
+            company: exp.company || '',
+            duration: `${exp.startDate} - ${exp.endDate}`,
+            description: exp.responsibilities || ''
+          })) || [],
+          education: parsedData.education?.map((edu: string) => {
+            const parts = edu.split(' - ');
+            return {
+              degree: parts[0] || edu,
+              university: parts[1] || '',
+              year: new Date().getFullYear().toString()
+            };
+          }) || []
+        };
+
+        setParsedCandidate(mappedCandidate);
+        setCurrentStep('review');
+      }
+    } catch (error) {
+      console.error('Parsing error:', error);
+      alert(`Error parsing candidate data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setCurrentStep('intake');
+    } finally {
       setIsParsing(false);
-      setCurrentStep('review');
-    }, 3000);
+    }
   };
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setCreatedCandidate({
-        id: 'cand_' + Date.now(),
+    try {
+      if (!parsedCandidate) {
+        throw new Error('No candidate data to submit');
+      }
+
+      // Prepare candidate data for API
+      const candidateData = {
         ...parsedCandidate,
-        assignedJobs: selectedJobs,
-        talentPools: selectedTalentPools,
         tags: candidateTags,
-        notes
+        notes,
+        source: inputMethod === 'upload' ? 'resume_upload' : 
+                inputMethod === 'linkedin' ? 'linkedin_import' : 'manual_entry'
+      };
+
+      console.log('Submitting candidate data:', candidateData);
+
+      const response = await fetch('/api/candidates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(candidateData),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create candidate');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setCreatedCandidate({
+          id: result.data.id,
+          ...parsedCandidate,
+          assignedJobs: selectedJobs,
+          talentPools: selectedTalentPools,
+          tags: candidateTags,
+          notes
+        });
+        setCurrentStep('assign');
+      } else {
+        throw new Error(result.message || 'Failed to create candidate');
+      }
+    } catch (error) {
+      console.error('Error creating candidate:', error);
+      alert(`Error creating candidate: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
       setIsSubmitting(false);
-      setCurrentStep('assign');
-    }, 2000);
+    }
   };
 
   const mockJobs = [
@@ -311,7 +427,7 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
           <div className="flex items-center space-x-3">
@@ -366,7 +482,7 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+        <div className="p-6 overflow-y-auto max-h-[calc(95vh-220px)]">
           {/* Step 1: Smart Intake */}
           {currentStep === 'intake' && (
             <div className="space-y-6">
@@ -414,7 +530,7 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
                   />
                 </div>
 
-                {/* LinkedIn URL */}
+                {/* LinkedIn Profile Text */}
                 <div
                   className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
                     inputMethod === 'linkedin' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
@@ -424,15 +540,14 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
                   <Linkedin className="h-8 w-8 text-blue-600 mx-auto mb-3" />
                   <h4 className="font-medium text-gray-900 mb-2">LinkedIn Profile</h4>
                   <p className="text-sm text-gray-600 mb-3">
-                    Paste LinkedIn URL
+                    Paste LinkedIn profile text
                   </p>
                   {inputMethod === 'linkedin' && (
-                    <input
-                      type="url"
-                      placeholder="https://linkedin.com/in/..."
+                    <textarea
+                      placeholder="Copy and paste the LinkedIn profile text here..."
                       value={linkedinUrl}
                       onChange={(e) => setLinkedinUrl(e.target.value)}
-                      className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg text-sm h-24 resize-none"
                       autoFocus
                     />
                   )}
@@ -540,7 +655,7 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
                 </Button>
                 <button
                   onClick={handleParse}
-                  disabled={!inputMethod || (inputMethod === 'linkedin' && !linkedinUrl) || (inputMethod === 'manual' && !manualInput)}
+                  disabled={!inputMethod || (inputMethod === 'linkedin' && !linkedinUrl.trim()) || (inputMethod === 'manual' && !manualInput.trim()) || (inputMethod === 'upload' && !uploadedFile)}
                   className="btn-primary flex items-center space-x-2 disabled:opacity-50"
                 >
                   <Brain className="h-4 w-4" />
