@@ -12,7 +12,6 @@ export async function POST(request: NextRequest) {
     const { userId } = auth();
     
     if (!userId) {
-      console.log('❌ Authentication required for LinkedIn parsing');
       return NextResponse.json({ 
         error: 'Unauthorized',
         message: 'Authentication required to access this endpoint'
@@ -23,23 +22,26 @@ export async function POST(request: NextRequest) {
     console.log('🔗 LinkedIn parsing endpoint called');
 
     const body = await request.json();
-    const { linkedinText } = body;
+    const { linkedinText, text } = body;
+    
+    // Accept both 'text' and 'linkedinText' for compatibility
+    const profileText = linkedinText || text;
 
-    if (!linkedinText || typeof linkedinText !== 'string') {
+    if (!profileText || typeof profileText !== 'string') {
       return NextResponse.json({ 
         error: 'No LinkedIn text provided',
         message: 'Please provide LinkedIn profile text to parse'
       }, { status: 400 });
     }
 
-    if (linkedinText.trim().length < 50) {
+    if (profileText.trim().length < 50) {
       return NextResponse.json({
         error: 'LinkedIn text too short',
         message: 'Please provide more detailed LinkedIn profile information'
       }, { status: 400 });
     }
 
-    console.log(`📝 Processing LinkedIn text (${linkedinText.length} characters)`);
+    console.log(`📝 Processing LinkedIn text (${profileText.length} characters)`);
 
     try {
       // Use OpenAI Responses API for better reliability
@@ -83,7 +85,7 @@ Extract all available information from the LinkedIn profile text. If some fields
 Return ONLY the JSON object, no additional text or formatting.
 
 LinkedIn Profile Text:
-${linkedinText}`
+${profileText}`
               }
             ]
           }
@@ -125,7 +127,7 @@ ${linkedinText}`
       // Add metadata
       candidateData.id = `linkedin_${Date.now()}`;
       candidateData.source = 'linkedin_import';
-      candidateData.originalText = linkedinText.substring(0, 500) + '...'; // Store first 500 chars for reference
+      candidateData.originalText = profileText.substring(0, 500) + '...'; // Store first 500 chars for reference
 
       console.log('✅ LinkedIn profile parsed successfully:', candidateData.fullName);
 
@@ -178,7 +180,7 @@ Return ONLY the JSON object, no additional text or formatting.`
             },
             {
               role: 'user',
-              content: `Please parse this LinkedIn profile text and extract the structured information as JSON:\n\n${linkedinText}`
+              content: `Please parse this LinkedIn profile text and extract the structured information as JSON:\n\n${profileText}`
             }
           ],
           temperature: 0.1,
@@ -212,7 +214,7 @@ Return ONLY the JSON object, no additional text or formatting.`
         // Add metadata
         candidateData.id = `linkedin_${Date.now()}`;
         candidateData.source = 'linkedin_import';
-        candidateData.originalText = linkedinText.substring(0, 500) + '...';
+        candidateData.originalText = profileText.substring(0, 500) + '...';
 
         console.log('✅ LinkedIn profile parsed successfully (fallback):', candidateData.fullName);
 

@@ -1,65 +1,10 @@
 'use client';
 
-import { useCallback, useState, useEffect, useRef } from 'react';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Card, CardContent } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { 
-  X, 
-  Search, 
-  Upload, 
-  Link2, 
-  User, 
-  FileText, 
-  Brain, 
-  Eye, 
-  Download, 
-  Share2,
-  ChevronRight,
-  ChevronLeft,
-  ChevronUp,
-  ChevronDown,
-  Check,
-  Paperclip,
-  Building2,
-  Briefcase,
-  GraduationCap,
-  Award,
-  Edit3,
-  Loader2,
-  Users,
-  Palette,
-  Settings,
-  Image,
-  CheckCircle,
-  FileDown,
-  GripVertical,
-  Plus,
-  Trash2,
-  ArrowUp,
-  ArrowDown,
-  ZoomIn,
-  ZoomOut,
-  RotateCcw,
-  Save,
-  Bold,
-  Italic,
-  Underline,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  List,
-  ListOrdered,
-  Quote,
-  Code,
-  Link,
-  Type,
-  Sparkles,
-  Move,
-  Maximize2,
-  Minimize2
-} from 'lucide-react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { useAuth } from '@clerk/nextjs';
+
+// DND Kit imports
 import {
   DndContext,
   closestCenter,
@@ -75,225 +20,87 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useDropzone } from 'react-dropzone';
-import { useCompetenceFileStore, type CandidateData } from '@/stores/competence-file-store';
-import { predefinedTemplates, fontOptions, colorPresets } from '@/data/templates';
 
 // Lexical imports
-import { 
-  $getRoot, 
-  $getSelection, 
-  EditorState, 
-  LexicalEditor, 
-  FORMAT_TEXT_COMMAND, 
-  SELECTION_CHANGE_COMMAND, 
-  $isRangeSelection,
-  $createParagraphNode,
-  $createTextNode,
-  DecoratorNode,
-  NodeKey,
-  LexicalNode,
-  $getNodeByKey
-} from 'lexical';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
-import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
-import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
+import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
+import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
+import { ListPlugin } from '@lexical/react/LexicalListPlugin';
+import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $generateHtmlFromNodes } from '@lexical/html';
-import { mergeRegister } from '@lexical/utils';
-import { ListPlugin } from '@lexical/react/LexicalListPlugin';
-import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
-import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
-import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
+import { $getRoot, $createParagraphNode, $createTextNode, EditorState } from 'lexical';
+import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
+import { TRANSFORMERS } from '@lexical/markdown';
 
+// Lexical nodes
+import { HeadingNode, QuoteNode } from '@lexical/rich-text';
+import { ListItemNode, ListNode, $createListItemNode, $createListNode, $isListNode } from '@lexical/list';
+import { CodeHighlightNode, CodeNode } from '@lexical/code';
+import { AutoLinkNode, LinkNode } from '@lexical/link';
+
+// UI Components
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Textarea } from '@/components/ui/Textarea';
 import { 
-  INSERT_ORDERED_LIST_COMMAND,
-  INSERT_UNORDERED_LIST_COMMAND,
-  REMOVE_LIST_COMMAND,
-  $isListNode,
-  ListNode,
-  ListItemNode
-} from '@lexical/list';
+  Upload, 
+  FileText, 
+  Link, 
+  ArrowLeft, 
+  ArrowRight, 
+  Save,
+  Download,
+  Plus,
+  GripVertical,
+  Eye,
+  EyeOff,
+  Trash2,
+  Wand2,
+  Loader2,
+  X,
+  Edit3,
+  Move,
+  Sparkles,
+  RefreshCw,
+  ZoomOut,
+  ZoomIn,
+} from 'lucide-react';
 
-// Custom Decorator Nodes for enhanced blocks
-class SkillsSummaryNode extends DecoratorNode<JSX.Element> {
-  __skills: string[];
-
-  static getType(): string {
-    return 'skills-summary';
-  }
-
-  static clone(node: SkillsSummaryNode): SkillsSummaryNode {
-    return new SkillsSummaryNode(node.__skills, node.__key);
-  }
-
-  constructor(skills: string[], key?: NodeKey) {
-    super(key);
-    this.__skills = skills;
-  }
-
-  createDOM(): HTMLElement {
-    const div = document.createElement('div');
-    div.className = 'skills-summary-node p-4 border border-gray-200 rounded-lg bg-blue-50';
-    return div;
-  }
-
-  updateDOM(): false {
-    return false;
-  }
-
-  setSkills(skills: string[]): void {
-    const writable = this.getWritable();
-    writable.__skills = skills;
-  }
-
-  getSkills(): string[] {
-    return this.__skills;
-  }
-
-  decorate(): JSX.Element {
-    return <SkillsSummaryComponent skills={this.__skills} node={this} />;
-  }
-
-  static importJSON(serializedNode: any): SkillsSummaryNode {
-    const { skills } = serializedNode;
-    return new SkillsSummaryNode(skills);
-  }
-
-  exportJSON() {
-    return {
-      skills: this.__skills,
-      type: 'skills-summary',
-      version: 1,
-    };
-  }
+// Types
+interface CandidateData {
+  id: string;
+  fullName: string;
+  currentTitle: string;
+  email: string;
+  phone: string;
+  location: string;
+  yearsOfExperience: number;
+  skills: string[];
+  certifications: string[];
+  experience: Array<{
+    company: string;
+    title: string;
+    startDate: string;
+    endDate: string;
+    responsibilities: string;
+  }>;
+  education: string[];
+  languages: string[];
+  summary: string;
 }
 
-class CertificationsTableNode extends DecoratorNode<JSX.Element> {
-  __certifications: Array<{name: string, issuer: string, date: string}>;
-
-  static getType(): string {
-    return 'certifications-table';
-  }
-
-  static clone(node: CertificationsTableNode): CertificationsTableNode {
-    return new CertificationsTableNode(node.__certifications, node.__key);
-  }
-
-  constructor(certifications: Array<{name: string, issuer: string, date: string}>, key?: NodeKey) {
-    super(key);
-    this.__certifications = certifications;
-  }
-
-  createDOM(): HTMLElement {
-    const div = document.createElement('div');
-    div.className = 'certifications-table-node p-4 border border-gray-200 rounded-lg bg-green-50';
-    return div;
-  }
-
-  updateDOM(): false {
-    return false;
-  }
-
-  setCertifications(certifications: Array<{name: string, issuer: string, date: string}>): void {
-    const writable = this.getWritable();
-    writable.__certifications = certifications;
-  }
-
-  getCertifications(): Array<{name: string, issuer: string, date: string}> {
-    return this.__certifications;
-  }
-
-  decorate(): JSX.Element {
-    return <CertificationsTableComponent certifications={this.__certifications} node={this} />;
-  }
-
-  static importJSON(serializedNode: any): CertificationsTableNode {
-    const { certifications } = serializedNode;
-    return new CertificationsTableNode(certifications);
-  }
-
-  exportJSON() {
-    return {
-      certifications: this.__certifications,
-      type: 'certifications-table',
-      version: 1,
-    };
-  }
-}
-
-// GPT Suggestion Node
-class GPTSuggestionNode extends DecoratorNode<JSX.Element> {
-  __suggestion: string;
-  __context: string;
-
-  static getType(): string {
-    return 'gpt-suggestion';
-  }
-
-  static clone(node: GPTSuggestionNode): GPTSuggestionNode {
-    return new GPTSuggestionNode(node.__suggestion, node.__context, node.__key);
-  }
-
-  constructor(suggestion: string, context: string, key?: NodeKey) {
-    super(key);
-    this.__suggestion = suggestion;
-    this.__context = context;
-  }
-
-  createDOM(): HTMLElement {
-    const div = document.createElement('div');
-    div.className = 'gpt-suggestion-node p-3 border border-purple-200 rounded-lg bg-purple-50 relative';
-    return div;
-  }
-
-  updateDOM(): false {
-    return false;
-  }
-
-  getSuggestion(): string {
-    return this.__suggestion;
-  }
-
-  getContext(): string {
-    return this.__context;
-  }
-
-  decorate(): JSX.Element {
-    return <GPTSuggestionComponent suggestion={this.__suggestion} context={this.__context} node={this} />;
-  }
-
-  static importJSON(serializedNode: any): GPTSuggestionNode {
-    const { suggestion, context } = serializedNode;
-    return new GPTSuggestionNode(suggestion, context);
-  }
-
-  exportJSON() {
-    return {
-      suggestion: this.__suggestion,
-      context: this.__context,
-      type: 'gpt-suggestion',
-      version: 1,
-    };
-  }
-}
-
-interface CreateCompetenceFileModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: (fileData: any) => void;
-  preselectedCandidate?: CandidateData | null;
-}
-
-// Document Section Types
 interface DocumentSection {
   id: string;
-  type: 'header' | 'personal-info' | 'summary' | 'experience' | 'education' | 'skills' | 'certifications' | 'languages' | 'custom';
+  type: string;
   title: string;
   content: string;
   visible: boolean;
@@ -301,263 +108,22 @@ interface DocumentSection {
   editable: boolean;
 }
 
-// Lexical Editor Configuration
-const editorConfig = {
-  namespace: 'CompetenceFileEditor',
-  nodes: [
-    SkillsSummaryNode,
-    CertificationsTableNode,
-    GPTSuggestionNode,
-    ListNode,
-    ListItemNode
-  ],
-  theme: {
-    root: 'p-4 border-gray-300 border-2 rounded-lg focus-within:border-blue-500 min-h-[200px]',
-    text: {
-      bold: 'font-bold',
-      italic: 'italic',
-      underline: 'underline',
-    },
-    paragraph: 'mb-2',
-    heading: {
-      h1: 'text-2xl font-bold mb-4',
-      h2: 'text-xl font-semibold mb-3',
-      h3: 'text-lg font-medium mb-2',
-    },
-    list: {
-      nested: {
-        listitem: 'list-none',
-      },
-      ol: 'list-decimal ml-4',
-      ul: 'list-disc ml-4',
-      listitem: 'mb-1',
-    },
-    quote: 'border-l-4 border-gray-300 pl-4 italic',
-    code: 'bg-gray-100 px-2 py-1 rounded font-mono text-sm',
-    codeblock: 'bg-gray-100 p-4 rounded font-mono text-sm',
-  },
-  onError: (error: Error) => {
-    console.error('Lexical error:', error);
-  },
-};
-
-// Enhanced Toolbar Component with AI Features
-function EnhancedEditorToolbar({ selectedCandidate }: { selectedCandidate?: CandidateData | null }) {
-  const [editor] = useLexicalComposerContext();
-  const [isBold, setIsBold] = useState(false);
-  const [isItalic, setIsItalic] = useState(false);
-  const [isUnderline, setIsUnderline] = useState(false);
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-
-  useEffect(() => {
-    return mergeRegister(
-      editor.registerCommand(
-        SELECTION_CHANGE_COMMAND,
-        () => {
-          const selection = $getSelection();
-          if ($isRangeSelection(selection)) {
-            setIsBold(selection.hasFormat('bold'));
-            setIsItalic(selection.hasFormat('italic'));
-            setIsUnderline(selection.hasFormat('underline'));
-          }
-          return false;
-        },
-        1
-      )
-    );
-  }, [editor]);
-
-  const formatText = (format: 'bold' | 'italic' | 'underline') => {
-    editor.dispatchCommand(FORMAT_TEXT_COMMAND, format);
-  };
-
-  const insertList = (type: 'ul' | 'ol') => {
-    if (type === 'ul') {
-      editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
-    } else {
-      editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
-    }
-  };
-
-  const insertSkillsSummary = () => {
-    if (!selectedCandidate) return;
-    
-    editor.update(() => {
-      const skillsNode = new SkillsSummaryNode(selectedCandidate.skills);
-      const selection = $getSelection();
-      if ($isRangeSelection(selection)) {
-        selection.insertNodes([skillsNode]);
-      }
-    });
-  };
-
-  const insertCertificationsTable = () => {
-    if (!selectedCandidate) return;
-    
-    editor.update(() => {
-      const certifications = selectedCandidate.certifications.map(cert => ({
-        name: cert,
-        issuer: 'Unknown',
-        date: 'N/A'
-      }));
-      const certsNode = new CertificationsTableNode(certifications);
-      const selection = $getSelection();
-      if ($isRangeSelection(selection)) {
-        selection.insertNodes([certsNode]);
-      }
-    });
-  };
-
-  const generateAISuggestion = async () => {
-    setIsGeneratingAI(true);
-    try {
-      const selection = $getSelection();
-      let context = '';
-      
-      if ($isRangeSelection(selection)) {
-        context = selection.getTextContent();
-      }
-      
-      const response = await fetch('/api/ai/generate-suggestion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          context, 
-          candidateData: selectedCandidate,
-          sectionType: 'general'
-        })
-      });
-      
-      const { suggestion } = await response.json();
-      
-      editor.update(() => {
-        const suggestionNode = new GPTSuggestionNode(suggestion, context);
-        const selection = $getSelection();
-        if ($isRangeSelection(selection)) {
-          selection.insertNodes([suggestionNode]);
-        }
-      });
-    } catch (error) {
-      console.error('Failed to generate AI suggestion:', error);
-    } finally {
-      setIsGeneratingAI(false);
-    }
-  };
-
-  return (
-    <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50">
-      {/* Basic Formatting */}
-      <div className="flex items-center space-x-1">
-        <Button
-          variant={isBold ? "primary" : "outline"}
-          size="sm"
-          onClick={() => formatText('bold')}
-          className="p-2"
-          title="Bold"
-        >
-          <Bold className="h-4 w-4" />
-        </Button>
-        <Button
-          variant={isItalic ? "primary" : "outline"}
-          size="sm"
-          onClick={() => formatText('italic')}
-          className="p-2"
-          title="Italic"
-        >
-          <Italic className="h-4 w-4" />
-        </Button>
-        <Button
-          variant={isUnderline ? "primary" : "outline"}
-          size="sm"
-          onClick={() => formatText('underline')}
-          className="p-2"
-          title="Underline"
-        >
-          <Underline className="h-4 w-4" />
-        </Button>
-        
-        <div className="w-px h-6 bg-gray-300 mx-2" />
-        
-        {/* Lists */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => insertList('ul')}
-          className="p-2"
-          title="Bullet List"
-        >
-          <List className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => insertList('ol')}
-          className="p-2"
-          title="Numbered List"
-        >
-          <ListOrdered className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* AI-Enhanced Features */}
-      <div className="flex items-center space-x-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={insertSkillsSummary}
-          disabled={!selectedCandidate}
-          className="text-xs"
-          title="Insert Skills Summary Block"
-        >
-          <Award className="h-3 w-3 mr-1" />
-          Skills
-        </Button>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={insertCertificationsTable}
-          disabled={!selectedCandidate}
-          className="text-xs"
-          title="Insert Certifications Table"
-        >
-          <CheckCircle className="h-3 w-3 mr-1" />
-          Certs
-        </Button>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={generateAISuggestion}
-          disabled={isGeneratingAI}
-          className="text-xs"
-          title="Generate AI Suggestion"
-        >
-          {isGeneratingAI ? (
-            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-          ) : (
-            <Sparkles className="h-3 w-3 mr-1" />
-          )}
-          AI Assist
-        </Button>
-      </div>
-    </div>
-  );
+interface CreateCompetenceFileModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: (fileUrl: string) => void;
+  preselectedCandidate?: CandidateData | null;
 }
 
-// Document Section Component
-function DocumentSectionComponent({ 
+// Sortable Section Item Component for Step 2
+function SortableSectionItem({ 
   section, 
-  onUpdate, 
-  onRemove, 
-  isDragging,
-  selectedCandidate 
+  onToggleVisibility, 
+  onDelete 
 }: { 
   section: DocumentSection;
-  onUpdate: (id: string, content: string) => void;
-  onRemove: (id: string) => void;
-  isDragging?: boolean;
-  selectedCandidate?: CandidateData | null;
+  onToggleVisibility: (id: string) => void;
+  onDelete?: (id: string) => void;
 }) {
   const {
     attributes,
@@ -565,534 +131,77 @@ function DocumentSectionComponent({
     setNodeRef,
     transform,
     transition,
+    isDragging,
   } = useSortable({ id: section.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.8 : 1,
+    opacity: isDragging ? 0.5 : 1,
   };
-
-  const handleContentChange = (editorState: EditorState, editor: LexicalEditor) => {
-    editor.read(() => {
-      const htmlString = $generateHtmlFromNodes(editor, null);
-      onUpdate(section.id, htmlString);
-    });
-  };
-
-  if (!section.visible) return null;
 
   return (
-    <div 
-      ref={setNodeRef} 
+    <div
+      ref={setNodeRef}
       style={style}
-      className={`mb-8 group relative ${
-        isDragging ? 'shadow-xl z-50' : 'hover:shadow-md'
-      } transition-all duration-200`}
+      className={`flex items-center space-x-3 p-3 border rounded-lg bg-white ${
+        isDragging ? 'shadow-lg border-blue-300' : 'border-gray-200'
+      }`}
     >
-      {/* Section Header - Only visible on hover */}
-      <div className="absolute -left-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center space-x-2">
-        <div 
-          className="cursor-move text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
-          {...attributes}
-          {...listeners}
-          title="Drag to reorder"
-        >
-          <GripVertical className="h-4 w-4" />
-        </div>
-        
-        {section.type === 'custom' && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onRemove(section.id)}
-            className="p-1 opacity-70 hover:opacity-100"
-            title="Remove section"
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        )}
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing flex-shrink-0"
+      >
+        <GripVertical className="h-4 w-4 text-gray-400 hover:text-gray-600" />
       </div>
-      
-      {/* Section Content */}
-      {section.editable ? (
-        <div className="border border-transparent hover:border-gray-200 rounded-lg transition-colors">
-          <LexicalComposer initialConfig={{
-            ...editorConfig,
-            editorState: section.content
-          }}>
-            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
-              <EnhancedEditorToolbar selectedCandidate={selectedCandidate} />
-              <RichTextPlugin
-                contentEditable={<ContentEditable className="min-h-[100px] p-4 focus:outline-none" />}
-                placeholder={<div className="absolute top-4 left-4 text-gray-400 pointer-events-none">Start typing...</div>}
-                ErrorBoundary={SimpleErrorBoundary}
-              />
-              <HistoryPlugin />
-              <OnChangePlugin onChange={handleContentChange} />
-              <ListPlugin />
-              <LinkPlugin />
-              <MarkdownShortcutPlugin />
-              <TablePlugin />
-            </div>
-          </LexicalComposer>
-        </div>
-      ) : (
-        <div className="prose prose-sm max-w-none">
-          {/* Auto-generated content based on section type */}
-          {section.type === 'personal-info' && selectedCandidate && (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">{selectedCandidate.fullName}</h2>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium text-gray-700">Title:</span>
-                  <span className="ml-2 text-gray-600">{selectedCandidate.currentTitle}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Location:</span>
-                  <span className="ml-2 text-gray-600">{selectedCandidate.location}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Email:</span>
-                  <span className="ml-2 text-gray-600">{selectedCandidate.email}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Phone:</span>
-                  <span className="ml-2 text-gray-600">{selectedCandidate.phone}</span>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {section.type === 'experience' && selectedCandidate && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">Work Experience</h3>
-              {selectedCandidate.experience.map((exp, index) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex justify-between items-start">
-                    <h4 className="font-medium text-gray-900">{exp.title}</h4>
-                    <span className="text-sm text-gray-500">{exp.startDate} - {exp.endDate}</span>
-                  </div>
-                  <p className="text-sm font-medium text-gray-700">{exp.company}</p>
-                  <p className="text-sm text-gray-600">{exp.responsibilities}</p>
-                </div>
-              ))}
-            </div>
-          )}
-          
-          {section.type === 'skills' && selectedCandidate && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">Skills</h3>
-              <div className="flex flex-wrap gap-2">
-                {selectedCandidate.skills.map((skill, index) => (
-                  <Badge key={index} variant="secondary" className="text-xs">
-                    {skill}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {section.type === 'education' && selectedCandidate && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">Education</h3>
-              <div className="space-y-2">
-                {selectedCandidate.education.map((edu, index) => (
-                  <p key={index} className="text-sm text-gray-600">{edu}</p>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {/* Fallback for other content */}
-          {section.content && (
-            <div dangerouslySetInnerHTML={{ __html: section.content }} />
-          )}
-        </div>
+      <button
+        onClick={() => onToggleVisibility(section.id)}
+        className="flex-shrink-0"
+      >
+        {section.visible ? (
+          <Eye className="h-4 w-4 text-green-600" />
+        ) : (
+          <EyeOff className="h-4 w-4 text-gray-400" />
+        )}
+      </button>
+      <div className="flex-1">
+        <span className={`font-medium ${section.visible ? 'text-gray-900' : 'text-gray-400'}`}>
+          {section.title}
+        </span>
+      </div>
+      {section.type === 'custom' && onDelete && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onDelete(section.id)}
+        >
+          <Trash2 className="h-4 w-4 text-red-500" />
+        </Button>
       )}
     </div>
   );
 }
 
-// Main Modal Component
-export function CreateCompetenceFileModal({ 
-  isOpen, 
-  onClose, 
-  onSuccess, 
-  preselectedCandidate 
-}: CreateCompetenceFileModalProps) {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [selectedCandidate, setSelectedCandidate] = useState<CandidateData | null>(preselectedCandidate || null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState(100);
-  const [isFullscreen, setIsFullscreen] = useState(true);
-  const [logoUrl, setLogoUrl] = useState<string>('');
-  
-  // Document sections state
-  const [documentSections, setDocumentSections] = useState<DocumentSection[]>([
-    {
-      id: 'header',
-      type: 'header',
-      title: 'Header',
-      content: '<h1>Competence File</h1>',
-      visible: true,
-      order: 0,
-      editable: true
-    },
-    {
-      id: 'personal-info',
-      type: 'personal-info',
-      title: 'Personal Information',
-      content: '',
-      visible: true,
-      order: 1,
-      editable: false
-    },
-    {
-      id: 'summary',
-      type: 'summary',
-      title: 'Professional Summary',
-      content: '<p>Enter your professional summary here...</p>',
-      visible: true,
-      order: 2,
-      editable: true
-    },
-    {
-      id: 'experience',
-      type: 'experience',
-      title: 'Work Experience',
-      content: '',
-      visible: true,
-      order: 3,
-      editable: false
-    },
-    {
-      id: 'education',
-      type: 'education',
-      title: 'Education',
-      content: '',
-      visible: true,
-      order: 4,
-      editable: false
-    },
-    {
-      id: 'skills',
-      type: 'skills',
-      title: 'Skills',
-      content: '',
-      visible: true,
-      order: 5,
-      editable: false
-    }
-  ]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  // Handle section drag and drop
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    if (over && active.id !== over.id) {
-      setDocumentSections((sections) => {
-        const oldIndex = sections.findIndex((section) => section.id === active.id);
-        const newIndex = sections.findIndex((section) => section.id === over.id);
-        
-        const newSections = arrayMove(sections, oldIndex, newIndex);
-        return newSections.map((section, index) => ({
-          ...section,
-          order: index
-        }));
-      });
-    }
-  };
-
-  // Update section content
-  const updateSectionContent = (id: string, content: string) => {
-    setDocumentSections(sections => 
-      sections.map(section => 
-        section.id === id ? { ...section, content } : section
-      )
-    );
-  };
-
-  // Remove section
-  const removeSection = (id: string) => {
-    setDocumentSections(sections => sections.filter(section => section.id !== id));
-  };
-
-  // Add new section
-  const addSection = () => {
-    const newSection: DocumentSection = {
-      id: `custom-${Date.now()}`,
-      type: 'custom',
-      title: 'New Section',
-      content: '<p>Enter content here...</p>',
-      visible: true,
-      order: documentSections.length,
-      editable: true
-    };
-    setDocumentSections([...documentSections, newSection]);
-  };
-
-  // Zoom controls
-  const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 10, 200));
-  const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 10, 50));
-  const handleResetZoom = () => setZoomLevel(100);
-
-  // Toggle fullscreen
-  const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
-
-  // Generate competence file
-  const handleGenerate = async () => {
-    setIsGenerating(true);
-    try {
-      // Implementation for generating the competence file
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Mock delay
-      onSuccess({ sections: documentSections, candidate: selectedCandidate });
-    } catch (error) {
-      console.error('Generation failed:', error);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  const modalClasses = isFullscreen 
-    ? "fixed inset-0 z-50 bg-white"
-    : "fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50";
-
-  const contentClasses = isFullscreen
-    ? "w-full h-full flex flex-col"
-    : "bg-white rounded-lg shadow-xl w-[95vw] h-[95vh] flex flex-col";
-
-  return (
-    <ErrorBoundary>
-      <div className={modalClasses}>
-        <div className={contentClasses}>
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
-            <div className="flex items-center space-x-4">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Create Competence File
-              </h2>
-              {selectedCandidate && (
-                <Badge variant="secondary">
-                  {selectedCandidate.fullName}
-                </Badge>
-              )}
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              {/* Zoom Controls */}
-              <div className="flex items-center space-x-1 bg-white rounded-lg border border-gray-200 p-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleZoomOut}
-                  className="p-1"
-                >
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                <span className="px-2 text-sm font-medium min-w-[50px] text-center">
-                  {zoomLevel}%
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleZoomIn}
-                  className="p-1"
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleResetZoom}
-                  className="p-1"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              {/* Fullscreen Toggle */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={toggleFullscreen}
-                className="p-2"
-              >
-                {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-              </Button>
-              
-              {/* Save Button */}
-              <Button
-                onClick={handleGenerate}
-                disabled={isGenerating}
-                className="flex items-center space-x-2"
-              >
-                {isGenerating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                <span>{isGenerating ? 'Generating...' : 'Generate PDF'}</span>
-              </Button>
-              
-              {/* Close Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onClose}
-                className="p-2"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="flex-1 flex overflow-hidden">
-            {/* Sidebar - Document Structure */}
-            <div className="w-80 border-r border-gray-200 bg-gray-50 flex flex-col">
-              <div className="p-4 border-b border-gray-200">
-                <h3 className="font-medium text-gray-900 mb-3">Document Sections</h3>
-                <Button
-                  onClick={addSection}
-                  variant="outline"
-                  size="sm"
-                  className="w-full flex items-center space-x-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Add Section</span>
-                </Button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-4">
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext
-                    items={documentSections.map(s => s.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {documentSections
-                      .sort((a, b) => a.order - b.order)
-                      .map((section) => (
-                        <div key={section.id} className="mb-2">
-                          <SortableSectionItem
-                            section={section}
-                            onToggle={() => {
-                              setDocumentSections(sections =>
-                                sections.map(s =>
-                                  s.id === section.id ? { ...s, visible: !s.visible } : s
-                                )
-                              );
-                            }}
-                            onRemove={() => removeSection(section.id)}
-                          />
-                        </div>
-                      ))}
-                  </SortableContext>
-                </DndContext>
-              </div>
-            </div>
-
-            {/* Main Editor Area */}
-            <div className="flex-1 flex flex-col overflow-hidden bg-gray-100">
-              {/* Document Preview */}
-              <div 
-                className="flex-1 overflow-auto p-8 bg-gradient-to-br from-gray-50 to-gray-100"
-                style={{ 
-                  zoom: `${zoomLevel}%`,
-                  scrollBehavior: 'smooth'
-                }}
-              >
-                <div className="max-w-[210mm] mx-auto bg-white shadow-2xl border border-gray-200 min-h-[297mm] relative">
-                  {/* Document Header with Logo */}
-                  <div className="relative">
-                    {logoUrl && (
-                      <div className="absolute top-8 right-8 z-10">
-                        <img 
-                          src={logoUrl} 
-                          alt="Company Logo" 
-                          className="h-12 w-auto object-contain opacity-90"
-                        />
-                      </div>
-                    )}
-                    
-                    {/* Logo Upload Area */}
-                    <div className="absolute top-4 left-4 z-10">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="opacity-70 hover:opacity-100 transition-opacity"
-                        onClick={() => {
-                          const input = document.createElement('input');
-                          input.type = 'file';
-                          input.accept = 'image/*';
-                          input.onchange = (e) => {
-                            const file = (e.target as HTMLInputElement).files?.[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onload = (e) => {
-                                setLogoUrl(e.target?.result as string);
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                          };
-                          input.click();
-                        }}
-                      >
-                        <Image className="h-4 w-4 mr-1" />
-                        Logo
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Document Content */}
-                  <div className="p-8 pt-16">
-                    {documentSections
-                      .filter(section => section.visible)
-                      .sort((a, b) => a.order - b.order)
-                      .map((section) => (
-                        <DocumentSectionComponent
-                          key={section.id}
-                          section={section}
-                          onUpdate={updateSectionContent}
-                          onRemove={removeSection}
-                          selectedCandidate={selectedCandidate}
-                        />
-                      ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </ErrorBoundary>
-  );
-}
-
-// Sortable Section Item for Sidebar
-function SortableSectionItem({
-  section,
-  onToggle,
-  onRemove
+// Sortable Section Editor Component for Step 3
+function SortableSectionEditor({ 
+  section, 
+  onUpdate, 
+  onTitleUpdate,
+  getToken, 
+  candidateData 
 }: {
   section: DocumentSection;
-  onToggle: () => void;
-  onRemove: () => void;
+  onUpdate: (content: string) => void;
+  onTitleUpdate: (title: string) => void;
+  getToken: () => Promise<string | null>;
+  candidateData: CandidateData | null;
 }) {
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [tempTitle, setTempTitle] = useState(section.title);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  
   const {
     attributes,
     listeners,
@@ -1108,360 +217,1839 @@ function SortableSectionItem({
     opacity: isDragging ? 0.8 : 1,
   };
 
+  const handleTitleSave = () => {
+    onTitleUpdate(tempTitle);
+    setIsEditingTitle(false);
+  };
+
+  const handleTitleCancel = () => {
+    setTempTitle(section.title);
+    setIsEditingTitle(false);
+  };
+
+  const generateAIContent = async (type: 'improve' | 'expand' | 'rewrite') => {
+    if (!candidateData) {
+      console.error('❌ No candidate data available for AI generation');
+      alert('No candidate data available. Please select a candidate first.');
+      return;
+    }
+    
+    console.log('🤖 Starting AI content generation:', { type, sectionType: section.type, sectionId: section.id });
+    
+    setIsGeneratingAI(true);
+    try {
+      const token = await getToken();
+      
+      if (!token) {
+        console.error('❌ No authentication token available');
+        alert('Authentication required. Please sign in to use AI features.');
+        return;
+      }
+
+      console.log('🚀 Sending AI request to API...');
+      
+      const response = await fetch('/api/ai/generate-suggestion', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          type,
+          sectionType: section.type,
+          currentContent: section.content,
+          candidateData,
+        }),
+      });
+      
+      console.log('📡 API Response status:', response.status);
+      
+      if (response.ok) {
+        const { suggestion } = await response.json();
+        console.log('✅ AI suggestion received:', { 
+          type, 
+          suggestionLength: suggestion?.length || 0,
+          preview: suggestion?.substring(0, 100) + '...' 
+        });
+        
+        if (suggestion) {
+          // Update the section content - this will trigger the editor to update
+          onUpdate(suggestion);
+          console.log('✅ Content updated successfully');
+        } else {
+          console.error('❌ Empty suggestion received');
+          alert('No content was generated. Please try again.');
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('❌ API Error:', response.status, errorData);
+        
+        // Handle specific error cases
+        if (response.status === 401) {
+          alert('Authentication failed. Please sign in again.');
+        } else if (response.status === 400) {
+          alert(`Invalid request: ${errorData.error || 'Please check your input'}`);
+        } else if (response.status === 500) {
+          alert('Server error. Please try again in a moment.');
+        } else {
+          alert(`Failed to generate AI content: ${errorData.error || 'Unknown error'}`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ AI generation error:', error);
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        alert('Network error. Please check your connection and try again.');
+      } else {
+        alert('Failed to generate AI content. Please try again.');
+      }
+    } finally {
+      setIsGeneratingAI(false);
+      console.log('🏁 AI generation completed');
+    }
+  };
+
+  // Simple content initialization without infinite loops
+  const initialContent = React.useMemo(() => {
+    if (section.content) {
+      return section.content;
+    }
+    return candidateData ? generateInitialContent(candidateData) : '';
+  }, [section.id]); // Only depend on section.id to prevent re-initialization
+
+  // Simplified editor config for this specific section
+  const sectionEditorConfig = React.useMemo(() => ({
+    namespace: `CompetenceFileEditor-${section.id}`,
+    nodes: [
+      HeadingNode,
+      QuoteNode,
+      ListNode,
+      ListItemNode,
+      CodeHighlightNode,
+      CodeNode,
+      AutoLinkNode,
+      LinkNode
+    ],
+    onError: (error: Error) => {
+      console.error('Lexical error:', error);
+    }
+  }), [section.id]);
+
+  // Content initialization plugin
+  const ContentInitializationPlugin = React.useMemo(() => {
+    return function ContentInitializationPluginComponent() {
+      const [editor] = useLexicalComposerContext();
+      
+      React.useEffect(() => {
+        if (initialContent && initialContent.trim()) {
+          editor.update(() => {
+            const root = $getRoot();
+            root.clear();
+            
+            // Split content into lines and create appropriate nodes
+            const lines = initialContent.split('\n');
+            
+            lines.forEach((line: string, index: number) => {
+              const trimmedLine = line.trim();
+              
+              if (trimmedLine) {
+                // Check if line starts with bullet point
+                if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('*')) {
+                  // Create list item
+                  const listItem = $createListItemNode();
+                  const text = $createTextNode(trimmedLine.substring(1).trim());
+                  listItem.append(text);
+                  
+                  // Check if we need to create a new list or add to existing
+                  const lastChild = root.getLastChild();
+                  if (lastChild && $isListNode(lastChild)) {
+                    lastChild.append(listItem);
+                  } else {
+                    const list = $createListNode('bullet');
+                    list.append(listItem);
+                    root.append(list);
+                  }
+                } else if (trimmedLine === '---') {
+                  // Create separator
+                  const separator = $createParagraphNode();
+                  const text = $createTextNode('───────────────────────────────────');
+                  separator.append(text);
+                  root.append(separator);
+                } else {
+                  // Create regular paragraph
+                  const paragraph = $createParagraphNode();
+                  const text = $createTextNode(trimmedLine);
+                  paragraph.append(text);
+                  root.append(paragraph);
+                }
+              } else if (index < lines.length - 1) {
+                // Add empty paragraph for spacing
+                const emptyParagraph = $createParagraphNode();
+                root.append(emptyParagraph);
+              }
+            });
+          });
+        }
+      }, [editor, initialContent]);
+      
+      return null;
+    };
+  }, [initialContent]);
+
   return (
-    <div 
-      ref={setNodeRef} 
+    <div
+      ref={setNodeRef}
       style={style}
-      className={`bg-white border border-gray-200 rounded-lg p-3 ${
-        isDragging ? 'shadow-lg' : 'shadow-sm'
+      className={`border rounded-lg bg-white ${
+        isDragging ? 'shadow-lg border-blue-300' : 'border-gray-200'
       }`}
     >
-      <div className="flex items-center justify-between">
+      <div className="bg-gray-50 px-4 py-3 border-b flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div 
-            className="cursor-move text-gray-400 hover:text-gray-600"
+          <div
             {...attributes}
             {...listeners}
+            className="cursor-grab active:cursor-grabbing"
           >
-            <GripVertical className="h-4 w-4" />
+            <Move className="h-4 w-4 text-gray-400 hover:text-gray-600" />
           </div>
-          
-          <button
-            onClick={onToggle}
-            className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-              section.visible 
-                ? 'bg-blue-600 border-blue-600 text-white' 
-                : 'border-gray-300'
-            }`}
-          >
-            {section.visible && <Check className="h-2 w-2" />}
-          </button>
-          
-          <span className="text-sm font-medium text-gray-900">
-            {section.title}
-          </span>
+          {isEditingTitle ? (
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                value={tempTitle}
+                onChange={(e) => setTempTitle(e.target.value)}
+                className="px-2 py-1 border border-gray-300 rounded text-sm font-medium"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleTitleSave();
+                  if (e.key === 'Escape') handleTitleCancel();
+                }}
+                autoFocus
+              />
+              <Button size="sm" variant="ghost" onClick={handleTitleSave}>
+                <Save className="h-3 w-3" />
+              </Button>
+              <Button size="sm" variant="ghost" onClick={handleTitleCancel}>
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-2">
+              <h3 className="font-medium">{section.title}</h3>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setIsEditingTitle(true)}
+              >
+                <Edit3 className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
         </div>
         
-        {section.type === 'custom' && (
+        {/* AI Enhancement Buttons */}
+        <div className="flex items-center space-x-2">
           <Button
-            variant="outline"
             size="sm"
-            onClick={onRemove}
-            className="p-1"
+            variant="outline"
+            onClick={() => {
+              console.log('🔥 Improve button clicked!');
+              generateAIContent('improve');
+            }}
+            disabled={isGeneratingAI}
+            className="text-xs bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:from-green-100 hover:to-emerald-100"
           >
-            <Trash2 className="h-3 w-3" />
+            {isGeneratingAI ? (
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+            ) : (
+              <Sparkles className="h-3 w-3 mr-1 text-green-600" />
+            )}
+            Improve
           </Button>
-        )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              console.log('🔥 Expand button clicked!');
+              generateAIContent('expand');
+            }}
+            disabled={isGeneratingAI}
+            className="text-xs bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200 hover:from-blue-100 hover:to-cyan-100"
+          >
+            <Plus className="h-3 w-3 mr-1 text-blue-600" />
+            Expand
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              console.log('🔥 Rewrite button clicked!');
+              generateAIContent('rewrite');
+            }}
+            disabled={isGeneratingAI}
+            className="text-xs bg-gradient-to-r from-purple-50 to-violet-50 border-purple-200 hover:from-purple-100 hover:to-violet-100"
+          >
+            <RefreshCw className="h-3 w-3 mr-1 text-purple-600" />
+            Rewrite
+          </Button>
+        </div>
+      </div>
+      
+      <div className="p-4">
+        <LexicalComposer initialConfig={sectionEditorConfig}>
+          <RichTextPlugin
+            contentEditable={
+              <ContentEditable className="min-h-[150px] focus:outline-none prose prose-sm max-w-none p-4 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors bg-white" />
+            }
+            placeholder={
+              <div className="absolute top-4 left-4 text-gray-400 pointer-events-none prose prose-sm">
+                <p>Start typing or use AI to enhance this {section.type} section...</p>
+                <div className="text-xs mt-1 text-gray-300">
+                  💡 Tip: Use the AI buttons above to improve, expand, or rewrite content
+                </div>
+              </div>
+            }
+            ErrorBoundary={LexicalErrorBoundary}
+          />
+          <ContentInitializationPlugin />
+          <OnChangePlugin 
+            onChange={(editorState) => {
+              // Debounced update to prevent infinite loops
+              const timeoutId = setTimeout(() => {
+                editorState.read(() => {
+                  try {
+                    const root = $getRoot();
+                    const textContent = root.getTextContent();
+                    onUpdate(textContent);
+                  } catch (error) {
+                    console.error('Error getting content:', error);
+                  }
+                });
+              }, 500); // 500ms debounce
+              
+              return () => clearTimeout(timeoutId);
+            }}
+          />
+          <HistoryPlugin />
+          <LinkPlugin />
+          <ListPlugin />
+          <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+        </LexicalComposer>
       </div>
     </div>
   );
+}
+
+// Helper function to generate initial content with separate experience blocks
+function generateExperienceBlocks(candidateData: CandidateData): string {
+  if (!candidateData.experience || candidateData.experience.length === 0) {
+    return 'No work experience provided.';
+  }
+
+  return candidateData.experience.map((exp, index) => {
+    const duration = `${exp.startDate} - ${exp.endDate}`;
+    return `
+EXPERIENCE ${index + 1}
+═══════════════════════════════════════
+
+🏢 Company: ${exp.company}
+💼 Position: ${exp.title}
+📅 Duration: ${duration}
+
+📋 Key Responsibilities & Achievements:
+${exp.responsibilities}
+
+${index < candidateData.experience.length - 1 ? '─────────────────────────────────────────\n' : ''}`;
+  }).join('\n');
+}
+
+function generateHeaderContent(candidateData: CandidateData): string {
+  return `${candidateData.fullName}
+${candidateData.currentTitle}
+${candidateData.yearsOfExperience ? `${candidateData.yearsOfExperience}+ years of experience` : ''}
+${candidateData.location || ''}`;
+}
+
+function generateFunctionalSkillsContent(candidateData: CandidateData): string {
+  if (!candidateData.skills || candidateData.skills.length === 0) {
+    return 'No functional skills provided';
+  }
+  
+  // Group skills into functional categories with explanatory text
+  return `**Delivery & Project Management**
+• Project planning and execution
+• Stakeholder management and communication
+• Risk assessment and mitigation strategies
+Proven ability to deliver complex projects on time and within budget while maintaining high quality standards.
+
+**Service & Release Management**
+• Service lifecycle management
+• Release planning and coordination
+• Change management processes
+Expertise in managing service delivery and coordinating releases across multiple environments.
+
+**Product Management/Owner**
+• Product roadmap development
+• User story creation and prioritization
+• Cross-functional team collaboration
+Strong background in product strategy and working with development teams to deliver user-focused solutions.`;
+}
+
+function generateTechnicalSkillsContent(candidateData: CandidateData): string {
+  if (!candidateData.skills || candidateData.skills.length === 0) {
+    return 'No technical skills provided';
+  }
+  
+  // Categorize technical skills with explanatory text
+  const skills = candidateData.skills;
+  return `**Programming & Development**
+• ${skills.filter(skill => 
+    skill.toLowerCase().includes('javascript') || 
+    skill.toLowerCase().includes('python') || 
+    skill.toLowerCase().includes('java') ||
+    skill.toLowerCase().includes('react') ||
+    skill.toLowerCase().includes('node')
+  ).join('\n• ') || 'Modern programming languages and frameworks'}
+Extensive experience in full-stack development with focus on scalable, maintainable code.
+
+**Cloud & Infrastructure**
+• ${skills.filter(skill => 
+    skill.toLowerCase().includes('aws') || 
+    skill.toLowerCase().includes('azure') || 
+    skill.toLowerCase().includes('docker') ||
+    skill.toLowerCase().includes('kubernetes')
+  ).join('\n• ') || 'Cloud platforms and containerization technologies'}
+Proficient in designing and implementing cloud-native solutions with high availability.
+
+**Data & Analytics**
+• ${skills.filter(skill => 
+    skill.toLowerCase().includes('sql') || 
+    skill.toLowerCase().includes('database') || 
+    skill.toLowerCase().includes('analytics')
+  ).join('\n• ') || 'Database management and data analysis tools'}
+Strong background in data modeling, analysis, and business intelligence solutions.`;
+}
+
+function generateAreasOfExpertiseContent(candidateData: CandidateData): string {
+  // Generate based on candidate's experience and skills
+  const industries = [];
+  
+  if (candidateData.experience?.some(exp => 
+    exp.company.toLowerCase().includes('bank') || 
+    exp.company.toLowerCase().includes('financial')
+  )) {
+    industries.push('Banking & Financial Services');
+  }
+  
+  if (candidateData.experience?.some(exp => 
+    exp.company.toLowerCase().includes('health') || 
+    exp.company.toLowerCase().includes('medical')
+  )) {
+    industries.push('Healthcare & Life Sciences');
+  }
+  
+  if (candidateData.skills?.some(skill => 
+    skill.toLowerCase().includes('cloud') || 
+    skill.toLowerCase().includes('aws') || 
+    skill.toLowerCase().includes('azure')
+  )) {
+    industries.push('Cloud Computing & Digital Transformation');
+  }
+  
+  // Default industries if none detected
+  if (industries.length === 0) {
+    industries.push('Information Technology', 'Digital Innovation', 'Enterprise Solutions');
+  }
+  
+  return industries.join('\n');
+}
+
+function generateSummaryContent(candidateData: CandidateData): string {
+  const experience = candidateData.yearsOfExperience || 5;
+  const title = candidateData.currentTitle || 'Professional';
+  const skills = candidateData.skills?.slice(0, 3).join(', ') || 'various technologies';
+  
+  return `Experienced ${title} with ${experience}+ years of progressive experience in delivering innovative solutions and driving organizational growth. Proven track record in ${skills} with strong leadership capabilities and strategic thinking. Demonstrated ability to manage complex projects, lead cross-functional teams, and deliver results in fast-paced environments. Passionate about leveraging technology to solve business challenges and create value for stakeholders.`;
+}
+
+function generateExperienceContent(candidateData: CandidateData): string {
+  return generateExperienceBlocks(candidateData);
+}
+
+function generateExperiencesSummaryContent(candidateData: CandidateData): string {
+  if (!candidateData.experience || candidateData.experience.length === 0) {
+    return 'No professional experience provided';
+  }
+  
+  return candidateData.experience.map(exp => {
+    const duration = `${exp.startDate} - ${exp.endDate}`;
+    return `${exp.title} – ${exp.company} (${duration})`;
+  }).join('\n');
+}
+
+function generateEducationContent(candidateData: CandidateData): string {
+  if (!candidateData.education || candidateData.education.length === 0) {
+    return 'No education provided';
+  }
+  
+  return candidateData.education.map(edu => `• ${edu}`).join('\n');
+}
+
+function generateCertificationsContent(candidateData: CandidateData): string {
+  if (!candidateData.certifications || candidateData.certifications.length === 0) {
+    return 'No certifications provided';
+  }
+  
+  return candidateData.certifications.map(cert => `• ${cert}`).join('\n');
+}
+
+function generateLanguagesContent(candidateData: CandidateData): string {
+  if (!candidateData.languages || candidateData.languages.length === 0) {
+    return 'English (Native)';
+  }
+  
+  return candidateData.languages.join(' | ');
+}
+
+function generateTechnicalEnvironment(skills: string[]): string {
+  if (!skills || skills.length === 0) {
+    return '• Modern development tools and methodologies\n• Agile/Scrum frameworks\n• Collaborative development environments';
+  }
+  
+  return skills.slice(0, 6).map(skill => `• ${skill}`).join('\n');
+}
+
+function generateInitialContent(candidateData: CandidateData): string {
+  const experienceBlocks = generateExperienceBlocks(candidateData);
+  
+  return `
+COMPETENCE FILE
+═══════════════════════════════════════
+
+👤 PERSONAL INFORMATION
+═══════════════════════════════════════
+Name: ${candidateData.fullName}
+Title: ${candidateData.currentTitle}
+Email: ${candidateData.email || 'Not provided'}
+Phone: ${candidateData.phone || 'Not provided'}
+Location: ${candidateData.location || 'Not provided'}
+Experience: ${candidateData.yearsOfExperience}+ years
+
+📝 PROFESSIONAL SUMMARY
+═══════════════════════════════════════
+${candidateData.summary || `Experienced ${candidateData.currentTitle} with ${candidateData.yearsOfExperience}+ years of progressive experience in delivering innovative solutions and driving organizational growth.`}
+
+💼 WORK EXPERIENCE
+═══════════════════════════════════════
+${experienceBlocks}
+
+🎯 TECHNICAL SKILLS
+═══════════════════════════════════════
+${candidateData.skills && candidateData.skills.length > 0 
+  ? candidateData.skills.map(skill => `• ${skill}`).join('\n')
+  : 'No skills provided'
+}
+
+🎓 EDUCATION
+═══════════════════════════════════════
+${candidateData.education && candidateData.education.length > 0
+  ? candidateData.education.map(edu => `• ${edu}`).join('\n')
+  : 'No education provided'
+}
+
+🏆 CERTIFICATIONS
+═══════════════════════════════════════
+${candidateData.certifications && candidateData.certifications.length > 0
+  ? candidateData.certifications.map(cert => `• ${cert}`).join('\n')
+  : 'No certifications provided'
+}
+
+🌐 LANGUAGES
+═══════════════════════════════════════
+${candidateData.languages && candidateData.languages.length > 0
+  ? candidateData.languages.map(lang => `• ${lang}`).join('\n')
+  : 'No languages provided'
+}
+`;
+}
+
+// AI-powered content generation function
+async function generateAIContent(sectionType: string, candidateData: CandidateData, getToken: () => Promise<string | null>): Promise<string> {
+  try {
+    const token = await getToken();
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+
+    const response = await fetch('/api/ai/generate-suggestion', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        type: 'generate',
+        sectionType,
+        currentContent: '',
+        candidateData,
+      }),
+    });
+
+    if (response.ok) {
+      const { suggestion } = await response.json();
+      return suggestion || generateSectionContent(sectionType, candidateData);
+    } else {
+      console.warn(`AI generation failed for ${sectionType}, falling back to default`);
+      return generateSectionContent(sectionType, candidateData);
+    }
+  } catch (error) {
+    console.warn(`AI generation error for ${sectionType}:`, error);
+    return generateSectionContent(sectionType, candidateData);
+  }
+}
+
+// Function to generate content for a specific section
+function generateSectionContent(sectionType: string, candidateData: CandidateData): string {
+  switch (sectionType) {
+    case 'header':
+      return generateHeaderContent(candidateData);
+    case 'summary':
+      return generateSummaryContent(candidateData);
+    case 'functional-skills':
+      return generateFunctionalSkillsContent(candidateData);
+    case 'technical-skills':
+      return generateTechnicalSkillsContent(candidateData);
+    case 'areas-of-expertise':
+      return generateAreasOfExpertiseContent(candidateData);
+    case 'experience':
+      return generateExperienceContent(candidateData);
+    case 'experiences-summary':
+      return generateExperiencesSummaryContent(candidateData);
+    case 'education':
+      return generateEducationContent(candidateData);
+    case 'certifications':
+      return generateCertificationsContent(candidateData);
+    case 'languages':
+      return generateLanguagesContent(candidateData);
+    default:
+      return '';
+  }
+}
+
+// Function to create separate experience sections with detailed structure
+function createExperienceSections(candidateData: CandidateData): DocumentSection[] {
+  if (!candidateData.experience || candidateData.experience.length === 0) {
+    return [{
+      id: 'experience-1',
+      type: 'experience',
+      title: 'PROFESSIONAL EXPERIENCES',
+      content: 'No work experience provided.',
+      visible: true,
+      order: 5,
+      editable: true
+    }];
+  }
+
+  return candidateData.experience.map((exp, index) => {
+    const duration = `${exp.startDate} - ${exp.endDate}`;
+    
+    // Enhanced experience block structure according to specifications
+    const content = `**${exp.company}**
+${exp.title}
+${duration}
+
+**Company Description/Context**
+${generateCompanyDescription(exp.company, candidateData)}
+
+**Responsibilities**
+${formatResponsibilities(exp.responsibilities)}
+
+**Major Achievements**
+${generateAchievements(exp, candidateData)}
+
+**Technical Environment**
+${generateTechnicalEnvironment(candidateData.skills || [])}`;
+
+    return {
+      id: `experience-${index + 1}`,
+      type: 'experience',
+      title: `PROFESSIONAL EXPERIENCES`,
+      content,
+      visible: true,
+      order: 5 + index,
+      editable: true
+    };
+  });
+}
+
+// Helper functions for experience sections
+function generateCompanyDescription(company: string, candidateData: CandidateData): string {
+  // Generate contextual company description
+  if (company.toLowerCase().includes('bank') || company.toLowerCase().includes('financial')) {
+    return 'Leading financial services organization focused on digital transformation and customer-centric solutions.';
+  } else if (company.toLowerCase().includes('tech') || company.toLowerCase().includes('software')) {
+    return 'Innovative technology company specializing in cutting-edge software solutions and digital products.';
+  } else if (company.toLowerCase().includes('consulting')) {
+    return 'Premier consulting firm providing strategic advisory services and technology implementation solutions.';
+  } else {
+    return 'Dynamic organization focused on innovation, growth, and delivering exceptional value to clients and stakeholders.';
+  }
+}
+
+function formatResponsibilities(responsibilities: string): string {
+  // Split responsibilities into bullet points
+  const respArray = responsibilities.split(/[.!]/).filter(r => r.trim().length > 10);
+  return respArray.map(resp => `• ${resp.trim()}`).join('\n');
+}
+
+function generateAchievements(experience: any, candidateData: CandidateData): string {
+  // Generate relevant achievements based on role and skills
+  const achievements = [
+    'Successfully delivered key projects ahead of schedule and under budget',
+    'Improved team productivity and efficiency through process optimization',
+    'Led cross-functional initiatives resulting in measurable business impact'
+  ];
+  
+  if (candidateData.skills?.some(skill => skill.toLowerCase().includes('lead'))) {
+    achievements.push('Mentored and developed team members, contributing to their professional growth');
+  }
+  
+  return achievements.map(achievement => `• ${achievement}`).join('\n');
 }
 
 // Simple Error Boundary Component
-function SimpleErrorBoundary({ children }: { children: React.ReactNode }) {
-  try {
-    return <div>{children}</div>;
-  } catch (error) {
-    console.error('Error in component:', error);
-    return <div className="p-4 text-red-600">Error loading component. Please refresh the page.</div>;
-  }
+function LexicalErrorBoundary({ children }: { children: React.ReactNode }) {
+  return <div>{children}</div>;
 }
 
-// Enhanced Error Boundary with state
-function ErrorBoundary({ children }: { children: React.ReactNode }) {
-  const [hasError, setHasError] = useState(false);
-
+export function CreateCompetenceFileModal({ 
+  isOpen, 
+  onClose, 
+  onSuccess, 
+  preselectedCandidate 
+}: CreateCompetenceFileModalProps) {
+  const { getToken } = useAuth();
+  
+  // DND Kit sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+  
+  // State
+  const [currentStep, setCurrentStep] = useState(1);
+  const [inputMethod, setInputMethod] = useState<'file' | 'text' | 'url'>('file');
+  const [textInput, setTextInput] = useState('');
+  const [urlInput, setUrlInput] = useState('');
+  const [isParsing, setIsParsing] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<CandidateData | null>(preselectedCandidate || null);
+  const [selectedTemplate, setSelectedTemplate] = useState<'professional' | 'modern' | 'minimal' | 'emineon'>('emineon');
+  const [documentSections, setDocumentSections] = useState<DocumentSection[]>([
+    { id: 'header', type: 'header', title: 'HEADER', content: '', visible: true, order: 0, editable: true },
+    { id: 'summary', type: 'summary', title: 'PROFESSIONAL SUMMARY', content: '', visible: true, order: 1, editable: true },
+    { id: 'functional-skills', type: 'functional-skills', title: 'FUNCTIONAL SKILLS', content: '', visible: true, order: 2, editable: true },
+    { id: 'technical-skills', type: 'technical-skills', title: 'TECHNICAL SKILLS', content: '', visible: true, order: 3, editable: true },
+    { id: 'areas-of-expertise', type: 'areas-of-expertise', title: 'AREAS OF EXPERTISE', content: '', visible: true, order: 4, editable: true },
+    { id: 'education', type: 'education', title: 'EDUCATION', content: '', visible: true, order: 5, editable: true },
+    { id: 'certifications', type: 'certifications', title: 'CERTIFICATIONS', content: '', visible: true, order: 6, editable: true },
+    { id: 'languages', type: 'languages', title: 'LANGUAGES', content: '', visible: true, order: 7, editable: true },
+    { id: 'experiences-summary', type: 'experiences-summary', title: 'PROFESSIONAL EXPERIENCES SUMMARY', content: '', visible: true, order: 8, editable: true },
+  ]);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState('');
+  const [zoomLevel, setZoomLevel] = useState(100); // Zoom functionality
+  
+  // Refs
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Pre-populate sections when candidate data changes
   useEffect(() => {
-    const handleError = (error: ErrorEvent) => {
-      console.error('Caught error:', error);
-      setHasError(true);
-    };
+    if (selectedCandidate && currentStep >= 2) {
+      console.log('🔄 Pre-populating sections with candidate data:', selectedCandidate);
+      
+      // Create separate experience sections
+      const experienceSections = createExperienceSections(selectedCandidate);
+      
+      // Update existing sections with section-specific content
+      const updatedBaseSections = [
+        { id: 'header', type: 'header', title: 'HEADER', content: '', visible: true, order: 0, editable: true },
+        { id: 'summary', type: 'summary', title: 'PROFESSIONAL SUMMARY', content: '', visible: true, order: 1, editable: true },
+        { id: 'functional-skills', type: 'functional-skills', title: 'FUNCTIONAL SKILLS', content: '', visible: true, order: 2, editable: true },
+        { id: 'technical-skills', type: 'technical-skills', title: 'TECHNICAL SKILLS', content: '', visible: true, order: 3, editable: true },
+        { id: 'areas-of-expertise', type: 'areas-of-expertise', title: 'AREAS OF EXPERTISE', content: '', visible: true, order: 4, editable: true },
+        { id: 'education', type: 'education', title: 'EDUCATION', content: '', visible: true, order: 5 + experienceSections.length, editable: true },
+        { id: 'certifications', type: 'certifications', title: 'CERTIFICATIONS', content: '', visible: true, order: 6 + experienceSections.length, editable: true },
+        { id: 'languages', type: 'languages', title: 'LANGUAGES', content: '', visible: true, order: 7 + experienceSections.length, editable: true },
+        { id: 'experiences-summary', type: 'experiences-summary', title: 'PROFESSIONAL EXPERIENCES SUMMARY', content: '', visible: true, order: 8 + experienceSections.length, editable: true },
+      ].map(section => ({
+        ...section,
+        content: section.content || generateSectionContent(section.type, selectedCandidate)
+      }));
+      
+      // Combine base sections with experience sections
+      const allSections = [
+        ...updatedBaseSections.slice(0, 5), // header, summary, functional-skills, technical-skills, areas-of-expertise
+        ...experienceSections, // individual experience blocks (PROFESSIONAL EXPERIENCES)
+        ...updatedBaseSections.slice(5) // education, certifications, languages, experiences-summary
+      ];
+      
+      setDocumentSections(allSections);
+      console.log('✅ Sections populated with separate experience blocks:', allSections.length, 'total sections');
+    }
+  }, [selectedCandidate, currentStep]);
+  
+  // Zoom controls
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 10, 200));
+  };
+  
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 10, 50));
+  };
+  
+  const handleZoomReset = () => {
+    setZoomLevel(100);
+  };
+  
+  // AI Improve All functionality
+  const handleImproveAll = useCallback(async () => {
+    if (!selectedCandidate) return;
+    
+    setIsGenerating(true);
+    try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication token not available');
+      }
+      
+      console.log('🤖 Starting AI improvement for all sections...');
+      
+      // Get all visible sections that have content
+      const sectionsToImprove = documentSections.filter(section => 
+        section.visible && section.content && section.content.trim().length > 0
+      );
+      
+      // Process sections in parallel for better performance
+      const improvementPromises = sectionsToImprove.map(async (section) => {
+        try {
+          const response = await fetch('/api/ai/generate-suggestion', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              type: 'improve',
+              sectionType: section.type,
+              currentContent: section.content,
+              candidateData: selectedCandidate,
+            }),
+          });
+          
+          if (response.ok) {
+            const { suggestion } = await response.json();
+            return { sectionId: section.id, suggestion };
+          } else {
+            console.error(`Failed to improve section ${section.type}`);
+            return null;
+          }
+        } catch (error) {
+          console.error(`Error improving section ${section.type}:`, error);
+          return null;
+        }
+      });
+      
+      const results = await Promise.all(improvementPromises);
+      
+      // Update sections with improved content
+      const successfulImprovements = results.filter(result => result !== null);
+      
+      if (successfulImprovements.length > 0) {
+        setDocumentSections(prev => 
+          prev.map(section => {
+            const improvement = successfulImprovements.find(imp => imp.sectionId === section.id);
+            return improvement 
+              ? { ...section, content: improvement.suggestion }
+              : section;
+          })
+        );
+        
+        console.log(`✅ Successfully improved ${successfulImprovements.length} sections`);
+        
+        // Show success feedback
+        setLastSaved(new Date());
+      } else {
+        console.warn('⚠️ No sections were improved');
+      }
+      
+    } catch (error) {
+      console.error('💥 AI improvement error:', error);
+      alert('Failed to improve sections. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [selectedCandidate, documentSections, getToken]);
+  
+  // Drag and drop handlers
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
 
-    window.addEventListener('error', handleError);
-    return () => window.removeEventListener('error', handleError);
+    if (over && active.id !== over.id) {
+      setDocumentSections((sections) => {
+        const oldIndex = sections.findIndex(section => section.id === active.id);
+        const newIndex = sections.findIndex(section => section.id === over.id);
+        
+        const newSections = arrayMove(sections, oldIndex, newIndex);
+        
+        // Update order property
+        return newSections.map((section, index) => ({
+          ...section,
+          order: index
+        }));
+      });
+    }
   }, []);
-
-  if (hasError) {
-    return (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-        <h3 className="text-red-800 font-medium">Something went wrong</h3>
-        <p className="text-red-600 text-sm mt-1">Please refresh the page and try again.</p>
-        <Button 
-          onClick={() => setHasError(false)} 
-          variant="outline" 
-          size="sm" 
-          className="mt-2"
-        >
-          Try Again
-        </Button>
-      </div>
+  
+  // File upload handling
+  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    setIsParsing(true);
+    setGenerationProgress('Uploading file...');
+    
+    // Create timeout controller
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 90000); // 90 seconds timeout
+    
+    try {
+      const token = await getToken();
+      
+      if (!token) {
+        throw new Error('Authentication token not available');
+      }
+      
+      console.log('📁 Starting file upload...', { 
+        fileName: file.name, 
+        fileSize: file.size, 
+        fileType: file.type 
+      });
+      
+      setGenerationProgress('Processing file...');
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/competence-files/parse-resume', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+        signal: controller.signal,
+      });
+      
+      // Clear the timeout
+      clearTimeout(timeoutId);
+      
+      console.log('📡 File upload response:', { 
+        status: response.status, 
+        statusText: response.statusText 
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ File upload failed:', { 
+          status: response.status, 
+          statusText: response.statusText,
+          errorText 
+        });
+        
+        let errorMessage = 'Failed to parse file';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
+      setGenerationProgress('Extracting candidate information...');
+      
+      const result = await response.json();
+      console.log('✅ File parse result:', result);
+      
+      if (!result.success || !result.data) {
+        throw new Error(result.message || 'Invalid response format');
+      }
+      
+      const newCandidate = result.data;
+      
+      if (!newCandidate.fullName) {
+        throw new Error('Could not extract candidate name from file');
+      }
+      
+      setSelectedCandidate(newCandidate);
+      setCurrentStep(2);
+      setGenerationProgress('');
+      console.log('✅ File parsing completed successfully');
+      
+    } catch (error) {
+      // Clear the timeout if it hasn't been cleared
+      clearTimeout(timeoutId);
+      
+      console.error('💥 File parsing error:', error);
+      
+      let userMessage = 'Failed to parse file. Please try again.';
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          userMessage = 'File processing took too long and was cancelled. Please try with a smaller file or try again.';
+        } else if (error.message.includes('Authentication')) {
+          userMessage = 'Authentication failed. Please refresh the page and try again.';
+        } else if (error.message.includes('Could not extract')) {
+          userMessage = 'Could not extract candidate information. Please ensure the file contains clear candidate details.';
+        } else if (error.message.includes('Invalid response')) {
+          userMessage = 'Server response was invalid. Please try again.';
+        } else if (error.message.includes('file format')) {
+          userMessage = 'Unsupported file format. Please use PDF, DOCX, TXT, MD, or HTML files.';
+        } else if (error.message.includes('too large')) {
+          userMessage = 'File is too large. Please use a file smaller than 25MB.';
+        } else if (error.message !== 'Failed to parse file') {
+          userMessage = error.message;
+        }
+      }
+      
+      alert(userMessage);
+    } finally {
+      setIsParsing(false);
+      setGenerationProgress('');
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  }, [getToken]);
+  
+  // Text parsing
+  const handleTextParse = useCallback(async () => {
+    if (!textInput.trim()) return;
+    
+    setIsParsing(true);
+    setGenerationProgress('Processing text...');
+    
+    // Create timeout controller
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 90000); // 90 seconds timeout
+    
+    try {
+      const token = await getToken();
+      
+      if (!token) {
+        throw new Error('Authentication token not available');
+      }
+      
+      console.log('🔄 Starting text parsing...', { textLength: textInput.length });
+      
+      setGenerationProgress('Analyzing text content...');
+      
+      const response = await fetch('/api/competence-files/parse-resume', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ text: textInput }),
+        signal: controller.signal,
+      });
+      
+      // Clear the timeout
+      clearTimeout(timeoutId);
+      
+      console.log('📡 Response received:', { 
+        status: response.status, 
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Response not OK:', { 
+          status: response.status, 
+          statusText: response.statusText,
+          errorText 
+        });
+        
+        let errorMessage = 'Failed to parse text';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          // If not JSON, use the raw text
+          errorMessage = errorText || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
+      setGenerationProgress('Extracting candidate information...');
+      
+      const result = await response.json();
+      console.log('✅ Parse result:', result);
+      
+      if (!result.success || !result.data) {
+        throw new Error(result.message || 'Invalid response format');
+      }
+      
+      const newCandidate = result.data;
+      
+      if (!newCandidate.fullName) {
+        throw new Error('Could not extract candidate name from text');
+      }
+      
+      setSelectedCandidate(newCandidate);
+      setCurrentStep(2);
+      setGenerationProgress('');
+      console.log('✅ Text parsing completed successfully');
+      
+    } catch (error) {
+      // Clear the timeout if it hasn't been cleared
+      clearTimeout(timeoutId);
+      
+      console.error('💥 Text parsing error:', error);
+      
+      // Provide more specific error messages
+      let userMessage = 'Failed to parse text. Please try again.';
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          userMessage = 'Text processing took too long and was cancelled. Please try with shorter text or try again.';
+        } else if (error.message.includes('Authentication')) {
+          userMessage = 'Authentication failed. Please refresh the page and try again.';
+        } else if (error.message.includes('Could not extract')) {
+          userMessage = 'Could not extract candidate information. Please ensure the text contains clear candidate details.';
+        } else if (error.message.includes('Invalid response')) {
+          userMessage = 'Server response was invalid. Please try again.';
+        } else if (error.message !== 'Failed to parse text') {
+          userMessage = error.message;
+        }
+      }
+      
+      alert(userMessage);
+    } finally {
+      setIsParsing(false);
+      setGenerationProgress('');
+    }
+  }, [textInput, getToken]);
+  
+  // URL parsing
+  const handleUrlParse = useCallback(async () => {
+    if (!urlInput.trim()) return;
+    
+    setIsParsing(true);
+    setGenerationProgress('Processing LinkedIn URL...');
+    
+    // Create timeout controller
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 90000); // 90 seconds timeout
+    
+    try {
+      const token = await getToken();
+      
+      if (!token) {
+        throw new Error('Authentication token not available');
+      }
+      
+      console.log('🔗 Starting URL parsing...', { url: urlInput });
+      
+      setGenerationProgress('Fetching LinkedIn profile...');
+      
+      const response = await fetch('/api/competence-files/parse-linkedin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ url: urlInput }),
+        signal: controller.signal,
+      });
+      
+      // Clear the timeout
+      clearTimeout(timeoutId);
+      
+      console.log('📡 URL parse response:', { 
+        status: response.status, 
+        statusText: response.statusText 
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ URL parsing failed:', { 
+          status: response.status, 
+          statusText: response.statusText,
+          errorText 
+        });
+        
+        let errorMessage = 'Failed to parse LinkedIn URL';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
+      setGenerationProgress('Extracting profile information...');
+      
+      const result = await response.json();
+      console.log('✅ URL parse result:', result);
+      
+      if (!result.success || !result.data) {
+        throw new Error(result.message || 'Invalid response format');
+      }
+      
+      const newCandidate = result.data;
+      
+      if (!newCandidate.fullName) {
+        throw new Error('Could not extract candidate name from LinkedIn profile');
+      }
+      
+      setSelectedCandidate(newCandidate);
+      setCurrentStep(2);
+      setGenerationProgress('');
+      console.log('✅ URL parsing completed successfully');
+      
+    } catch (error) {
+      // Clear the timeout if it hasn't been cleared
+      clearTimeout(timeoutId);
+      
+      console.error('💥 URL parsing error:', error);
+      
+      let userMessage = 'Failed to parse LinkedIn URL. Please try again.';
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          userMessage = 'LinkedIn profile processing took too long and was cancelled. Please try again or check your internet connection.';
+        } else if (error.message.includes('Authentication')) {
+          userMessage = 'Authentication failed. Please refresh the page and try again.';
+        } else if (error.message.includes('Could not extract')) {
+          userMessage = 'Could not extract candidate information. Please ensure the LinkedIn URL is valid and accessible.';
+        } else if (error.message.includes('Invalid response')) {
+          userMessage = 'Server response was invalid. Please try again.';
+        } else if (error.message.includes('Invalid URL')) {
+          userMessage = 'Please enter a valid LinkedIn profile URL.';
+        } else if (error.message !== 'Failed to parse LinkedIn URL') {
+          userMessage = error.message;
+        }
+      }
+      
+      alert(userMessage);
+    } finally {
+      setIsParsing(false);
+      setGenerationProgress('');
+    }
+  }, [urlInput, getToken]);
+  
+  // Section management
+  const toggleSectionVisibility = useCallback((sectionId: string) => {
+    setDocumentSections(prev => 
+      prev.map(section => 
+        section.id === sectionId 
+          ? { ...section, visible: !section.visible }
+          : section
+      )
     );
-  }
-
-  return <>{children}</>;
-}
-
-// React Components for Decorator Nodes
-function SkillsSummaryComponent({ skills, node }: { skills: string[], node: SkillsSummaryNode }) {
-  const [editor] = useLexicalComposerContext();
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedSkills, setEditedSkills] = useState(skills.join(', '));
-
-  const handleSave = () => {
-    const newSkills = editedSkills.split(',').map(s => s.trim()).filter(s => s);
-    editor.update(() => {
-      node.setSkills(newSkills);
-    });
-    setIsEditing(false);
-  };
-
-  const handleAIEnhance = async () => {
+  }, []);
+  
+  const updateSectionContent = useCallback((sectionId: string, content: string) => {
+    setDocumentSections(prev => 
+      prev.map(section => 
+        section.id === sectionId 
+          ? { ...section, content }
+          : section
+      )
+    );
+  }, []);
+  
+  const addCustomSection = useCallback(() => {
+    const newSection: DocumentSection = {
+      id: `custom-${Date.now()}`,
+      type: 'custom',
+      title: 'Custom Section',
+      content: '',
+      visible: true,
+      order: documentSections.length,
+      editable: true,
+    };
+    setDocumentSections(prev => [...prev, newSection]);
+  }, [documentSections.length]);
+  
+  // Autosave functionality
+  const handleAutoSave = useCallback(async () => {
+    if (!selectedCandidate) return;
+    
+    setIsAutoSaving(true);
     try {
-      // Call AI service to enhance skills
-      const response = await fetch('/api/ai/enhance-skills', {
+      const token = await getToken();
+      const documentData = {
+        candidateId: selectedCandidate.id,
+        template: selectedTemplate,
+        sections: documentSections,
+        lastModified: new Date().toISOString(),
+      };
+      
+      const response = await fetch('/api/competence-files/autosave', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ skills })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(documentData),
       });
-      const { enhancedSkills } = await response.json();
       
-      editor.update(() => {
-        node.setSkills(enhancedSkills);
-      });
+      if (response.ok) {
+        setLastSaved(new Date());
+      }
     } catch (error) {
-      console.error('Failed to enhance skills:', error);
+      console.error('Autosave failed:', error);
+    } finally {
+      setIsAutoSaving(false);
     }
-  };
-
-  return (
-    <div className="skills-summary-component">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="font-semibold text-gray-900 flex items-center">
-          <Award className="h-4 w-4 mr-2" />
-          Skills Summary
-        </h4>
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAIEnhance}
-            className="text-xs"
-          >
-            <Sparkles className="h-3 w-3 mr-1" />
-            AI Enhance
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsEditing(!isEditing)}
-            className="text-xs"
-          >
-            <Edit3 className="h-3 w-3 mr-1" />
-            Edit
-          </Button>
-        </div>
-      </div>
+  }, [selectedCandidate, selectedTemplate, documentSections, getToken]);
+  
+  // Generate final document
+  const handleGenerateDocument = useCallback(async (format: 'pdf' | 'docx') => {
+    if (!selectedCandidate) return;
+    
+    setIsGenerating(true);
+    setGenerationProgress('Preparing document...');
+    
+    // Create an AbortController for timeout handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 90000); // 90 seconds timeout (longer than server timeout)
+    
+    try {
+      setGenerationProgress('Generating document content...');
+      const token = await getToken();
       
-      {isEditing ? (
-        <div className="space-y-3">
-          <Input
-            value={editedSkills}
-            onChange={(e) => setEditedSkills(e.target.value)}
-            placeholder="Enter skills separated by commas"
-            className="text-sm"
-          />
-          <div className="flex space-x-2">
-            <Button size="sm" onClick={handleSave}>Save</Button>
-            <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>Cancel</Button>
+      setGenerationProgress(`Creating ${format.toUpperCase()} file...`);
+      const response = await fetch('/api/competence-files/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          candidateData: selectedCandidate,
+          template: selectedTemplate,
+          sections: documentSections.filter(s => s.visible),
+          format,
+        }),
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        setGenerationProgress('Preparing download...');
+        // Handle direct file download
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `${selectedCandidate.fullName.replace(/[^a-zA-Z0-9]/g, '_')}_Competence_File.${format}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        setGenerationProgress('Download complete!');
+        
+        // Call success callback and close modal
+        setTimeout(() => {
+          onSuccess('File downloaded successfully');
+          onClose();
+        }, 500);
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      }
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.error('Error generating document:', error);
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          alert('Request timed out. The document generation is taking longer than expected. Please try again or contact support if the issue persists.');
+        } else if (error.message.includes('timeout') || error.message.includes('TIMEOUT')) {
+          alert('The server is taking longer than expected to generate your document. This can happen with complex documents. Please try again in a moment.');
+        } else {
+          alert(`Failed to generate document: ${error.message}`);
+        }
+      } else {
+        alert('Failed to generate document: Unknown error');
+      }
+    } finally {
+      setIsGenerating(false);
+      setGenerationProgress('');
+    }
+  }, [selectedCandidate, selectedTemplate, documentSections, getToken, onSuccess, onClose]);
+  
+  // Auto-save effect
+  useEffect(() => {
+    if (currentStep === 3 && selectedCandidate) {
+      const interval = setInterval(handleAutoSave, 30000); // Auto-save every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [currentStep, selectedCandidate, handleAutoSave]);
+  
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className={`bg-white rounded-lg flex flex-col ${ 
+        currentStep === 3 
+          ? 'w-full h-full m-0 rounded-none' // Full screen for editor
+          : 'w-full max-w-6xl h-[90vh] m-4' // Fixed height for steps 1-2
+      }`}>
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b flex-shrink-0">
+          <div>
+            <h2 className="text-xl font-semibold">Create Competence File</h2>
+            <div className="flex items-center space-x-4 mt-2">
+              <div className={`flex items-center space-x-2 ${currentStep >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${currentStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>1</div>
+                <span className="text-sm">Upload</span>
+              </div>
+              <div className={`flex items-center space-x-2 ${currentStep >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${currentStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>2</div>
+                <span className="text-sm">Select</span>
+              </div>
+              <div className={`flex items-center space-x-2 ${currentStep >= 3 ? 'text-blue-600' : 'text-gray-400'}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${currentStep >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>3</div>
+                <span className="text-sm">Edit</span>
+              </div>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {skills.map((skill, index) => (
-            <Badge key={index} variant="secondary" className="text-xs">
-              {skill}
-            </Badge>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CertificationsTableComponent({ 
-  certifications, 
-  node 
-}: { 
-  certifications: Array<{name: string, issuer: string, date: string}>, 
-  node: CertificationsTableNode 
-}) {
-  const [editor] = useLexicalComposerContext();
-  const [isEditing, setIsEditing] = useState(false);
-
-  const handleAIGenerate = async () => {
-    try {
-      // Call AI service to suggest certifications
-      const response = await fetch('/api/ai/suggest-certifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentCertifications: certifications })
-      });
-      const { suggestedCertifications } = await response.json();
-      
-      editor.update(() => {
-        node.setCertifications([...certifications, ...suggestedCertifications]);
-      });
-    } catch (error) {
-      console.error('Failed to generate certifications:', error);
-    }
-  };
-
-  return (
-    <div className="certifications-table-component">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="font-semibold text-gray-900 flex items-center">
-          <Award className="h-4 w-4 mr-2" />
-          Certifications
-        </h4>
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAIGenerate}
-            className="text-xs"
-          >
-            <Sparkles className="h-3 w-3 mr-1" />
-            AI Suggest
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsEditing(!isEditing)}
-            className="text-xs"
-          >
-            <Edit3 className="h-3 w-3 mr-1" />
-            Edit
+          <Button variant="ghost" onClick={onClose}>
+            <X className="h-5 w-5" />
           </Button>
         </div>
-      </div>
-      
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200">
-              <th className="text-left py-2 font-medium text-gray-700">Certification</th>
-              <th className="text-left py-2 font-medium text-gray-700">Issuer</th>
-              <th className="text-left py-2 font-medium text-gray-700">Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {certifications.map((cert, index) => (
-              <tr key={index} className="border-b border-gray-100">
-                <td className="py-2 text-gray-900">{cert.name}</td>
-                <td className="py-2 text-gray-600">{cert.issuer}</td>
-                <td className="py-2 text-gray-600">{cert.date}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function GPTSuggestionComponent({ 
-  suggestion, 
-  context, 
-  node 
-}: { 
-  suggestion: string, 
-  context: string, 
-  node: GPTSuggestionNode 
-}) {
-  const [editor] = useLexicalComposerContext();
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const handleAccept = () => {
-    editor.update(() => {
-      const paragraph = $createParagraphNode();
-      paragraph.append($createTextNode(suggestion));
-      node.replace(paragraph);
-    });
-  };
-
-  const handleReject = () => {
-    editor.update(() => {
-      node.remove();
-    });
-  };
-
-  const handleRegenerate = async () => {
-    try {
-      const response = await fetch('/api/ai/regenerate-suggestion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context, currentSuggestion: suggestion })
-      });
-      const { newSuggestion } = await response.json();
-      
-      editor.update(() => {
-        const newNode = new GPTSuggestionNode(newSuggestion, context);
-        node.replace(newNode);
-      });
-    } catch (error) {
-      console.error('Failed to regenerate suggestion:', error);
-    }
-  };
-
-  return (
-    <div className="gpt-suggestion-component">
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center">
-          <Sparkles className="h-4 w-4 text-purple-600 mr-2" />
-          <span className="text-sm font-medium text-purple-800">AI Suggestion</span>
+        
+        {/* Content */}
+        <div className="flex-1 overflow-hidden">
+          {/* Step 1: Upload/Input */}
+          {currentStep === 1 && (
+            <div className="h-full overflow-y-auto">
+              <div className="p-8">
+                <div className="max-w-2xl mx-auto space-y-6">
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Upload Candidate Information</h3>
+                    <p className="text-gray-600">Choose how you'd like to add candidate information</p>
+                  </div>
+                  
+                  <div className="flex gap-4 justify-center">
+                    <Button
+                      onClick={() => setInputMethod('file')}
+                      variant={inputMethod === 'file' ? 'primary' : 'outline'}
+                      className="flex-1 max-w-xs"
+                    >
+                      Upload File
+                    </Button>
+                    <Button
+                      onClick={() => setInputMethod('text')}
+                      variant={inputMethod === 'text' ? 'primary' : 'outline'}
+                      className="flex-1 max-w-xs"
+                    >
+                      Paste Text
+                    </Button>
+                    <Button
+                      onClick={() => setInputMethod('url')}
+                      variant={inputMethod === 'url' ? 'primary' : 'outline'}
+                      className="flex-1 max-w-xs"
+                    >
+                      LinkedIn URL
+                    </Button>
+                  </div>
+                  
+                  {inputMethod === 'file' && (
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileSelect}
+                        accept=".pdf,.doc,.docx,.txt,.html,.md"
+                        className="hidden"
+                      />
+                      <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-lg font-medium text-gray-900 mb-2">Upload Resume/CV</p>
+                      <p className="text-gray-600 mb-4">Supports PDF, DOC, DOCX, TXT, HTML, MD files</p>
+                      <Button onClick={() => fileInputRef.current?.click()}>
+                        Choose File
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {inputMethod === 'text' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Paste Resume/CV Text
+                      </label>
+                      <textarea
+                        value={textInput}
+                        onChange={(e) => setTextInput(e.target.value)}
+                        placeholder="Paste the candidate's resume or CV text here..."
+                        className="w-full h-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <Button 
+                        onClick={handleTextParse}
+                        disabled={!textInput.trim() || isParsing}
+                        className="w-full mt-4"
+                      >
+                        {isParsing ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Parsing...
+                          </>
+                        ) : (
+                          'Parse Text'
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {inputMethod === 'url' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        LinkedIn Profile URL
+                      </label>
+                      <input
+                        type="url"
+                        placeholder="https://linkedin.com/in/username"
+                        value={urlInput}
+                        onChange={(e) => setUrlInput(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <Button 
+                        onClick={handleUrlParse}
+                        disabled={!urlInput.trim() || isParsing}
+                        className="w-full mt-4"
+                      >
+                        {isParsing ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Parsing...
+                          </>
+                        ) : (
+                          'Parse LinkedIn Profile'
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {isParsing && (
+                    <div className="text-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+                      <p className="text-gray-600">
+                        {generationProgress || 'Processing candidate information...'}
+                      </p>
+                      <div className="mt-4 text-sm text-gray-500">
+                        This may take up to 60 seconds for complex documents
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Step 2: Template & Section Selection */}
+          {currentStep === 2 && selectedCandidate && (
+            <div className="h-full flex flex-col">
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-8">
+                  <div className="max-w-4xl mx-auto space-y-6">
+                    <div className="text-center">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Customize Your Competence File</h3>
+                      <p className="text-gray-600">Choose a template and select which sections to include</p>
+                    </div>
+                    
+                    {/* Candidate Info */}
+                    <Card className="p-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 font-semibold text-lg">
+                            {selectedCandidate.fullName.charAt(0)}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="font-medium">{selectedCandidate.fullName}</h4>
+                          <p className="text-gray-600">{selectedCandidate.currentTitle}</p>
+                          <p className="text-sm text-gray-500">{selectedCandidate.location}</p>
+                        </div>
+                      </div>
+                    </Card>
+                    
+                    {/* Template Selection */}
+                    <Card className="p-6">
+                      <h4 className="text-lg font-medium text-gray-900 mb-4">Choose Template</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {(['emineon', 'professional', 'modern', 'minimal'] as const).map((template) => (
+                          <button
+                            key={template}
+                            onClick={() => setSelectedTemplate(template)}
+                            className={`p-4 border-2 rounded-lg text-left transition-colors ${
+                              selectedTemplate === template
+                                ? 'border-blue-500 bg-blue-50'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <div className="font-medium capitalize mb-2 flex items-center gap-2">
+                              {template === 'emineon' && (
+                                <span className="text-blue-600 font-bold text-sm">✨</span>
+                              )}
+                              {template}
+                              {template === 'emineon' && (
+                                <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full font-medium">
+                                  BRANDED
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {template === 'emineon' && 'Premium Emineon-branded template with strategic logo placement and professional styling'}
+                              {template === 'professional' && 'Classic layout with traditional formatting'}
+                              {template === 'modern' && 'Contemporary design with clean lines'}
+                              {template === 'minimal' && 'Simple and focused presentation'}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </Card>
+                    
+                    {/* Navigation */}
+                    <div className="flex justify-between pt-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => setCurrentStep(1)}
+                      >
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Back
+                      </Button>
+                      <Button
+                        onClick={() => setCurrentStep(3)}
+                      >
+                        Continue to Editor
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Step 3: Lexical Editor */}
+          {currentStep === 3 && selectedCandidate && (
+            <div className="flex-1 flex flex-col h-full">
+              {/* Editor Header */}
+              <div className="flex items-center justify-between p-4 border-b bg-gray-50 flex-shrink-0">
+                <div className="flex items-center space-x-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentStep(2)}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back
+                  </Button>
+                  <div>
+                    <h4 className="font-medium">{selectedCandidate.fullName}</h4>
+                    <p className="text-sm text-gray-600">{selectedTemplate} template</p>
+                  </div>
+                </div>
+                
+                {/* AI and Zoom Controls */}
+                <div className="flex items-center space-x-4">
+                  {/* AI Improve All Button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleImproveAll}
+                    disabled={isGenerating}
+                    className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200 hover:from-purple-100 hover:to-blue-100"
+                  >
+                    {isGenerating ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Sparkles className="h-4 w-4 mr-2 text-purple-600" />
+                    )}
+                    Improve All
+                  </Button>
+                  
+                  {/* Zoom Controls */}
+                  <div className="flex items-center space-x-2 bg-white rounded-lg border px-3 py-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleZoomOut}
+                      disabled={zoomLevel <= 50}
+                    >
+                      <ZoomOut className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm font-medium min-w-[3rem] text-center">
+                      {zoomLevel}%
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleZoomIn}
+                      disabled={zoomLevel >= 200}
+                    >
+                      <ZoomIn className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleZoomReset}
+                      className="text-xs"
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAutoSave}
+                      disabled={isAutoSaving}
+                    >
+                      {isAutoSaving ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleGenerateDocument('pdf')}
+                      disabled={isGenerating}
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          {generationProgress || 'Generating...'}
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4 mr-2" />
+                          Generate PDF
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleGenerateDocument('docx')}
+                      disabled={isGenerating}
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          {generationProgress || 'Generating...'}
+                        </>
+                      ) : (
+                        'Generate DOCX'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Editor Content - Full Screen with Zoom */}
+              <div className="flex-1 overflow-y-auto bg-gray-50">
+                <div className="min-h-full p-8">
+                  <div 
+                    className="max-w-5xl mx-auto bg-white shadow-lg rounded-lg p-8 transition-transform duration-200"
+                    style={{ 
+                      transform: `scale(${zoomLevel / 100})`,
+                      transformOrigin: 'top center',
+                      marginBottom: zoomLevel !== 100 ? `${(zoomLevel - 100) * 2}px` : '0'
+                    }}
+                  >
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={documentSections.filter(s => s.visible).map(s => s.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-8">
+                          {documentSections
+                            .filter(section => section.visible)
+                            .sort((a, b) => a.order - b.order)
+                            .map((section) => (
+                              <SortableSectionEditor
+                                key={section.id}
+                                section={section}
+                                onUpdate={(content) => updateSectionContent(section.id, content)}
+                                onTitleUpdate={(title) => {
+                                  setDocumentSections(prev =>
+                                    prev.map(s =>
+                                      s.id === section.id ? { ...s, title } : s
+                                    )
+                                  );
+                                }}
+                                getToken={getToken}
+                                candidateData={selectedCandidate}
+                              />
+                            ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="p-1"
-        >
-          {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-        </Button>
-      </div>
-      
-      <div className={`text-sm text-gray-700 mb-3 ${isExpanded ? '' : 'line-clamp-2'}`}>
-        {suggestion}
-      </div>
-      
-      <div className="flex space-x-2">
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={handleAccept}
-          className="text-xs"
-        >
-          <Check className="h-3 w-3 mr-1" />
-          Accept
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRegenerate}
-          className="text-xs"
-        >
-          <RotateCcw className="h-3 w-3 mr-1" />
-          Regenerate
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleReject}
-          className="text-xs text-red-600 hover:text-red-700"
-        >
-          <X className="h-3 w-3 mr-1" />
-          Reject
-        </Button>
+        
+        {/* Progress Overlay */}
+        {isGenerating && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-8 max-w-sm mx-4 text-center">
+              <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Generating Document
+              </h3>
+              <p className="text-gray-600">
+                {generationProgress || 'Please wait...'}
+              </p>
+              <div className="mt-4 text-sm text-gray-500">
+                This may take up to 60 seconds for complex documents
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -5,9 +5,6 @@ const nextConfig = {
   swcMinify: true,
   compress: true,
   
-  // External packages for serverless
-  serverExternalPackages: ["puppeteer-core", "@sparticuz/chromium-min"],
-  
   // Image optimization
   images: {
     remotePatterns: [
@@ -31,6 +28,7 @@ const nextConfig = {
   // Experimental features
   experimental: {
     optimizeCss: false, // Disable this as it's causing issues
+    serverComponentsExternalPackages: ["puppeteer-core", "@sparticuz/chromium-min", "puppeteer"],
   },
   
   // Performance optimizations  
@@ -100,6 +98,13 @@ const nextConfig = {
         },
       },
     });
+    
+    if (isServer) {
+      config.externals.push({
+        'puppeteer-core': 'commonjs puppeteer-core',
+        '@sparticuz/chromium-min': 'commonjs @sparticuz/chromium-min'
+      });
+    }
     
     return config;
   },

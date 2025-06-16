@@ -82,4 +82,366 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+}
+
+@layer components {
+  /* Competence File Styles */
+  .candidate-header {
+    @apply text-center mb-8 pb-6 border-b border-gray-200;
+  }
+
+  .candidate-name {
+    @apply text-3xl font-bold text-gray-900 mb-2;
+  }
+
+  .candidate-title {
+    @apply text-xl text-gray-600 mb-4;
+  }
+
+  .contact-info {
+    @apply flex flex-wrap justify-center gap-4 text-sm text-gray-600;
+  }
+
+  .contact-item {
+    @apply flex items-center gap-2;
+  }
+
+  .contact-icon {
+    @apply text-base;
+  }
+
+  /* Professional Summary Styles */
+  .professional-summary {
+    @apply mb-6;
+  }
+
+  .summary-text {
+    @apply text-gray-700 leading-relaxed mb-4;
+  }
+
+  .key-highlights {
+    @apply flex flex-wrap gap-3 mt-4;
+  }
+
+  .highlight-item {
+    @apply flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg text-sm text-blue-700;
+  }
+
+  .highlight-icon {
+    @apply text-base;
+  }
+
+  /* Experience Section Styles */
+  .experience-section {
+    @apply space-y-6;
+  }
+
+  .experience-item {
+    @apply border-l-4 border-gray-200 pl-6 pb-6 relative;
+  }
+
+  .experience-item.current-role {
+    @apply border-l-blue-500;
+  }
+
+  .role-header {
+    @apply flex justify-between items-start mb-3;
+  }
+
+  .role-title-section {
+    @apply flex-1;
+  }
+
+  .job-title {
+    @apply text-lg font-semibold text-gray-900 mb-1;
+  }
+
+  .company-name {
+    @apply text-base text-gray-600 mb-2;
+  }
+
+  .employment-details {
+    @apply flex flex-col items-end text-sm text-gray-500;
+  }
+
+  .date-range {
+    @apply font-medium;
+  }
+
+  .current-badge {
+    @apply bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium mt-1;
+  }
+
+  .achievement-list {
+    @apply space-y-2;
+  }
+
+  .achievement-item {
+    @apply flex items-start gap-3;
+  }
+
+  .achievement-bullet {
+    @apply text-blue-500 font-bold mt-1 flex-shrink-0;
+  }
+
+  .achievement-text {
+    @apply text-gray-700 leading-relaxed;
+  }
+
+  .role-impact {
+    @apply mt-4 bg-gray-50 rounded-lg p-4;
+  }
+
+  .impact-metrics {
+    @apply flex gap-4;
+  }
+
+  .metric-item {
+    @apply text-center;
+  }
+
+  .metric-value {
+    @apply block text-sm font-semibold text-gray-900;
+  }
+
+  .metric-label {
+    @apply block text-xs text-gray-600;
+  }
+
+  /* Skills Section Styles */
+  .skills-section {
+    @apply space-y-6;
+  }
+
+  .skill-category {
+    @apply mb-6;
+  }
+
+  .category-title {
+    @apply flex items-center gap-2 text-lg font-semibold text-gray-900 mb-3;
+  }
+
+  .category-icon {
+    @apply text-xl;
+  }
+
+  .skill-tags {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .skill-tag {
+    @apply px-3 py-1 rounded-full text-sm font-medium transition-colors;
+  }
+
+  .skill-tag.technical {
+    @apply bg-blue-100 text-blue-800 hover:bg-blue-200;
+  }
+
+  .skill-tag.tools {
+    @apply bg-purple-100 text-purple-800 hover:bg-purple-200;
+  }
+
+  .skill-tag.leadership {
+    @apply bg-green-100 text-green-800 hover:bg-green-200;
+  }
+
+  .skill-tag.general {
+    @apply bg-gray-100 text-gray-800 hover:bg-gray-200;
+  }
+
+  /* Education Section Styles */
+  .education-section {
+    @apply space-y-4;
+  }
+
+  .education-item {
+    @apply bg-gray-50 rounded-lg p-4;
+  }
+
+  .education-header {
+    @apply flex items-start gap-3;
+  }
+
+  .education-icon {
+    @apply text-2xl mt-1;
+  }
+
+  .education-details {
+    @apply flex-1;
+  }
+
+  .degree-title {
+    @apply text-lg font-semibold text-gray-900 mb-1;
+  }
+
+  .institution-name {
+    @apply text-gray-600 mb-1;
+  }
+
+  .graduation-year {
+    @apply text-sm text-gray-500;
+  }
+
+  .education-highlights {
+    @apply mt-3;
+  }
+
+  .highlight-badge {
+    @apply bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  /* Certifications Section Styles */
+  .certifications-section {
+    @apply space-y-4;
+  }
+
+  .certifications-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+  }
+
+  .certification-item {
+    @apply bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4;
+  }
+
+  .cert-header {
+    @apply flex items-center gap-3 mb-2;
+  }
+
+  .cert-icon {
+    @apply text-2xl;
+  }
+
+  .cert-title {
+    @apply text-base font-semibold text-gray-900;
+  }
+
+  .cert-status {
+    @apply flex justify-end;
+  }
+
+  .status-badge {
+    @apply px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .status-badge.active {
+    @apply bg-green-100 text-green-700;
+  }
+
+  .certification-summary {
+    @apply mt-6 text-center;
+  }
+
+  .summary-note {
+    @apply flex items-center justify-center gap-2 text-sm text-gray-600 italic;
+  }
+
+  .summary-icon {
+    @apply text-base;
+  }
+
+  /* Languages Section Styles */
+  .languages-section {
+    @apply space-y-4;
+  }
+
+  .languages-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
+  }
+
+  .language-item {
+    @apply bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4;
+  }
+
+  .language-header {
+    @apply flex items-center gap-3 mb-2;
+  }
+
+  .language-icon {
+    @apply text-xl;
+  }
+
+  .language-name {
+    @apply text-base font-semibold text-gray-900;
+  }
+
+  .proficiency-level {
+    @apply flex justify-end;
+  }
+
+  .proficiency-badge {
+    @apply px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .proficiency-badge.native {
+    @apply bg-green-100 text-green-700;
+  }
+
+  .proficiency-badge.fluent {
+    @apply bg-blue-100 text-blue-700;
+  }
+
+  .proficiency-badge.professional {
+    @apply bg-purple-100 text-purple-700;
+  }
+
+  .language-advantage {
+    @apply mt-6 text-center;
+  }
+
+  .advantage-note {
+    @apply flex items-center justify-center gap-2 text-sm text-gray-600 italic;
+  }
+
+  .advantage-icon {
+    @apply text-base;
+  }
+
+  /* Custom Section Styles */
+  .custom-section {
+    @apply text-center py-8;
+  }
+
+  .custom-placeholder {
+    @apply max-w-md mx-auto;
+  }
+
+  .placeholder-icon {
+    @apply text-4xl mb-4;
+  }
+
+  .placeholder-title {
+    @apply text-lg font-semibold text-gray-900 mb-2;
+  }
+
+  .placeholder-text {
+    @apply text-gray-600 mb-4;
+  }
+
+  .placeholder-suggestions {
+    @apply flex flex-wrap justify-center gap-2;
+  }
+
+  .suggestion-tag {
+    @apply bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm;
+  }
+
+  /* No Content Styles */
+  .no-content {
+    @apply text-center py-8 text-gray-500 italic;
+  }
+
+  /* Print Styles */
+  @media print {
+    .candidate-header {
+      @apply border-b border-gray-400;
+    }
+    
+    .experience-item {
+      @apply border-l-gray-400;
+    }
+    
+    .skill-tag, .proficiency-badge, .status-badge, .highlight-badge {
+      @apply border border-gray-400;
+    }
+  }
 } 

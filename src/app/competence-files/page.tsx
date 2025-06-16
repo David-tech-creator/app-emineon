@@ -192,6 +192,7 @@ export default function CompetenceFilesPage() {
             <button 
               onClick={() => setIsCreateModalOpen(true)}
               className="btn-primary flex items-center space-x-2"
+              data-testid="create-competence-file-btn"
             >
               <Plus className="h-4 w-4" />
               <span>Create Competence File</span>

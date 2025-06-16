@@ -10,6 +10,7 @@ export default authMiddleware({
     '/api/health',
     '/api/daily-quote',
     '/api/public/(.*)',
+    '/api/competence-files/test-generate',
   ],
 
   // Routes that are ignored by Clerk (no auth check at all)
@@ -20,7 +21,7 @@ export default authMiddleware({
     const { userId, sessionClaims } = auth;
     const { pathname } = req.nextUrl;
 
-    console.log(`🔍 Clerk middleware processing: ${pathname}`);
+    console.log(`🔍 Middleware processing: ${pathname}`);
 
     // If user is not authenticated and trying to access protected route
     if (!userId && !auth.isPublicRoute) {
@@ -28,78 +29,31 @@ export default authMiddleware({
       return NextResponse.redirect(new URL('/sign-in', req.url));
     }
 
-    // If user is authenticated
+    // If user is authenticated - GRANT ACCESS TO EVERYTHING
     if (userId) {
-      console.log(`✅ User authenticated: ${userId}`);
+      console.log(`✅ User authenticated: ${userId} - FULL PLATFORM ACCESS GRANTED`);
 
-      // Get user role for role-based access control
-      const userRole = (sessionClaims?.metadata as any)?.role || (sessionClaims?.publicMetadata as any)?.role;
+      // ALL AUTHENTICATED USERS HAVE ACCESS TO EVERYTHING
+      // No role-based restrictions - any logged-in user can access any part of the platform
       
-      // Super sensitive admin routes - only for admin/super_admin
-      if (pathname.startsWith('/api/admin/users') || 
-          pathname.startsWith('/api/admin/system') ||
-          pathname.startsWith('/admin/system')) {
-        if (userRole !== 'admin' && userRole !== 'super_admin') {
-          console.log(`❌ Super admin access denied for user ${userId} with role: ${userRole}`);
-          return NextResponse.redirect(new URL('/unauthorized', req.url));
-        }
-        
-        console.log(`✅ Super admin access granted for user ${userId}`);
-        return NextResponse.next();
-      }
-
-      // Admin portal manager - allow all authenticated users to view
-      if (pathname === '/admin/portal-manager') {
-        console.log(`✅ Portal manager access granted for authenticated user ${userId}`);
-        return NextResponse.next();
-      }
-
-      // Other admin routes - allow all authenticated users
+      // Admin routes - allow ALL authenticated users
       if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
-        console.log(`✅ Admin area access granted for authenticated user ${userId}`);
+        console.log(`✅ Admin access granted for authenticated user ${userId}`);
         return NextResponse.next();
       }
 
-      // Client portal routes - allow all authenticated users
+      // Client portal routes - allow ALL authenticated users
       if (pathname.match(/\/clients\/[^\/]+\/portal/) || pathname.match(/\/api\/clients\/[^\/]+\/portal/)) {
         const clientIdMatch = pathname.match(/\/clients\/([^\/]+)\/portal/) || pathname.match(/\/api\/clients\/([^\/]+)\/portal/);
         const clientId = clientIdMatch?.[1];
         
         if (clientId) {
-          const clientAccess = (sessionClaims?.metadata as any)?.clientAccess || (sessionClaims?.publicMetadata as any)?.clientAccess;
-          
-          // Admin users have access to all client portals
-          if (userRole === 'admin' || userRole === 'super_admin') {
-            console.log(`✅ Admin client portal access granted for user ${userId}`);
-            return NextResponse.next();
-          }
-          
-          // All authenticated users can access client portals (for demo/development)
-          // In production, you might want to restrict this based on clientAccess
           console.log(`✅ Client portal access granted for authenticated user ${userId} to client ${clientId}`);
           return NextResponse.next();
-          
-          // Uncomment below for production client access control:
-          /*
-          if (clientAccess && Array.isArray(clientAccess) && clientAccess.includes(clientId)) {
-            console.log(`✅ Client portal access granted for user ${userId} to client ${clientId}`);
-            return NextResponse.next();
-          }
-          
-          console.log(`❌ Client portal access denied for user ${userId} to client ${clientId}`);
-          
-          // For API routes, return JSON error
-          if (pathname.startsWith('/api/')) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-          }
-          
-          // For page routes, redirect to unauthorized
-          return NextResponse.redirect(new URL('/unauthorized', req.url));
-          */
         }
       }
 
-      // For API routes, allow all authenticated users access to most endpoints
+      // API routes - allow ALL authenticated users access to ALL endpoints
       if (pathname.startsWith('/api/')) {
         // AI Copilot endpoints - allow all authenticated users
         if (pathname.startsWith('/api/ai-copilot/')) {
@@ -143,27 +97,21 @@ export default authMiddleware({
           return NextResponse.next();
         }
         
-        // Super sensitive admin API endpoints - only for admin/super_admin
-        if (pathname.startsWith('/api/admin/users') || 
-            pathname.startsWith('/api/admin/system')) {
-          if (userRole !== 'admin' && userRole !== 'super_admin') {
-            console.log(`❌ Super admin API access denied for user ${userId}`);
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-          }
-          
-          console.log(`✅ Super admin API access granted for user ${userId}`);
-          return NextResponse.next();
-        }
-        
-        // Other admin API endpoints - allow all authenticated users
+        // Admin API endpoints - allow ALL authenticated users (no role restrictions)
         if (pathname.startsWith('/api/admin/')) {
           console.log(`✅ Admin API access granted for authenticated user ${userId}`);
           return NextResponse.next();
         }
+        
+        // AI endpoints - allow all authenticated users
+        if (pathname.startsWith('/api/ai/')) {
+          console.log(`✅ AI API access granted for authenticated user ${userId}`);
+          return NextResponse.next();
+        }
       }
 
-      // Allow all other authenticated routes for logged-in users
-      console.log(`✅ General access granted for authenticated user ${userId}`);
+      // Allow ALL other authenticated routes for logged-in users
+      console.log(`✅ Full platform access granted for authenticated user ${userId}`);
       return NextResponse.next();
     }
 
