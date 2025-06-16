@@ -18,10 +18,6 @@ const SUPPORTED_FILE_TYPES = {
 };
 
 export async function POST(request: NextRequest) {
-  // Start timing for timeout monitoring
-  const startTime = Date.now();
-  const TIMEOUT_THRESHOLD = 55000; // 55 seconds (less than Vercel's 60s limit)
-  
   try {
     // Check authentication - REQUIRED for all users
     const { userId } = auth();
@@ -42,65 +38,71 @@ export async function POST(request: NextRequest) {
     let candidateData;
     let uploadedFileId: string | null = null;
 
-    // Extraction prompt for OpenAI
-    const extractionPrompt = `You are an expert resume/CV parser. Extract structured candidate information from the provided document and return it as JSON.
+    // Define the prompt for structured extraction
+    const extractionPrompt = `Please analyze this resume content and extract structured information.
 
-Please extract the following information:
-- fullName: Complete name of the candidate
-- currentTitle: Current job title or most recent position  
-- email: Email address (if provided)
-- phone: Phone number (if provided)
-- location: Current location/city
-- yearsOfExperience: Total years of professional experience (number)
-- skills: Array of technical and professional skills
-- certifications: Array of certifications and professional qualifications
-- experience: Array of work experience with company, title, startDate (YYYY-MM or YYYY), endDate (YYYY-MM, YYYY, or "Present"), and responsibilities
-- education: Array of educational qualifications
-- languages: Array of languages spoken
-- summary: Professional summary (2-3 sentences)
+Extract all available information and return a JSON object with the following structure:
 
-IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, or additional text.`;
+{
+  "fullName": "string",
+  "currentTitle": "string", 
+  "email": "string",
+  "phone": "string",
+  "location": "string",
+  "yearsOfExperience": number,
+  "skills": ["string"],
+  "certifications": ["string"],
+  "experience": [
+    {
+      "company": "string",
+      "title": "string", 
+      "startDate": "YYYY-MM",
+      "endDate": "YYYY-MM or Present",
+      "responsibilities": "string"
+    }
+  ],
+  "education": ["string"],
+  "languages": ["string"],
+  "summary": "string"
+}
 
-    // Function to check if we're approaching timeout
-    const checkTimeout = () => {
-      const elapsed = Date.now() - startTime;
-      if (elapsed > TIMEOUT_THRESHOLD) {
-        throw new Error('Processing timeout - please try with a smaller file or try again');
-      }
-    };
+Instructions:
+- Extract all available information from the content
+- If some fields are not available, use empty strings or arrays
+- For yearsOfExperience, calculate based on work history (if not explicitly stated)
+- For summary, create a brief professional summary based on the resume content
+- Ensure all text is properly formatted and clean
+- Return ONLY the JSON object, no additional text or formatting
+
+Return the JSON object now:`;
 
     if (contentType.includes('application/json')) {
-      // Handle text input (existing logic)
-      console.log('📝 Processing text input...');
+      // Handle direct text input
+      console.log('📝 Processing direct text input...');
+      
       const body = await request.json();
       const { text } = body;
 
       if (!text || typeof text !== 'string') {
-        return NextResponse.json({
-          error: 'Invalid input',
-          message: 'Text content is required'
+        return NextResponse.json({ 
+          error: 'No text provided',
+          message: 'Please provide resume text to parse'
         }, { status: 400 });
       }
 
-      if (text.length < 50) {
+      if (text.trim().length < 50) {
         return NextResponse.json({
           error: 'Text too short',
-          message: 'Please provide more detailed candidate information (at least 50 characters)'
+          message: 'Please provide more detailed resume information'
         }, { status: 400 });
       }
 
-      if (text.length > 50000) {
-        return NextResponse.json({
-          error: 'Text too long',
-          message: 'Text content is too long (maximum 50,000 characters)'
-        }, { status: 400 });
-      }
-
-      checkTimeout();
+      console.log(`📝 Processing resume text (${text.length} characters)`);
 
       try {
+        // Use OpenAI Responses API for text processing
         console.log('🤖 Processing text with Responses API...');
-
+        
         const response = await openai.responses.create({
           model: "gpt-4o",
           input: [
@@ -109,34 +111,43 @@ IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, 
               content: [
                 {
                   type: "input_text",
-                  text: `${extractionPrompt}\n\nCandidate Information:\n${text}`
+                  text: `${extractionPrompt}
+
+Resume Content:
+${text}`
                 }
               ]
             }
           ]
         });
 
-        checkTimeout();
+        console.log('📋 Responses API completed successfully');
 
-        const textResponseContent = response.output_text;
-        
-        if (!textResponseContent) {
-          throw new Error('No response from OpenAI');
+        // Extract the response content
+        const responseMessage = response.output[0];
+        if (!responseMessage || responseMessage.type !== 'message') {
+          throw new Error('No valid response from Responses API');
         }
 
-        console.log('📋 Responses API completed successfully');
+        const textContent = responseMessage.content[0];
+        if (!textContent || textContent.type !== 'output_text') {
+          throw new Error('No text content in response');
+        }
+
+        const responseContent = textContent.text;
+        console.log('📋 Raw Responses API response length:', responseContent.length);
 
         // Parse the JSON response
         try {
           // Clean the response in case there's any markdown formatting
-          const cleanedResponse = textResponseContent.replace(/```json\n?|\n?```/g, '').trim();
+          const cleanedResponse = responseContent.replace(/```json\n?|\n?```/g, '').trim();
           candidateData = JSON.parse(cleanedResponse);
           console.log('✅ Successfully parsed text with Responses API');
         } catch (parseError) {
           console.error('❌ Failed to parse Responses API response as JSON:', parseError);
           
           // Try to extract JSON from the response
-          const jsonMatch = textResponseContent.match(/\{[\s\S]*\}/);
+          const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             candidateData = JSON.parse(jsonMatch[0]);
             console.log('✅ Successfully extracted JSON from Responses API response');
@@ -148,45 +159,51 @@ IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, 
       } catch (responsesError: any) {
         console.warn('⚠️ Responses API failed, trying Chat Completions fallback:', responsesError.message);
         
-        checkTimeout();
-        
         // Fallback to Chat Completions API
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages: [
-            {
-              role: "system",
-              content: extractionPrompt
-            },
-            {
-              role: "user",
-              content: text
-            }
-          ],
-          temperature: 0.1,
-          max_tokens: 2000,
-        });
-
-        const chatResponse = completion.choices[0]?.message?.content;
-        
-        if (!chatResponse) {
-          throw new Error('No response from Chat Completions API');
-        }
-
         try {
-          const cleanedResponse = chatResponse.replace(/```json\n?|\n?```/g, '').trim();
-          candidateData = JSON.parse(cleanedResponse);
-          console.log('✅ Successfully parsed text with Chat Completions fallback');
-        } catch (parseError) {
-          console.error('❌ Failed to parse Chat Completions response as JSON:', parseError);
+          const completion = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [
+              {
+                role: "user",
+                content: `${extractionPrompt}
+
+Resume Content:
+${text}`
+              }
+            ],
+            temperature: 0.1,
+          });
+
+          const chatResponse = completion.choices[0]?.message?.content;
           
-          const jsonMatch = chatResponse.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            candidateData = JSON.parse(jsonMatch[0]);
-            console.log('✅ Successfully extracted JSON from Chat Completions response');
-          } else {
-            throw new Error('Failed to parse resume text. No valid JSON found in response.');
+          if (!chatResponse) {
+            throw new Error('No response from Chat Completions API');
           }
+
+          console.log('📋 Chat Completions response length:', chatResponse.length);
+
+          // Parse the JSON response from Chat Completions
+          try {
+            const cleanedResponse = chatResponse.replace(/```json\n?|\n?```/g, '').trim();
+            candidateData = JSON.parse(cleanedResponse);
+            console.log('✅ Successfully parsed text with Chat Completions API fallback');
+          } catch (parseError) {
+            console.error('❌ Failed to parse Chat Completions response as JSON:', parseError);
+            
+            // Final fallback: Try to extract JSON from the response
+            const jsonMatch = chatResponse.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              candidateData = JSON.parse(jsonMatch[0]);
+              console.log('✅ Successfully extracted JSON from Chat Completions response');
+            } else {
+              throw new Error('Failed to parse resume content. No valid JSON found in response.');
+            }
+          }
+
+        } catch (chatError) {
+          console.error('❌ Chat Completions API also failed:', chatError);
+          throw new Error('Failed to parse resume text. Please try again.');
         }
       }
 
@@ -230,8 +247,6 @@ IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, 
       }
 
       console.log(`📁 Processing file: ${file.name} (${file.size} bytes, ${file.type})`);
-
-      checkTimeout();
 
       // Try different approaches based on file type
       const isPdfOrDocx = file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -300,16 +315,12 @@ IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, 
         } catch (fileUploadError: any) {
           console.warn('⚠️ File upload method failed, trying base64 method:', fileUploadError.message);
           
-          checkTimeout();
-          
           // Fallback to base64 encoding for PDF/DOCX
           try {
             console.log('🔄 Converting PDF/DOCX to base64 for Responses API...');
             
             const arrayBuffer = await file.arrayBuffer();
             const base64String = Buffer.from(arrayBuffer).toString('base64');
-            
-            checkTimeout();
             
             console.log('🤖 Processing PDF/DOCX with Responses API (base64 method)...');
             
@@ -332,8 +343,6 @@ IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, 
                 }
               ]
             });
-
-            checkTimeout();
 
             const base64Response = response.output_text;
             
@@ -374,8 +383,6 @@ IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, 
           const arrayBuffer = await file.arrayBuffer();
           const base64String = Buffer.from(arrayBuffer).toString('base64');
           
-          checkTimeout();
-          
           console.log('🤖 Processing text file with Responses API...');
           
           const response = await openai.responses.create({
@@ -397,8 +404,6 @@ IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, 
               }
             ]
           });
-
-          checkTimeout();
 
           const textFileResponse = response.output_text;
           
@@ -433,8 +438,6 @@ IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, 
         } catch (textFileError: any) {
           console.warn('⚠️ Text file processing failed, trying Chat Completions fallback:', textFileError.message);
           
-          checkTimeout();
-          
           // Fallback to Chat Completions for text files
           const arrayBuffer = await file.arrayBuffer();
           const fileContent = new TextDecoder().decode(arrayBuffer);
@@ -456,8 +459,6 @@ ${extractionPrompt}`
             ],
             temperature: 0.1,
           });
-
-          checkTimeout();
 
           const chatResponse = completion.choices[0]?.message?.content;
           
@@ -481,11 +482,11 @@ ${extractionPrompt}`
               candidateData = JSON.parse(jsonMatch[0]);
               console.log('✅ Successfully extracted JSON from Chat Completions response');
             } else {
-              throw new Error('Failed to parse file content. No valid JSON found in response.');
+              throw new Error('Failed to parse resume content. No valid JSON found in response.');
             }
           }
 
-          // Store file metadata
+          // Store file metadata for file uploads
           candidateData.originalFileName = file.name;
           candidateData.fileType = file.type;
         }

@@ -918,51 +918,6 @@ function generateAchievements(experience: any, candidateData: CandidateData): st
 
 // Simple Error Boundary Component
 function LexicalErrorBoundary({ children }: { children: React.ReactNode }) {
-  const [hasError, setHasError] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    const handleError = (event: ErrorEvent) => {
-      console.error('💥 Component error caught:', event.error);
-      setHasError(true);
-      setError(event.error);
-    };
-
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.error('💥 Unhandled promise rejection:', event.reason);
-      setHasError(true);
-      setError(new Error(event.reason?.toString() || 'Unhandled promise rejection'));
-    };
-
-    window.addEventListener('error', handleError);
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
-
-    return () => {
-      window.removeEventListener('error', handleError);
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
-    };
-  }, []);
-
-  if (hasError) {
-    return (
-      <div className="p-4 border border-red-200 rounded-lg bg-red-50">
-        <h3 className="text-red-800 font-medium mb-2">Something went wrong</h3>
-        <p className="text-red-600 text-sm mb-3">
-          {error?.message || 'An unexpected error occurred. Please try refreshing the page.'}
-        </p>
-        <button
-          onClick={() => {
-            setHasError(false);
-            setError(null);
-          }}
-          className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-        >
-          Try Again
-        </button>
-      </div>
-    );
-  }
-
   return <div>{children}</div>;
 }
 
@@ -1004,7 +959,6 @@ export function CreateCompetenceFileModal({
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState('');
   const [zoomLevel, setZoomLevel] = useState(100); // Zoom functionality
   
   // Refs
@@ -1164,14 +1118,6 @@ export function CreateCompetenceFileModal({
     if (!file) return;
     
     setIsParsing(true);
-    setGenerationProgress('Uploading file...');
-    
-    // Create timeout controller
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, 90000); // 90 seconds timeout
-    
     try {
       const token = await getToken();
       
@@ -1185,8 +1131,6 @@ export function CreateCompetenceFileModal({
         fileType: file.type 
       });
       
-      setGenerationProgress('Processing file...');
-      
       const formData = new FormData();
       formData.append('file', file);
       
@@ -1196,11 +1140,7 @@ export function CreateCompetenceFileModal({
           'Authorization': `Bearer ${token}`,
         },
         body: formData,
-        signal: controller.signal,
       });
-      
-      // Clear the timeout
-      clearTimeout(timeoutId);
       
       console.log('📡 File upload response:', { 
         status: response.status, 
@@ -1226,8 +1166,6 @@ export function CreateCompetenceFileModal({
         throw new Error(errorMessage);
       }
       
-      setGenerationProgress('Extracting candidate information...');
-      
       const result = await response.json();
       console.log('✅ File parse result:', result);
       
@@ -1243,21 +1181,15 @@ export function CreateCompetenceFileModal({
       
       setSelectedCandidate(newCandidate);
       setCurrentStep(2);
-      setGenerationProgress('');
       console.log('✅ File parsing completed successfully');
       
     } catch (error) {
-      // Clear the timeout if it hasn't been cleared
-      clearTimeout(timeoutId);
-      
       console.error('💥 File parsing error:', error);
       
       let userMessage = 'Failed to parse file. Please try again.';
       
       if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          userMessage = 'File processing took too long and was cancelled. Please try with a smaller file or try again.';
-        } else if (error.message.includes('Authentication')) {
+        if (error.message.includes('Authentication')) {
           userMessage = 'Authentication failed. Please refresh the page and try again.';
         } else if (error.message.includes('Could not extract')) {
           userMessage = 'Could not extract candidate information. Please ensure the file contains clear candidate details.';
@@ -1275,7 +1207,6 @@ export function CreateCompetenceFileModal({
       alert(userMessage);
     } finally {
       setIsParsing(false);
-      setGenerationProgress('');
       // Reset the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -1288,14 +1219,6 @@ export function CreateCompetenceFileModal({
     if (!textInput.trim()) return;
     
     setIsParsing(true);
-    setGenerationProgress('Processing text...');
-    
-    // Create timeout controller
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, 90000); // 90 seconds timeout
-    
     try {
       const token = await getToken();
       
@@ -1305,8 +1228,6 @@ export function CreateCompetenceFileModal({
       
       console.log('🔄 Starting text parsing...', { textLength: textInput.length });
       
-      setGenerationProgress('Analyzing text content...');
-      
       const response = await fetch('/api/competence-files/parse-resume', {
         method: 'POST',
         headers: {
@@ -1314,11 +1235,7 @@ export function CreateCompetenceFileModal({
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ text: textInput }),
-        signal: controller.signal,
       });
-      
-      // Clear the timeout
-      clearTimeout(timeoutId);
       
       console.log('📡 Response received:', { 
         status: response.status, 
@@ -1346,8 +1263,6 @@ export function CreateCompetenceFileModal({
         throw new Error(errorMessage);
       }
       
-      setGenerationProgress('Extracting candidate information...');
-      
       const result = await response.json();
       console.log('✅ Parse result:', result);
       
@@ -1363,22 +1278,16 @@ export function CreateCompetenceFileModal({
       
       setSelectedCandidate(newCandidate);
       setCurrentStep(2);
-      setGenerationProgress('');
       console.log('✅ Text parsing completed successfully');
       
     } catch (error) {
-      // Clear the timeout if it hasn't been cleared
-      clearTimeout(timeoutId);
-      
       console.error('💥 Text parsing error:', error);
       
       // Provide more specific error messages
       let userMessage = 'Failed to parse text. Please try again.';
       
       if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          userMessage = 'Text processing took too long and was cancelled. Please try with shorter text or try again.';
-        } else if (error.message.includes('Authentication')) {
+        if (error.message.includes('Authentication')) {
           userMessage = 'Authentication failed. Please refresh the page and try again.';
         } else if (error.message.includes('Could not extract')) {
           userMessage = 'Could not extract candidate information. Please ensure the text contains clear candidate details.';
@@ -1392,7 +1301,6 @@ export function CreateCompetenceFileModal({
       alert(userMessage);
     } finally {
       setIsParsing(false);
-      setGenerationProgress('');
     }
   }, [textInput, getToken]);
   
@@ -1401,14 +1309,6 @@ export function CreateCompetenceFileModal({
     if (!urlInput.trim()) return;
     
     setIsParsing(true);
-    setGenerationProgress('Processing LinkedIn URL...');
-    
-    // Create timeout controller
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, 90000); // 90 seconds timeout
-    
     try {
       const token = await getToken();
       
@@ -1418,8 +1318,6 @@ export function CreateCompetenceFileModal({
       
       console.log('🔗 Starting URL parsing...', { url: urlInput });
       
-      setGenerationProgress('Fetching LinkedIn profile...');
-      
       const response = await fetch('/api/competence-files/parse-linkedin', {
         method: 'POST',
         headers: {
@@ -1427,11 +1325,7 @@ export function CreateCompetenceFileModal({
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ url: urlInput }),
-        signal: controller.signal,
       });
-      
-      // Clear the timeout
-      clearTimeout(timeoutId);
       
       console.log('📡 URL parse response:', { 
         status: response.status, 
@@ -1457,8 +1351,6 @@ export function CreateCompetenceFileModal({
         throw new Error(errorMessage);
       }
       
-      setGenerationProgress('Extracting profile information...');
-      
       const result = await response.json();
       console.log('✅ URL parse result:', result);
       
@@ -1474,21 +1366,15 @@ export function CreateCompetenceFileModal({
       
       setSelectedCandidate(newCandidate);
       setCurrentStep(2);
-      setGenerationProgress('');
       console.log('✅ URL parsing completed successfully');
       
     } catch (error) {
-      // Clear the timeout if it hasn't been cleared
-      clearTimeout(timeoutId);
-      
       console.error('💥 URL parsing error:', error);
       
       let userMessage = 'Failed to parse LinkedIn URL. Please try again.';
       
       if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          userMessage = 'LinkedIn profile processing took too long and was cancelled. Please try again or check your internet connection.';
-        } else if (error.message.includes('Authentication')) {
+        if (error.message.includes('Authentication')) {
           userMessage = 'Authentication failed. Please refresh the page and try again.';
         } else if (error.message.includes('Could not extract')) {
           userMessage = 'Could not extract candidate information. Please ensure the LinkedIn URL is valid and accessible.';
@@ -1504,7 +1390,6 @@ export function CreateCompetenceFileModal({
       alert(userMessage);
     } finally {
       setIsParsing(false);
-      setGenerationProgress('');
     }
   }, [urlInput, getToken]);
   
@@ -1580,19 +1465,8 @@ export function CreateCompetenceFileModal({
     if (!selectedCandidate) return;
     
     setIsGenerating(true);
-    setGenerationProgress('Preparing document...');
-    
-    // Create an AbortController for timeout handling
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, 90000); // 90 seconds timeout (longer than server timeout)
-    
     try {
-      setGenerationProgress('Generating document content...');
       const token = await getToken();
-      
-      setGenerationProgress(`Creating ${format.toUpperCase()} file...`);
       const response = await fetch('/api/competence-files/generate', {
         method: 'POST',
         headers: {
@@ -1605,13 +1479,9 @@ export function CreateCompetenceFileModal({
           sections: documentSections.filter(s => s.visible),
           format,
         }),
-        signal: controller.signal,
       });
       
-      clearTimeout(timeoutId);
-      
       if (response.ok) {
-        setGenerationProgress('Preparing download...');
         // Handle direct file download
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -1624,35 +1494,18 @@ export function CreateCompetenceFileModal({
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         
-        setGenerationProgress('Download complete!');
-        
         // Call success callback and close modal
-        setTimeout(() => {
-          onSuccess('File downloaded successfully');
-          onClose();
-        }, 500);
+        onSuccess('File downloaded successfully');
+        onClose();
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
         throw new Error(errorData.message || `Server error: ${response.status}`);
       }
     } catch (error) {
-      clearTimeout(timeoutId);
       console.error('Error generating document:', error);
-      
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          alert('Request timed out. The document generation is taking longer than expected. Please try again or contact support if the issue persists.');
-        } else if (error.message.includes('timeout') || error.message.includes('TIMEOUT')) {
-          alert('The server is taking longer than expected to generate your document. This can happen with complex documents. Please try again in a moment.');
-        } else {
-          alert(`Failed to generate document: ${error.message}`);
-        }
-      } else {
-        alert('Failed to generate document: Unknown error');
-      }
+      alert(`Failed to generate document: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsGenerating(false);
-      setGenerationProgress('');
     }
   }, [selectedCandidate, selectedTemplate, documentSections, getToken, onSuccess, onClose]);
   
@@ -1811,12 +1664,7 @@ export function CreateCompetenceFileModal({
                   {isParsing && (
                     <div className="text-center py-8">
                       <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-                      <p className="text-gray-600">
-                        {generationProgress || 'Processing candidate information...'}
-                      </p>
-                      <div className="mt-4 text-sm text-gray-500">
-                        This may take up to 60 seconds for complex documents
-                      </div>
+                      <p className="text-gray-600">Processing candidate information...</p>
                     </div>
                   )}
                 </div>
@@ -1998,16 +1846,11 @@ export function CreateCompetenceFileModal({
                       disabled={isGenerating}
                     >
                       {isGenerating ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          {generationProgress || 'Generating...'}
-                        </>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
                       ) : (
-                        <>
-                          <Download className="h-4 w-4 mr-2" />
-                          Generate PDF
-                        </>
+                        <Download className="h-4 w-4 mr-2" />
                       )}
+                      Generate PDF
                     </Button>
                     <Button
                       variant="outline"
@@ -2015,14 +1858,7 @@ export function CreateCompetenceFileModal({
                       onClick={() => handleGenerateDocument('docx')}
                       disabled={isGenerating}
                     >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          {generationProgress || 'Generating...'}
-                        </>
-                      ) : (
-                        'Generate DOCX'
-                      )}
+                      Generate DOCX
                     </Button>
                   </div>
                 </div>
@@ -2077,24 +1913,6 @@ export function CreateCompetenceFileModal({
             </div>
           )}
         </div>
-        
-        {/* Progress Overlay */}
-        {isGenerating && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-8 max-w-sm mx-4 text-center">
-              <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Generating Document
-              </h3>
-              <p className="text-gray-600">
-                {generationProgress || 'Please wait...'}
-              </p>
-              <div className="mt-4 text-sm text-gray-500">
-                This may take up to 60 seconds for complex documents
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

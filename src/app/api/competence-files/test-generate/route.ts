@@ -3,21 +3,8 @@ import { auth } from '@clerk/nextjs';
 import { uploadToCloudinary } from '@/lib/cloudinary-config';
 import { generatePDF } from '@/lib/pdf-service';
 
-// Timeout check function for server-side timeout monitoring
-function checkTimeout(startTime: number, maxDurationMs: number = 280000): void {
-  const elapsed = Date.now() - startTime;
-  if (elapsed > maxDurationMs) {
-    throw new Error(`Function timeout: ${elapsed}ms elapsed, exceeding ${maxDurationMs}ms limit`);
-  }
-}
-
 export async function POST(request: NextRequest) {
-  const startTime = Date.now();
-  
   try {
-    // Check timeout before starting
-    checkTimeout(startTime);
-    
     // Check authentication - Allow bypass for testing purposes
     const { userId } = auth();
     
@@ -43,9 +30,6 @@ export async function POST(request: NextRequest) {
     }
     
     console.log('📋 Request body received:', JSON.stringify(body, null, 2));
-    
-    // Check timeout after parsing
-    checkTimeout(startTime);
     
     const { candidateData, format = 'pdf', logoUrl, footerText } = body;
 
@@ -219,19 +203,18 @@ export async function POST(request: NextRequest) {
             padding: 2px 8px;
             border-radius: 12px;
             font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
+            font-weight: 500;
           }
           
-          .responsibilities {
-            margin-top: 12px;
+          .responsibilities p {
             color: #4A5568;
             line-height: 1.6;
+            margin-top: 10px;
           }
           
           /* Skills Styles */
           .skills-section {
-            margin-bottom: 20px;
+            space-y: 15px;
           }
           
           .skill-category {
@@ -242,9 +225,7 @@ export async function POST(request: NextRequest) {
             font-size: 16px;
             font-weight: 600;
             color: #2D3748;
-            margin-bottom: 12px;
-            padding-bottom: 6px;
-            border-bottom: 1px solid #E2E8F0;
+            margin-bottom: 10px;
           }
           
           .skill-tags {
@@ -258,66 +239,135 @@ export async function POST(request: NextRequest) {
             border-radius: 20px;
             font-size: 14px;
             font-weight: 500;
-            color: white;
-            text-align: center;
           }
           
           .skill-tag.technical {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #EBF8FF;
+            color: #1E40AF;
+            border: 1px solid #BFDBFE;
           }
           
           .skill-tag.general {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            background: #F0FDF4;
+            color: #166534;
+            border: 1px solid #BBF7D0;
           }
           
-          /* Education & Certifications Styles */
-          .education-section, .certifications-section, .languages-section {
-            margin-bottom: 20px;
+          /* Education Styles */
+          .education-section {
+            space-y: 12px;
           }
           
-          .education-item, .certification-item, .language-item {
+          .education-item {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #FFFBEB;
+            border-radius: 6px;
+            border-left: 3px solid #F59E0B;
+          }
+          
+          .degree-info {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
-            padding: 12px 16px;
-            background: #F8F9FA;
-            border-radius: 8px;
-            border-left: 4px solid #3B82F6;
+            gap: 10px;
           }
           
-          .education-icon, .cert-icon, .language-icon {
+          .education-icon {
             font-size: 18px;
-            flex-shrink: 0;
           }
           
-          .degree-text, .cert-text, .language-text {
-            color: #4A5568;
+          .degree-text {
+            color: #92400E;
             font-weight: 500;
-            line-height: 1.4;
           }
           
-          /* Footer */
-          .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 2px solid #E2E8F0;
+          /* Certifications Styles */
+          .certifications-section {
+            space-y: 12px;
+          }
+          
+          .certification-item {
+            margin-bottom: 12px;
+            padding: 12px;
+            background: #FEF2F2;
+            border-radius: 6px;
+            border-left: 3px solid #EF4444;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          }
+          
+          .cert-icon {
+            font-size: 16px;
+          }
+          
+          .cert-text {
+            color: #991B1B;
+            font-weight: 500;
+          }
+          
+          /* Languages Styles */
+          .languages-section {
+            space-y: 12px;
+          }
+          
+          .language-item {
+            margin-bottom: 12px;
+            padding: 12px;
+            background: #F0F9FF;
+            border-radius: 6px;
+            border-left: 3px solid #0EA5E9;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          }
+          
+          .language-icon {
+            font-size: 16px;
+          }
+          
+          .language-text {
+            color: #0C4A6E;
+            font-weight: 500;
+          }
+          
+          /* Utility Styles */
+          .no-content {
+            color: #9CA3AF;
+            font-style: italic;
             text-align: center;
-            color: #718096;
-            font-size: 12px;
+            padding: 20px;
+            background: #F9FAFB;
+            border-radius: 6px;
           }
           
-          /* Print Styles */
-          @media print {
-            .header {
-              page-break-inside: avoid;
-            }
-            .section {
-              page-break-inside: avoid;
-            }
-            .experience-item {
-              page-break-inside: avoid;
-            }
+          .custom-section {
+            padding: 20px;
+            background: #F8F9FA;
+            border-radius: 6px;
+            border: 2px dashed #D1D5DB;
+          }
+          
+          .placeholder-text {
+            color: #6B7280;
+            font-style: italic;
+            text-align: center;
+          }
+          
+          .footer {
+            margin-top: 50px; 
+            text-align: center; 
+            color: #9CA3AF; 
+            font-size: 12px;
+            border-top: 1px solid #E5E7EB;
+            padding-top: 25px;
+          }
+          
+          @media print { 
+            body { margin: 20px; }
+            .header { page-break-after: avoid; }
+            .experience-item { page-break-inside: avoid; }
+            .section { page-break-inside: avoid; }
           }
         </style>
       </head>
@@ -332,7 +382,7 @@ export async function POST(request: NextRequest) {
                 ${candidateData.email ? `<span>📧 ${candidateData.email}</span>` : ''}
                 ${candidateData.phone ? `<span>📞 ${candidateData.phone}</span>` : ''}
                 ${candidateData.location ? `<span>📍 ${candidateData.location}</span>` : ''}
-                ${candidateData.yearsOfExperience ? `<span>⭐ ${candidateData.yearsOfExperience} years experience</span>` : ''}
+                ${candidateData.yearsOfExperience ? `<span>💼 ${candidateData.yearsOfExperience} years experience</span>` : ''}
               </div>
             </div>
           </div>
@@ -457,27 +507,12 @@ export async function POST(request: NextRequest) {
 
     console.log('📄 HTML content generated, length:', htmlContent.length);
 
-    // Check timeout before PDF generation
-    checkTimeout(startTime);
-
     if (format === 'pdf') {
-      // Use the new PDF service with timeout monitoring
+      // Use the new PDF service
       try {
-        console.log('🚀 Generating PDF with service...');
-        
-        // Race condition between PDF generation and timeout
-        const pdfGenerationPromise = generatePDF(htmlContent);
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => {
-            reject(new Error('PDF generation timeout after 45 seconds'));
-          }, 45000);
-        });
-        
-        const pdfBuffer = await Promise.race([pdfGenerationPromise, timeoutPromise]);
+        console.log('🚀 Generating PDF with new service...');
+        const pdfBuffer = await generatePDF(htmlContent);
         console.log('✅ PDF generated successfully, size:', pdfBuffer.length, 'bytes');
-
-        // Check timeout before upload
-        checkTimeout(startTime);
 
         // Upload to Cloudinary with proper filename
         console.log('☁️ Uploading to Cloudinary...');
@@ -490,17 +525,13 @@ export async function POST(request: NextRequest) {
         );
         console.log('✅ Upload successful:', uploadResult.url);
 
-        const totalTime = Date.now() - startTime;
-        console.log(`⏱️ Total processing time: ${totalTime}ms`);
-
         return NextResponse.json({
           success: true,
           data: {
             fileUrl: uploadResult.url,
             fileName: fileName,
             fileSize: pdfBuffer.length,
-            format: 'pdf',
-            processingTime: totalTime
+            format: 'pdf'
           },
           message: 'PDF generated and uploaded successfully'
         });
@@ -508,21 +539,6 @@ export async function POST(request: NextRequest) {
       } catch (pdfError: unknown) {
         console.error('❌ PDF generation error:', pdfError);
         console.error('❌ Error stack:', pdfError instanceof Error ? pdfError.stack : 'No stack trace');
-        
-        // Check if we have time for fallback
-        const elapsed = Date.now() - startTime;
-        if (elapsed > 50000) {
-          // Too close to timeout, return error immediately
-          return NextResponse.json({
-            success: false,
-            error: 'Function timeout',
-            message: `PDF generation timed out after ${elapsed}ms. Please try again with a simpler document.`,
-            data: {
-              processingTime: elapsed,
-              stage: 'pdf_generation'
-            }
-          }, { status: 504 });
-        }
         
         // Fallback: return HTML content as file
         console.log('🔄 Falling back to HTML generation...');
@@ -537,16 +553,13 @@ export async function POST(request: NextRequest) {
           );
           console.log('✅ HTML fallback upload successful:', uploadResult.url);
 
-          const totalTime = Date.now() - startTime;
-
           return NextResponse.json({
             success: true,
             data: {
               fileUrl: uploadResult.url,
               fileName: fileName,
               fileSize: htmlBuffer.length,
-              format: 'html',
-              processingTime: totalTime
+              format: 'html'
             },
             message: 'HTML file generated as fallback (PDF generation failed)',
             warning: `PDF generation failed: ${pdfError instanceof Error ? pdfError.message : String(pdfError)}`,
@@ -570,57 +583,37 @@ export async function POST(request: NextRequest) {
       );
       console.log('✅ HTML upload successful:', uploadResult.url);
 
-      const totalTime = Date.now() - startTime;
-
       return NextResponse.json({
         success: true,
         data: {
           fileUrl: uploadResult.url,
           fileName: fileName,
           fileSize: htmlBuffer.length,
-          format: 'html',
-          processingTime: totalTime
+          format: 'html'
         },
-        message: 'HTML file generated successfully'
+        message: 'HTML file generated (DOCX not yet implemented)',
+        warning: 'DOCX generation not implemented, HTML provided instead'
       });
     }
 
-  } catch (error: unknown) {
-    const totalTime = Date.now() - startTime;
-    console.error('❌ Test generate error:', error);
-    console.error('❌ Error details:', {
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : 'No stack trace',
-      processingTime: totalTime
-    });
-
-    // Check if this is a timeout error
-    const isTimeoutError = error instanceof Error && (
-      error.message.includes('timeout') || 
-      error.message.includes('FUNCTION_INVOCATION_TIMEOUT') ||
-      totalTime > 55000
-    );
-
+  } catch (error) {
+    console.error('💥 Test generation error:', error);
+    console.error('💥 Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
-      message: isTimeoutError 
-        ? `Request timed out after ${totalTime}ms. Please try again with a simpler document or contact support.`
-        : 'Failed to generate competence file',
-      data: {
-        processingTime: totalTime,
-        stage: 'general_error'
-      }
-    }, { 
-      status: isTimeoutError ? 504 : 500 
-    });
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    }, { status: 500 });
   }
 }
 
 export async function GET() {
   return NextResponse.json({
-    success: true,
-    message: 'Test generate endpoint is working',
+    status: 'healthy',
+    endpoint: 'test-generate',
+    features: ['pdf-generation', 'html-fallback', 'cloudinary-upload'],
     timestamp: new Date().toISOString()
   });
 } 
