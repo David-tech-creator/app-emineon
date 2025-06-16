@@ -4,7 +4,7 @@ import { uploadToCloudinary } from '@/lib/cloudinary-config';
 import { generatePDF } from '@/lib/pdf-service';
 
 // Timeout check function for server-side timeout monitoring
-function checkTimeout(startTime: number, maxDurationMs: number = 55000): void {
+function checkTimeout(startTime: number, maxDurationMs: number = 280000): void {
   const elapsed = Date.now() - startTime;
   if (elapsed > maxDurationMs) {
     throw new Error(`Function timeout: ${elapsed}ms elapsed, exceeding ${maxDurationMs}ms limit`);

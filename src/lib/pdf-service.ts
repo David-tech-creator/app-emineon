@@ -21,29 +21,91 @@ async function getBrowser() {
   if (isProduction) {
     console.log('🔧 Using serverless Chromium for production/Vercel environment');
     try {
-      const browser = await puppeteerCore.launch({
-        args: [
-          ...chromium.args,
+      // Get chromium args safely with fallback
+      let chromiumArgs;
+      try {
+        chromiumArgs = chromium.args || [];
+        console.log('✅ Retrieved chromium args:', chromiumArgs.length, 'arguments');
+      } catch (argsError) {
+        console.warn('⚠️ Failed to get chromium.args, using fallback:', argsError);
+        chromiumArgs = [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--disable-gpu',
           '--single-process',
-          '--no-zygote'
+          '--no-zygote',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor'
+        ];
+      }
+
+      // Get executable path safely
+      let executablePath;
+      try {
+        executablePath = await chromium.executablePath(REMOTE_PATH);
+        console.log('✅ Retrieved executable path:', !!executablePath);
+      } catch (pathError) {
+        console.warn('⚠️ Failed to get executable path, using fallback:', pathError);
+        executablePath = await chromium.executablePath();
+      }
+
+      const browser = await puppeteerCore.launch({
+        args: [
+          ...chromiumArgs,
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--single-process',
+          '--no-zygote',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding'
         ],
-        executablePath: await chromium.executablePath(REMOTE_PATH),
+        executablePath,
         headless: true,
         defaultViewport: {
           width: 1280,
           height: 720
         },
-        timeout: 30000
+        timeout: 45000
       });
       console.log('✅ Serverless Chromium launched successfully');
       return browser;
     } catch (error) {
       console.error('❌ Failed to launch serverless Chromium:', error);
-      throw new Error(`Failed to launch serverless Chromium: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      
+      // Try fallback approach for production
+      try {
+        console.log('🔄 Attempting fallback serverless launch...');
+        const browser = await puppeteerCore.launch({
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--single-process',
+            '--no-zygote',
+            '--disable-web-security'
+          ],
+          executablePath: await chromium.executablePath(),
+          headless: true,
+          defaultViewport: {
+            width: 1280,
+            height: 720
+          },
+          timeout: 45000
+        });
+        console.log('✅ Fallback serverless Chromium launched successfully');
+        return browser;
+      } catch (fallbackError) {
+        console.error('❌ Fallback serverless launch also failed:', fallbackError);
+        throw new Error(`All serverless Chromium launch attempts failed. Primary error: ${error instanceof Error ? error.message : String(error)}. Fallback error: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
+      }
     }
   }
 
@@ -60,7 +122,8 @@ async function getBrowser() {
         args: [
           '--no-sandbox', 
           '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage'
+          '--disable-dev-shm-usage',
+          '--disable-gpu'
         ],
         defaultViewport: {
           width: 1280,
@@ -83,7 +146,8 @@ async function getBrowser() {
       args: [
         '--no-sandbox', 
         '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage'
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
       ],
       defaultViewport: {
         width: 1280,
@@ -114,7 +178,7 @@ export async function generatePDF(htmlContent: string): Promise<Buffer> {
     // Set a more generous timeout for content loading
     await page.setContent(htmlContent, { 
       waitUntil: 'networkidle0',
-      timeout: 45000 
+      timeout: 60000 
     });
     console.log('✅ Page content set');
 
@@ -129,7 +193,7 @@ export async function generatePDF(htmlContent: string): Promise<Buffer> {
         bottom: '20px',
         left: '20px',
       },
-      timeout: 30000
+      timeout: 45000
     });
     
     console.log(`✅ PDF generated, size: ${pdfBuffer.length} bytes`);
