@@ -118,9 +118,9 @@ IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, 
 
         checkTimeout();
 
-        const responseContent = response.output_text;
+        const textResponseContent = response.output_text;
         
-        if (!responseContent) {
+        if (!textResponseContent) {
           throw new Error('No response from OpenAI');
         }
 
@@ -129,14 +129,14 @@ IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, 
         // Parse the JSON response
         try {
           // Clean the response in case there's any markdown formatting
-          const cleanedResponse = responseContent.replace(/```json\n?|\n?```/g, '').trim();
+          const cleanedResponse = textResponseContent.replace(/```json\n?|\n?```/g, '').trim();
           candidateData = JSON.parse(cleanedResponse);
           console.log('✅ Successfully parsed text with Responses API');
         } catch (parseError) {
           console.error('❌ Failed to parse Responses API response as JSON:', parseError);
           
           // Try to extract JSON from the response
-          const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+          const jsonMatch = textResponseContent.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             candidateData = JSON.parse(jsonMatch[0]);
             console.log('✅ Successfully extracted JSON from Responses API response');

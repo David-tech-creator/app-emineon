@@ -918,6 +918,51 @@ function generateAchievements(experience: any, candidateData: CandidateData): st
 
 // Simple Error Boundary Component
 function LexicalErrorBoundary({ children }: { children: React.ReactNode }) {
+  const [hasError, setHasError] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      console.error('💥 Component error caught:', event.error);
+      setHasError(true);
+      setError(event.error);
+    };
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.error('💥 Unhandled promise rejection:', event.reason);
+      setHasError(true);
+      setError(new Error(event.reason?.toString() || 'Unhandled promise rejection'));
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
+
+  if (hasError) {
+    return (
+      <div className="p-4 border border-red-200 rounded-lg bg-red-50">
+        <h3 className="text-red-800 font-medium mb-2">Something went wrong</h3>
+        <p className="text-red-600 text-sm mb-3">
+          {error?.message || 'An unexpected error occurred. Please try refreshing the page.'}
+        </p>
+        <button
+          onClick={() => {
+            setHasError(false);
+            setError(null);
+          }}
+          className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
   return <div>{children}</div>;
 }
 

@@ -20,14 +20,15 @@ async function getBrowser() {
   // Production/Vercel environment
   if (isProduction) {
     console.log('🔧 Using serverless Chromium for production/Vercel environment');
+    
     try {
-      // Get chromium args safely with fallback
-      let chromiumArgs;
+      // Get chromium args safely with comprehensive error handling
+      let chromiumArgs: string[];
       try {
-        chromiumArgs = chromium.args || [];
-        console.log('✅ Retrieved chromium args:', chromiumArgs.length, 'arguments');
+        chromiumArgs = await chromium.args;
+        console.log('✅ Retrieved chromium.args successfully');
       } catch (argsError) {
-        console.warn('⚠️ Failed to get chromium.args, using fallback:', argsError);
+        console.warn('⚠️ Failed to get chromium.args, using safe fallback:', argsError);
         chromiumArgs = [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -40,31 +41,55 @@ async function getBrowser() {
         ];
       }
 
+      // Ensure chromiumArgs is an array and safe to spread
+      if (!Array.isArray(chromiumArgs)) {
+        console.warn('⚠️ chromium.args is not an array, using safe defaults');
+        chromiumArgs = [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--single-process',
+          '--no-zygote'
+        ];
+      }
+
       // Get executable path safely
       let executablePath;
       try {
-        executablePath = await chromium.executablePath(REMOTE_PATH);
+        executablePath = REMOTE_PATH ? await chromium.executablePath(REMOTE_PATH) : await chromium.executablePath();
         console.log('✅ Retrieved executable path:', !!executablePath);
       } catch (pathError) {
         console.warn('⚠️ Failed to get executable path, using fallback:', pathError);
         executablePath = await chromium.executablePath();
       }
 
+      // Safe argument spreading with fallback
+      const safeArgs = [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--single-process',
+        '--no-zygote',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding'
+      ];
+
+      // Add chromium args if they are safe to spread
+      try {
+        if (Array.isArray(chromiumArgs) && chromiumArgs.length > 0) {
+          safeArgs.unshift(...chromiumArgs.filter(arg => typeof arg === 'string'));
+        }
+      } catch (spreadError) {
+        console.warn('⚠️ Could not spread chromium args, using safe defaults only:', spreadError);
+      }
+
       const browser = await puppeteerCore.launch({
-        args: [
-          ...chromiumArgs,
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--single-process',
-          '--no-zygote',
-          '--disable-web-security',
-          '--disable-features=VizDisplayCompositor',
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-renderer-backgrounding'
-        ],
+        args: safeArgs,
         executablePath,
         headless: true,
         defaultViewport: {
@@ -79,9 +104,9 @@ async function getBrowser() {
       console.error('❌ Failed to launch serverless Chromium:', error);
       console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       
-      // Try fallback approach for production
+      // Enhanced fallback approach for production
       try {
-        console.log('🔄 Attempting fallback serverless launch...');
+        console.log('🔄 Attempting enhanced fallback serverless launch...');
         const browser = await puppeteerCore.launch({
           args: [
             '--no-sandbox',
@@ -90,7 +115,8 @@ async function getBrowser() {
             '--disable-gpu',
             '--single-process',
             '--no-zygote',
-            '--disable-web-security'
+            '--disable-web-security',
+            '--disable-features=VizDisplayCompositor'
           ],
           executablePath: await chromium.executablePath(),
           headless: true,
