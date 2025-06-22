@@ -3,7 +3,7 @@
 
 const https = require('https');
 
-const BASE_URL = 'https://app-emineon-3h5xnu9vi-david-bicrawais-projects.vercel.app';
+const BASE_URL = 'https://app-emineon-inzp80k8t-david-bicrawais-projects.vercel.app';
 
 // Test data - simulating email from Outlook
 const testEmailData = {

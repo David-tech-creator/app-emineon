@@ -666,7 +666,7 @@
     }
 
     function openFullATS() {
-        const atsUrl = 'https://app-emineon-3h5xnu9vi-david-bicrawais-projects.vercel.app';
+        const atsUrl = 'https://app-emineon-inzp80k8t-david-bicrawais-projects.vercel.app';
         window.open(atsUrl, '_blank');
     }
 
