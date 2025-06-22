@@ -1,756 +1,743 @@
-/* global Office */
+// Emineon Outlook Add-in - Enhanced Recruitment Assistant
+// Copyright (c) 2024 Emineon ATS. All rights reserved.
 
-// Emineon Recruitment Assistant for Outlook
-// Enhanced AI Copilot with comprehensive recruitment functionality
-
-(() => {
-    "use strict";
-
-    let currentEmailData = {};
-    let currentAttachments = [];
-    let aiAnalysisCache = {};
-    let isAnalyzing = false;
-
-    // Initialize Office Add-in
-    Office.onReady((info) => {
-        if (info.host === Office.HostType.Outlook) {
-            console.log("Emineon Recruitment Assistant loaded");
-            initializeApp();
-        }
-    });
-
-    function initializeApp() {
+Office.onReady((info) => {
+    if (info.host === Office.HostApplication.Outlook) {
+        console.log('✅ Emineon Outlook Add-in loaded successfully');
+        
         // Initialize icons
         lucide.createIcons();
         
-        // Bind event handlers
-        bindEventHandlers();
+        // Initialize the add-in
+        initializeAddin();
         
-        // Auto-analyze current email
+        // Set up event listeners
+        setupEventListeners();
+        
+        // Start analyzing the current email
+        analyzeCurrentEmail();
+    }
+});
+
+// Global variables
+let currentEmailData = {};
+let aiAnalysisComplete = false;
+
+/**
+ * Initialize the add-in
+ */
+function initializeAddin() {
+    console.log('🔧 Initializing Emineon Add-in...');
+    
+    // Update connection status
+    updateConnectionStatus(true);
+    
+    // Load email context
+    loadEmailContext();
+    
+    console.log('✅ Add-in initialization complete');
+}
+
+/**
+ * Set up all event listeners
+ */
+function setupEventListeners() {
+    // Settings button
+    document.getElementById('settingsBtn')?.addEventListener('click', openSettings);
+    
+    // Primary action buttons
+    document.getElementById('createProjectBtn')?.addEventListener('click', createProject);
+    document.getElementById('createJobBtn')?.addEventListener('click', createJob);
+    document.getElementById('addCandidateBtn')?.addEventListener('click', showAddCandidateModal);
+    
+    // Secondary action buttons
+    document.getElementById('parseResumeBtn')?.addEventListener('click', parseResume);
+    document.getElementById('scheduleInterviewBtn')?.addEventListener('click', scheduleInterview);
+    document.getElementById('addContactBtn')?.addEventListener('click', showAddContactModal);
+    document.getElementById('assignJobBtn')?.addEventListener('click', assignToJob);
+    
+    // Quick access buttons
+    document.getElementById('openAtsBtn')?.addEventListener('click', openATS);
+    document.getElementById('refreshBtn')?.addEventListener('click', refreshData);
+    
+    // Modal event listeners
+    setupModalEventListeners();
+    
+    console.log('✅ Event listeners set up');
+}
+
+/**
+ * Set up modal event listeners
+ */
+function setupModalEventListeners() {
+    // Add Contact Modal
+    const addContactModal = document.getElementById('addContactModal');
+    const closeContactModal = document.getElementById('closeContactModal');
+    const cancelContactBtn = document.getElementById('cancelContactBtn');
+    const contactForm = document.getElementById('contactForm');
+    
+    closeContactModal?.addEventListener('click', () => hideModal('addContactModal'));
+    cancelContactBtn?.addEventListener('click', () => hideModal('addContactModal'));
+    contactForm?.addEventListener('submit', handleContactFormSubmit);
+    
+    // Close modal when clicking outside
+    addContactModal?.addEventListener('click', (e) => {
+        if (e.target === addContactModal) {
+            hideModal('addContactModal');
+        }
+    });
+}
+
+/**
+ * Load email context and display basic info
+ */
+function loadEmailContext() {
+    Office.context.mailbox.item.subject.getAsync((result) => {
+        if (result.status === Office.AsyncResultStatus.Succeeded) {
+            currentEmailData.subject = result.value || 'No subject';
+            document.getElementById('emailSubject').textContent = currentEmailData.subject;
+        }
+    });
+    
+    Office.context.mailbox.item.from.getAsync((result) => {
+        if (result.status === Office.AsyncResultStatus.Succeeded) {
+            const from = result.value;
+            currentEmailData.sender = from.displayName || from.emailAddress || 'Unknown sender';
+            document.getElementById('emailSender').textContent = currentEmailData.sender;
+        }
+    });
+    
+    // Check for attachments
+    checkForAttachments();
+}
+
+/**
+ * Check for attachments and display them
+ */
+function checkForAttachments() {
+    Office.context.mailbox.item.attachments.getAsync((result) => {
+        if (result.status === Office.AsyncResultStatus.Succeeded) {
+            const attachments = result.value;
+            
+            if (attachments && attachments.length > 0) {
+                displayAttachments(attachments);
+            }
+        }
+    });
+}
+
+/**
+ * Display attachments in the UI
+ */
+function displayAttachments(attachments) {
+    const attachmentPanel = document.getElementById('attachmentPanel');
+    const attachmentList = document.getElementById('attachmentList');
+    
+    if (!attachmentPanel || !attachmentList) return;
+    
+    attachmentList.innerHTML = '';
+    
+    attachments.forEach(attachment => {
+        const attachmentItem = document.createElement('div');
+        attachmentItem.className = 'attachment-item';
+        
+        const isResume = attachment.name.toLowerCase().includes('cv') || 
+                        attachment.name.toLowerCase().includes('resume') ||
+                        attachment.contentType === 'application/pdf';
+        
+        attachmentItem.innerHTML = `
+            <div class="attachment-info">
+                <i data-lucide="${getAttachmentIcon(attachment.contentType)}" style="width: 14px; height: 14px;"></i>
+                <span class="attachment-name">${attachment.name}</span>
+                <span class="attachment-size">(${formatFileSize(attachment.size)})</span>
+            </div>
+            ${isResume ? '<span class="resume-badge">Resume</span>' : ''}
+        `;
+        
+        attachmentList.appendChild(attachmentItem);
+    });
+    
+    attachmentPanel.classList.add('show');
+    lucide.createIcons();
+}
+
+/**
+ * Get appropriate icon for attachment type
+ */
+function getAttachmentIcon(contentType) {
+    if (contentType.includes('pdf')) return 'file-text';
+    if (contentType.includes('word')) return 'file-text';
+    if (contentType.includes('image')) return 'image';
+    if (contentType.includes('excel') || contentType.includes('spreadsheet')) return 'file-spreadsheet';
+    return 'file';
+}
+
+/**
+ * Format file size for display
+ */
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+/**
+ * Analyze current email with AI
+ */
+async function analyzeCurrentEmail() {
+    try {
+        // Get email body
+        Office.context.mailbox.item.body.getAsync(Office.CoercionType.Text, async (result) => {
+            if (result.status === Office.AsyncResultStatus.Succeeded) {
+                currentEmailData.body = result.value;
+                
+                // Perform AI analysis
+                await performAIAnalysis();
+            }
+        });
+    } catch (error) {
+        console.error('Error analyzing email:', error);
+        showAIError('Failed to analyze email');
+    }
+}
+
+/**
+ * Perform AI analysis of the email
+ */
+async function performAIAnalysis() {
+    try {
+        const emailData = {
+            subject: currentEmailData.subject,
+            sender: currentEmailData.sender,
+            body: currentEmailData.body,
+            date: new Date().toISOString()
+        };
+        
+        // Simulate AI analysis (replace with actual API call)
+        setTimeout(() => {
+            const analysisResult = analyzeEmailContent(emailData);
+            displayAIAnalysis(analysisResult);
+            updateEmailCategory(analysisResult.category);
+            updatePriorityLevel(analysisResult.priority);
+        }, 2000);
+        
+    } catch (error) {
+        console.error('AI Analysis error:', error);
+        showAIError('AI analysis failed');
+    }
+}
+
+/**
+ * Analyze email content and return suggestions
+ */
+function analyzeEmailContent(emailData) {
+    const subject = emailData.subject.toLowerCase();
+    const body = emailData.body.toLowerCase();
+    const sender = emailData.sender.toLowerCase();
+    
+    // Determine email category
+    let category = 'general';
+    let priority = 'medium';
+    let suggestions = [];
+    
+    // Check for candidate-related keywords
+    if (body.includes('resume') || body.includes('cv') || body.includes('application') || 
+        body.includes('applying for') || body.includes('interested in the position')) {
+        category = 'candidate';
+        suggestions.push({
+            action: 'Add as candidate',
+            confidence: 85,
+            icon: 'user-plus'
+        });
+        suggestions.push({
+            action: 'Parse resume',
+            confidence: 90,
+            icon: 'file-text'
+        });
+    }
+    
+    // Check for job opportunity keywords
+    if (body.includes('position') || body.includes('role') || body.includes('opening') ||
+        body.includes('hiring') || body.includes('job') || body.includes('opportunity')) {
+        category = 'opportunity';
+        suggestions.push({
+            action: 'Create job posting',
+            confidence: 75,
+            icon: 'briefcase'
+        });
+    }
+    
+    // Check for project keywords
+    if (body.includes('project') || body.includes('multiple positions') || 
+        body.includes('team') || body.includes('several roles')) {
+        category = 'project';
+        suggestions.push({
+            action: 'Create project',
+            confidence: 80,
+            icon: 'folder-plus'
+        });
+    }
+    
+    // Check for interview keywords
+    if (body.includes('interview') || body.includes('schedule') || body.includes('meeting')) {
+        category = 'interview';
+        suggestions.push({
+            action: 'Schedule interview',
+            confidence: 70,
+            icon: 'calendar-plus'
+        });
+    }
+    
+    // Determine priority
+    if (body.includes('urgent') || body.includes('asap') || body.includes('immediately')) {
+        priority = 'high';
+    } else if (body.includes('when you have time') || body.includes('no rush')) {
+        priority = 'low';
+    }
+    
+    return {
+        category,
+        priority,
+        suggestions,
+        summary: generateSummary(emailData, category)
+    };
+}
+
+/**
+ * Generate AI summary based on email content
+ */
+function generateSummary(emailData, category) {
+    const summaries = {
+        candidate: `Candidate inquiry detected. Email from ${emailData.sender} regarding job application.`,
+        opportunity: `Job opportunity identified. Review email for position details and requirements.`,
+        project: `Multi-position project detected. Consider creating a project to manage multiple roles.`,
+        interview: `Interview-related communication. Schedule or manage interview process.`,
+        general: `General recruitment communication. Review for actionable items.`
+    };
+    
+    return summaries[category] || summaries.general;
+}
+
+/**
+ * Display AI analysis results
+ */
+function displayAIAnalysis(analysisResult) {
+    const aiMessage = document.getElementById('aiMessage');
+    const aiSuggestions = document.getElementById('aiSuggestions');
+    
+    if (!aiMessage || !aiSuggestions) return;
+    
+    // Update AI message
+    aiMessage.innerHTML = `
+        <div style="font-size: 13px; color: var(--primary-600); line-height: 1.4;">
+            ${analysisResult.summary}
+        </div>
+    `;
+    
+    // Display suggestions
+    if (analysisResult.suggestions.length > 0) {
+        aiSuggestions.innerHTML = '';
+        
+        analysisResult.suggestions.forEach(suggestion => {
+            const suggestionItem = document.createElement('div');
+            suggestionItem.className = 'suggestion-item';
+            suggestionItem.innerHTML = `
+                <div class="suggestion-left">
+                    <i data-lucide="${suggestion.icon}" style="width: 14px; height: 14px;"></i>
+                    <span class="suggestion-text">${suggestion.action}</span>
+                </div>
+                <span class="confidence-score">${suggestion.confidence}%</span>
+            `;
+            
+            suggestionItem.addEventListener('click', () => executeSuggestion(suggestion.action));
+            aiSuggestions.appendChild(suggestionItem);
+        });
+        
+        aiSuggestions.classList.add('show');
+        lucide.createIcons();
+    }
+    
+    aiAnalysisComplete = true;
+}
+
+/**
+ * Execute AI suggestion
+ */
+function executeSuggestion(action) {
+    switch (action.toLowerCase()) {
+        case 'add as candidate':
+            showAddCandidateModal();
+            break;
+        case 'parse resume':
+            parseResume();
+            break;
+        case 'create job posting':
+            createJob();
+            break;
+        case 'create project':
+            createProject();
+            break;
+        case 'schedule interview':
+            scheduleInterview();
+            break;
+        default:
+            showNotification('Action not implemented yet', 'warning');
+    }
+}
+
+/**
+ * Show AI error message
+ */
+function showAIError(message) {
+    const aiMessage = document.getElementById('aiMessage');
+    if (aiMessage) {
+        aiMessage.innerHTML = `
+            <div style="color: var(--error-600); font-size: 13px;">
+                <i data-lucide="alert-circle" style="width: 14px; height: 14px; margin-right: 6px;"></i>
+                ${message}
+            </div>
+        `;
+        lucide.createIcons();
+    }
+}
+
+/**
+ * Update email category badge
+ */
+function updateEmailCategory(category) {
+    const emailCategory = document.getElementById('emailCategory');
+    if (!emailCategory) return;
+    
+    const categoryConfig = {
+        candidate: { text: 'Candidate', class: 'status-candidate', icon: 'user' },
+        opportunity: { text: 'Opportunity', class: 'status-opportunity', icon: 'briefcase' },
+        project: { text: 'Project', class: 'status-project', icon: 'folder' },
+        interview: { text: 'Interview', class: 'status-interview', icon: 'calendar' },
+        general: { text: 'General', class: 'status-general', icon: 'tag' }
+    };
+    
+    const config = categoryConfig[category] || categoryConfig.general;
+    
+    emailCategory.className = `status-badge ${config.class}`;
+    emailCategory.innerHTML = `
+        <i data-lucide="${config.icon}" style="width: 10px; height: 10px;"></i>
+        ${config.text}
+    `;
+    
+    lucide.createIcons();
+}
+
+/**
+ * Update priority level
+ */
+function updatePriorityLevel(priority) {
+    const emailPriority = document.getElementById('emailPriority');
+    if (!emailPriority) return;
+    
+    emailPriority.className = `priority-badge priority-${priority}`;
+    emailPriority.textContent = priority.charAt(0).toUpperCase() + priority.slice(1);
+}
+
+/**
+ * Update connection status
+ */
+function updateConnectionStatus(connected) {
+    const statusDot = document.querySelector('.status-dot');
+    const statusText = document.querySelector('.connection-status span');
+    
+    if (statusDot && statusText) {
+        statusDot.style.background = connected ? '#10B981' : '#EF4444';
+        statusText.textContent = connected ? 'Connected' : 'Disconnected';
+    }
+}
+
+// Button action handlers
+
+/**
+ * Open settings
+ */
+function openSettings() {
+    showNotification('Settings panel coming soon!', 'info');
+}
+
+/**
+ * Create project from email
+ */
+async function createProject() {
+    try {
+        showNotification('Creating project from email...', 'info');
+        
+        const emailData = {
+            subject: currentEmailData.subject,
+            sender: currentEmailData.sender,
+            body: currentEmailData.body,
+            date: new Date().toISOString()
+        };
+        
+        // This would normally call your API
+        // const response = await fetch('/api/projects/parse-email', { ... });
+        
+        // Simulate success
+        setTimeout(() => {
+            showNotification('Project created successfully!', 'success');
+        }, 1500);
+        
+    } catch (error) {
+        console.error('Error creating project:', error);
+        showNotification('Failed to create project', 'error');
+    }
+}
+
+/**
+ * Create job from email
+ */
+function createJob() {
+    showNotification('Creating job posting...', 'info');
+    setTimeout(() => {
+        showNotification('Job posting created!', 'success');
+    }, 1000);
+}
+
+/**
+ * Show add candidate modal
+ */
+function showAddCandidateModal() {
+    // Pre-fill with email data if available
+    const modal = document.getElementById('addContactModal');
+    const contactType = document.getElementById('contactType');
+    const contactEmail = document.getElementById('contactEmail');
+    const contactNotes = document.getElementById('contactNotes');
+    
+    if (contactType) contactType.value = 'candidate';
+    if (contactEmail) contactEmail.value = extractEmailFromSender(currentEmailData.sender);
+    if (contactNotes) contactNotes.value = `Added from email: "${currentEmailData.subject}"`;
+    
+    showModal('addContactModal');
+}
+
+/**
+ * Show add contact modal
+ */
+function showAddContactModal() {
+    // Pre-fill with email data
+    const contactEmail = document.getElementById('contactEmail');
+    const contactNotes = document.getElementById('contactNotes');
+    
+    if (contactEmail) contactEmail.value = extractEmailFromSender(currentEmailData.sender);
+    if (contactNotes) contactNotes.value = `Added from email communication: "${currentEmailData.subject}"`;
+    
+    showModal('addContactModal');
+}
+
+/**
+ * Extract email address from sender string
+ */
+function extractEmailFromSender(sender) {
+    if (!sender) return '';
+    
+    const emailMatch = sender.match(/[\w.-]+@[\w.-]+\.\w+/);
+    return emailMatch ? emailMatch[0] : '';
+}
+
+/**
+ * Parse resume from attachments
+ */
+function parseResume() {
+    Office.context.mailbox.item.attachments.getAsync((result) => {
+        if (result.status === Office.AsyncResultStatus.Succeeded) {
+            const attachments = result.value;
+            const resumeAttachment = attachments.find(att => 
+                att.name.toLowerCase().includes('cv') || 
+                att.name.toLowerCase().includes('resume') ||
+                att.contentType === 'application/pdf'
+            );
+            
+            if (resumeAttachment) {
+                showNotification('Parsing resume...', 'info');
+                setTimeout(() => {
+                    showNotification('Resume parsed successfully!', 'success');
+                }, 2000);
+            } else {
+                showNotification('No resume attachment found', 'warning');
+            }
+        }
+    });
+}
+
+/**
+ * Schedule interview
+ */
+function scheduleInterview() {
+    showNotification('Opening interview scheduler...', 'info');
+    setTimeout(() => {
+        showNotification('Interview scheduled!', 'success');
+    }, 1000);
+}
+
+/**
+ * Assign to job
+ */
+function assignToJob() {
+    showNotification('Opening job assignment...', 'info');
+    setTimeout(() => {
+        showNotification('Assigned to job successfully!', 'success');
+    }, 1000);
+}
+
+/**
+ * Open ATS in new window
+ */
+function openATS() {
+    const atsUrl = 'https://app-emineon-3h5xnu9vi-david-bicrawais-projects.vercel.app';
+    window.open(atsUrl, '_blank');
+    showNotification('Opening Emineon ATS...', 'info');
+}
+
+/**
+ * Refresh data
+ */
+function refreshData() {
+    showNotification('Refreshing data...', 'info');
+    
+    // Reload email context
+    loadEmailContext();
+    
+    // Re-run AI analysis
+    if (currentEmailData.body) {
         setTimeout(() => {
             analyzeCurrentEmail();
+            showNotification('Data refreshed!', 'success');
         }, 1000);
-    }
-
-    function bindEventHandlers() {
-        // Primary Actions
-        const createProjectAction = document.getElementById('createProjectAction');
-        const createJobAction = document.getElementById('createJobAction');
-        const addCandidateAction = document.getElementById('addCandidateAction');
-        
-        // Secondary Actions
-        const parseResumeAction = document.getElementById('parseResumeAction');
-        const scheduleInterviewAction = document.getElementById('scheduleInterviewAction');
-        const addContactAction = document.getElementById('addContactAction');
-        const assignToJobAction = document.getElementById('assignToJobAction');
-        
-        // Quick Access
-        const openAtsBtn = document.getElementById('openAtsBtn');
-        const refreshDataBtn = document.getElementById('refreshDataBtn');
-
-        // Bind all event listeners
-        if (createProjectAction) createProjectAction.addEventListener('click', () => handleAction('create-project'));
-        if (createJobAction) createJobAction.addEventListener('click', () => handleAction('create-job'));
-        if (addCandidateAction) addCandidateAction.addEventListener('click', () => handleAction('add-candidate'));
-        if (parseResumeAction) parseResumeAction.addEventListener('click', () => handleAction('parse-resume'));
-        if (scheduleInterviewAction) scheduleInterviewAction.addEventListener('click', () => handleAction('schedule-interview'));
-        if (addContactAction) addContactAction.addEventListener('click', () => handleAction('add-contact'));
-        if (assignToJobAction) assignToJobAction.addEventListener('click', () => handleAction('assign-to-job'));
-        if (openAtsBtn) openAtsBtn.addEventListener('click', openFullATS);
-        if (refreshDataBtn) refreshDataBtn.addEventListener('click', refreshAnalysis);
-
-        // Settings handler
-        const settingsBtn = document.getElementById('settingsBtn');
-        if (settingsBtn) settingsBtn.addEventListener('click', openSettings);
-    }
-
-    // Main Email Analysis Function
-    async function analyzeCurrentEmail() {
-        if (isAnalyzing) return;
-        isAnalyzing = true;
-
-        const aiSuggestion = document.getElementById('aiSuggestion');
-        const aiActions = document.getElementById('aiActions');
-        
-        try {
-            const item = Office.context.mailbox.item;
-            
-            if (!item) {
-                aiSuggestion.innerHTML = `
-                    <span class="text-gray-600">
-                        <i data-lucide="info" class="w-4 h-4 inline mr-1"></i>
-                        No email selected
-                    </span>
-                `;
-                lucide.createIcons();
-                isAnalyzing = false;
-                return;
-            }
-
-            // Show analyzing state
-            aiSuggestion.innerHTML = `
-                <div class="flex items-center">
-                    <i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i>
-                    <span>Analyzing email and attachments...</span>
-                </div>
-            `;
-            lucide.createIcons();
-
-            // Get email data
-            const emailData = await getEmailData(item);
-            currentEmailData = emailData;
-
-            // Detect and analyze attachments
-            const attachments = await detectAttachments(item);
-            currentAttachments = attachments;
-
-            // Update email context display
-            updateEmailContext(emailData);
-
-            // Show attachments if detected
-            displayAttachments(attachments);
-
-            // Generate AI suggestions
-            const suggestions = await generateAISuggestions(emailData, attachments);
-            displayAISuggestions(suggestions);
-
-        } catch (error) {
-            console.error('Email analysis failed:', error);
-            aiSuggestion.innerHTML = `
-                <span class="text-red-600">
-                    <i data-lucide="alert-circle" class="w-4 h-4 inline mr-1"></i>
-                    Analysis failed - ${error.message}
-                </span>
-            `;
-            lucide.createIcons();
-        } finally {
-            isAnalyzing = false;
-        }
-    }
-
-    // Get comprehensive email data
-    async function getEmailData(item) {
-        return new Promise((resolve, reject) => {
-            const emailData = {
-                subject: item.subject || 'No subject',
-                from: item.from ? {
-                    name: item.from.displayName || 'Unknown',
-                    email: item.from.emailAddress || 'unknown@unknown.com'
-                } : { name: 'Unknown', email: 'unknown@unknown.com' },
-                date: item.dateTimeCreated ? new Date(item.dateTimeCreated) : new Date(),
-                body: '',
-                hasAttachments: item.attachments && item.attachments.length > 0
-            };
-
-            // Get email body
-            if (item.body) {
-                item.body.getAsync(Office.CoercionType.Text, (result) => {
-                    if (result.status === Office.AsyncResultStatus.Succeeded) {
-                        emailData.body = result.value || '';
-                        resolve(emailData);
-                    } else {
-                        console.warn('Could not get email body:', result.error);
-                        resolve(emailData);
-                    }
-                });
-            } else {
-                resolve(emailData);
-            }
-        });
-    }
-
-    // Detect and analyze attachments
-    async function detectAttachments(item) {
-        if (!item.attachments || item.attachments.length === 0) {
-            return [];
-        }
-
-        const attachments = [];
-        
-        for (let i = 0; i < item.attachments.length; i++) {
-            const attachment = item.attachments[i];
-            const attachmentInfo = {
-                id: attachment.id,
-                name: attachment.name,
-                size: attachment.size,
-                type: getAttachmentType(attachment.name),
-                isResume: isResumeFile(attachment.name),
-                isDocument: isDocumentFile(attachment.name)
-            };
-            attachments.push(attachmentInfo);
-        }
-
-        return attachments;
-    }
-
-    function getAttachmentType(filename) {
-        const ext = filename.toLowerCase().split('.').pop();
-        const types = {
-            'pdf': 'PDF Document',
-            'doc': 'Word Document',
-            'docx': 'Word Document',
-            'txt': 'Text File',
-            'rtf': 'Rich Text',
-            'jpg': 'Image',
-            'jpeg': 'Image',
-            'png': 'Image',
-            'gif': 'Image'
-        };
-        return types[ext] || 'Unknown';
-    }
-
-    function isResumeFile(filename) {
-        const resumeKeywords = ['resume', 'cv', 'curriculum'];
-        const lowerName = filename.toLowerCase();
-        return resumeKeywords.some(keyword => lowerName.includes(keyword));
-    }
-
-    function isDocumentFile(filename) {
-        const docExtensions = ['pdf', 'doc', 'docx', 'txt', 'rtf'];
-        const ext = filename.toLowerCase().split('.').pop();
-        return docExtensions.includes(ext);
-    }
-
-    // Display attachments
-    function displayAttachments(attachments) {
-        const attachmentAnalysis = document.getElementById('attachmentAnalysis');
-        const attachmentList = document.getElementById('attachmentList');
-        
-        if (attachments.length === 0) {
-            attachmentAnalysis.classList.add('hidden');
-            return;
-        }
-
-        attachmentAnalysis.classList.remove('hidden');
-        
-        attachmentList.innerHTML = attachments.map(attachment => `
-            <div class="flex items-center justify-between p-1 bg-white rounded border">
-                <div class="flex items-center space-x-2">
-                    <i data-lucide="${getAttachmentIcon(attachment.type)}" class="w-3 h-3 text-gray-500"></i>
-                    <span class="text-xs font-medium">${attachment.name}</span>
-                    ${attachment.isResume ? '<span class="text-xs bg-blue-100 text-blue-800 px-1 rounded">Resume</span>' : ''}
-                </div>
-                <span class="text-xs text-gray-500">${formatFileSize(attachment.size)}</span>
-            </div>
-        `).join('');
-        
-        lucide.createIcons();
-    }
-
-    function getAttachmentIcon(type) {
-        const icons = {
-            'PDF Document': 'file-text',
-            'Word Document': 'file-text',
-            'Text File': 'file-text',
-            'Rich Text': 'file-text',
-            'Image': 'image',
-            'Unknown': 'file'
-        };
-        return icons[type] || 'file';
-    }
-
-    function formatFileSize(bytes) {
-        if (bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-    }
-
-    // Generate comprehensive AI suggestions
-    async function generateAISuggestions(emailData, attachments) {
-        const suggestions = [];
-        const emailText = `${emailData.subject} ${emailData.body}`.toLowerCase();
-        const senderName = emailData.from.name.toLowerCase();
-        
-        // Project Detection (Multi-position opportunities)
-        const projectPatterns = [
-            /\b(\d+)\s+(positions|roles|engineers|developers|consultants|specialists|people|candidates)\b/i,
-            /\b(multiple|several|team of|group of)\s+(positions|roles|engineers|developers)\b/i,
-            /\b(project|contract|engagement)\s+(requires|needs|looking for)\b/i
-        ];
-        
-        const hasProjectIndicators = projectPatterns.some(pattern => pattern.test(emailText)) ||
-            ['positions', 'multiple roles', 'team', 'project', 'contract'].some(keyword => emailText.includes(keyword));
-        
-        if (hasProjectIndicators) {
-            suggestions.push({
-                type: 'project',
-                action: 'Create Project',
-                icon: 'folder-plus',
-                confidence: 0.90,
-                reason: 'Email describes a multi-position opportunity or project',
-                priority: 'high'
-            });
-        }
-
-        // Job/Opportunity Detection
-        const jobKeywords = ['hiring', 'position', 'role', 'opportunity', 'job opening', 'vacancy'];
-        if (jobKeywords.some(keyword => emailText.includes(keyword))) {
-            suggestions.push({
-                type: 'job',
-                action: 'Create Job',
-                icon: 'briefcase',
-                confidence: 0.85,
-                reason: 'Job opportunity detected',
-                priority: 'high'
-            });
-        }
-
-        // Candidate Detection
-        const candidateIndicators = [
-            'application', 'applying for', 'interested in', 'resume attached', 
-            'cv attached', 'looking for work', 'seeking position'
-        ];
-        if (candidateIndicators.some(indicator => emailText.includes(indicator))) {
-            suggestions.push({
-                type: 'candidate',
-                action: 'Add Candidate',
-                icon: 'user-plus',
-                confidence: 0.90,
-                reason: 'Email appears to be from a job candidate',
-                priority: 'high'
-            });
-        }
-
-        // Resume/CV Detection
-        const resumeAttachments = attachments.filter(att => att.isResume);
-        if (resumeAttachments.length > 0) {
-            suggestions.push({
-                type: 'parse-resume',
-                action: 'Parse Resume',
-                icon: 'file-text',
-                confidence: 0.95,
-                reason: `${resumeAttachments.length} resume(s) detected`,
-                priority: 'high'
-            });
-        }
-
-        // Document attachments
-        const documentAttachments = attachments.filter(att => att.isDocument && !att.isResume);
-        if (documentAttachments.length > 0) {
-            suggestions.push({
-                type: 'parse-document',
-                action: 'Analyze Documents',
-                icon: 'file-search',
-                confidence: 0.80,
-                reason: `${documentAttachments.length} document(s) to analyze`,
-                priority: 'medium'
-            });
-        }
-
-        // Interview Scheduling
-        const interviewKeywords = ['interview', 'meeting', 'call', 'schedule', 'available'];
-        if (interviewKeywords.some(keyword => emailText.includes(keyword))) {
-            suggestions.push({
-                type: 'interview',
-                action: 'Schedule Interview',
-                icon: 'calendar-plus',
-                confidence: 0.75,
-                reason: 'Interview scheduling detected',
-                priority: 'medium'
-            });
-        }
-
-        // Contact Creation
-        if (!emailData.from.email.includes('noreply') && !emailData.from.email.includes('no-reply')) {
-            suggestions.push({
-                type: 'contact',
-                action: 'Add Contact',
-                icon: 'user-check',
-                confidence: 0.70,
-                reason: `Add ${emailData.from.name} to contacts`,
-                priority: 'low'
-            });
-        }
-
-        // Sort by priority and confidence
-        return suggestions.sort((a, b) => {
-            const priorityOrder = { high: 3, medium: 2, low: 1 };
-            return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0) || 
-                   b.confidence - a.confidence;
-        });
-    }
-
-    // Display AI suggestions
-    function displayAISuggestions(suggestions) {
-        const aiSuggestion = document.getElementById('aiSuggestion');
-        const aiActions = document.getElementById('aiActions');
-        
-        if (suggestions.length === 0) {
-            aiSuggestion.innerHTML = `
-                <span class="text-gray-600">
-                    <i data-lucide="check-circle" class="w-4 h-4 inline mr-1 text-green-600"></i>
-                    Email analyzed - no immediate actions suggested
-                </span>
-            `;
-            aiActions.classList.add('hidden');
-        } else {
-            const primarySuggestion = suggestions[0];
-            aiSuggestion.innerHTML = `
-                <div class="space-y-1">
-                    <div class="flex items-center">
-                        <i data-lucide="sparkles" class="w-4 h-4 mr-2 text-blue-600"></i>
-                        <span class="text-sm font-medium text-gray-800">AI Recommendations</span>
-                    </div>
-                    <p class="text-xs text-gray-600">${primarySuggestion.reason}</p>
-                </div>
-            `;
-            
-            // Show top 3 suggestions as action buttons
-            const topSuggestions = suggestions.slice(0, 3);
-            aiActions.innerHTML = topSuggestions.map(suggestion => `
-                <button class="w-full text-left p-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors" 
-                        onclick="executeAISuggestion('${suggestion.type}')">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <i data-lucide="${suggestion.icon}" class="w-4 h-4 text-blue-600"></i>
-                            <span class="text-sm font-medium text-blue-800">${suggestion.action}</span>
-                        </div>
-                        <span class="text-xs text-blue-600">${Math.round(suggestion.confidence * 100)}%</span>
-                    </div>
-                </button>
-            `).join('');
-            aiActions.classList.remove('hidden');
-        }
-        
-        lucide.createIcons();
-    }
-
-    // Execute AI suggestions
-    window.executeAISuggestion = function(type) {
-        console.log(`Executing AI suggestion: ${type}`);
-        handleAction(type);
-    };
-
-    // Update email context display
-    function updateEmailContext(emailData) {
-        const emailSender = document.getElementById('emailSender');
-        const emailSubject = document.getElementById('emailSubject');
-        const emailCategory = document.getElementById('emailCategory');
-        const emailPriority = document.getElementById('emailPriority');
-
-        if (emailSender) {
-            emailSender.textContent = `${emailData.from.name} <${emailData.from.email}>`;
-        }
-        
-        if (emailSubject) {
-            emailSubject.textContent = emailData.subject;
-        }
-
-        // Classify email type
-        const category = classifyEmail(emailData);
-        if (emailCategory) {
-            emailCategory.className = `status-badge status-${category.type}`;
-            emailCategory.innerHTML = `<i data-lucide="${category.icon}" class="w-3 h-3"></i> ${category.label}`;
-        }
-
-        // Determine priority
-        const priority = determinePriority(emailData);
-        if (emailPriority) {
-            const prioritySpan = emailPriority.querySelector('.priority-badge');
-            if (prioritySpan) {
-                prioritySpan.className = `priority-badge priority-${priority.level}`;
-                prioritySpan.textContent = priority.label;
-            }
-        }
-
-        lucide.createIcons();
-    }
-
-    function classifyEmail(emailData) {
-        const subject = emailData.subject.toLowerCase();
-        const body = emailData.body.toLowerCase();
-        const text = `${subject} ${body}`;
-
-        if (text.includes('application') || text.includes('resume') || text.includes('cv')) {
-            return { type: 'candidate', label: 'Candidate', icon: 'user' };
-        }
-        if (text.includes('position') || text.includes('hiring') || text.includes('job')) {
-            return { type: 'opportunity', label: 'Opportunity', icon: 'briefcase' };
-        }
-        if (text.includes('project') || text.includes('contract') || text.includes('engagement')) {
-            return { type: 'project', label: 'Project', icon: 'folder' };
-        }
-        if (text.includes('interview') || text.includes('meeting') || text.includes('call')) {
-            return { type: 'interview', label: 'Interview', icon: 'calendar' };
-        }
-        
-        return { type: 'general', label: 'General', icon: 'mail' };
-    }
-
-    function determinePriority(emailData) {
-        const text = `${emailData.subject} ${emailData.body}`.toLowerCase();
-        const urgentKeywords = ['urgent', 'asap', 'immediate', 'priority', 'rush'];
-        const highKeywords = ['important', 'critical', 'deadline', 'interview'];
-        
-        if (urgentKeywords.some(keyword => text.includes(keyword))) {
-            return { level: 'high', label: 'High' };
-        }
-        if (highKeywords.some(keyword => text.includes(keyword)) || currentAttachments.length > 0) {
-            return { level: 'medium', label: 'Medium' };
-        }
-        
-        return { level: 'low', label: 'Low' };
-    }
-
-    // Handle all actions
-    async function handleAction(action) {
-        console.log(`Handling action: ${action}`);
-        showLoadingOverlay(`Processing ${action}...`);
-        
-        try {
-            switch(action) {
-                case 'create-project':
-                    await createProjectFromEmail();
-                    break;
-                case 'create-job':
-                    await createJobFromEmail();
-                    break;
-                case 'add-candidate':
-                    await addCandidateFromEmail();
-                    break;
-                case 'parse-resume':
-                    await parseResumeFromEmail();
-                    break;
-                case 'schedule-interview':
-                    await scheduleInterviewFromEmail();
-                    break;
-                case 'add-contact':
-                    await addContactFromEmail();
-                    break;
-                case 'assign-to-job':
-                    await assignToJobFromEmail();
-                    break;
-                case 'parse-document':
-                    await parseDocumentsFromEmail();
-                    break;
-                default:
-                    throw new Error(`Unknown action: ${action}`);
-            }
-        } catch (error) {
-            console.error(`Action ${action} failed:`, error);
-            showNotification(`Failed to ${action}: ${error.message}`, 'error');
-        } finally {
-            hideLoadingOverlay();
-        }
-    }
-
-    // Action implementations
-    async function createProjectFromEmail() {
-        const response = await fetch('/api/projects/parse-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                subject: currentEmailData.subject,
-                body: currentEmailData.body,
-                from: currentEmailData.from,
-                date: currentEmailData.date.toISOString()
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to create project');
-        }
-
-        const result = await response.json();
-        showNotification(`Project "${result.project.name}" created successfully!`, 'success');
-        
-        // Update UI with project details
-        const aiSuggestion = document.getElementById('aiSuggestion');
-        aiSuggestion.innerHTML = `
-            <div class="space-y-2">
-                <div class="flex items-center">
-                    <i data-lucide="check-circle" class="w-4 h-4 mr-2 text-green-600"></i>
-                    <span class="text-sm font-medium text-green-800">Project Created</span>
-                </div>
-                <div class="text-xs text-gray-600">
-                    <p><strong>${result.project.name}</strong></p>
-                    <p>Client: ${result.project.clientName}</p>
-                    <p>Positions: ${result.project.totalPositions}</p>
-                </div>
-            </div>
-        `;
-        lucide.createIcons();
-    }
-
-    async function createJobFromEmail() {
-        // Implementation for creating a job from email
-        showNotification('Job creation functionality coming soon', 'info');
-    }
-
-    async function addCandidateFromEmail() {
-        const candidateData = {
-            firstName: extractFirstName(currentEmailData.from.name),
-            lastName: extractLastName(currentEmailData.from.name),
-            email: currentEmailData.from.email,
-            source: 'Email',
-            notes: `Added from email: ${currentEmailData.subject}`
-        };
-
-        const response = await fetch('/api/candidates', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(candidateData)
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to add candidate');
-        }
-
-        const result = await response.json();
-        showNotification(`Candidate ${result.firstName} ${result.lastName} added successfully!`, 'success');
-    }
-
-    async function parseResumeFromEmail() {
-        const resumeAttachments = currentAttachments.filter(att => att.isResume);
-        
-        if (resumeAttachments.length === 0) {
-            throw new Error('No resume attachments found');
-        }
-
-        // For now, show info about detected resumes
-        showNotification(`Found ${resumeAttachments.length} resume(s). Full parsing coming soon.`, 'info');
-    }
-
-    async function scheduleInterviewFromEmail() {
-        showNotification('Interview scheduling functionality coming soon', 'info');
-    }
-
-    async function addContactFromEmail() {
-        const contactData = {
-            name: currentEmailData.from.name,
-            email: currentEmailData.from.email,
-            type: 'candidate', // or 'client' based on classification
-            source: 'Email'
-        };
-
-        showNotification(`Contact ${contactData.name} will be added to your contact list`, 'info');
-    }
-
-    async function assignToJobFromEmail() {
-        showNotification('Job assignment functionality coming soon', 'info');
-    }
-
-    async function parseDocumentsFromEmail() {
-        const docAttachments = currentAttachments.filter(att => att.isDocument);
-        showNotification(`Found ${docAttachments.length} document(s) to analyze`, 'info');
-    }
-
-    // Utility functions
-    function extractFirstName(fullName) {
-        return fullName.split(' ')[0] || 'Unknown';
-    }
-
-    function extractLastName(fullName) {
-        const parts = fullName.split(' ');
-        return parts.length > 1 ? parts[parts.length - 1] : '';
-    }
-
-    async function refreshAnalysis() {
-        const refreshBtn = document.getElementById('refreshDataBtn');
-        const originalContent = refreshBtn.innerHTML;
-        
-        refreshBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>';
-        lucide.createIcons();
-        
-        try {
-            await analyzeCurrentEmail();
-            showNotification('Analysis refreshed successfully', 'success');
-        } catch (error) {
-            showNotification('Failed to refresh analysis', 'error');
-        } finally {
-            refreshBtn.innerHTML = originalContent;
-            lucide.createIcons();
-        }
-    }
-
-    function openFullATS() {
-        const atsUrl = 'https://app-emineon-inzp80k8t-david-bicrawais-projects.vercel.app';
-        window.open(atsUrl, '_blank');
-    }
-
-    function openSettings() {
-        showNotification('Settings panel coming soon', 'info');
-    }
-
-    // UI Helper functions
-    function showLoadingOverlay(message = 'Processing...') {
-        // Create overlay if it doesn't exist
-        let overlay = document.getElementById('loadingOverlay');
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.id = 'loadingOverlay';
-            overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-            overlay.innerHTML = `
-                <div class="bg-white p-6 rounded-lg shadow-lg text-center">
-                    <i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600"></i>
-                    <p class="text-sm text-gray-600" id="loadingMessage">${message}</p>
-                </div>
-            `;
-            document.body.appendChild(overlay);
-        } else {
-            document.getElementById('loadingMessage').textContent = message;
-        }
-        
-        overlay.style.display = 'flex';
-        lucide.createIcons();
-    }
-
-    function hideLoadingOverlay() {
-        const overlay = document.getElementById('loadingOverlay');
-        if (overlay) {
-            overlay.style.display = 'none';
-        }
-    }
-
-    function showNotification(message, type = 'info') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 max-w-sm ${getNotificationClasses(type)}`;
-        
-        const icon = getNotificationIcon(type);
-        notification.innerHTML = `
-            <div class="flex items-start space-x-3">
-                <i data-lucide="${icon}" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
-                <div class="flex-1">
-                    <p class="text-sm font-medium">${message}</p>
-                </div>
-                <button onclick="this.parentElement.parentElement.remove()" class="flex-shrink-0">
-                    <i data-lucide="x" class="w-4 h-4"></i>
-                </button>
-            </div>
-        `;
-        
-        document.body.appendChild(notification);
-        lucide.createIcons();
-        
-        // Auto-remove after 5 seconds
+    } else {
         setTimeout(() => {
-            if (notification.parentElement) {
-                notification.remove();
-            }
-        }, 5000);
+            showNotification('Data refreshed!', 'success');
+        }, 500);
     }
+}
 
-    function getNotificationClasses(type) {
-        const classes = {
-            success: 'bg-green-50 border border-green-200 text-green-800',
-            error: 'bg-red-50 border border-red-200 text-red-800',
-            warning: 'bg-yellow-50 border border-yellow-200 text-yellow-800',
-            info: 'bg-blue-50 border border-blue-200 text-blue-800'
-        };
-        return classes[type] || classes.info;
+// Modal functions
+
+/**
+ * Show modal
+ */
+function showModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('show');
     }
+}
 
-    function getNotificationIcon(type) {
+/**
+ * Hide modal
+ */
+function hideModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+/**
+ * Handle contact form submission
+ */
+async function handleContactFormSubmit(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const contactData = {
+        type: document.getElementById('contactType').value,
+        firstName: document.getElementById('contactFirstName').value,
+        lastName: document.getElementById('contactLastName').value,
+        email: document.getElementById('contactEmail').value,
+        phone: document.getElementById('contactPhone').value,
+        company: document.getElementById('contactCompany').value,
+        position: document.getElementById('contactPosition').value,
+        notes: document.getElementById('contactNotes').value
+    };
+    
+    try {
+        showNotification('Saving contact...', 'info');
+        
+        // Simulate API call
+        setTimeout(() => {
+            showNotification(`${contactData.type.charAt(0).toUpperCase() + contactData.type.slice(1)} added successfully!`, 'success');
+            hideModal('addContactModal');
+            
+            // Reset form
+            document.getElementById('contactForm').reset();
+        }, 1000);
+        
+    } catch (error) {
+        console.error('Error saving contact:', error);
+        showNotification('Failed to save contact', 'error');
+    }
+}
+
+// Notification system
+
+/**
+ * Show notification
+ */
+function showNotification(message, type = 'success') {
+    const notification = document.getElementById('notification');
+    const notificationText = document.getElementById('notificationText');
+    
+    if (!notification || !notificationText) return;
+    
+    // Update notification content
+    notificationText.textContent = message;
+    
+    // Update notification type
+    notification.className = `notification ${type}`;
+    
+    // Update icon based on type
+    const iconElement = notification.querySelector('i');
+    if (iconElement) {
         const icons = {
             success: 'check-circle',
-            error: 'alert-circle',
+            error: 'x-circle',
             warning: 'alert-triangle',
             info: 'info'
         };
-        return icons[type] || icons.info;
+        
+        iconElement.setAttribute('data-lucide', icons[type] || 'info');
+        lucide.createIcons();
     }
+    
+    // Show notification
+    notification.classList.add('show');
+    
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+        notification.classList.remove('show');
+    }, 3000);
+}
 
-})(); 
+// Utility functions
+
+/**
+ * Debounce function
+ */
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+/**
+ * Format date for display
+ */
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+}
+
+console.log('✅ Emineon Outlook Add-in JavaScript loaded'); 

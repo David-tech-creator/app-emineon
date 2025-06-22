@@ -16,767 +16,932 @@
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     
     <style>
-        /* Emineon Platform Design System - Exact Match */
+        /* Emineon Platform Design System */
         :root {
             /* Primary Colors - Deep Navy Blue */
-            --emineon-primary: #0A2F5A;
-            --emineon-primary-50: #F0F4F8;
-            --emineon-primary-100: #E1E9F1;
-            --emineon-primary-200: #C3D3E3;
-            --emineon-primary-300: #A5BDD5;
-            --emineon-primary-400: #6691B9;
-            --emineon-primary-500: #0A2F5A;
-            --emineon-primary-600: #092951;
-            --emineon-primary-700: #072040;
-            --emineon-primary-800: #051730;
-            --emineon-primary-900: #040E20;
+            --primary-50: #F0F4F8;
+            --primary-100: #E1E9F1;
+            --primary-200: #C3D3E3;
+            --primary-300: #A5BDD5;
+            --primary-400: #6691B9;
+            --primary-500: #0A2F5A;
+            --primary-600: #092951;
+            --primary-700: #072040;
+            --primary-800: #051730;
+            --primary-900: #040E20;
             
             /* Secondary Colors - Steel Gray */
-            --emineon-secondary: #444B54;
-            --emineon-secondary-50: #F8F9FA;
-            --emineon-secondary-100: #E9ECEF;
-            --emineon-secondary-200: #DEE2E6;
-            --emineon-secondary-300: #CED4DA;
-            --emineon-secondary-400: #ADB5BD;
-            --emineon-secondary-500: #6C757D;
-            --emineon-secondary-600: #495057;
-            --emineon-secondary-700: #444B54;
-            --emineon-secondary-800: #343A40;
-            --emineon-secondary-900: #232629;
+            --secondary-50: #F8F9FA;
+            --secondary-100: #E9ECEF;
+            --secondary-200: #DEE2E6;
+            --secondary-300: #CED4DA;
+            --secondary-400: #ADB5BD;
+            --secondary-500: #6C757D;
+            --secondary-600: #495057;
+            --secondary-700: #444B54;
+            --secondary-800: #343A40;
+            --secondary-900: #232629;
             
             /* Accent Colors - Burnt Orange */
-            --emineon-accent: #C75B12;
-            --emineon-accent-50: #FEF4ED;
-            --emineon-accent-100: #FDE8D7;
-            --emineon-accent-200: #FBCEB0;
-            --emineon-accent-300: #F8B088;
-            --emineon-accent-400: #F4985F;
-            --emineon-accent-500: #C75B12;
-            --emineon-accent-600: #B8520F;
-            --emineon-accent-700: #A8490D;
-            --emineon-accent-800: #98400A;
-            --emineon-accent-900: #893708;
+            --accent-50: #FEF4ED;
+            --accent-100: #FDE8D7;
+            --accent-200: #FBCEB0;
+            --accent-300: #F8B088;
+            --accent-400: #F4985F;
+            --accent-500: #C75B12;
+            --accent-600: #B8520F;
+            --accent-700: #A8490D;
+            --accent-800: #98400A;
+            --accent-900: #893708;
             
-            /* Teal Colors - Balance & Sophistication */
-            --emineon-teal: #008080;
-            --emineon-teal-50: #E6F7F7;
-            --emineon-teal-100: #CCEEEE;
-            --emineon-teal-200: #99DDDD;
-            --emineon-teal-300: #66CCCC;
-            --emineon-teal-400: #33BBBB;
-            --emineon-teal-500: #008080;
-            --emineon-teal-600: #007373;
-            --emineon-teal-700: #006666;
-            --emineon-teal-800: #005959;
-            --emineon-teal-900: #004D4D;
+            /* Teal */
+            --teal-50: #E6F7F7;
+            --teal-100: #CCEEEE;
+            --teal-200: #99DDDD;
+            --teal-300: #66CCCC;
+            --teal-400: #33BBBB;
+            --teal-500: #008080;
+            --teal-600: #007373;
+            --teal-700: #006666;
+            --teal-800: #005959;
+            --teal-900: #004D4D;
             
-            /* Neutral Colors - Off-White Balance */
-            --emineon-neutral: #F8F9FA;
-            --emineon-neutral-50: #FFFFFF;
-            --emineon-neutral-100: #F8F9FA;
-            --emineon-neutral-200: #E9ECEF;
-            --emineon-neutral-300: #DEE2E6;
-            --emineon-neutral-400: #CED4DA;
-            --emineon-neutral-500: #ADB5BD;
-            --emineon-neutral-600: #6C757D;
-            --emineon-neutral-700: #495057;
-            --emineon-neutral-800: #343A40;
-            --emineon-neutral-900: #232629;
+            /* Success */
+            --success-50: #ECFDF5;
+            --success-100: #D1FAE5;
+            --success-500: #10B981;
+            --success-700: #047857;
             
-            /* Functional Colors */
-            --emineon-success: #10B981;
-            --emineon-success-50: #ECFDF5;
-            --emineon-success-100: #D1FAE5;
-            --emineon-success-200: #A7F3D0;
-            --emineon-success-300: #6EE7B7;
-            --emineon-success-400: #34D399;
-            --emineon-success-500: #10B981;
-            --emineon-success-600: #059669;
-            --emineon-success-700: #047857;
-            --emineon-success-800: #065F46;
-            --emineon-success-900: #064E3B;
+            /* Warning */
+            --warning-50: #FFFBEB;
+            --warning-100: #FEF3C7;
+            --warning-500: #F59E0B;
+            --warning-700: #B45309;
             
-            --emineon-warning: #F59E0B;
-            --emineon-warning-50: #FFFBEB;
-            --emineon-warning-100: #FEF3C7;
-            --emineon-warning-200: #FDE68A;
-            --emineon-warning-300: #FCD34D;
-            --emineon-warning-400: #FBBF24;
-            --emineon-warning-500: #F59E0B;
-            --emineon-warning-600: #D97706;
-            --emineon-warning-700: #B45309;
-            --emineon-warning-800: #92400E;
-            --emineon-warning-900: #78350F;
-            
-            --emineon-error: #EF4444;
-            --emineon-error-50: #FEF2F2;
-            --emineon-error-100: #FEE2E2;
-            --emineon-error-200: #FECACA;
-            --emineon-error-300: #FCA5A5;
-            --emineon-error-400: #F87171;
-            --emineon-error-500: #EF4444;
-            --emineon-error-600: #DC2626;
-            --emineon-error-700: #B91C1C;
-            --emineon-error-800: #991B1B;
-            --emineon-error-900: #7F1D1D;
+            /* Error */
+            --error-50: #FEF2F2;
+            --error-100: #FEE2E2;
+            --error-500: #EF4444;
+            --error-700: #B91C1C;
         }
         
-        /* Typography - Inter Font Family */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-feature-settings: 'cv08', 'cv11';
-            color: var(--emineon-secondary-900);
-            background: var(--emineon-secondary-50);
+            font-size: 14px;
+            line-height: 1.5;
+            background: var(--secondary-50);
+            color: var(--secondary-800);
+            overflow-x: hidden;
         }
         
-        /* Emineon Platform Gradients */
-        .emineon-gradient {
-            background: linear-gradient(135deg, var(--emineon-primary-600) 0%, var(--emineon-teal-600) 100%);
-        }
-        
-        .emineon-gradient-accent {
-            background: linear-gradient(135deg, var(--emineon-primary-500) 0%, var(--emineon-accent-500) 100%);
-        }
-        
-        /* Card Components - Platform Style */
-        .emineon-card {
-            background: var(--emineon-neutral-50);
-            border-radius: 12px;
-            border: 1px solid var(--emineon-secondary-200);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-        
-        .emineon-card-elevated {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-        
-        .emineon-card:hover {
-            box-shadow: 0 4px 12px -2px rgba(10, 47, 90, 0.15);
-            transform: translateY(-1px);
-            transition: all 0.2s ease-out;
-        }
-        
-        /* Button Components - Platform Style */
-        .btn-primary {
-            background: var(--emineon-primary-500);
-            color: var(--emineon-neutral-50);
-            font-weight: 500;
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease-out;
-            font-size: 13px;
-            display: inline-flex;
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 100%);
+            color: white;
+            padding: 12px 16px;
+            display: flex;
             align-items: center;
-            gap: 6px;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(10, 47, 90, 0.15);
         }
         
-        .btn-primary:hover {
-            background: var(--emineon-primary-600);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(10, 47, 90, 0.25);
-        }
-        
-        .btn-secondary {
-            background: var(--emineon-secondary-200);
-            color: var(--emineon-secondary-800);
-            font-weight: 500;
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease-out;
-            font-size: 13px;
-            display: inline-flex;
+        .header-left {
+            display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 12px;
         }
         
-        .btn-secondary:hover {
-            background: var(--emineon-secondary-300);
-        }
-        
-        .btn-teal {
-            background: var(--emineon-teal-500);
-            color: var(--emineon-neutral-50);
-            font-weight: 500;
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease-out;
-            font-size: 13px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .btn-teal:hover {
-            background: var(--emineon-teal-600);
-            transform: translateY(-1px);
-        }
-        
-        .btn-accent {
-            background: var(--emineon-accent-500);
-            color: var(--emineon-neutral-50);
-            font-weight: 500;
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease-out;
-            font-size: 13px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .btn-accent:hover {
-            background: var(--emineon-accent-600);
-            transform: translateY(-1px);
-        }
-        
-        .btn-sm {
-            padding: 6px 12px;
-            font-size: 12px;
-        }
-        
-        .btn-xs {
-            padding: 4px 8px;
-            font-size: 11px;
-        }
-        
-        /* Input Components - Platform Style */
-        .input-field {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid var(--emineon-secondary-300);
-            border-radius: 8px;
-            background: var(--emineon-neutral-50);
-            color: var(--emineon-secondary-900);
-            font-size: 13px;
-            transition: all 0.2s ease-out;
-        }
-        
-        .input-field:focus {
-            outline: none;
-            border-color: var(--emineon-primary-500);
-            box-shadow: 0 0 0 3px var(--emineon-primary-100);
-        }
-        
-        /* Status Badges - Platform Style */
-        .status-badge {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.025em;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .status-new { 
-            background: var(--emineon-primary-100); 
-            color: var(--emineon-primary-700); 
-            border: 1px solid var(--emineon-primary-200);
-        }
-        .status-in-review { 
-            background: var(--emineon-warning-100); 
-            color: var(--emineon-warning-700); 
-            border: 1px solid var(--emineon-warning-200);
-        }
-        .status-interviewing { 
-            background: var(--emineon-teal-100); 
-            color: var(--emineon-teal-700); 
-            border: 1px solid var(--emineon-teal-200);
-        }
-        .status-offered { 
-            background: var(--emineon-accent-100); 
-            color: var(--emineon-accent-700); 
-            border: 1px solid var(--emineon-accent-200);
-        }
-        .status-hired { 
-            background: var(--emineon-success-100); 
-            color: var(--emineon-success-700); 
-            border: 1px solid var(--emineon-success-200);
-        }
-        .status-rejected { 
-            background: var(--emineon-error-100); 
-            color: var(--emineon-error-700); 
-            border: 1px solid var(--emineon-error-200);
-        }
-        .status-on-hold { 
-            background: var(--emineon-secondary-100); 
-            color: var(--emineon-secondary-700); 
-            border: 1px solid var(--emineon-secondary-200);
-        }
-        
-        /* Priority Badges */
-        .priority-badge {
-            padding: 2px 6px;
-            border-radius: 6px;
-            font-size: 9px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        
-        .priority-high { 
-            background: var(--emineon-error-100); 
-            color: var(--emineon-error-700); 
-        }
-        .priority-medium { 
-            background: var(--emineon-warning-100); 
-            color: var(--emineon-warning-700); 
-        }
-        .priority-low { 
-            background: var(--emineon-success-100); 
-            color: var(--emineon-success-700); 
-        }
-        
-        /* AI Chat Components */
-        .ai-chat-bubble {
-            background: linear-gradient(135deg, var(--emineon-primary-50) 0%, var(--emineon-primary-100) 100%);
-            border: 1px solid var(--emineon-primary-200);
-            border-radius: 12px;
-            position: relative;
-        }
-        
-        .ai-chat-bubble:before {
-            content: '';
-            position: absolute;
-            top: -1px;
-            left: 12px;
-            width: 8px;
-            height: 8px;
-            background: var(--emineon-primary-50);
-            border-left: 1px solid var(--emineon-primary-200);
-            border-top: 1px solid var(--emineon-primary-200);
-            transform: rotate(45deg);
-        }
-        
-        /* Loading Animation */
-        .loading-dots {
-            display: inline-flex;
-            align-items: center;
-            gap: 2px;
-        }
-        
-        .loading-dots span {
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-            background: var(--emineon-primary-500);
-            animation: loading-dots 1.4s infinite ease-in-out;
-        }
-        
-        .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
-        .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
-        
-        @keyframes loading-dots {
-            0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
-            40% { transform: scale(1); opacity: 1; }
-        }
-        
-        /* Action Cards */
-        .action-card {
-            border: 1px solid var(--emineon-secondary-200);
-            border-radius: 8px;
-            padding: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease-out;
-            background: var(--emineon-neutral-50);
-        }
-        
-        .action-card:hover {
-            border-color: var(--emineon-primary-300);
-            background: var(--emineon-primary-50);
-            transform: translateY(-1px);
-        }
-        
-        /* Candidate Avatar */
-        .candidate-avatar {
+        .logo-container {
             width: 32px;
             height: 32px;
-            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+        
+        .logo-container img {
+            width: 20px;
+            height: 20px;
+            filter: brightness(0) invert(1);
+        }
+        
+        .header-title {
+            font-size: 16px;
             font-weight: 600;
-            font-size: 12px;
-            color: var(--emineon-neutral-50);
-            background: var(--emineon-primary-500);
+            color: white;
         }
         
-        /* Animations */
-        .slide-in {
-            animation: slideIn 0.3s ease-out;
-        }
-        
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        
-        .fade-in {
-            animation: fadeIn 0.3s ease-out;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* Platform-specific scrollbar */
-        .scrollbar-thin {
-            scrollbar-width: thin;
-            scrollbar-color: var(--emineon-secondary-300) var(--emineon-secondary-100);
-        }
-        
-        .scrollbar-thin::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        
-        .scrollbar-thin::-webkit-scrollbar-track {
-            background: var(--emineon-secondary-100);
-            border-radius: 3px;
-        }
-        
-        .scrollbar-thin::-webkit-scrollbar-thumb {
-            background: var(--emineon-secondary-300);
-            border-radius: 3px;
-        }
-        
-        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-            background: var(--emineon-secondary-400);
-        }
-        
-        /* Platform Typography */
-        h1, h2, h3, h4, h5, h6 {
-            color: var(--emineon-primary-900);
-            font-weight: 600;
-        }
-        
-        .text-primary { color: var(--emineon-primary-700); }
-        .text-secondary { color: var(--emineon-secondary-600); }
-        .text-muted { color: var(--emineon-secondary-500); }
-        
-        /* Section Headers */
-        .section-header {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--emineon-primary-900);
-            margin-bottom: 12px;
+        .header-right {
             display: flex;
             align-items: center;
             gap: 8px;
         }
         
-        .section-divider {
-            height: 1px;
-            background: var(--emineon-secondary-200);
-            margin: 16px 0;
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
         }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #10B981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .settings-btn {
+            padding: 6px;
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .settings-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        
+        /* Main Content */
+        .main-content {
+            padding: 16px;
+            max-height: calc(100vh - 60px);
+            overflow-y: auto;
+        }
+        
+        /* Card Component */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(10, 47, 90, 0.06);
+            border: 1px solid var(--secondary-200);
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary-700);
+        }
+        
+        /* AI Copilot Section */
+        .ai-analysis {
+            background: var(--primary-50);
+            border: 1px solid var(--primary-200);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .ai-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .ai-icon {
+            width: 24px;
+            height: 24px;
+            background: var(--primary-500);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        .ai-title {
+            font-weight: 600;
+            color: var(--primary-700);
+        }
+        
+        .ai-message {
+            font-size: 13px;
+            color: var(--primary-600);
+            line-height: 1.4;
+        }
+        
+        .ai-suggestions {
+            margin-top: 12px;
+            display: none;
+        }
+        
+        .ai-suggestions.show {
+            display: block;
+        }
+        
+        .suggestion-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: white;
+            border: 1px solid var(--primary-200);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .suggestion-item:hover {
+            border-color: var(--primary-300);
+            background: var(--primary-25);
+        }
+        
+        .suggestion-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .suggestion-text {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--primary-700);
+        }
+        
+        .confidence-score {
+            font-size: 11px;
+            color: var(--primary-500);
+            font-weight: 600;
+        }
+        
+        /* Attachment Detection */
+        .attachment-panel {
+            background: var(--warning-50);
+            border: 1px solid var(--warning-200);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        
+        .attachment-panel.show {
+            display: block;
+        }
+        
+        .attachment-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--warning-700);
+        }
+        
+        .attachment-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .attachment-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 8px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid var(--warning-200);
+        }
+        
+        .attachment-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .attachment-name {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--secondary-700);
+        }
+        
+        .attachment-size {
+            font-size: 11px;
+            color: var(--secondary-500);
+        }
+        
+        .resume-badge {
+            background: var(--primary-100);
+            color: var(--primary-700);
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        
+        /* Action Buttons */
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .action-grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+        
+        .btn {
+            padding: 10px 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: var(--primary-500);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-600);
+            transform: translateY(-1px);
+        }
+        
+        .btn-teal {
+            background: var(--teal-500);
+            color: white;
+        }
+        
+        .btn-teal:hover {
+            background: var(--teal-600);
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: var(--secondary-200);
+            color: var(--secondary-700);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--secondary-300);
+            transform: translateY(-1px);
+        }
+        
+        .btn-warning {
+            background: var(--warning-100);
+            color: var(--warning-700);
+            border: 1px solid var(--warning-200);
+        }
+        
+        .btn-warning:hover {
+            background: var(--warning-200);
+        }
+        
+        .btn-accent {
+            background: var(--accent-100);
+            color: var(--accent-700);
+            border: 1px solid var(--accent-200);
+        }
+        
+        .btn-accent:hover {
+            background: var(--accent-200);
+        }
+        
+        .btn-success {
+            background: var(--success-100);
+            color: var(--success-700);
+            border: 1px solid var(--success-200);
+        }
+        
+        .btn-success:hover {
+            background: var(--success-200);
+        }
+        
+        /* Email Context */
+        .email-context-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: var(--secondary-50);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .email-info {
+            flex: 1;
+        }
+        
+        .email-sender {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--secondary-700);
+            margin-bottom: 2px;
+        }
+        
+        .email-subject {
+            font-size: 11px;
+            color: var(--secondary-500);
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .status-candidate {
+            background: var(--primary-100);
+            color: var(--primary-700);
+        }
+        
+        .status-opportunity {
+            background: var(--teal-100);
+            color: var(--teal-700);
+        }
+        
+        .status-project {
+            background: var(--accent-100);
+            color: var(--accent-700);
+        }
+        
+        .status-interview {
+            background: var(--success-100);
+            color: var(--success-700);
+        }
+        
+        .status-general {
+            background: var(--secondary-100);
+            color: var(--secondary-600);
+        }
+        
+        .priority-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--secondary-600);
+        }
+        
+        .priority-badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        
+        .priority-high {
+            background: var(--error-100);
+            color: var(--error-700);
+        }
+        
+        .priority-medium {
+            background: var(--warning-100);
+            color: var(--warning-700);
+        }
+        
+        .priority-low {
+            background: var(--secondary-100);
+            color: var(--secondary-600);
+        }
+        
+        /* Loading States */
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--secondary-600);
+        }
+        
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--secondary-200);
+            border-top: 2px solid var(--primary-500);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 400px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary-700);
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--secondary-500);
+            cursor: pointer;
+            padding: 4px;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--secondary-700);
+            margin-bottom: 6px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--secondary-300);
+            border-radius: 6px;
+            font-size: 13px;
+            transition: border-color 0.2s;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 3px rgba(10, 47, 90, 0.1);
+        }
+        
+        .form-select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--secondary-300);
+            border-radius: 6px;
+            font-size: 13px;
+            background: white;
+        }
+        
+        .form-textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--secondary-300);
+            border-radius: 6px;
+            font-size: 13px;
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            background: white;
+            border-radius: 8px;
+            padding: 12px 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-left: 4px solid var(--success-500);
+            z-index: 1001;
+            display: none;
+            max-width: 300px;
+        }
+        
+        .notification.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .notification.error {
+            border-left-color: var(--error-500);
+        }
+        
+        .notification.warning {
+            border-left-color: var(--warning-500);
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .notification-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .notification-text {
+            font-size: 13px;
+            color: var(--secondary-700);
+        }
+        
+        /* Utility Classes */
+        .hidden { display: none !important; }
+        .text-center { text-align: center; }
+        .mb-2 { margin-bottom: 8px; }
+        .mb-3 { margin-bottom: 12px; }
+        .mt-2 { margin-top: 8px; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-2 { gap: 8px; }
+        .w-full { width: 100%; }
     </style>
 </head>
 
-<body class="font-sans text-sm" style="background: var(--emineon-secondary-50);">
-    <!-- Header with Emineon Branding -->
-    <div class="emineon-gradient text-white px-4 py-3 sticky top-0 z-10">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                    <img src="https://res.cloudinary.com/emineon/image/upload/v1750591731/emineon-ats/icons/emineon-32.png" 
-                         alt="Emineon" class="w-6 h-6 filter brightness-0 invert" />
-                </div>
-                <div>
-                    <h1 class="text-lg font-bold leading-tight text-white">Emineon</h1>
-                </div>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <div class="logo-container">
+                <img src="https://res.cloudinary.com/emineon/image/upload/v1750591731/emineon-ats/icons/emineon-32.png" alt="Emineon" />
             </div>
-            <div class="flex items-center space-x-2">
-                <div id="connectionStatus" class="flex items-center space-x-1">
-                    <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                    <span class="text-xs">Connected</span>
-                </div>
-                <button id="settingsBtn" class="p-1.5 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-colors">
-                    <i data-lucide="settings" class="w-4 h-4"></i>
-                </button>
+            <div class="header-title">Emineon</div>
+        </div>
+        <div class="header-right">
+            <div class="connection-status">
+                <div class="status-dot"></div>
+                <span>Connected</span>
             </div>
+            <button class="settings-btn" id="settingsBtn">
+                <i data-lucide="settings" style="width: 16px; height: 16px;"></i>
+            </button>
         </div>
     </div>
 
     <!-- Main Content -->
-    <div class="p-4 space-y-4 max-h-screen overflow-y-auto scrollbar-thin">
+    <div class="main-content">
         
         <!-- AI Copilot Section -->
-        <div class="emineon-card p-4">
-            <div class="section-header">
-                <i data-lucide="brain" class="w-4 h-4 text-primary"></i>
+        <div class="card">
+            <div class="card-header">
+                <i data-lucide="brain" style="width: 16px; height: 16px;"></i>
                 AI Copilot
             </div>
             
-            <div id="aiAnalysis" class="ai-chat-bubble p-3 mb-3">
-                <div class="flex items-start space-x-3">
-                    <div class="w-7 h-7 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                        <i data-lucide="sparkles" class="w-4 h-4 text-white"></i>
+            <div class="ai-analysis" id="aiAnalysis">
+                <div class="ai-header">
+                    <div class="ai-icon">
+                        <i data-lucide="sparkles" style="width: 12px; height: 12px;"></i>
                     </div>
-                    <div class="flex-1 min-w-0">
-                        <div id="aiSuggestion" class="text-xs text-primary">
-                            <div class="flex items-center">
-                                <i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i>
-                                <span>Analyzing email...</span>
-                            </div>
-                        </div>
-                        <div id="aiActions" class="hidden mt-2 space-y-1">
-                            <!-- AI suggested actions will appear here -->
-                        </div>
+                    <div class="ai-title">AI Analysis</div>
+                </div>
+                <div class="ai-message" id="aiMessage">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <span>Analyzing email...</span>
                     </div>
+                </div>
+                <div class="ai-suggestions" id="aiSuggestions">
+                    <!-- AI suggestions will be populated here -->
                 </div>
             </div>
             
             <!-- Attachment Detection -->
-            <div id="attachmentAnalysis" class="hidden mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <div class="flex items-center space-x-2">
-                    <i data-lucide="paperclip" class="w-4 h-4 text-yellow-600"></i>
-                    <span class="text-xs font-medium text-yellow-800">Attachments Detected</span>
+            <div class="attachment-panel" id="attachmentPanel">
+                <div class="attachment-header">
+                    <i data-lucide="paperclip" style="width: 14px; height: 14px;"></i>
+                    Attachments Detected
                 </div>
-                <div id="attachmentList" class="mt-1 space-y-1">
-                    <!-- Attachment items will appear here -->
+                <div class="attachment-list" id="attachmentList">
+                    <!-- Attachments will be populated here -->
                 </div>
             </div>
             
             <!-- Primary Actions -->
-            <div class="grid grid-cols-3 gap-2 mb-3">
-                <button id="createProjectAction" class="btn-primary btn-sm">
-                    <i data-lucide="folder-plus" class="w-3 h-3"></i>
+            <div class="action-grid">
+                <button class="btn btn-primary" id="createProjectBtn">
+                    <i data-lucide="folder-plus" style="width: 14px; height: 14px;"></i>
                     Project
                 </button>
-                <button id="createJobAction" class="btn-teal btn-sm">
-                    <i data-lucide="briefcase" class="w-3 h-3"></i>
+                <button class="btn btn-teal" id="createJobBtn">
+                    <i data-lucide="briefcase" style="width: 14px; height: 14px;"></i>
                     Job
                 </button>
-                <button id="addCandidateAction" class="btn-secondary btn-sm">
-                    <i data-lucide="user-plus" class="w-3 h-3"></i>
+                <button class="btn btn-secondary" id="addCandidateBtn">
+                    <i data-lucide="user-plus" style="width: 14px; height: 14px;"></i>
                     Candidate
                 </button>
             </div>
             
             <!-- Secondary Actions -->
-            <div class="grid grid-cols-2 gap-1">
-                <button id="parseResumeAction" class="btn-sm" style="background: var(--emineon-warning-100); color: var(--emineon-warning-700); border: 1px solid var(--emineon-warning-200);">
-                    <i data-lucide="file-text" class="w-3 h-3"></i>
+            <div class="action-grid-2">
+                <button class="btn btn-warning" id="parseResumeBtn">
+                    <i data-lucide="file-text" style="width: 14px; height: 14px;"></i>
                     Parse Resume
                 </button>
-                <button id="scheduleInterviewAction" class="btn-sm" style="background: var(--emineon-accent-100); color: var(--emineon-accent-700); border: 1px solid var(--emineon-accent-200);">
-                    <i data-lucide="calendar-plus" class="w-3 h-3"></i>
+                <button class="btn btn-accent" id="scheduleInterviewBtn">
+                    <i data-lucide="calendar-plus" style="width: 14px; height: 14px;"></i>
                     Interview
                 </button>
-                <button id="addContactAction" class="btn-sm" style="background: var(--emineon-success-100); color: var(--emineon-success-700); border: 1px solid var(--emineon-success-200);">
-                    <i data-lucide="user-check" class="w-3 h-3"></i>
+                <button class="btn btn-success" id="addContactBtn">
+                    <i data-lucide="user-check" style="width: 14px; height: 14px;"></i>
                     Add Contact
                 </button>
-                <button id="assignToJobAction" class="btn-sm" style="background: var(--emineon-teal-100); color: var(--emineon-teal-700); border: 1px solid var(--emineon-teal-200);">
-                    <i data-lucide="target" class="w-3 h-3"></i>
+                <button class="btn btn-secondary" id="assignJobBtn">
+                    <i data-lucide="target" style="width: 14px; height: 14px;"></i>
                     Assign Job
                 </button>
             </div>
         </div>
 
         <!-- Email Context -->
-        <div class="emineon-card p-4">
-            <div class="section-header">
-                <i data-lucide="mail" class="w-4 h-4 text-primary"></i>
+        <div class="card">
+            <div class="card-header">
+                <i data-lucide="mail" style="width: 16px; height: 16px;"></i>
                 Email Context
             </div>
             
-            <div id="emailContext" class="space-y-3">
-                <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                    <div class="flex-1">
-                        <div class="text-xs font-medium text-secondary" id="emailSender">Loading sender...</div>
-                        <div class="text-xs text-muted" id="emailSubject">Loading subject...</div>
-                    </div>
-                    <div class="status-badge status-new" id="emailCategory">
-                        <i data-lucide="tag" class="w-3 h-3"></i>
-                        Analyzing
-                    </div>
+            <div class="email-context-item">
+                <div class="email-info">
+                    <div class="email-sender" id="emailSender">Loading sender...</div>
+                    <div class="email-subject" id="emailSubject">Loading subject...</div>
                 </div>
-                
-                <div id="emailPriority" class="flex items-center justify-between">
-                    <span class="text-xs text-muted">Priority Level:</span>
-                    <span class="priority-badge priority-medium">Medium</span>
+                <div class="status-badge status-general" id="emailCategory">
+                    <i data-lucide="tag" style="width: 10px; height: 10px;"></i>
+                    Analyzing
                 </div>
+            </div>
+            
+            <div class="priority-item">
+                <span>Priority Level:</span>
+                <span class="priority-badge priority-medium" id="emailPriority">Medium</span>
             </div>
         </div>
 
         <!-- Quick Access -->
-        <div class="emineon-card p-4">
-            <div class="section-header">
-                <i data-lucide="zap" class="w-4 h-4 text-primary"></i>
+        <div class="card">
+            <div class="card-header">
+                <i data-lucide="external-link" style="width: 16px; height: 16px;"></i>
                 Quick Access
             </div>
             
-            <div class="grid grid-cols-2 gap-2">
-                <button id="openAtsBtn" class="action-card text-center">
-                    <i data-lucide="external-link" class="w-5 h-5 text-primary mx-auto mb-1"></i>
-                    <div class="text-xs font-medium">Open ATS</div>
-                </button>
-                <button id="refreshDataBtn" class="action-card text-center">
-                    <i data-lucide="refresh-cw" class="w-5 h-5 text-secondary-600 mx-auto mb-1"></i>
-                    <div class="text-xs font-medium">Refresh Data</div>
-                </button>
-            </div>
-        </div>
-
-        <!-- Active Jobs Dashboard -->
-        <div class="emineon-card p-4">
-            <div class="section-header">
-                <i data-lucide="briefcase" class="w-4 h-4 text-primary"></i>
-                Active Jobs
-                <span class="ml-auto text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full">5 Open</span>
-            </div>
-            
-            <div id="activeJobs" class="space-y-2 max-h-32 overflow-y-auto scrollbar-thin">
-                <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                    <div class="flex-1">
-                        <div class="text-xs font-medium text-secondary">Senior Full Stack Developer</div>
-                        <div class="text-xs text-muted">TechCorp • Remote</div>
-                    </div>
-                    <div class="flex items-center space-x-1">
-                        <div class="priority-badge priority-high">High</div>
-                        <span class="text-xs text-muted">12 candidates</span>
-                    </div>
-                </div>
-                
-                <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                    <div class="flex-1">
-                        <div class="text-xs font-medium text-secondary">Data Engineer</div>
-                        <div class="text-xs text-muted">DataFlow Innovations • Hybrid</div>
-                    </div>
-                    <div class="flex items-center space-x-1">
-                        <div class="priority-badge priority-high">High</div>
-                        <span class="text-xs text-muted">8 candidates</span>
-                    </div>
-                </div>
-                
-                <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                    <div class="flex-1">
-                        <div class="text-xs font-medium text-secondary">Product Manager</div>
-                        <div class="text-xs text-muted">StartupXYZ • On-site</div>
-                    </div>
-                    <div class="flex items-center space-x-1">
-                        <div class="priority-badge priority-medium">Medium</div>
-                        <span class="text-xs text-muted">5 candidates</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="mt-3 pt-3 border-t border-secondary-200">
-                <button class="btn-secondary btn-sm w-full">
-                    <i data-lucide="plus" class="w-3 h-3"></i>
-                    Create New Job
-                </button>
-            </div>
-        </div>
-
-        <!-- Recent Activity Feed -->
-        <div class="emineon-card p-4">
-            <div class="section-header">
-                <i data-lucide="activity" class="w-4 h-4 text-primary"></i>
-                Recent Activity
-            </div>
-            
-            <div id="activityFeed" class="space-y-2 max-h-32 overflow-y-auto scrollbar-thin">
-                <div class="flex items-start space-x-2 p-2 bg-gray-50 rounded-lg">
-                    <div class="candidate-avatar" style="background: var(--emineon-success-500);">JS</div>
-                    <div class="flex-1">
-                        <div class="text-xs">
-                            <span class="font-medium">John Smith</span> moved to 
-                            <span class="status-badge status-interviewing">Interviewing</span>
-                        </div>
-                        <div class="text-xs text-muted">2 minutes ago</div>
-                    </div>
-                </div>
-                
-                <div class="flex items-start space-x-2 p-2 bg-gray-50 rounded-lg">
-                    <div class="candidate-avatar" style="background: var(--emineon-teal-500);">MJ</div>
-                    <div class="flex-1">
-                        <div class="text-xs">
-                            <span class="font-medium">Maria Johnson</span> applied to 
-                            <span class="text-primary">Senior Developer</span>
-                        </div>
-                        <div class="text-xs text-muted">15 minutes ago</div>
-                    </div>
-                </div>
-                
-                <div class="flex items-start space-x-2 p-2 bg-gray-50 rounded-lg">
-                    <div class="w-8 h-8 bg-accent-500 rounded-full flex items-center justify-center">
-                        <i data-lucide="calendar" class="w-4 h-4 text-white"></i>
-                    </div>
-                    <div class="flex-1">
-                        <div class="text-xs">
-                            Interview scheduled with <span class="font-medium">Alex Chen</span>
-                            for tomorrow at 2:00 PM
-                        </div>
-                        <div class="text-xs text-muted">1 hour ago</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Contact Information -->
-        <div id="contactInfo" class="emineon-card p-4 hidden">
-            <div class="section-header">
-                <i data-lucide="user" class="w-4 h-4 text-primary"></i>
-                Contact Profile
-            </div>
-            
-            <div id="contactDetails" class="space-y-3">
-                <!-- Contact details will be populated dynamically -->
-            </div>
-        </div>
-
-        <!-- Pipeline Status -->
-        <div class="emineon-card p-4">
-            <div class="section-header">
-                <i data-lucide="trending-up" class="w-4 h-4 text-primary"></i>
-                Pipeline Overview
-            </div>
-            
-            <div class="grid grid-cols-3 gap-2 text-center">
-                <div class="p-2 bg-primary-50 rounded-lg">
-                    <div class="text-lg font-bold text-primary">24</div>
-                    <div class="text-xs text-muted">New Applications</div>
-                </div>
-                <div class="p-2 bg-teal-50 rounded-lg">
-                    <div class="text-lg font-bold text-teal-600">12</div>
-                    <div class="text-xs text-muted">In Interview</div>
-                </div>
-                <div class="p-2 bg-success-50 rounded-lg">
-                    <div class="text-lg font-bold text-success-600">8</div>
-                    <div class="text-xs text-muted">Ready to Present</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Footer Actions -->
-        <div class="emineon-card p-4">
-            <div class="grid grid-cols-2 gap-2">
-                <button class="btn-primary">
-                    <i data-lucide="external-link" class="w-3 h-3"></i>
+            <div class="action-grid-2">
+                <button class="btn btn-primary" id="openAtsBtn">
+                    <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
                     Open ATS
                 </button>
-                <button class="btn-secondary">
-                    <i data-lucide="help-circle" class="w-3 h-3"></i>
-                    Help & Support
+                <button class="btn btn-secondary" id="refreshBtn">
+                    <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+                    Refresh
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- JavaScript -->
+    <!-- Add Contact Modal -->
+    <div class="modal" id="addContactModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Add Contact</div>
+                <button class="close-btn" id="closeContactModal">
+                    <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+                </button>
+            </div>
+            
+            <form id="contactForm">
+                <div class="form-group">
+                    <label class="form-label">Contact Type</label>
+                    <select class="form-select" id="contactType" required>
+                        <option value="">Select type...</option>
+                        <option value="candidate">Candidate</option>
+                        <option value="client">Client</option>
+                        <option value="lead">Lead</option>
+                        <option value="vendor">Vendor</option>
+                        <option value="referral">Referral</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">First Name</label>
+                    <input type="text" class="form-input" id="contactFirstName" required />
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Last Name</label>
+                    <input type="text" class="form-input" id="contactLastName" required />
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="contactEmail" required />
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Phone (Optional)</label>
+                    <input type="tel" class="form-input" id="contactPhone" />
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Company (Optional)</label>
+                    <input type="text" class="form-input" id="contactCompany" />
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Position/Title (Optional)</label>
+                    <input type="text" class="form-input" id="contactPosition" />
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-textarea" id="contactNotes" placeholder="Added from email communication..."></textarea>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelContactBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveContactBtn">
+                        <i data-lucide="save" style="width: 14px; height: 14px;"></i>
+                        Save Contact
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        <div class="notification-content">
+            <i data-lucide="check-circle" style="width: 16px; height: 16px;"></i>
+            <span class="notification-text" id="notificationText"></span>
+        </div>
+    </div>
+
     <script src="js/taskpane.js"></script>
 </body>
 </html> 
