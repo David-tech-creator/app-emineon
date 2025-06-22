@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Emineon Email Templates</title>
+    
+    <!-- Office.js -->
+    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <style>
+        :root {
+            --emineon-primary: #2563eb;
+            --emineon-secondary: #1e40af;
+            --emineon-accent: #3b82f6;
+            --emineon-success: #059669;
+            --emineon-warning: #d97706;
+            --emineon-error: #dc2626;
+            --emineon-purple: #7c3aed;
+            --emineon-teal: #0d9488;
+        }
+        
+        .emineon-gradient {
+            background: linear-gradient(135deg, var(--emineon-primary) 0%, var(--emineon-purple) 100%);
+        }
+        
+        .emineon-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+        }
+        
+        .emineon-button {
+            background: var(--emineon-primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+        
+        .emineon-button:hover {
+            background: var(--emineon-secondary);
+            transform: translateY(-1px);
+        }
+        
+        .emineon-button-sm {
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+        
+        .emineon-button-secondary {
+            background: white;
+            color: var(--emineon-primary);
+            border: 1px solid var(--emineon-primary);
+        }
+        
+        .emineon-button-secondary:hover {
+            background: #eff6ff;
+        }
+        
+        .template-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+        
+        .template-card:hover {
+            border-color: var(--emineon-primary);
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+        }
+        
+        .template-card.selected {
+            border-color: var(--emineon-primary);
+            background: #f8faff;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+        }
+        
+        .category-btn {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+            border: 1px solid #e5e7eb;
+            background: white;
+            color: #6b7280;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .category-btn.active {
+            background: var(--emineon-primary);
+            color: white;
+            border-color: var(--emineon-primary);
+        }
+        
+        .category-btn:hover {
+            border-color: var(--emineon-primary);
+            color: var(--emineon-primary);
+        }
+        
+        .category-btn.active:hover {
+            color: white;
+        }
+        
+        .ai-suggestion-card {
+            background: linear-gradient(135deg, #f8faff 0%, #eff6ff 100%);
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .loading-dots {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+        }
+        
+        .loading-dots span {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--emineon-primary);
+            animation: loading-dots 1.4s infinite ease-in-out;
+        }
+        
+        .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes loading-dots {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+        
+        .template-preview {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 12px;
+            line-height: 1.5;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 font-sans text-sm">
+    <!-- Header -->
+    <div class="emineon-gradient text-white px-4 py-3">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <div class="w-7 h-7 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                    <i data-lucide="mail" class="w-4 h-4"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold">Email Templates</h1>
+                    <p class="text-xs opacity-90">AI-powered recruitment emails</p>
+                </div>
+            </div>
+            <button id="customizeBtn" class="p-1.5 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-colors">
+                <i data-lucide="settings" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 overflow-y-auto">
+        
+        <!-- AI Email Generator -->
+        <div class="p-3 border-b bg-gradient-to-r from-blue-50 to-purple-50">
+            <div class="ai-suggestion-card">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-semibold text-gray-900 text-sm flex items-center">
+                        <i data-lucide="sparkles" class="w-4 h-4 mr-2 text-purple-600"></i>
+                        AI Email Generator
+                    </h3>
+                    <button id="generateBtn" class="emineon-button emineon-button-sm">
+                        <i data-lucide="wand-2" class="w-3 h-3 mr-1"></i>
+                        Generate
+                    </button>
+                </div>
+                
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Email Purpose</label>
+                        <select id="emailPurpose" class="w-full border border-gray-300 rounded-md px-3 py-2 text-xs">
+                            <option value="">Select purpose...</option>
+                            <option value="initial_outreach">Initial candidate outreach</option>
+                            <option value="follow_up">Follow-up after application</option>
+                            <option value="interview_invite">Interview invitation</option>
+                            <option value="interview_reminder">Interview reminder</option>
+                            <option value="interview_feedback">Interview feedback</option>
+                            <option value="offer_letter">Job offer</option>
+                            <option value="rejection">Polite rejection</option>
+                            <option value="reference_check">Reference check request</option>
+                            <option value="onboarding">Onboarding information</option>
+                            <option value="check_in">General check-in</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Context & Details</label>
+                        <textarea 
+                            id="emailContext" 
+                            placeholder="E.g., Senior React Developer position, remote work, urgency level, salary range..."
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 text-xs resize-none"
+                            rows="2"
+                        ></textarea>
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="personalizeEmail" class="rounded text-xs">
+                            <label for="personalizeEmail" class="text-xs text-gray-700">Personalize with candidate info</label>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="urgentEmail" class="rounded text-xs">
+                            <label for="urgentEmail" class="text-xs text-gray-700">Mark as urgent</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Template Categories -->
+        <div class="p-3 border-b">
+            <h3 class="font-semibold text-gray-900 text-sm mb-3 flex items-center">
+                <i data-lucide="folder" class="w-4 h-4 mr-2 text-blue-600"></i>
+                Template Categories
+            </h3>
+            
+            <div class="flex flex-wrap gap-1">
+                <button class="category-btn active" data-category="all">All</button>
+                <button class="category-btn" data-category="outreach">Outreach</button>
+                <button class="category-btn" data-category="follow-up">Follow-up</button>
+                <button class="category-btn" data-category="interview">Interview</button>
+                <button class="category-btn" data-category="offer">Offer</button>
+                <button class="category-btn" data-category="rejection">Rejection</button>
+                <button class="category-btn" data-category="reference">Reference</button>
+                <button class="category-btn" data-category="onboarding">Onboarding</button>
+            </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="p-3 border-b">
+            <div class="relative">
+                <input 
+                    type="text" 
+                    id="searchTemplates" 
+                    placeholder="Search templates..."
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 pl-8 text-xs"
+                >
+                <div class="absolute left-2 top-2.5">
+                    <i data-lucide="search" class="w-3 h-3 text-gray-400"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Template Library -->
+        <div class="p-3">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-semibold text-gray-900 text-sm flex items-center">
+                    <i data-lucide="library" class="w-4 h-4 mr-2 text-green-600"></i>
+                    Template Library
+                </h3>
+                <button id="createTemplateBtn" class="emineon-button-secondary emineon-button-sm">
+                    <i data-lucide="plus" class="w-3 h-3 mr-1"></i>
+                    Create
+                </button>
+            </div>
+            
+            <div id="templatesList" class="space-y-2">
+                <!-- Outreach Templates -->
+                <div class="template-card" data-category="outreach" data-template="cold-outreach">
+                    <div class="flex items-start justify-between mb-2">
+                        <div>
+                            <h4 class="font-medium text-xs text-gray-900">Cold Outreach - Tech Roles</h4>
+                            <p class="text-xs text-gray-500">Professional introduction for technical positions</p>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <span class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">Outreach</span>
+                            <button class="text-gray-400 hover:text-gray-600">
+                                <i data-lucide="star" class="w-3 h-3"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="template-preview hidden">
+                        <p><strong>Subject:</strong> Exciting opportunity at [Company] - [Position]</p>
+                        <p><strong>Body:</strong> Hi [Name], I came across your profile and was impressed by your experience in [Technology]. We have an exciting opportunity at [Company] for a [Position] role that I think would be a great fit for your background...</p>
+                    </div>
+                </div>
+
+                <!-- Follow-up Templates -->
+                <div class="template-card" data-category="follow-up" data-template="application-followup">
+                    <div class="flex items-start justify-between mb-2">
+                        <div>
+                            <h4 class="font-medium text-xs text-gray-900">Application Follow-up</h4>
+                            <p class="text-xs text-gray-500">Follow up after candidate application</p>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <span class="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Follow-up</span>
+                            <button class="text-gray-400 hover:text-gray-600">
+                                <i data-lucide="star" class="w-3 h-3"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="template-preview hidden">
+                        <p><strong>Subject:</strong> Thank you for your application - [Position]</p>
+                        <p><strong>Body:</strong> Dear [Name], Thank you for your application for the [Position] role at [Company]. We've received your application and are currently reviewing all submissions. We'll be in touch within [Timeline] with next steps...</p>
+                    </div>
+                </div>
+
+                <!-- Interview Templates -->
+                <div class="template-card" data-category="interview" data-template="interview-invite">
+                    <div class="flex items-start justify-between mb-2">
+                        <div>
+                            <h4 class="font-medium text-xs text-gray-900">Interview Invitation</h4>
+                            <p class="text-xs text-gray-500">Invite candidate for interview</p>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">Interview</span>
+                            <button class="text-gray-400 hover:text-gray-600">
+                                <i data-lucide="star" class="w-3 h-3"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="template-preview hidden">
+                        <p><strong>Subject:</strong> Interview Invitation - [Position] at [Company]</p>
+                        <p><strong>Body:</strong> Hi [Name], We were impressed with your application for the [Position] role and would like to invite you for an interview. Are you available for a [Duration] interview on [Date] at [Time]?</p>
+                    </div>
+                </div>
+
+                <!-- Offer Templates -->
+                <div class="template-card" data-category="offer" data-template="job-offer">
+                    <div class="flex items-start justify-between mb-2">
+                        <div>
+                            <h4 class="font-medium text-xs text-gray-900">Job Offer</h4>
+                            <p class="text-xs text-gray-500">Formal job offer email</p>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <span class="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">Offer</span>
+                            <button class="text-gray-400 hover:text-gray-600">
+                                <i data-lucide="star" class="w-3 h-3"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="template-preview hidden">
+                        <p><strong>Subject:</strong> Job Offer - [Position] at [Company]</p>
+                        <p><strong>Body:</strong> Dear [Name], We are delighted to offer you the position of [Position] at [Company]. We believe your skills and experience make you an excellent fit for our team...</p>
+                    </div>
+                </div>
+
+                <!-- Rejection Templates -->
+                <div class="template-card" data-category="rejection" data-template="polite-rejection">
+                    <div class="flex items-start justify-between mb-2">
+                        <div>
+                            <h4 class="font-medium text-xs text-gray-900">Polite Rejection</h4>
+                            <p class="text-xs text-gray-500">Professional rejection with encouragement</p>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <span class="text-xs px-2 py-1 bg-red-100 text-red-700 rounded">Rejection</span>
+                            <button class="text-gray-400 hover:text-gray-600">
+                                <i data-lucide="star" class="w-3 h-3"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="template-preview hidden">
+                        <p><strong>Subject:</strong> Update on your application - [Position]</p>
+                        <p><strong>Body:</strong> Dear [Name], Thank you for your interest in the [Position] role at [Company]. After careful consideration, we have decided to move forward with another candidate...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selected Template Preview -->
+            <div id="selectedTemplate" class="hidden mt-4 p-3 border-t">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="font-semibold text-gray-900 text-sm">Template Preview</h4>
+                    <div class="flex space-x-1">
+                        <button id="customizeTemplateBtn" class="emineon-button-secondary emineon-button-sm">
+                            <i data-lucide="edit" class="w-3 h-3 mr-1"></i>
+                            Customize
+                        </button>
+                        <button id="useTemplateBtn" class="emineon-button emineon-button-sm">
+                            <i data-lucide="send" class="w-3 h-3 mr-1"></i>
+                            Use Template
+                        </button>
+                    </div>
+                </div>
+                <div id="templatePreviewContent" class="template-preview">
+                    <!-- Template content will be inserted here -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 flex items-center space-x-3">
+            <div class="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <span class="text-gray-700 text-sm">Generating email...</span>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/compose-taskpane.js"></script>
+</body>
+</html> 

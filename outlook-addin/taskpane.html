@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Emineon Recruitment Assistant</title>
+    
+    <!-- Office.js -->
+    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <style>
+        :root {
+            --emineon-primary: #2563eb;
+            --emineon-secondary: #1e40af;
+            --emineon-accent: #3b82f6;
+            --emineon-success: #059669;
+            --emineon-warning: #d97706;
+            --emineon-error: #dc2626;
+            --emineon-purple: #7c3aed;
+            --emineon-teal: #0d9488;
+        }
+        
+        .emineon-gradient {
+            background: linear-gradient(135deg, var(--emineon-primary) 0%, var(--emineon-purple) 100%);
+        }
+        
+        .emineon-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+        }
+        
+        .emineon-card-elevated {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .emineon-button {
+            background: var(--emineon-primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+        
+        .emineon-button:hover {
+            background: var(--emineon-secondary);
+            transform: translateY(-1px);
+        }
+        
+        .emineon-button-sm {
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+        
+        .emineon-button-secondary {
+            background: white;
+            color: var(--emineon-primary);
+            border: 1px solid var(--emineon-primary);
+        }
+        
+        .emineon-button-secondary:hover {
+            background: #eff6ff;
+        }
+        
+        .emineon-button-success {
+            background: var(--emineon-success);
+        }
+        
+        .emineon-button-warning {
+            background: var(--emineon-warning);
+        }
+        
+        .emineon-input {
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 6px 10px;
+            width: 100%;
+            font-size: 13px;
+        }
+        
+        .emineon-input:focus {
+            outline: none;
+            border-color: var(--emineon-primary);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+        
+        .status-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+        
+        .status-new { background: #dbeafe; color: #1e40af; }
+        .status-in-review { background: #fef3c7; color: #92400e; }
+        .status-interviewing { background: #d1fae5; color: #065f46; }
+        .status-offered { background: #e0e7ff; color: #3730a3; }
+        .status-hired { background: #dcfce7; color: #166534; }
+        .status-rejected { background: #fecaca; color: #991b1b; }
+        .status-on-hold { background: #f3f4f6; color: #374151; }
+        
+        .priority-badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 600;
+        }
+        
+        .priority-high { background: #fef2f2; color: #dc2626; }
+        .priority-medium { background: #fffbeb; color: #d97706; }
+        .priority-low { background: #f0fdf4; color: #059669; }
+        
+        .ai-chat-bubble {
+            background: linear-gradient(135deg, #f8faff 0%, #eff6ff 100%);
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            position: relative;
+        }
+        
+        .ai-chat-bubble:before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: 12px;
+            width: 8px;
+            height: 8px;
+            background: #eff6ff;
+            border-left: 1px solid #bfdbfe;
+            border-top: 1px solid #bfdbfe;
+            transform: rotate(45deg);
+        }
+        
+        .loading-dots {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+        }
+        
+        .loading-dots span {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--emineon-primary);
+            animation: loading-dots 1.4s infinite ease-in-out;
+        }
+        
+        .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes loading-dots {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+        
+        .action-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .action-card:hover {
+            border-color: var(--emineon-primary);
+            background: #f8faff;
+        }
+        
+        .candidate-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 12px;
+            color: white;
+        }
+        
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 font-sans text-sm">
+    <!-- Header -->
+    <div class="emineon-gradient text-white px-4 py-3">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <div class="w-7 h-7 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                    <i data-lucide="users" class="w-4 h-4"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold">Emineon Assistant</h1>
+                    <p class="text-xs opacity-90">Recruitment Intelligence</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-1">
+                <button id="aiCopilotBtn" class="p-1.5 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-colors">
+                    <i data-lucide="bot" class="w-4 h-4"></i>
+                </button>
+                <button id="settingsBtn" class="p-1.5 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-colors">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Copilot Section -->
+    <div id="aiCopilotSection" class="p-3 border-b bg-gradient-to-r from-blue-50 to-purple-50">
+        <div class="ai-chat-bubble p-3 mb-2">
+            <div class="flex items-start space-x-2">
+                <div class="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <i data-lucide="sparkles" class="w-3 h-3 text-white"></i>
+                </div>
+                <div class="flex-1">
+                    <div id="aiSuggestion" class="text-sm text-gray-800">
+                        <div class="loading-dots">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <span class="ml-2 text-gray-600">Analyzing email...</span>
+                    </div>
+                    <div id="aiActions" class="hidden mt-2 flex flex-wrap gap-1">
+                        <!-- AI-suggested actions will appear here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="flex space-x-1">
+            <button id="askAiBtn" class="emineon-button emineon-button-sm flex-1">
+                <i data-lucide="message-circle" class="w-3 h-3 mr-1"></i>
+                Ask AI
+            </button>
+            <button id="refreshAiBtn" class="emineon-button-secondary emineon-button-sm">
+                <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 overflow-y-auto">
+        
+        <!-- Email Context Card -->
+        <div class="p-3 border-b bg-white">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="font-semibold text-gray-900 text-sm flex items-center">
+                    <i data-lucide="mail" class="w-4 h-4 mr-2 text-blue-600"></i>
+                    Email Context
+                </h3>
+                <button id="analyzeEmailBtn" class="emineon-button emineon-button-sm">
+                    <i data-lucide="scan" class="w-3 h-3 mr-1"></i>
+                    Scan
+                </button>
+            </div>
+            
+            <div id="emailContext" class="space-y-2 text-xs">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">From:</span>
+                    <span id="emailFrom" class="font-medium text-gray-900 truncate ml-2">Analyzing...</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Subject:</span>
+                    <span id="emailSubject" class="font-medium text-gray-900 truncate ml-2">Analyzing...</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Type:</span>
+                    <span id="emailType" class="priority-badge priority-medium">Application</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Profile Card -->
+        <div class="p-3 border-b">
+            <div class="emineon-card p-3">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-semibold text-gray-900 text-sm flex items-center">
+                        <i data-lucide="user" class="w-4 h-4 mr-2 text-green-600"></i>
+                        Contact Profile
+                    </h3>
+                    <div class="flex space-x-1">
+                        <button id="findContactBtn" class="emineon-button-secondary emineon-button-sm">
+                            <i data-lucide="search" class="w-3 h-3"></i>
+                        </button>
+                        <button id="addContactBtn" class="emineon-button emineon-button-sm">
+                            <i data-lucide="user-plus" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="contactProfile">
+                    <!-- Contact not found state -->
+                    <div id="noContact" class="text-center py-3">
+                        <div class="w-12 h-12 bg-gray-100 rounded-full mx-auto mb-2 flex items-center justify-center">
+                            <i data-lucide="user-x" class="w-6 h-6 text-gray-400"></i>
+                        </div>
+                        <p class="text-xs text-gray-600 mb-1">Contact not found</p>
+                        <p class="text-xs text-gray-500">Click scan to identify from email</p>
+                    </div>
+                    
+                    <!-- Contact found state (hidden by default) -->
+                    <div id="contactFound" class="hidden">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div id="contactAvatar" class="candidate-avatar bg-gradient-to-br from-blue-500 to-purple-600">
+                                JD
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h4 id="contactName" class="font-semibold text-gray-900 text-sm truncate">John Doe</h4>
+                                <p id="contactTitle" class="text-xs text-gray-600 truncate">Senior Developer</p>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <span id="contactStatus" class="status-badge status-new">New</span>
+                                    <span id="contactPriority" class="priority-badge priority-medium">Medium</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-1">
+                            <button class="emineon-button-secondary emineon-button-sm text-xs">
+                                <i data-lucide="eye" class="w-3 h-3 mr-1"></i>
+                                View
+                            </button>
+                            <button class="emineon-button-secondary emineon-button-sm text-xs">
+                                <i data-lucide="edit" class="w-3 h-3 mr-1"></i>
+                                Edit
+                            </button>
+                            <button class="emineon-button-secondary emineon-button-sm text-xs">
+                                <i data-lucide="phone" class="w-3 h-3 mr-1"></i>
+                                Call
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions Grid -->
+        <div class="p-3 border-b">
+            <h3 class="font-semibold text-gray-900 text-sm mb-3 flex items-center">
+                <i data-lucide="zap" class="w-4 h-4 mr-2 text-yellow-600"></i>
+                Quick Actions
+            </h3>
+            
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <div class="action-card" id="addCandidateAction">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="user-plus" class="w-4 h-4 text-green-600"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-xs text-gray-900">Add Candidate</p>
+                            <p class="text-xs text-gray-500">Create new profile</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="action-card" id="scheduleInterviewAction">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="calendar" class="w-4 h-4 text-blue-600"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-xs text-gray-900">Schedule</p>
+                            <p class="text-xs text-gray-500">Book interview</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="action-card" id="addToJobAction">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="briefcase" class="w-4 h-4 text-purple-600"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-xs text-gray-900">Add to Job</p>
+                            <p class="text-xs text-gray-500">Match position</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="action-card" id="emailTemplateAction">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="mail" class="w-4 h-4 text-orange-600"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-xs text-gray-900">Templates</p>
+                            <p class="text-xs text-gray-500">Smart replies</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <button id="openAtsBtn" class="w-full emineon-button emineon-button-sm">
+                <i data-lucide="external-link" class="w-3 h-3 mr-1"></i>
+                Open Full ATS
+            </button>
+        </div>
+
+        <!-- Active Jobs Section -->
+        <div class="p-3 border-b">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-semibold text-gray-900 text-sm flex items-center">
+                    <i data-lucide="briefcase" class="w-4 h-4 mr-2 text-orange-600"></i>
+                    Active Jobs
+                    <span class="ml-2 bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded-full">3</span>
+                </h3>
+                <button id="viewAllJobsBtn" class="text-xs text-blue-600 hover:text-blue-800">View All</button>
+            </div>
+            
+            <div id="activeJobsList" class="space-y-2">
+                <div class="emineon-card p-2 action-card">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-medium text-xs text-gray-900">Senior React Developer</p>
+                            <p class="text-xs text-gray-500">Remote • $120k-150k</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="priority-badge priority-high">Urgent</span>
+                            <p class="text-xs text-gray-500 mt-1">12 applicants</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="emineon-card p-2 action-card">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-medium text-xs text-gray-900">Data Engineer</p>
+                            <p class="text-xs text-gray-500">San Francisco • $140k-180k</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="priority-badge priority-medium">Medium</span>
+                            <p class="text-xs text-gray-500 mt-1">8 applicants</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="p-3">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-semibold text-gray-900 text-sm flex items-center">
+                    <i data-lucide="activity" class="w-4 h-4 mr-2 text-teal-600"></i>
+                    Recent Activity
+                </h3>
+                <button id="viewAllActivityBtn" class="text-xs text-blue-600 hover:text-blue-800">View All</button>
+            </div>
+            
+            <div id="recentActivity" class="space-y-2">
+                <div class="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg">
+                    <div class="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                        <i data-lucide="user-check" class="w-3 h-3 text-green-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-xs text-gray-900">Sarah Chen interviewed</p>
+                        <p class="text-xs text-gray-500">2 hours ago</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg">
+                    <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                        <i data-lucide="mail" class="w-3 h-3 text-blue-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-xs text-gray-900">Follow-up sent to Mike Ross</p>
+                        <p class="text-xs text-gray-500">1 day ago</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg">
+                    <div class="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center">
+                        <i data-lucide="star" class="w-3 h-3 text-purple-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-xs text-gray-900">New candidate applied</p>
+                        <p class="text-xs text-gray-500">2 days ago</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 flex items-center space-x-3">
+            <div class="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <span class="text-gray-700 text-sm">Processing...</span>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/taskpane.js"></script>
+</body>
+</html> 

@@ -11,6 +11,8 @@ export default authMiddleware({
     '/api/daily-quote',
     '/api/public/(.*)',
     '/api/competence-files/test-generate',
+    '/api/outlook-addin/(.*)',
+    '/outlook-addin/(.*)',
   ],
 
   // Routes that are ignored by Clerk (no auth check at all)
@@ -22,6 +24,12 @@ export default authMiddleware({
     const { pathname } = req.nextUrl;
 
     console.log(`🔍 Middleware processing: ${pathname}`);
+
+    // Bypass authentication for Outlook add-in files
+    if (pathname.startsWith('/api/outlook-addin/') || pathname.startsWith('/outlook-addin/')) {
+      console.log(`✅ Bypassing authentication for: ${pathname}`);
+      return NextResponse.next();
+    }
 
     // If user is not authenticated and trying to access protected route
     if (!userId && !auth.isPublicRoute) {

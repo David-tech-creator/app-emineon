@@ -121,6 +121,15 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
+
+  async rewrites() {
+    return [
+      {
+        source: '/outlook-addin/:path*',
+        destination: '/api/outlook-addin/:path*',
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig; 
