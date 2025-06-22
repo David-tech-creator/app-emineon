@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { X, Upload, FileText, Linkedin, User, Brain, CheckCircle, UserPlus, Loader2, Paperclip, Mic, MicOff, Eye, EyeOff, Plus, Trash2, Tag, Briefcase, Users, Star, Save } from 'lucide-react';
+import { X, Upload, FileText, Linkedin, User, Brain, CheckCircle, UserPlus, Loader2, Paperclip, Mic, MicOff, Eye, EyeOff, Plus, Trash2, Tag, Briefcase, Users, Star, Save, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 interface CreateCandidateModalProps {
@@ -247,6 +247,11 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
           throw new Error(result.message || 'Failed to parse LinkedIn profile');
         }
       } else if (inputMethod === 'manual' && manualInput) {
+        // Validate manual input length
+        if (manualInput.trim().length < 50) {
+          throw new Error('Please provide more detailed information. Your input should include at least basic candidate details like name, contact info, and experience.');
+        }
+        
         // Parse manual text input
         const response = await fetch('/api/competence-files/parse-resume', {
           method: 'POST',
@@ -257,7 +262,8 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
         });
         
         if (!response.ok) {
-          throw new Error('Failed to parse text input');
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to parse text input');
         }
         
         const result = await response.json();
@@ -601,11 +607,24 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
                 <div className="space-y-4">
                   <div className="relative">
                     <textarea
-                      placeholder="Tell me about this candidate... You can paste their bio, describe their experience, or just start typing their details."
+                      placeholder="Enter candidate details here... Include at least:
+• Full name and contact information
+• Current role and experience
+• Key skills and qualifications
+• Education or certifications
+
+Example:
+John Smith, john@email.com, +41 79 123 4567
+Senior Software Engineer at TechCorp with 5 years experience
+Skills: React, TypeScript, Python, AWS
+Bachelor's in Computer Science from ETH Zurich"
                       value={manualInput}
                       onChange={(e) => setManualInput(e.target.value)}
-                      className="w-full h-32 p-4 border border-gray-300 rounded-xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full h-40 p-4 border border-gray-300 rounded-xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     />
+                    <div className="absolute bottom-3 left-3 text-xs text-gray-400">
+                      {manualInput.length}/50 min
+                    </div>
                     <div className="absolute bottom-3 right-3 flex items-center space-x-2">
                       <button
                         onClick={isRecording ? stopRecording : startRecording}
@@ -628,6 +647,13 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
                     <div className="flex items-center space-x-2 text-red-600 text-sm">
                       <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
                       <span>Recording... Click to stop</span>
+                    </div>
+                  )}
+                  
+                  {inputMethod === 'manual' && manualInput.length > 0 && manualInput.length < 50 && (
+                    <div className="flex items-center space-x-2 text-amber-600 text-sm">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>Please provide more details for better parsing results (minimum 50 characters)</span>
                     </div>
                   )}
                 </div>
