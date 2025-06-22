@@ -58,12 +58,6 @@ export async function GET(request: NextRequest) {
             contains: name,
             mode: 'insensitive'
           }
-        },
-        {
-          fullName: {
-            contains: name,
-            mode: 'insensitive'
-          }
         }
       );
     }
@@ -93,26 +87,24 @@ export async function GET(request: NextRequest) {
         id: true,
         firstName: true,
         lastName: true,
-        fullName: true,
         email: true,
         phone: true,
         currentTitle: true,
-        location: true,
+        currentLocation: true,
         status: true,
-        skills: true,
-        experience: true,
-        education: true,
+        technicalSkills: true,
+        experienceYears: true,
+        educationLevel: true,
         linkedinUrl: true,
         portfolioUrl: true,
-        resumeUrl: true,
-        notes: true,
+        summary: true,
+        recruiterNotes: true,
         tags: true,
         source: true,
-        createdAt: true,
-        updatedAt: true
+        createdAt: true
       },
       orderBy: {
-        updatedAt: 'desc'
+        lastUpdated: 'desc'
       },
       take: 50 // Limit results
     });
@@ -123,9 +115,9 @@ export async function GET(request: NextRequest) {
     const transformedCandidates = candidates.map(candidate => ({
       ...candidate,
       // Ensure fullName is available
-      fullName: candidate.fullName || `${candidate.firstName || ''} ${candidate.lastName || ''}`.trim(),
+      fullName: `${candidate.firstName || ''} ${candidate.lastName || ''}`.trim(),
       // Format skills as array if it's stored as JSON
-      skills: Array.isArray(candidate.skills) ? candidate.skills : [],
+      skills: Array.isArray(candidate.technicalSkills) ? candidate.technicalSkills : [],
       // Format tags as array if it's stored as JSON
       tags: Array.isArray(candidate.tags) ? candidate.tags : []
     }));

@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
     if (!emailData.body.includes('<') && !emailData.body.includes('>')) {
       emailData.body = emailData.body
         .split('\n\n')
-        .map(paragraph => `<p>${paragraph.replace(/\n/g, '<br>')}</p>`)
+        .map((paragraph: string) => `<p>${paragraph.replace(/\n/g, '<br>')}</p>`)
         .join('');
     }
 
