@@ -34,6 +34,14 @@ const createProjectSchema = z.object({
   assignedRecruiter: z.string().optional(),
   internalNotes: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
+  // Job positions within the project
+  jobPositions: z.array(z.object({
+    title: z.string().min(1, 'Job title is required'),
+    seniorityLevel: z.string(),
+    count: z.number().min(1),
+    specificSkills: z.array(z.string()).optional(),
+    description: z.string().optional()
+  })).min(1, 'At least one job position is required')
 });
 
 // GET /api/projects - List all projects with filtering
@@ -142,41 +150,148 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createProjectSchema.parse(body);
 
-    const project = await prisma.project.create({
-      data: {
-        ...validatedData,
-        activities: {
-          create: {
-            type: 'PROJECT_CREATED',
-            title: 'Project Created',
-            description: `Project "${validatedData.name}" was created for ${validatedData.clientName}`,
-            metadata: {
-              totalPositions: validatedData.totalPositions,
-              urgencyLevel: validatedData.urgencyLevel,
-              priority: validatedData.priority,
+    // Extract job positions from the validated data
+    const { jobPositions, ...projectData } = validatedData;
+
+    // Create project and associated jobs in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create the project first
+      const project = await tx.project.create({
+        data: {
+          ...projectData,
+          activities: {
+            create: {
+              type: 'PROJECT_CREATED',
+              title: 'Project Created',
+              description: `Project "${projectData.name}" was created for ${projectData.clientName}`,
+              metadata: {
+                totalPositions: projectData.totalPositions,
+                urgencyLevel: projectData.urgencyLevel,
+                priority: projectData.priority,
+              }
             }
           }
         }
-      },
-      include: {
-        jobs: true,
-        candidates: true,
-        activities: {
-          orderBy: { createdAt: 'desc' },
-          take: 10
-        },
-        _count: {
-          select: {
-            jobs: true,
-            candidates: true,
-            activities: true,
-            documents: true,
-          }
+      });
+
+      // Create individual job records for each position
+      const jobsToCreate = [];
+      for (const position of jobPositions) {
+        // Create multiple jobs if count > 1
+        for (let i = 0; i < position.count; i++) {
+          const jobTitle = position.count > 1 
+            ? `${position.title} #${i + 1}` 
+            : position.title;
+
+                     // Combine project-level skills with position-specific skills
+           const allSkills = [
+             ...(projectData.skillsRequired || []),
+             ...(position.specificSkills || [])
+           ];
+           const uniqueSkills = Array.from(new Set(allSkills));
+
+          jobsToCreate.push({
+            title: jobTitle,
+            description: position.description || `${position.title} position for ${projectData.clientName}`,
+            department: projectData.industryBackground || 'General',
+            location: projectData.location || 'Remote',
+            status: 'DRAFT' as const,
+            isRemote: projectData.isRemote || false,
+            requirements: uniqueSkills,
+            responsibilities: [
+              `Work as ${position.seniorityLevel} ${position.title}`,
+              `Collaborate with the team at ${projectData.clientName}`,
+              ...(position.description ? [position.description] : [])
+            ],
+            experienceLevel: position.seniorityLevel,
+            salaryMin: projectData.hourlyRateMin ? projectData.hourlyRateMin * 1600 : undefined, // Rough monthly estimate
+            salaryMax: projectData.hourlyRateMax ? projectData.hourlyRateMax * 1600 : undefined,
+            salaryCurrency: projectData.currency || 'EUR',
+            projectId: project.id,
+            employmentType: ['CONTRACT'],
+            benefits: [],
+          });
         }
       }
+
+      // Create all jobs
+      if (jobsToCreate.length > 0) {
+        await tx.job.createMany({
+          data: jobsToCreate
+        });
+      }
+
+             // Log job creation activity
+       await tx.projectActivity.create({
+         data: {
+           projectId: project.id,
+           type: 'JOB_CREATED',
+           title: 'Job Positions Created',
+           description: `Created ${jobsToCreate.length} job position(s) for this project`,
+           metadata: {
+             jobsCreated: jobsToCreate.length,
+             positions: jobPositions.map(p => ({ title: p.title, count: p.count }))
+           }
+         }
+       });
+
+      // Return the project with all related data
+      return await tx.project.findUnique({
+        where: { id: project.id },
+        include: {
+          jobs: {
+            select: {
+              id: true,
+              title: true,
+              status: true,
+              department: true,
+              location: true,
+              requirements: true,
+              experienceLevel: true,
+              createdAt: true,
+            }
+          },
+          candidates: {
+            select: {
+              id: true,
+              status: true,
+              candidate: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  currentTitle: true,
+                }
+              }
+            }
+          },
+          activities: {
+            select: {
+              id: true,
+              type: true,
+              title: true,
+              description: true,
+              createdAt: true,
+            },
+            orderBy: {
+              createdAt: 'desc'
+            },
+            take: 10
+          },
+          _count: {
+            select: {
+              jobs: true,
+              candidates: true,
+              activities: true,
+              documents: true,
+            }
+          }
+        }
+      });
     });
 
-    return NextResponse.json(project, { status: 201 });
+    return NextResponse.json(result, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

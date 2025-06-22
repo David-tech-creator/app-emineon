@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
-import { Card } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
+import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
 import { 
   Plus, 
   Search, 
@@ -20,7 +22,18 @@ import {
   MapPin,
   Mail,
   Phone,
-  ExternalLink
+  ExternalLink,
+  Grid3X3,
+  List,
+  Download,
+  Upload,
+  CheckCircle2,
+  Building2,
+  Target,
+  Eye,
+  Share2,
+  ChevronDown,
+  Star
 } from 'lucide-react';
 
 interface Project {
@@ -81,9 +94,13 @@ interface Project {
 }
 
 export default function ProjectsPage() {
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [urgencyFilter, setUrgencyFilter] = useState<string>('');
 
@@ -110,13 +127,31 @@ export default function ProjectsPage() {
     }
   };
 
-  const filteredProjects = projects.filter(project =>
-    project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.skillsRequired.some(skill => 
-      skill.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
+  const filteredProjects = projects.filter(project => {
+    const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.skillsRequired.some(skill => 
+        skill.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    
+    let matchesFilter = true;
+    
+    switch (selectedFilter) {
+      case 'all':
+        matchesFilter = true;
+        break;
+      case 'active':
+        matchesFilter = project.status === 'ACTIVE';
+        break;
+      case 'critical':
+        matchesFilter = project.urgencyLevel === 'CRITICAL';
+        break;
+      default:
+        matchesFilter = true;
+    }
+    
+    return matchesSearch && matchesFilter;
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -148,122 +183,173 @@ export default function ProjectsPage() {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Project Management</h1>
-            <p className="text-gray-600 mt-1">
-              Manage multi-position recruitment projects and track progress
-            </p>
-          </div>
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4 mr-2" />
-            New Project
-          </Button>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Briefcase className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Active Projects</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {projects.filter(p => p.status === 'ACTIVE').length}
-                </p>
-              </div>
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Projects</h1>
+              <p className="text-gray-600 mt-1">
+                Manage multi-position recruitment projects and track progress
+              </p>
             </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Users className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Positions</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {projects.reduce((sum, p) => sum + p.totalPositions, 0)}
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Filled Positions</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {projects.reduce((sum, p) => sum + p.filledPositions, 0)}
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <AlertCircle className="w-6 h-6 text-red-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Critical Projects</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {projects.filter(p => p.urgencyLevel === 'CRITICAL').length}
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Filters and Search */}
-        <Card className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="Search projects, clients, or skills..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            
-            <div className="flex gap-2">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            <div className="flex items-center space-x-3">
+              <Button variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+              <Button 
+                onClick={() => setShowCreateModal(true)}
+                className="bg-blue-600 hover:bg-blue-700"
               >
-                <option value="">All Status</option>
-                <option value="ACTIVE">Active</option>
-                <option value="ON_HOLD">On Hold</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="CANCELLED">Cancelled</option>
-                <option value="PLANNING">Planning</option>
-              </select>
-
-              <select
-                value={urgencyFilter}
-                onChange={(e) => setUrgencyFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              >
-                <option value="">All Urgency</option>
-                <option value="CRITICAL">Critical</option>
-                <option value="HIGH">High</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="LOW">Low</option>
-              </select>
+                <Plus className="w-4 h-4 mr-2" />
+                New Project
+              </Button>
             </div>
           </div>
-        </Card>
+        </div>
+
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          {[
+            { 
+              label: 'Active Projects', 
+              value: projects.filter(p => p.status === 'ACTIVE').length, 
+              change: '+8%', 
+              icon: CheckCircle2, 
+              filter: 'active',
+              color: 'blue'
+            },
+            { 
+              label: 'Critical Projects', 
+              value: projects.filter(p => p.urgencyLevel === 'CRITICAL').length, 
+              change: '+2 this week', 
+              icon: AlertCircle, 
+              filter: 'critical',
+              color: 'red'
+            },
+            { 
+              label: 'Total Positions', 
+              value: projects.reduce((sum, p) => sum + p.totalPositions, 0), 
+              change: '+23%', 
+              icon: Users, 
+              filter: null,
+              color: 'green'
+            },
+            { 
+              label: 'Filled Positions', 
+              value: projects.reduce((sum, p) => sum + p.filledPositions, 0), 
+              change: '-2 positions', 
+              icon: TrendingUp, 
+              filter: null,
+              color: 'purple'
+            }
+          ].map((stat, index) => (
+            <Card 
+              key={index} 
+              className={`p-6 cursor-pointer hover:shadow-lg transition-all duration-200 ${
+                stat.filter && selectedFilter === stat.filter ? 'ring-2 ring-blue-500 bg-blue-50' : ''
+              }`}
+              onClick={() => stat.filter && setSelectedFilter(selectedFilter === stat.filter ? 'all' : stat.filter)}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">{stat.label}</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
+                  <div className="flex items-center mt-2">
+                    <span className={`text-sm ${
+                      stat.change.includes('+') ? 'text-green-600' : 
+                      stat.change.includes('-') ? 'text-red-600' : 'text-gray-600'
+                    }`}>
+                      {stat.change}
+                    </span>
+                  </div>
+                </div>
+                <div className={`p-3 rounded-lg ${
+                  stat.color === 'blue' ? 'bg-blue-100' :
+                  stat.color === 'red' ? 'bg-red-100' :
+                  stat.color === 'green' ? 'bg-green-100' :
+                  'bg-purple-100'
+                }`}>
+                  <stat.icon className={`w-6 h-6 ${
+                    stat.color === 'blue' ? 'text-blue-600' :
+                    stat.color === 'red' ? 'text-red-600' :
+                    stat.color === 'green' ? 'text-green-600' :
+                    'text-purple-600'
+                  }`} />
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        {/* Search and Filters */}
+        <div className="flex flex-col lg:flex-row gap-4 mb-6">
+          {/* Search */}
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Search projects, clients, or skills..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+          
+          {/* Filters and Actions */}
+          <div className="flex items-center space-x-3">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Status</option>
+              <option value="ACTIVE">Active</option>
+              <option value="ON_HOLD">On Hold</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+              <option value="PLANNING">Planning</option>
+            </select>
+
+            <select
+              value={urgencyFilter}
+              onChange={(e) => setUrgencyFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Urgency</option>
+              <option value="CRITICAL">Critical</option>
+              <option value="HIGH">High</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
+            </select>
+
+            <Button variant="outline" size="sm">
+              <Filter className="w-4 h-4 mr-2" />
+              More Filters
+            </Button>
+
+            {/* View Toggle */}
+            <div className="flex items-center border border-gray-300 rounded-lg">
+              <Button
+                variant={viewMode === 'list' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="rounded-r-none border-0"
+              >
+                <List className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'grid' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('grid')}
+                className="rounded-l-none border-0"
+              >
+                <Grid3X3 className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
 
         {/* Projects List */}
         <div className="space-y-4">
@@ -282,7 +368,10 @@ export default function ProjectsPage() {
                 }
               </p>
               {!searchTerm && !statusFilter && !urgencyFilter && (
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Button 
+                  onClick={() => setShowCreateModal(true)}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
                   <Plus className="w-4 h-4 mr-2" />
                   Create First Project
                 </Button>
@@ -420,6 +509,12 @@ export default function ProjectsPage() {
             ))
           )}
         </div>
+
+        {/* Create Project Modal */}
+        <CreateProjectModal
+          open={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+        />
       </div>
     </Layout>
   );

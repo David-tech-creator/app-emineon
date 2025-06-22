@@ -520,29 +520,32 @@
             </div>
             
             <div id="aiAnalysis" class="ai-chat-bubble p-3 mb-3">
-                <div class="flex items-start space-x-2">
-                    <div class="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                        <i data-lucide="sparkles" class="w-3 h-3 text-white"></i>
+                <div class="flex items-start space-x-3">
+                    <div class="w-7 h-7 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-white"></i>
                     </div>
-                    <div class="flex-1 text-xs">
-                        <div id="aiSuggestionText" class="text-primary">
-                            Analyzing current email...
-                            <div class="loading-dots mt-1">
-                                <span></span><span></span><span></span>
+                    <div class="flex-1 min-w-0">
+                        <div id="aiSuggestion" class="text-xs text-primary">
+                            <div class="flex items-center">
+                                <i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i>
+                                <span>Analyzing email...</span>
                             </div>
+                        </div>
+                        <div id="aiActions" class="hidden mt-2 flex flex-wrap gap-1">
+                            <!-- AI suggested actions will appear here -->
                         </div>
                     </div>
                 </div>
             </div>
             
             <div class="grid grid-cols-2 gap-2">
-                <button id="parseEmailBtn" class="btn-primary btn-sm">
-                    <i data-lucide="mail-open" class="w-3 h-3"></i>
-                    Parse Email
+                <button id="createProjectAction" class="btn-primary btn-sm">
+                    <i data-lucide="folder-plus" class="w-3 h-3"></i>
+                    Create Project
                 </button>
-                <button id="generateResponseBtn" class="btn-teal btn-sm">
-                    <i data-lucide="reply" class="w-3 h-3"></i>
-                    Smart Reply
+                <button id="addCandidateAction" class="btn-teal btn-sm">
+                    <i data-lucide="user-plus" class="w-3 h-3"></i>
+                    Add Candidate
                 </button>
             </div>
         </div>
@@ -581,14 +584,6 @@
             </div>
             
             <div class="grid grid-cols-2 gap-2">
-                <div id="addCandidateAction" class="action-card text-center">
-                    <i data-lucide="user-plus" class="w-5 h-5 text-primary mx-auto mb-1"></i>
-                    <div class="text-xs font-medium">Add Candidate</div>
-                </div>
-                <div id="createProjectAction" class="action-card text-center">
-                    <i data-lucide="folder-plus" class="w-5 h-5 text-teal-600 mx-auto mb-1"></i>
-                    <div class="text-xs font-medium">Create Project</div>
-                </div>
                 <div id="scheduleInterviewAction" class="action-card text-center">
                     <i data-lucide="calendar-plus" class="w-5 h-5 text-accent-600 mx-auto mb-1"></i>
                     <div class="text-xs font-medium">Schedule Interview</div>
@@ -596,6 +591,14 @@
                 <div id="addToJobAction" class="action-card text-center">
                     <i data-lucide="target" class="w-5 h-5 text-success-600 mx-auto mb-1"></i>
                     <div class="text-xs font-medium">Match Jobs</div>
+                </div>
+                <div id="parseResumeAction" class="action-card text-center">
+                    <i data-lucide="file-text" class="w-5 h-5 text-warning-600 mx-auto mb-1"></i>
+                    <div class="text-xs font-medium">Parse Resume</div>
+                </div>
+                <div id="openAtsBtn" class="action-card text-center">
+                    <i data-lucide="external-link" class="w-5 h-5 text-primary mx-auto mb-1"></i>
+                    <div class="text-xs font-medium">Open ATS</div>
                 </div>
             </div>
         </div>

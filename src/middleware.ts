@@ -13,6 +13,7 @@ export default authMiddleware({
     '/api/competence-files/test-generate',
     '/api/outlook-addin/(.*)',
     '/outlook-addin/(.*)',
+    '/api/projects/parse-email',
   ],
 
   // Routes that are ignored by Clerk (no auth check at all)

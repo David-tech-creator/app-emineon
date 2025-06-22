@@ -58,14 +58,14 @@
         const scheduleInterviewAction = document.getElementById('scheduleInterviewAction');
         const addToJobAction = document.getElementById('addToJobAction');
         const createProjectAction = document.getElementById('createProjectAction');
-        const emailTemplateAction = document.getElementById('emailTemplateAction');
+        const parseResumeAction = document.getElementById('parseResumeAction');
         const openAtsBtn = document.getElementById('openAtsBtn');
 
         if (addCandidateAction) addCandidateAction.addEventListener('click', () => handleQuickAction('add-candidate'));
         if (scheduleInterviewAction) scheduleInterviewAction.addEventListener('click', () => handleQuickAction('schedule-interview'));
         if (addToJobAction) addToJobAction.addEventListener('click', () => handleQuickAction('add-to-job'));
         if (createProjectAction) createProjectAction.addEventListener('click', () => handleQuickAction('create-project'));
-        if (emailTemplateAction) emailTemplateAction.addEventListener('click', () => handleQuickAction('email-template'));
+        if (parseResumeAction) parseResumeAction.addEventListener('click', () => handleQuickAction('parse-resume'));
         if (openAtsBtn) openAtsBtn.addEventListener('click', openFullATS);
 
         // Jobs and activity handlers
@@ -274,43 +274,77 @@
     }
 
     function updateEmailContext(emailData) {
-        const emailFrom = document.getElementById('emailFrom');
+        const emailSender = document.getElementById('emailSender');
         const emailSubject = document.getElementById('emailSubject');
         
-        if (emailFrom) emailFrom.textContent = emailData.from;
-        if (emailSubject) emailSubject.textContent = emailData.subject;
+        if (emailSender) emailSender.textContent = emailData.from || 'Unknown sender';
+        if (emailSubject) emailSubject.textContent = emailData.subject || 'No subject';
+        
+        // Update email category based on analysis
+        classifyEmail(emailData);
     }
 
     function classifyEmail(emailData) {
-        const emailType = document.getElementById('emailType');
+        const emailCategory = document.getElementById('emailCategory');
+        const emailPriority = document.getElementById('emailPriority');
         const subject = emailData.subject?.toLowerCase() || '';
         const body = emailData.body?.toLowerCase() || '';
         
         let classification = 'general';
         let priority = 'medium';
+        let icon = 'tag';
         
-        // Classification logic
-        if (subject.includes('application') || subject.includes('apply') || body.includes('interested in')) {
+        // Enhanced classification logic
+        const projectKeywords = ['positions', 'engineers', 'developers', 'consultants', 'specialists', 'team', 'project', 'multiple', 'several'];
+        const numberPattern = /\b(\d+)\s+(positions|engineers|developers|consultants|specialists|people|candidates)\b/i;
+        
+        const emailText = `${subject} ${body}`;
+        const hasProjectKeywords = projectKeywords.some(keyword => emailText.includes(keyword));
+        const hasNumberMatch = numberPattern.test(emailText);
+        
+        if (hasProjectKeywords || hasNumberMatch) {
+            classification = 'project';
+            priority = 'high';
+            icon = 'folder';
+        } else if (subject.includes('application') || subject.includes('apply') || body.includes('interested in')) {
             classification = 'application';
             priority = 'high';
+            icon = 'user-plus';
         } else if (subject.includes('resume') || subject.includes('cv') || body.includes('resume')) {
             classification = 'resume';
             priority = 'high';
+            icon = 'file-text';
         } else if (subject.includes('interview') || body.includes('interview')) {
             classification = 'interview';
             priority = 'high';
+            icon = 'calendar';
         } else if (subject.includes('follow up') || subject.includes('follow-up')) {
             classification = 'follow-up';
             priority = 'medium';
+            icon = 'reply';
         } else if (subject.includes('reference') || body.includes('reference')) {
             classification = 'reference';
             priority = 'medium';
+            icon = 'users';
         }
         
-        if (emailType) {
-            emailType.textContent = classification.charAt(0).toUpperCase() + classification.slice(1);
-            emailType.className = `priority-badge priority-${priority}`;
+        if (emailCategory) {
+            emailCategory.innerHTML = `
+                <i data-lucide="${icon}" class="w-3 h-3"></i>
+                ${classification.charAt(0).toUpperCase() + classification.slice(1)}
+            `;
+            emailCategory.className = `status-badge status-${classification === 'project' ? 'active' : 'new'}`;
         }
+        
+        // Update priority display
+        const priorityElement = emailPriority?.querySelector('.priority-badge');
+        if (priorityElement) {
+            priorityElement.textContent = priority.charAt(0).toUpperCase() + priority.slice(1);
+            priorityElement.className = `priority-badge priority-${priority}`;
+        }
+        
+        // Re-create icons
+        lucide.createIcons();
     }
 
     // Contact Management Functions
@@ -432,6 +466,9 @@
             case 'schedule-interview':
                 scheduleInterview();
                 break;
+            case 'parse-resume':
+                parseResumeFromEmail();
+                break;
             case 'add-to-job':
                 addToJob();
                 break;
@@ -493,7 +530,7 @@
             };
             
             // Call the API to parse email and create project
-            const response = await fetch('https://app-emineon.vercel.app/api/projects/parse-email', {
+            const response = await fetch('https://app-emineon-ol3msv7gs-david-bicrawais-projects.vercel.app/api/projects/parse-email', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -555,7 +592,7 @@
 
     // Helper function to open project in full ATS
     window.openProject = function(projectId) {
-        const projectUrl = `https://app-emineon.vercel.app/projects/${projectId}`;
+        const projectUrl = `https://app-emineon-ol3msv7gs-david-bicrawais-projects.vercel.app/projects/${projectId}`;
         window.open(projectUrl, '_blank');
         showNotification('Opening project in ATS', 'info');
     };
@@ -601,20 +638,20 @@
 
     function openFullATS() {
         // Open the full ATS in a new tab
-        const atsUrl = 'https://app-emineon.vercel.app';
+        const atsUrl = 'https://app-emineon-ol3msv7gs-david-bicrawais-projects.vercel.app';
         window.open(atsUrl, '_blank');
         showNotification('Opening full ATS system', 'info');
     }
 
     // Navigation Functions
     function viewAllJobs() {
-        const atsUrl = 'https://app-emineon.vercel.app/jobs';
+        const atsUrl = 'https://app-emineon-ol3msv7gs-david-bicrawais-projects.vercel.app/jobs';
         window.open(atsUrl, '_blank');
         showNotification('Opening jobs dashboard', 'info');
     }
 
     function viewAllActivity() {
-        const atsUrl = 'https://app-emineon.vercel.app/analytics';
+        const atsUrl = 'https://app-emineon-ol3msv7gs-david-bicrawais-projects.vercel.app/analytics';
         window.open(atsUrl, '_blank');
         showNotification('Opening activity dashboard', 'info');
     }
