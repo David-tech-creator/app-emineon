@@ -57,12 +57,14 @@
         const addCandidateAction = document.getElementById('addCandidateAction');
         const scheduleInterviewAction = document.getElementById('scheduleInterviewAction');
         const addToJobAction = document.getElementById('addToJobAction');
+        const createProjectAction = document.getElementById('createProjectAction');
         const emailTemplateAction = document.getElementById('emailTemplateAction');
         const openAtsBtn = document.getElementById('openAtsBtn');
 
         if (addCandidateAction) addCandidateAction.addEventListener('click', () => handleQuickAction('add-candidate'));
         if (scheduleInterviewAction) scheduleInterviewAction.addEventListener('click', () => handleQuickAction('schedule-interview'));
         if (addToJobAction) addToJobAction.addEventListener('click', () => handleQuickAction('add-to-job'));
+        if (createProjectAction) createProjectAction.addEventListener('click', () => handleQuickAction('create-project'));
         if (emailTemplateAction) emailTemplateAction.addEventListener('click', () => handleQuickAction('email-template'));
         if (openAtsBtn) openAtsBtn.addEventListener('click', openFullATS);
 
@@ -107,6 +109,23 @@
         
         const emailContext = currentEmailData;
         const suggestions = [];
+        
+        // Check for project opportunities (multi-position requests)
+        const projectKeywords = ['positions', 'engineers', 'developers', 'consultants', 'specialists', 'team', 'project', 'multiple', 'several'];
+        const numberPattern = /\b(\d+)\s+(positions|engineers|developers|consultants|specialists|people|candidates)\b/i;
+        
+        const emailText = `${emailContext.subject || ''} ${emailContext.body || ''}`.toLowerCase();
+        const hasProjectKeywords = projectKeywords.some(keyword => emailText.includes(keyword));
+        const hasNumberMatch = numberPattern.test(emailText);
+        
+        if (hasProjectKeywords || hasNumberMatch) {
+            suggestions.push({
+                type: 'project',
+                action: 'Create project',
+                confidence: 0.90,
+                reason: 'Email appears to describe a multi-position opportunity'
+            });
+        }
         
         if (emailContext.subject?.toLowerCase().includes('application')) {
             suggestions.push({
@@ -176,6 +195,9 @@
         console.log(`Executing AI suggestion: ${type} - ${action}`);
         
         switch(type) {
+            case 'project':
+                handleQuickAction('create-project');
+                break;
             case 'candidate':
                 handleQuickAction('add-candidate');
                 break;
@@ -401,6 +423,9 @@
         console.log(`Executing quick action: ${action}`);
         
         switch(action) {
+            case 'create-project':
+                createProjectFromEmail();
+                break;
             case 'add-candidate':
                 addCandidateFromEmail();
                 break;
@@ -454,6 +479,86 @@
             showNotification('Failed to create candidate profile', 'error');
         }
     }
+
+    async function createProjectFromEmail() {
+        showLoadingOverlay('Creating project from email...');
+        
+        try {
+            // Extract project information from email
+            const projectData = {
+                emailContent: currentEmailData.body || '',
+                emailSubject: currentEmailData.subject || '',
+                senderEmail: extractEmailFromSender(currentEmailData.from),
+                receivedDate: new Date().toISOString()
+            };
+            
+            // Call the API to parse email and create project
+            const response = await fetch('https://app-emineon.vercel.app/api/projects/parse-email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(projectData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            hideLoadingOverlay();
+            showNotification(`Project "${result.project.name}" created successfully!`, 'success');
+            
+            // Update the contact display to show project details
+            displayFoundContact({
+                name: result.project.clientName,
+                title: `Project Manager - ${result.project.totalPositions} positions`,
+                status: 'active',
+                priority: result.project.urgencyLevel.toLowerCase(),
+                email: result.project.clientEmail,
+                initials: getInitials(result.project.clientName)
+            });
+            
+            // Show project summary
+            const summaryHtml = `
+                <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 class="font-semibold text-blue-900 mb-2">Project Created</h4>
+                    <p class="text-sm text-blue-800"><strong>Name:</strong> ${result.project.name}</p>
+                    <p class="text-sm text-blue-800"><strong>Positions:</strong> ${result.project.totalPositions}</p>
+                    <p class="text-sm text-blue-800"><strong>Urgency:</strong> ${result.project.urgencyLevel}</p>
+                    ${result.project.skillsRequired.length > 0 ? 
+                        `<p class="text-sm text-blue-800"><strong>Skills:</strong> ${result.project.skillsRequired.slice(0, 3).join(', ')}</p>` : 
+                        ''
+                    }
+                    <div class="mt-2">
+                        <button onclick="openProject('${result.project.id}')" class="emineon-button-primary emineon-button-sm">
+                            <i data-lucide="external-link" class="w-3 h-3 mr-1"></i>
+                            Open Project
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            const contactInfo = document.getElementById('contactInfo');
+            if (contactInfo) {
+                contactInfo.insertAdjacentHTML('beforeend', summaryHtml);
+                lucide.createIcons();
+            }
+            
+        } catch (error) {
+            console.error('Error creating project:', error);
+            hideLoadingOverlay();
+            showNotification('Failed to create project. Please try again.', 'error');
+        }
+    }
+
+    // Helper function to open project in full ATS
+    window.openProject = function(projectId) {
+        const projectUrl = `https://app-emineon.vercel.app/projects/${projectId}`;
+        window.open(projectUrl, '_blank');
+        showNotification('Opening project in ATS', 'info');
+    };
 
     function scheduleInterview() {
         if (!currentContact) {

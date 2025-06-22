@@ -75,6 +75,18 @@ const navigationSections: NavigationSection[] = [
     collapsible: false,
   },
   {
+    name: 'Projects',
+    icon: ClipboardList,
+    items: [
+      {
+        name: 'Projects',
+        href: '/projects',
+        icon: ClipboardList,
+      },
+    ],
+    collapsible: false,
+  },
+  {
     name: 'Talent',
     icon: Users,
     items: [

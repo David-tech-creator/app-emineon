@@ -91,6 +91,7 @@ model Candidate {
   clientVisible         Boolean          @default(true)
   shareWithClient       DateTime?
   competenceFiles       CompetenceFile[]
+  projectCandidates     ProjectCandidate[]
 
   @@map("candidates")
 }
@@ -118,6 +119,11 @@ model Job {
   publishedAt        DateTime?
   expiresAt          DateTime?
   employmentType     String[]
+  
+  // Project relationship
+  projectId          String?
+  project            Project?             @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  
   ai_matches         ai_matches[]
   applications       Application[]
   interviews         interviews[]
@@ -135,7 +141,209 @@ model Job {
   @@index([status, language])
   @@index([status, location])
   @@index([status, publishedAt])
+  @@index([projectId])
   @@map("jobs")
+}
+
+model Project {
+  id                    String                @id @default(cuid())
+  name                  String                // e.g., "DataFlow Innovations - Data Engineers"
+  description           String?               // Project overview and context
+  clientName            String                // e.g., "DataFlow Innovations"
+  clientContact         String?               // Contact person name
+  clientEmail           String?               // Contact email
+  clientPhone           String?               // Contact phone
+  
+  // Project Details
+  totalPositions        Int                   // Total number of positions needed
+  filledPositions       Int                   @default(0)
+  urgencyLevel          ProjectUrgency        @default(MEDIUM)
+  priority              ProjectPriority       @default(MEDIUM)
+  status                ProjectStatus         @default(ACTIVE)
+  
+  // Timeline
+  startDate             DateTime?             // When project starts
+  endDate               DateTime?             // Project deadline
+  budgetEndDate         DateTime?             // Budget availability end
+  
+  // Budget & Commercial
+  budgetRange           String?               // e.g., "€500k - €750k"
+  hourlyRateMin         Int?                  // Minimum hourly rate
+  hourlyRateMax         Int?                  // Maximum hourly rate
+  currency              String?               @default("EUR")
+  
+  // Location & Work Arrangement
+  location              String?               // e.g., "Carouge, Geneva"
+  isRemote              Boolean               @default(false)
+  isHybrid              Boolean               @default(false)
+  
+  // Requirements
+  skillsRequired        String[]              // Common skills for all positions
+  experienceRequired    String[]              // Experience requirements
+  industryBackground    String?               // e.g., "Medical domain"
+  languageRequirements  String[]              // Language requirements
+  
+  // Source Information
+  sourceEmail           String?               // Original email content
+  sourceEmailSubject    String?               // Email subject
+  sourceEmailDate       DateTime?             // When email was received
+  parsedFromEmail       Boolean               @default(false)
+  
+  // Tracking
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  createdBy             String?               // User who created the project
+  assignedRecruiter     String?               // Primary recruiter assigned
+  
+  // Progress Tracking
+  candidatesSourced     Int                   @default(0)
+  candidatesScreened    Int                   @default(0)
+  candidatesInterviewed Int                   @default(0)
+  candidatesPresented   Int                   @default(0)
+  candidatesHired       Int                   @default(0)
+  
+  // Client Communication
+  lastClientUpdate      DateTime?
+  nextFollowUp          DateTime?
+  clientFeedback        String?
+  
+  // Internal Notes
+  internalNotes         String[]
+  tags                  String[]
+  
+  // Relationships
+  jobs                  Job[]                 // Individual job positions within project
+  activities            ProjectActivity[]     // Activity log
+  documents             ProjectDocument[]     // Related documents
+  candidates            ProjectCandidate[]    // Candidates associated with project
+  
+  @@index([status])
+  @@index([urgencyLevel])
+  @@index([clientEmail])
+  @@index([assignedRecruiter])
+  @@index([endDate])
+  @@map("projects")
+}
+
+model ProjectActivity {
+  id          String              @id @default(cuid())
+  projectId   String
+  type        ProjectActivityType
+  title       String              // e.g., "Email received from client"
+  description String?             // Detailed description
+  metadata    Json?               // Additional data (email content, etc.)
+  createdAt   DateTime            @default(now())
+  createdBy   String?             // User who performed the action
+  
+  project     Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@index([projectId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("project_activities")
+}
+
+model ProjectDocument {
+  id          String            @id @default(cuid())
+  projectId   String
+  name        String            // Document name
+  type        ProjectDocType    // Type of document
+  url         String            // Document URL
+  size        Int?              // File size in bytes
+  mimeType    String?           // MIME type
+  uploadedBy  String?           // User who uploaded
+  createdAt   DateTime          @default(now())
+  
+  project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@index([projectId])
+  @@index([type])
+  @@map("project_documents")
+}
+
+model ProjectCandidate {
+  id          String                    @id @default(cuid())
+  projectId   String
+  candidateId String
+  status      ProjectCandidateStatus    @default(SOURCED)
+  notes       String?
+  addedAt     DateTime                  @default(now())
+  addedBy     String?                   // User who added candidate
+  
+  // Specific role within project
+  targetRole  String?                   // Which specific position within project
+  fitScore    Float?                    // How well they fit the project
+  
+  project     Project                   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  candidate   Candidate                 @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  
+  @@unique([projectId, candidateId])
+  @@index([projectId])
+  @@index([candidateId])
+  @@index([status])
+  @@map("project_candidates")
+}
+
+// Enums for Project Management
+enum ProjectStatus {
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+  PLANNING
+}
+
+enum ProjectUrgency {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ProjectPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ProjectActivityType {
+  PROJECT_CREATED
+  EMAIL_RECEIVED
+  EMAIL_SENT
+  CANDIDATE_ADDED
+  CANDIDATE_REMOVED
+  JOB_CREATED
+  JOB_FILLED
+  CLIENT_MEETING
+  STATUS_UPDATED
+  DEADLINE_UPDATED
+  BUDGET_UPDATED
+  NOTES_ADDED
+  DOCUMENT_UPLOADED
+}
+
+enum ProjectDocType {
+  CLIENT_EMAIL
+  JOB_DESCRIPTION
+  CONTRACT
+  PROPOSAL
+  CANDIDATE_CV
+  PRESENTATION
+  MEETING_NOTES
+  OTHER
+}
+
+enum ProjectCandidateStatus {
+  SOURCED
+  SCREENING
+  SUBMITTED
+  CLIENT_REVIEW
+  INTERVIEWING
+  OFFERED
+  HIRED
+  REJECTED
+  WITHDRAWN
 }
 
 model Application {
