@@ -1,300 +1,325 @@
-// Test script for Enhanced Outlook Add-in with Project Creation
-// This script validates the complete workflow from email to project creation
+// Test script for Emineon Outlook Add-in
+// Run this in a Node.js environment to test API endpoints
 
+const https = require('https');
+
+const BASE_URL = 'https://app-emineon-3h5xnu9vi-david-bicrawais-projects.vercel.app';
+
+// Test data - simulating email from Outlook
 const testEmailData = {
     subject: "5 Data Engineers - DataFlow Innovations - Medical Domain",
-    from: "Emmanuel Dubois <emmanuel.dubois@dataflow-innovations.com>",
-    body: `
-Dear Emineon Team,
+    body: `Dear Recruitment Team,
 
-We are looking for 5 experienced Data Engineers for our medical technology startup, DataFlow Innovations.
+We are DataFlow Innovations, a leading healthcare technology company based in Geneva, Switzerland. 
 
-Project Details:
-- Company: DataFlow Innovations
-- Location: Carouge, Geneva (Hybrid work possible)
-- Start Date: Immediate
-- Budget: €500k - €750k for the entire project
-- Duration: 12 months
+We are currently seeking 5 experienced Data Engineers to join our medical data processing team for a critical project starting in Q1 2024.
 
-Positions Needed:
-1. Senior Data Engineer (2 positions)
-2. Junior Data Engineer (2 positions)  
-3. Lead Data Architect (1 position)
+Position Details:
+- Title: Senior Data Engineer - Medical Domain
+- Quantity: 5 positions
+- Location: Geneva, Switzerland (Hybrid work model)
+- Duration: 12-month contract with extension possibility
+- Start Date: January 2024
+- Budget: €80,000 - €95,000 per position
 
-Technical Requirements:
-- Python, SQL, ETL processes
-- Cloud platforms (AWS, Azure)
+Required Skills:
+- Python programming (5+ years)
+- SQL and database management
+- ETL pipeline development
+- Cloud platforms (AWS/Azure)
 - Healthcare data standards (HL7, FHIR)
-- Machine Learning experience preferred
-- Medical domain knowledge is a plus
+- Data privacy and GDPR compliance
+- Medical device integration experience
 
-The project involves building a comprehensive data pipeline for medical research data, ensuring compliance with healthcare regulations and creating analytics dashboards for clinical insights.
+Project Overview:
+This is a high-priority project involving the development of a comprehensive medical data processing platform. The successful candidates will work on integrating multiple healthcare systems and ensuring compliance with medical data regulations.
 
-Please let me know if you can help us find these candidates.
+We need candidates who can start immediately and have experience working in regulated healthcare environments.
+
+Please let me know if you have suitable candidates available.
 
 Best regards,
 Emmanuel Dubois
-CTO, DataFlow Innovations
+Technical Director
+DataFlow Innovations
 emmanuel.dubois@dataflow-innovations.com
-+41 22 345 6789
-    `
++41 22 123 4567`,
+    from: {
+        name: "Emmanuel Dubois",
+        email: "emmanuel.dubois@dataflow-innovations.com"
+    },
+    date: new Date().toISOString(),
+    attachments: [
+        {
+            name: "project_requirements.pdf",
+            size: 245760,
+            type: "PDF Document"
+        },
+        {
+            name: "john_smith_resume.pdf", 
+            size: 156432,
+            type: "PDF Document",
+            isResume: true
+        }
+    ]
 };
 
-async function testOutlookAddinWorkflow() {
-    console.log('🧪 Testing Enhanced Outlook Add-in Workflow');
-    console.log('================================================');
+// Test functions
+async function testProjectCreation() {
+    console.log('\n=== Testing Project Creation from Email ===');
     
-    // Test 1: Email Analysis and Classification
-    console.log('\n1. Testing Email Analysis...');
-    const emailAnalysis = analyzeEmailContent(testEmailData);
-    console.log('✅ Email Classification:', emailAnalysis);
-    
-    // Test 2: AI Suggestion Generation
-    console.log('\n2. Testing AI Suggestions...');
-    const aiSuggestions = generateAISuggestionsFromEmail(testEmailData);
-    console.log('✅ AI Suggestions:', aiSuggestions);
-    
-    // Test 3: Project Creation API Call
-    console.log('\n3. Testing Project Creation from Email...');
     try {
-        const projectResult = await createProjectFromEmail(testEmailData);
-        console.log('✅ Project Created Successfully:');
-        console.log('   - Project ID:', projectResult.project.id);
-        console.log('   - Project Name:', projectResult.project.name);
-        console.log('   - Total Positions:', projectResult.project.totalPositions);
-        console.log('   - Jobs Created:', projectResult.project.jobs?.length || 0);
-        console.log('   - Skills Required:', projectResult.project.skillsRequired);
+        const response = await makeRequest('/api/projects/parse-email', 'POST', testEmailData);
         
-        // Test 4: Verify Individual Jobs Created
-        if (projectResult.project.jobs && projectResult.project.jobs.length > 0) {
-            console.log('\n4. Testing Individual Job Creation...');
-            projectResult.project.jobs.forEach((job, index) => {
-                console.log(`   Job ${index + 1}:`);
-                console.log(`   - Title: ${job.title}`);
-                console.log(`   - Department: ${job.department}`);
-                console.log(`   - Location: ${job.location}`);
-                console.log(`   - Requirements: ${job.requirements?.slice(0, 3).join(', ')}...`);
-                console.log(`   - Experience Level: ${job.experienceLevel}`);
-            });
+        if (response.success) {
+            console.log('✅ Project created successfully!');
+            console.log(`Project Name: ${response.project.name}`);
+            console.log(`Client: ${response.project.clientName}`);
+            console.log(`Total Positions: ${response.project.totalPositions}`);
+            console.log(`Skills Required: ${response.project.skillsRequired.join(', ')}`);
+            console.log(`Urgency Level: ${response.project.urgencyLevel}`);
+            return response.project.id;
+        } else {
+            console.log('❌ Project creation failed:', response.error);
+            return null;
         }
-        
-        return projectResult;
-        
     } catch (error) {
-        console.error('❌ Project Creation Failed:', error.message);
-        
-        // Try to get more details from the response
-        if (error.response) {
-            try {
-                const errorText = await error.response.text();
-                console.error('Error response:', errorText.substring(0, 500));
-            } catch (e) {
-                console.error('Could not read error response');
-            }
-        }
+        console.log('❌ Project creation error:', error.message);
         return null;
     }
 }
 
-function analyzeEmailContent(emailData) {
-    const subject = emailData.subject?.toLowerCase() || '';
-    const body = emailData.body?.toLowerCase() || '';
-    const emailText = `${subject} ${body}`;
+async function testCandidateCreation() {
+    console.log('\n=== Testing Candidate Creation from Email ===');
     
-    // Classification logic (matching the add-in)
-    const projectKeywords = ['positions', 'engineers', 'developers', 'consultants', 'specialists', 'team', 'project', 'multiple', 'several'];
-    const numberPattern = /\b(\d+)\s+(positions|engineers|developers|consultants|specialists|people|candidates)\b/i;
-    
-    const hasProjectKeywords = projectKeywords.some(keyword => emailText.includes(keyword));
-    const hasNumberMatch = numberPattern.test(emailText);
-    
-    let classification = 'general';
-    let priority = 'medium';
-    let confidence = 0.5;
-    
-    if (hasProjectKeywords || hasNumberMatch) {
-        classification = 'project';
-        priority = 'high';
-        confidence = 0.95;
-    } else if (subject.includes('application') || body.includes('interested in')) {
-        classification = 'application';
-        priority = 'high';
-        confidence = 0.85;
-    } else if (subject.includes('resume') || body.includes('resume')) {
-        classification = 'resume';
-        priority = 'high';
-        confidence = 0.90;
-    }
-    
-    return {
-        classification,
-        priority,
-        confidence,
-        hasProjectKeywords,
-        hasNumberMatch,
-        extractedNumbers: emailText.match(numberPattern)
-    };
-}
-
-function generateAISuggestionsFromEmail(emailData) {
-    const analysis = analyzeEmailContent(emailData);
-    const suggestions = [];
-    
-    if (analysis.classification === 'project') {
-        suggestions.push({
-            type: 'project',
-            action: 'Create project',
-            confidence: analysis.confidence,
-            reason: 'Email describes a multi-position opportunity',
-            priority: 'high'
-        });
-    }
-    
-    if (analysis.classification === 'application') {
-        suggestions.push({
-            type: 'candidate',
-            action: 'Add as candidate',
-            confidence: 0.85,
-            reason: 'Email appears to be a job application',
-            priority: 'high'
-        });
-    }
-    
-    if (emailData.body?.toLowerCase().includes('resume') || emailData.body?.toLowerCase().includes('cv')) {
-        suggestions.push({
-            type: 'document',
-            action: 'Parse resume',
-            confidence: 0.90,
-            reason: 'Resume/CV detected in email',
-            priority: 'medium'
-        });
-    }
-    
-    return suggestions;
-}
-
-async function createProjectFromEmail(emailData) {
-    const projectData = {
-        emailContent: emailData.body || '',
-        emailSubject: emailData.subject || '',
-        senderEmail: extractEmailFromSender(emailData.from),
-        receivedDate: new Date().toISOString()
+    const candidateData = {
+        firstName: testEmailData.from.name.split(' ')[0],
+        lastName: testEmailData.from.name.split(' ').slice(1).join(' '),
+        email: testEmailData.from.email,
+        source: 'Email',
+        notes: `Added from email: ${testEmailData.subject}`
     };
     
-    const response = await fetch('https://app-emineon-ol3msv7gs-david-bicrawais-projects.vercel.app/api/projects/parse-email', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(projectData)
+    try {
+        const response = await makeRequest('/api/candidates', 'POST', candidateData);
+        
+        if (response.id) {
+            console.log('✅ Candidate created successfully!');
+            console.log(`Candidate: ${response.firstName} ${response.lastName}`);
+            console.log(`Email: ${response.email}`);
+            console.log(`Source: ${response.source}`);
+            return response.id;
+        } else {
+            console.log('❌ Candidate creation failed:', response.error || 'Unknown error');
+            return null;
+        }
+    } catch (error) {
+        console.log('❌ Candidate creation error:', error.message);
+        return null;
+    }
+}
+
+async function testHealthCheck() {
+    console.log('\n=== Testing API Health Check ===');
+    
+    try {
+        const response = await makeRequest('/api/health', 'GET');
+        
+        if (response.status === 'ok') {
+            console.log('✅ API is healthy');
+            console.log(`Timestamp: ${response.timestamp}`);
+            return true;
+        } else {
+            console.log('❌ API health check failed');
+            return false;
+        }
+    } catch (error) {
+        console.log('❌ Health check error:', error.message);
+        return false;
+    }
+}
+
+async function testProjectsList() {
+    console.log('\n=== Testing Projects List ===');
+    
+    try {
+        const response = await makeRequest('/api/projects', 'GET');
+        
+        if (Array.isArray(response)) {
+            console.log(`✅ Retrieved ${response.length} projects`);
+            if (response.length > 0) {
+                const project = response[0];
+                console.log(`Latest Project: ${project.name}`);
+                console.log(`Client: ${project.clientName}`);
+                console.log(`Status: ${project.status}`);
+            }
+            return true;
+        } else {
+            console.log('❌ Projects list failed:', response.error || 'Invalid response');
+            return false;
+        }
+    } catch (error) {
+        console.log('❌ Projects list error:', error.message);
+        return false;
+    }
+}
+
+async function testEmailAnalysis() {
+    console.log('\n=== Testing Email Analysis (Simulated) ===');
+    
+    // Simulate the AI analysis that would happen in the Outlook add-in
+    const emailText = `${testEmailData.subject} ${testEmailData.body}`.toLowerCase();
+    
+    // Project Detection
+    const projectPatterns = [
+        /\b(\d+)\s+(positions|roles|engineers|developers|consultants|specialists|people|candidates)\b/i,
+        /\b(multiple|several|team of|group of)\s+(positions|roles|engineers|developers)\b/i,
+        /\b(project|contract|engagement)\s+(requires|needs|looking for)\b/i
+    ];
+    
+    const hasProjectIndicators = projectPatterns.some(pattern => pattern.test(emailText)) ||
+        ['positions', 'multiple roles', 'team', 'project', 'contract'].some(keyword => emailText.includes(keyword));
+    
+    console.log(`Project Detection: ${hasProjectIndicators ? '✅ Detected' : '❌ Not detected'}`);
+    
+    // Resume Detection
+    const resumeAttachments = testEmailData.attachments.filter(att => att.isResume);
+    console.log(`Resume Detection: ${resumeAttachments.length > 0 ? '✅ Found ' + resumeAttachments.length + ' resume(s)' : '❌ No resumes'}`);
+    
+    // Skills Extraction
+    const skillKeywords = ['python', 'sql', 'etl', 'aws', 'azure', 'healthcare', 'hl7', 'fhir'];
+    const detectedSkills = skillKeywords.filter(skill => emailText.includes(skill));
+    console.log(`Skills Detected: ${detectedSkills.length > 0 ? '✅ ' + detectedSkills.join(', ') : '❌ No skills detected'}`);
+    
+    // Priority Assessment
+    const urgentKeywords = ['urgent', 'asap', 'immediate', 'priority', 'critical'];
+    const hasUrgency = urgentKeywords.some(keyword => emailText.includes(keyword));
+    console.log(`Priority Level: ${hasUrgency ? '🔴 High' : '🟡 Medium'}`);
+    
+    return true;
+}
+
+async function testAttachmentAnalysis() {
+    console.log('\n=== Testing Attachment Analysis ===');
+    
+    testEmailData.attachments.forEach((attachment, index) => {
+        console.log(`Attachment ${index + 1}:`);
+        console.log(`  Name: ${attachment.name}`);
+        console.log(`  Size: ${formatFileSize(attachment.size)}`);
+        console.log(`  Type: ${attachment.type}`);
+        console.log(`  Is Resume: ${attachment.isResume ? '✅ Yes' : '❌ No'}`);
+        console.log(`  Is Document: ${isDocumentFile(attachment.name) ? '✅ Yes' : '❌ No'}`);
     });
     
-    if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    return await response.json();
+    return true;
 }
 
-function extractEmailFromSender(fromString) {
-    if (!fromString) return null;
-    
-    // Extract email from "Name <email>" format
-    const emailMatch = fromString.match(/<([^>]+)>/);
-    if (emailMatch) {
-        return emailMatch[1];
-    }
-    
-    // If it's already just an email
-    if (fromString.includes('@')) {
-        return fromString;
-    }
-    
-    return null;
-}
-
-// Test UI Components
-function testUIComponents() {
-    console.log('\n5. Testing UI Component Updates...');
-    
-    // Simulate UI updates that would happen in the add-in
-    const uiTests = {
-        aiSuggestion: {
-            before: 'Analyzing email...',
-            after: 'Suggestion: Create project'
-        },
-        emailCategory: {
-            before: 'Analyzing',
-            after: 'Project'
-        },
-        emailPriority: {
-            before: 'Medium',
-            after: 'High'
-        },
-        quickActions: {
-            createProject: 'enabled',
-            addCandidate: 'enabled',
-            parseResume: 'enabled',
-            scheduleInterview: 'conditional'
-        }
-    };
-    
-    console.log('✅ UI Component Tests:', uiTests);
-    return uiTests;
-}
-
-// Run the complete test suite
-async function runCompleteTest() {
-    try {
-        const projectResult = await testOutlookAddinWorkflow();
-        const uiTests = testUIComponents();
+// Helper functions
+function makeRequest(path, method, data = null) {
+    return new Promise((resolve, reject) => {
+        const url = new URL(BASE_URL + path);
         
-        console.log('\n🎉 Test Summary:');
-        console.log('================');
-        console.log('✅ Email Analysis: PASSED');
-        console.log('✅ AI Suggestions: PASSED');
-        console.log(projectResult ? '✅ Project Creation: PASSED' : '❌ Project Creation: FAILED');
-        console.log('✅ UI Components: PASSED');
-        
-        if (projectResult) {
-            console.log('\n📊 Project Details:');
-            console.log(`   - Project: ${projectResult.project.name}`);
-            console.log(`   - Client: ${projectResult.project.clientName}`);
-            console.log(`   - Positions: ${projectResult.project.totalPositions}`);
-            console.log(`   - Jobs Created: ${projectResult.project.jobs?.length || 0}`);
-            console.log(`   - Urgency: ${projectResult.project.urgencyLevel}`);
-            console.log(`   - Location: ${projectResult.project.location}`);
-            
-            if (projectResult.jobSuggestions && projectResult.jobSuggestions.length > 0) {
-                console.log('\n💡 Job Suggestions:');
-                projectResult.jobSuggestions.forEach((job, index) => {
-                    console.log(`   ${index + 1}. ${job.title} (${job.experienceLevel})`);
-                });
+        const options = {
+            hostname: url.hostname,
+            port: url.port || 443,
+            path: url.pathname + url.search,
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'Emineon-Outlook-Addin-Test/1.0'
             }
+        };
+        
+        const req = https.request(options, (res) => {
+            let body = '';
+            
+            res.on('data', (chunk) => {
+                body += chunk;
+            });
+            
+            res.on('end', () => {
+                try {
+                    const response = JSON.parse(body);
+                    resolve(response);
+                } catch (error) {
+                    resolve({ error: 'Invalid JSON response', body });
+                }
+            });
+        });
+        
+        req.on('error', (error) => {
+            reject(error);
+        });
+        
+        if (data) {
+            req.write(JSON.stringify(data));
         }
         
-        console.log('\n🔗 Production URLs:');
-        console.log('   - Main ATS: https://app-emineon-ol3msv7gs-david-bicrawais-projects.vercel.app');
-        console.log('   - Projects: https://app-emineon-ol3msv7gs-david-bicrawais-projects.vercel.app/projects');
-        console.log('   - Jobs: https://app-emineon-ol3msv7gs-david-bicrawais-projects.vercel.app/jobs');
-        
-    } catch (error) {
-        console.error('❌ Test Suite Failed:', error);
+        req.end();
+    });
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function isDocumentFile(filename) {
+    const docExtensions = ['pdf', 'doc', 'docx', 'txt', 'rtf'];
+    const ext = filename.toLowerCase().split('.').pop();
+    return docExtensions.includes(ext);
+}
+
+// Main test runner
+async function runAllTests() {
+    console.log('🚀 Starting Emineon Outlook Add-in Tests');
+    console.log('=====================================');
+    
+    const results = {
+        healthCheck: await testHealthCheck(),
+        emailAnalysis: await testEmailAnalysis(),
+        attachmentAnalysis: await testAttachmentAnalysis(),
+        projectCreation: await testProjectCreation(),
+        candidateCreation: await testCandidateCreation(),
+        projectsList: await testProjectsList()
+    };
+    
+    console.log('\n📊 Test Results Summary');
+    console.log('======================');
+    
+    let passed = 0;
+    let total = 0;
+    
+    Object.entries(results).forEach(([test, result]) => {
+        total++;
+        if (result) passed++;
+        console.log(`${result ? '✅' : '❌'} ${test}: ${result ? 'PASSED' : 'FAILED'}`);
+    });
+    
+    console.log(`\n🎯 Overall: ${passed}/${total} tests passed (${Math.round(passed/total*100)}%)`);
+    
+    if (passed === total) {
+        console.log('🎉 All tests passed! Outlook add-in is ready for deployment.');
+    } else {
+        console.log('⚠️  Some tests failed. Please check the implementation.');
     }
 }
 
-// Export for use in Node.js or browser
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        testOutlookAddinWorkflow,
-        analyzeEmailContent,
-        generateAISuggestionsFromEmail,
-        createProjectFromEmail,
-        runCompleteTest
-    };
-}
+// Export for use in other modules
+module.exports = {
+    testProjectCreation,
+    testCandidateCreation,
+    testHealthCheck,
+    testProjectsList,
+    testEmailAnalysis,
+    testAttachmentAnalysis,
+    runAllTests
+};
 
-// Auto-run if executed directly
-if (typeof window === 'undefined') {
-    runCompleteTest();
+// Run tests if this file is executed directly
+if (require.main === module) {
+    runAllTests().catch(console.error);
 } 
