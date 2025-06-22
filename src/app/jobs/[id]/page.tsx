@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/Button';
@@ -33,6 +33,9 @@ export default function JobDetailPage() {
   const [activeTab, setActiveTab] = useState('pipeline');
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
   const [candidates, setCandidates] = useState<any[]>([]);
+  const [job, setJob] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Mock pipeline stages
   const pipelineStages = [
@@ -164,8 +167,55 @@ export default function JobDetailPage() {
     setCandidates(mockCandidates);
   });
 
-  // Mock job data - in real app, fetch based on jobId
-  const job = {
+  // Fetch job data from API
+  useEffect(() => {
+    const fetchJob = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/jobs/${jobId}`);
+        if (response.ok) {
+          const jobData = await response.json();
+          setJob({
+            id: jobData.id,
+            title: jobData.title,
+            company: 'Emineon ATS', // Default company
+            location: jobData.location,
+            contractType: jobData.employmentType?.[0] || 'Permanent',
+            workMode: jobData.isRemote ? 'Remote' : 'Hybrid',
+            status: jobData.status === 'ACTIVE' ? 'Active' : jobData.status === 'DRAFT' ? 'Draft' : jobData.status,
+            priority: 'High', // Default priority
+            candidates: jobData._count?.applications || 0,
+            applications: jobData._count?.applications || 0,
+            daysToFill: Math.floor((new Date().getTime() - new Date(jobData.createdAt).getTime()) / (1000 * 60 * 60 * 24)),
+            slaProgress: 75, // Default progress
+            skills: jobData.requirements?.filter((req: string) => req.startsWith('Skill:')).map((req: string) => req.replace('Skill: ', '')) || [],
+            salary: jobData.salaryMin && jobData.salaryMax 
+              ? `${jobData.salaryCurrency} ${(jobData.salaryMin / 1000).toFixed(0)}k - ${(jobData.salaryMax / 1000).toFixed(0)}k`
+              : jobData.salaryMin 
+                ? `${jobData.salaryCurrency} ${(jobData.salaryMin / 1000).toFixed(0)}k+`
+                : 'Salary not specified',
+            posted: new Date(jobData.createdAt).toLocaleDateString(),
+            owner: 'David V', // Default owner
+            description: jobData.description || 'No description available',
+          });
+        } else {
+          setError('Failed to fetch job details');
+        }
+      } catch (err) {
+        setError('Error fetching job details');
+        console.error('Error fetching job:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (jobId) {
+      fetchJob();
+    }
+  }, [jobId]);
+
+  // Default job data for loading state
+  const defaultJob = {
     id: jobId,
     title: 'Senior Software Engineer',
     company: 'Credit Suisse',
@@ -262,10 +312,14 @@ Requirements:
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold mb-4">Job Description</h3>
+                  <div className="prose prose-sm text-gray-600 mb-6">
+                    <p>{displayJob.description}</p>
+                  </div>
                   <h3 className="text-lg font-semibold mb-4">Requirements</h3>
                   <div className="space-y-3">
                     <div className="flex flex-wrap gap-2">
-                      {job.skills.map((skill, index) => (
+                      {displayJob?.skills?.map((skill: string, index: number) => (
                         <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
                           {skill}
                         </span>
@@ -281,19 +335,19 @@ Requirements:
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600">Salary Range</span>
-                      <span className="font-medium">{job.salary}</span>
+                      <span className="font-medium">{displayJob.salary}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600">Contract Type</span>
-                      <span className="font-medium">{job.contractType}</span>
+                      <span className="font-medium">{displayJob.contractType}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600">Work Mode</span>
-                      <span className="font-medium">{job.workMode}</span>
+                      <span className="font-medium">{displayJob.workMode}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600">Posted</span>
-                      <span className="font-medium">{job.posted}</span>
+                      <span className="font-medium">{displayJob.posted}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -329,6 +383,35 @@ Requirements:
     }
   };
 
+  // Use job state or default job for display
+  const displayJob = job || defaultJob;
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading job details...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <span className="text-red-800 font-medium">{error}</span>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       {/* Header */}
@@ -360,24 +443,24 @@ Requirements:
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
               <div className="flex items-center space-x-3 mb-2">
-                <h1 className="text-2xl font-bold text-gray-900">{job.title}</h1>
-                <Star className={`h-5 w-5 ${getPriorityColor(job.priority)}`} />
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(job.status)}`}>
-                  {job.status}
+                <h1 className="text-2xl font-bold text-gray-900">{displayJob.title}</h1>
+                <Star className={`h-5 w-5 ${getPriorityColor(displayJob.priority)}`} />
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(displayJob.status)}`}>
+                  {displayJob.status}
                 </span>
               </div>
               <div className="flex items-center space-x-6 text-gray-600 mb-4">
                 <div className="flex items-center">
                   <Building2 className="h-4 w-4 mr-2" />
-                  <span>{job.company}</span>
+                  <span>{displayJob.company}</span>
                 </div>
                 <div className="flex items-center">
                   <MapPin className="h-4 w-4 mr-2" />
-                  <span>{job.location}</span>
+                  <span>{displayJob.location}</span>
                 </div>
                 <div className="flex items-center">
                   <Calendar className="h-4 w-4 mr-2" />
-                  <span>Posted {job.posted}</span>
+                  <span>Posted {displayJob.posted}</span>
                 </div>
               </div>
             </div>
@@ -386,19 +469,19 @@ Requirements:
           {/* Quick Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{job.applications}</div>
+              <div className="text-2xl font-bold text-gray-900">{displayJob.applications}</div>
               <div className="text-sm text-gray-500">Applications</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{job.candidates}</div>
+              <div className="text-2xl font-bold text-gray-900">{displayJob.candidates}</div>
               <div className="text-sm text-gray-500">In Pipeline</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{job.daysToFill}</div>
+              <div className="text-2xl font-bold text-gray-900">{displayJob.daysToFill}</div>
               <div className="text-sm text-gray-500">Days Active</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{job.slaProgress}%</div>
+              <div className="text-2xl font-bold text-gray-900">{displayJob.slaProgress}%</div>
               <div className="text-sm text-gray-500">SLA Progress</div>
             </div>
           </div>

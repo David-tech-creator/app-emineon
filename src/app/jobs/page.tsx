@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/Button';
@@ -31,7 +31,10 @@ import {
   ChevronDown,
   Star,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Edit,
+  Trash2,
+  Copy
 } from 'lucide-react';
 
 export default function JobsPage() {
@@ -42,82 +45,68 @@ export default function JobsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [showAddCandidateModal, setShowAddCandidateModal] = useState(false);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [editingJob, setEditingJob] = useState<any>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
 
-  // Mock data for jobs
-  const mockJobs = [
-    {
-      id: '1',
-      title: 'Senior Software Engineer',
-      company: 'Credit Suisse',
-      location: 'Zurich, Switzerland',
-      contractType: 'Permanent',
-      workMode: 'Hybrid',
-      status: 'Active',
-      priority: 'High',
-      candidates: 24,
-      applications: 156,
-      daysToFill: 12,
-      slaProgress: 75,
-      skills: ['React', 'TypeScript', 'Node.js', 'AWS'],
-      salary: 'CHF 120,000 - 150,000',
-      posted: '2 days ago',
-      owner: 'Sarah Chen',
-      pipeline: {
-        applied: 156,
-        screening: 24,
-        interview: 8,
-        offer: 2
+  // Fetch jobs from API
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/jobs');
+        if (response.ok) {
+          const data = await response.json();
+          // Handle both old array format and new paginated format
+          const jobsData = Array.isArray(data) ? data : data.jobs || [];
+          setJobs(jobsData);
+        } else {
+          setError('Failed to fetch jobs');
+        }
+      } catch (err) {
+        setError('Error fetching jobs');
+        console.error('Error fetching jobs:', err);
+      } finally {
+        setLoading(false);
       }
-    },
-    {
-      id: '2',
-      title: 'Product Manager',
-      company: 'UBS',
-      location: 'Basel, Switzerland',
-      contractType: 'Permanent',
-      workMode: 'Remote',
-      status: 'Active',
-      priority: 'Medium',
-      candidates: 18,
-      applications: 89,
-      daysToFill: 8,
-      slaProgress: 60,
-      skills: ['Product Strategy', 'Agile', 'Analytics', 'Leadership'],
-      salary: 'CHF 110,000 - 140,000',
-      posted: '1 week ago',
-      owner: 'Marcus Weber',
-      pipeline: {
-        applied: 89,
-        screening: 18,
-        interview: 5,
-        offer: 1
-      }
-    },
-    {
-      id: '3',
-      title: 'Data Scientist',
-      company: 'Nestlé',
-      location: 'Vevey, Switzerland',
-      contractType: 'Contract',
-      workMode: 'On-site',
-      status: 'Draft',
-      priority: 'High',
-      candidates: 0,
-      applications: 0,
-      daysToFill: 0,
-      slaProgress: 0,
-      skills: ['Python', 'Machine Learning', 'SQL', 'Statistics'],
-      salary: 'CHF 95,000 - 125,000',
-      posted: 'Draft',
-      owner: 'Anna Müller',
-      pipeline: {
-        applied: 0,
-        screening: 0,
-        interview: 0,
-        offer: 0
-      }
+    };
+
+    fetchJobs();
+  }, []);
+
+  // Transform API data to match UI expectations
+  const transformJob = (job: any) => ({
+    id: job.id,
+    title: job.title,
+    company: 'Emineon ATS', // Default company for now
+    location: job.location,
+    contractType: job.employmentType?.[0] || 'Permanent',
+    workMode: job.isRemote ? 'Remote' : 'Hybrid',
+    status: job.status === 'ACTIVE' ? 'Active' : job.status === 'DRAFT' ? 'Draft' : job.status,
+    priority: 'Medium', // Default priority
+    candidates: job._count?.applications || 0,
+    applications: job._count?.applications || 0,
+    daysToFill: Math.floor((new Date().getTime() - new Date(job.createdAt).getTime()) / (1000 * 60 * 60 * 24)),
+    slaProgress: 50, // Default progress
+    skills: job.requirements?.filter((req: string) => req.startsWith('Skill:')).map((req: string) => req.replace('Skill: ', '')) || [],
+    salary: job.salaryMin && job.salaryMax 
+      ? `${job.salaryCurrency} ${(job.salaryMin / 1000).toFixed(0)}k - ${(job.salaryMax / 1000).toFixed(0)}k`
+      : job.salaryMin 
+        ? `${job.salaryCurrency} ${(job.salaryMin / 1000).toFixed(0)}k+`
+        : 'Salary not specified',
+    posted: new Date(job.createdAt).toLocaleDateString(),
+    owner: 'David V', // Default owner
+    pipeline: {
+      applied: job._count?.applications || 0,
+      screening: 0,
+      interview: 0,
+      offer: 0
     }
-  ];
+  });
 
   // Mock stats data with clickable filters
   const stats = [
@@ -144,7 +133,80 @@ export default function JobsPage() {
     setShowAddCandidateModal(true);
   };
 
-  const filteredJobs = mockJobs.filter(job => {
+  const handleEditJob = (job: any) => {
+    setEditingJob(job);
+    setShowEditModal(true);
+    setOpenDropdown(null);
+  };
+
+  const handleDeleteJob = async (jobId: string) => {
+    if (!confirm('Are you sure you want to delete this job? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setDeletingJobId(jobId);
+      const response = await fetch(`/api/jobs/${jobId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Remove job from local state
+        setJobs(prev => prev.filter(job => job.id !== jobId));
+        alert('Job deleted successfully');
+      } else {
+        const errorData = await response.json();
+        alert(`Error deleting job: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting job:', error);
+      alert('Error deleting job. Please try again.');
+    } finally {
+      setDeletingJobId(null);
+      setOpenDropdown(null);
+    }
+  };
+
+  const handleDuplicateJob = (job: any) => {
+    // Create a copy of the job data for the create modal
+    const duplicateData = {
+      title: `${job.title} (Copy)`,
+      company: job.company,
+      location: job.location,
+      contractType: job.contractType,
+      workMode: job.workMode,
+      description: job.description,
+      skills: job.skills,
+      salary: job.salary,
+      department: job.department,
+      status: 'draft', // Always start as draft
+    };
+    
+    // You could set this data in the create modal if it supports pre-filling
+    setShowCreateModal(true);
+    setOpenDropdown(null);
+  };
+
+  const toggleDropdown = (jobId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setOpenDropdown(openDropdown === jobId ? null : jobId);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setOpenDropdown(null);
+    };
+
+    if (openDropdown) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [openDropdown]);
+
+  const transformedJobs = jobs.map(transformJob);
+  
+  const filteredJobs = transformedJobs.filter((job: any) => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          job.location.toLowerCase().includes(searchTerm.toLowerCase());
@@ -303,9 +365,52 @@ export default function JobsPage() {
         </CardContent>
       </Card>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading jobs...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <span className="text-red-800 font-medium">{error}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && !error && filteredJobs.length === 0 && (
+        <div className="text-center py-12">
+          <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
+          <p className="text-gray-600 mb-6">
+            {jobs.length === 0 
+              ? "Get started by creating your first job posting." 
+              : "Try adjusting your search criteria or filters."}
+          </p>
+          {jobs.length === 0 && (
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              className="btn-primary"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create First Job
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Jobs List */}
-      <div className={viewMode === 'grid' ? 'grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6' : 'space-y-4'}>
-        {filteredJobs.map((job) => (
+      {!loading && !error && filteredJobs.length > 0 && (
+        <div className={viewMode === 'grid' ? 'grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6' : 'space-y-4'}>
+          {filteredJobs.map((job) => (
           <Card key={job.id} className={`bg-white shadow-sm hover:shadow-md transition-shadow ${viewMode === 'grid' ? 'h-fit' : ''}`}>
             <CardContent className={viewMode === 'grid' ? 'p-5' : 'p-6'}>
               {/* Header */}
@@ -332,9 +437,43 @@ export default function JobsPage() {
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
                     {job.status}
                   </span>
-                  <button className="p-1 hover:bg-gray-100 rounded">
-                    <MoreHorizontal className="h-4 w-4 text-gray-400" />
-                  </button>
+                  <div className="relative">
+                    <button 
+                      className="p-1 hover:bg-gray-100 rounded"
+                      onClick={(e) => toggleDropdown(job.id, e)}
+                    >
+                      <MoreHorizontal className="h-4 w-4 text-gray-400" />
+                    </button>
+                    
+                    {/* Dropdown Menu */}
+                    {openDropdown === job.id && (
+                      <div className="absolute right-0 top-8 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+                        <button
+                          onClick={() => handleEditJob(job)}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit Job
+                        </button>
+                        <button
+                          onClick={() => handleDuplicateJob(job)}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                        >
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicate Job
+                        </button>
+                        <hr className="my-1" />
+                        <button
+                          onClick={() => handleDeleteJob(job.id)}
+                          disabled={deletingJobId === job.id}
+                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center disabled:opacity-50"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          {deletingJobId === job.id ? 'Deleting...' : 'Delete Job'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -421,7 +560,7 @@ export default function JobsPage() {
               {/* Skills */}
               <div className="mb-4">
                 <div className="flex flex-wrap gap-1">
-                  {job.skills.slice(0, viewMode === 'grid' ? 2 : 3).map((skill, index) => (
+                                              {job.skills.slice(0, viewMode === 'grid' ? 2 : 3).map((skill: string, index: number) => (
                     <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
                       {skill}
                     </span>
@@ -489,33 +628,23 @@ export default function JobsPage() {
             </CardContent>
           </Card>
         ))}
-      </div>
-
-      {filteredJobs.length === 0 && (
-        <Card className="bg-white shadow-sm">
-          <CardContent className="p-12 text-center">
-            <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
-            <p className="text-gray-500 mb-6">
-              {searchTerm || selectedFilter !== 'all' 
-                ? 'Try adjusting your search or filters'
-                : 'Get started by creating your first job posting'
-              }
-            </p>
-            {!searchTerm && selectedFilter === 'all' && (
-              <Button onClick={() => setShowCreateModal(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Job
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        </div>
       )}
 
       {/* Create Job Modal */}
       <CreateJobModal 
         open={showCreateModal} 
         onClose={() => setShowCreateModal(false)} 
+      />
+
+      {/* Edit Job Modal */}
+      <CreateJobModal 
+        open={showEditModal} 
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingJob(null);
+        }}
+        editingJob={editingJob}
       />
 
       {/* Add Candidate Modal */}

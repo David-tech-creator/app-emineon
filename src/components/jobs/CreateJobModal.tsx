@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -114,6 +114,7 @@ type JobFormData = z.infer<typeof jobSchema>;
 interface CreateJobModalProps {
   open: boolean;
   onClose: () => void;
+  editingJob?: any;
 }
 
 const contractTypes = [
@@ -146,7 +147,7 @@ const popularJobTitles = [
   'Full Stack Developer',
 ];
 
-export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
+export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProps) {
   const router = useRouter();
   const { user } = useUser();
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -287,6 +288,44 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
       setCustomStyleConfig(preset);
     }
   };
+
+  // Effect to populate form when editing
+  useEffect(() => {
+    if (editingJob && open) {
+      console.log('Populating form for editing:', editingJob);
+      
+      // Set form values from editing job
+      setValue('title', editingJob.title || '');
+      setValue('company', editingJob.company || '');
+      setValue('location', editingJob.location || '');
+      setValue('contractType', editingJob.contractType?.toLowerCase() || 'permanent');
+      setValue('workMode', editingJob.workMode?.toLowerCase() || 'hybrid');
+      setValue('description', editingJob.description || '');
+      setValue('salary', editingJob.salary || '');
+      setValue('department', editingJob.department || '');
+      setValue('owner', editingJob.owner || user?.fullName || '');
+      setValue('skills', editingJob.skills || []);
+      setValue('status', editingJob.status?.toLowerCase() || 'draft');
+      
+      // Skip template selection and go directly to review for editing
+      setCurrentStep('review');
+      setParsedData({
+        title: editingJob.title,
+        company: editingJob.company,
+        location: editingJob.location,
+        contractType: editingJob.contractType?.toLowerCase(),
+        workMode: editingJob.workMode?.toLowerCase(),
+        description: editingJob.description,
+        salary: editingJob.salary,
+        department: editingJob.department,
+        skills: editingJob.skills || [],
+      });
+    } else if (open && !editingJob) {
+      // Reset for new job creation
+      setCurrentStep('template');
+      setParsedData(null);
+    }
+  }, [editingJob, open, setValue, user]);
 
   const filteredTemplates = jobTemplates.filter(template => {
     const matchesCategory = selectedCategory === 'All' || template.category === selectedCategory;
@@ -823,21 +862,27 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     try {
-      // Map form data to API schema
+      // Map form data to new API schema
       const apiData = {
         title: data.title,
-        client: data.company, // Map company to client
+        company: data.company,
         location: data.location,
         contractType: data.contractType,
+        workMode: data.workMode,
         startDate: data.startDate,
+        duration: data.duration,
+        salary: data.salary,
         status: data.status || 'draft',
         description: data.description,
-        requirements: data.skills?.join(', ') || '',
-        salaryMin: data.salary ? parseInt(data.salary.split('-')[0]?.replace(/[^\d]/g, '')) : undefined,
-        salaryMax: data.salary ? parseInt(data.salary.split('-')[1]?.replace(/[^\d]/g, '')) : undefined,
-        currency: 'CHF',
-        remote: data.workMode === 'remote',
-        urgent: data.priority === 'high'
+        skills: data.skills || [],
+        languages: data.languages || [],
+        department: data.department,
+        priority: data.priority,
+        owner: data.owner,
+        requirements: data.requirements || [],
+        responsibilities: data.responsibilities || [],
+        benefits: data.benefits || [],
+        experienceLevel: data.experienceLevel,
       };
 
       console.log('Form data:', data);
@@ -849,8 +894,12 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
         apiData.contractType = 'permanent';
       }
 
-      const response = await fetch('/api/jobs', {
-        method: 'POST',
+      const isEditing = !!editingJob;
+      const url = isEditing ? `/api/jobs/${editingJob.id}` : '/api/jobs';
+      const method = isEditing ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -858,16 +907,24 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
       });
 
       if (response.ok) {
-        const newJob = await response.json();
+        const job = await response.json();
+        console.log(`Job ${isEditing ? 'updated' : 'created'} successfully:`, job);
         setCurrentStep('success');
         // Store job data for success screen
-        setCreatedJob(newJob);
+        setCreatedJob(job);
+        
+        // Refresh the jobs page if we're on it
+        if (window.location.pathname === '/jobs') {
+          window.location.reload();
+        }
       } else {
         const errorData = await response.json();
         console.error('API Error:', errorData);
+        alert(`Error ${isEditing ? 'updating' : 'creating'} job: ${errorData.error}`);
       }
     } catch (error) {
-      console.error('Error creating job:', error);
+      console.error(`Error ${editingJob ? 'updating' : 'creating'} job:`, error);
+      alert(`Error ${editingJob ? 'updating' : 'creating'} job. Please try again.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -911,13 +968,19 @@ export function CreateJobModal({ open, onClose }: CreateJobModalProps) {
               <Briefcase className="h-6 w-6 text-primary-600" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Create a Job</h2>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {editingJob ? 'Edit Job' : 'Create a Job'}
+              </h2>
               <p className="text-gray-600">
-                {currentStep === 'template' && 'Choose a template that matches your job posting style'}
-                {currentStep === 'intake' && 'Chat with AI to create your job posting'}
-                {currentStep === 'parsing' && 'Analyzing your job description...'}
-                {currentStep === 'review' && 'Review and edit the extracted information'}
-                {currentStep === 'configure' && 'Configure job settings and publish'}
+                {editingJob ? 'Update job details and settings' : (
+                  <>
+                    {currentStep === 'template' && 'Choose a template that matches your job posting style'}
+                    {currentStep === 'intake' && 'Chat with AI to create your job posting'}
+                    {currentStep === 'parsing' && 'Analyzing your job description...'}
+                    {currentStep === 'review' && 'Review and edit the extracted information'}
+                    {currentStep === 'configure' && 'Configure job settings and publish'}
+                  </>
+                )}
               </p>
             </div>
           </div>

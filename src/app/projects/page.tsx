@@ -199,7 +199,7 @@ export default function ProjectsPage() {
               </Button>
               <Button 
                 onClick={() => setShowCreateModal(true)}
-                className="bg-blue-600 hover:bg-blue-700"
+                variant="primary"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 New Project
@@ -370,7 +370,7 @@ export default function ProjectsPage() {
               {!searchTerm && !statusFilter && !urgencyFilter && (
                 <Button 
                   onClick={() => setShowCreateModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  variant="primary"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Create First Project

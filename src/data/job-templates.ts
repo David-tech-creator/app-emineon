@@ -130,6 +130,47 @@ export const colorPalettes = [
 
 // Predefined style presets
 export const stylePresets: Record<string, StyleConfig> = {
+  emineon: {
+    titleFont: 'Inter',
+    titleSize: '2.5rem',
+    titleWeight: '800',
+    titleColor: '#0A2F5A', // Primary Deep Navy Blue
+    
+    subtitleFont: 'Inter',
+    subtitleSize: '1.375rem',
+    subtitleWeight: '600',
+    subtitleColor: '#444B54', // Secondary Steel Gray
+    
+    bodyFont: 'Inter',
+    bodySize: '1.125rem',
+    bodyWeight: '400',
+    bodyColor: '#6C757D', // Neutral gray for readability
+    
+    primaryColor: '#0A2F5A', // Deep Navy Blue
+    secondaryColor: '#C75B12', // Burnt Orange accent
+    accentColor: '#008080', // Teal for highlights
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E1E9F1', // Primary-100
+    
+    spacing: 'normal',
+    borderRadius: '12px',
+    borderWidth: '2px',
+    
+    sectionHeaderFont: 'Inter',
+    sectionHeaderSize: '1.25rem',
+    sectionHeaderWeight: '700',
+    sectionHeaderColor: '#0A2F5A',
+    sectionHeaderBackground: 'linear-gradient(135deg, #F0F4F8 0%, #E1E9F1 100%)', // Primary gradient
+    
+    bulletStyle: 'custom',
+    bulletColor: '#C75B12', // Burnt Orange bullets
+    listIndent: '1.75rem',
+    
+    tagBackground: '#F0F4F8', // Primary-50
+    tagColor: '#0A2F5A', // Primary
+    tagBorder: '#C3D3E3', // Primary-200
+    tagBorderRadius: '8px'
+  },
   modern: {
     titleFont: 'Inter',
     titleSize: '2rem',
@@ -302,6 +343,100 @@ export const stylePresets: Record<string, StyleConfig> = {
 
 
 export const jobTemplates: JobTemplate[] = [
+  {
+    id: 'emineon-professional',
+    name: 'Emineon Professional',
+    description: 'Premium Emineon template with sophisticated design and professional styling',
+    category: 'Professional',
+    industry: 'All Industries',
+    colorHex: '#0A2F5A',
+    font: 'Inter',
+    previewImage: '/templates/emineon-professional-preview.png',
+    styleConfig: {
+      // Typography - Matching Emineon competence file exactly
+      titleFont: 'Inter',
+      titleSize: '2.5rem',
+      titleWeight: '700',
+      titleColor: '#0A2F5A', // Deep Navy Blue
+      
+      subtitleFont: 'Inter',
+      subtitleSize: '1.375rem',
+      subtitleWeight: '600',
+      subtitleColor: '#444B54', // Steel Gray
+      
+      bodyFont: 'Inter',
+      bodySize: '1.125rem',
+      bodyWeight: '400',
+      bodyColor: '#6C757D', // Neutral gray for readability
+      
+      // Colors - Exact Emineon brand palette
+      primaryColor: '#0A2F5A', // Deep Navy Blue
+      secondaryColor: '#C75B12', // Burnt Orange (corrected from original)
+      accentColor: '#008080', // Teal
+      backgroundColor: '#FFFFFF',
+      borderColor: '#E1E9F1', // Primary-100
+      
+      // Layout
+      spacing: 'normal',
+      borderRadius: '12px',
+      borderWidth: '2px',
+      
+      // Section styling - Matching competence file
+      sectionHeaderFont: 'Inter',
+      sectionHeaderSize: '1.25rem',
+      sectionHeaderWeight: '700',
+      sectionHeaderColor: '#0A2F5A',
+      sectionHeaderBackground: 'linear-gradient(135deg, #F0F4F8 0%, #E1E9F1 100%)',
+      
+      // List styling - Orange bullets like competence file
+      bulletStyle: 'custom',
+      bulletColor: '#C75B12', // Burnt Orange bullets
+      listIndent: '1.75rem',
+      
+      // Skills/Tags styling
+      tagBackground: '#F0F4F8', // Primary-50
+      tagColor: '#0A2F5A', // Primary
+      tagBorder: '#C3D3E3', // Primary-200
+      tagBorderRadius: '8px'
+    },
+    sections: [
+      { key: 'title', label: 'Position Title', show: true, order: 1 },
+      { key: 'company', label: 'Company Information', show: true, order: 2 },
+      { key: 'location', label: 'Location & Work Mode', show: true, order: 3 },
+      { key: 'description', label: 'Role Overview', show: true, order: 4 },
+      { key: 'responsibilities', label: 'Key Responsibilities', show: true, order: 5 },
+      { key: 'requirements', label: 'Requirements & Qualifications', show: true, order: 6 },
+      { key: 'skills', label: 'Required Skills & Competencies', show: true, order: 7 },
+      { key: 'benefits', label: 'Benefits & Compensation', show: true, order: 8 },
+      { key: 'salary', label: 'Salary Range', show: true, order: 9 },
+      { key: 'languages', label: 'Language Requirements', show: true, order: 10 },
+    ],
+    sampleContent: {
+      title: 'Senior Software Engineer',
+      description: 'Join our innovative team to build cutting-edge solutions that drive digital transformation. We are seeking a passionate engineer who thrives in a collaborative environment and is committed to delivering exceptional results.',
+      responsibilities: [
+        'Design and develop scalable software solutions using modern technologies',
+        'Collaborate with cross-functional teams to define and implement new features',
+        'Participate in code reviews and maintain high-quality coding standards',
+        'Mentor junior developers and contribute to technical decision-making',
+        'Drive continuous improvement initiatives and technical innovation'
+      ],
+      requirements: [
+        'Bachelor\'s degree in Computer Science, Engineering, or related field',
+        '5+ years of professional software development experience',
+        'Strong expertise in modern programming languages and frameworks',
+        'Experience with cloud platforms and microservices architecture',
+        'Excellent problem-solving skills and attention to detail'
+      ],
+      benefits: [
+        'Competitive salary with performance-based bonuses',
+        'Comprehensive health insurance and wellness programs',
+        'Flexible work arrangements and remote work options',
+        'Professional development budget and learning opportunities',
+        'Stock options and retirement savings plan'
+      ]
+    }
+  },
   {
     id: 'tech-startup',
     name: 'Tech Startup',
@@ -631,6 +766,7 @@ export const jobTemplates: JobTemplate[] = [
 
 export const jobTemplateCategories = [
   'All',
+  'Professional',
   'Technology',
   'Finance',
   'Consulting',

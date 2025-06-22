@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const search = searchParams.get('search');
     const department = searchParams.get('department');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
 
     const where: any = {};
 
@@ -38,8 +40,34 @@ export async function GET(request: NextRequest) {
       where.department = department;
     }
 
-    // Temporarily return empty jobs list due to schema mismatch
-    return NextResponse.json([]);
+    const jobs = await prisma.job.findMany({
+      where,
+      include: {
+        applications: true,
+        _count: {
+          select: {
+            applications: true,
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    const total = await prisma.job.count({ where });
+
+    return NextResponse.json({
+      jobs,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     console.error('Error fetching jobs:', error);
     return NextResponse.json(
@@ -51,18 +79,25 @@ export async function GET(request: NextRequest) {
 
 const createJobSchema = z.object({
   title: z.string().min(1, 'Job title is required'),
-  client: z.string().optional(),
+  company: z.string().optional(),
   location: z.string().min(1, 'Location is required'),
   contractType: z.enum(['permanent', 'freelance', 'fixed-term', 'internship']),
+  workMode: z.enum(['on-site', 'remote', 'hybrid']).optional(),
   startDate: z.string().optional(),
-  status: z.enum(['draft', 'active', 'paused', 'closed']).default('draft'),
-  description: z.string().optional(),
-  requirements: z.string().optional(),
-  salaryMin: z.number().optional(),
-  salaryMax: z.number().optional(),
-  currency: z.string().default('CHF'),
-  remote: z.boolean().default(false),
-  urgent: z.boolean().default(false),
+  duration: z.string().optional(),
+  salary: z.string().optional(),
+  status: z.enum(['draft', 'active']).default('draft'),
+  description: z.string().min(10, 'Description must be at least 10 characters'),
+  skills: z.array(z.string()).default([]),
+  languages: z.array(z.string()).default([]),
+  department: z.string().optional(),
+  priority: z.enum(['low', 'medium', 'high']).default('medium'),
+  owner: z.string().min(1, 'Job owner is required'),
+  requirements: z.array(z.string()).optional(),
+  responsibilities: z.array(z.string()).optional(),
+  benefits: z.array(z.string()).optional(),
+  experienceLevel: z.string().optional(),
+  projectId: z.string().optional(),
 });
 
 // POST /api/jobs - Create a new job
@@ -75,34 +110,79 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    console.log('Creating job with data:', body);
+    
     const validatedData = createJobSchema.parse(body);
 
-    // Map form data to Job model fields
+    // Parse salary range if provided
+    let salaryMin: number | undefined;
+    let salaryMax: number | undefined;
+    let salaryCurrency = 'CHF';
+
+    if (validatedData.salary) {
+      const salaryMatch = validatedData.salary.match(/(\w+)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:[-–to]\s*(\d+(?:,\d+)*(?:\.\d+)?))?/i);
+      if (salaryMatch) {
+        if (salaryMatch[1]) salaryCurrency = salaryMatch[1];
+        salaryMin = parseFloat(salaryMatch[2].replace(/,/g, '')) * 1000; // Assume values are in thousands
+        if (salaryMatch[3]) {
+          salaryMax = parseFloat(salaryMatch[3].replace(/,/g, '')) * 1000;
+        }
+      }
+    }
+
+    // Map employment type
+    const employmentTypeMap: Record<string, string> = {
+      'permanent': 'FULL_TIME',
+      'freelance': 'FREELANCE',
+      'fixed-term': 'CONTRACT',
+      'internship': 'INTERNSHIP'
+    };
+
+    // Generate public token for job applications
+    const publicToken = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Create job data matching Prisma schema
     const jobData = {
       title: validatedData.title,
-      description: validatedData.description || '',
-      department: 'General', // Default department
+      description: validatedData.description,
+      department: validatedData.department || 'General',
       location: validatedData.location,
-      status: validatedData.status?.toUpperCase() as any || 'DRAFT',
-      salaryMin: validatedData.salaryMin,
-      salaryMax: validatedData.salaryMax,
-      salaryCurrency: validatedData.currency,
-      isRemote: validatedData.remote,
-      employmentType: [validatedData.contractType],
-      requirements: validatedData.requirements ? [validatedData.requirements] : [],
+      status: validatedData.status === 'active' ? 'ACTIVE' as const : 'DRAFT' as const,
+      salaryMin,
+      salaryMax,
+      salaryCurrency,
+      experienceLevel: validatedData.experienceLevel,
+      benefits: validatedData.benefits || [],
+      requirements: [
+        ...(validatedData.requirements || []),
+        ...(validatedData.skills || []).map(skill => `Skill: ${skill}`),
+        ...(validatedData.languages || []).map(lang => `Language: ${lang}`)
+      ],
+      responsibilities: validatedData.responsibilities || [],
+      isRemote: validatedData.workMode === 'remote',
+      publicToken,
+      employmentType: [employmentTypeMap[validatedData.contractType] || 'FULL_TIME'],
+      projectId: validatedData.projectId || undefined,
+      publishedAt: validatedData.status === 'active' ? new Date() : undefined,
     };
 
-    // Temporarily return mock job due to schema mismatch
-    const mockJob = {
-      id: `job_${Date.now()}`,
-      ...jobData,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      applications: [],
-      _count: { applications: 0 }
-    };
+    console.log('Creating job with processed data:', jobData);
 
-    return NextResponse.json(mockJob, { status: 201 });
+    const job = await prisma.job.create({
+      data: jobData,
+      include: {
+        applications: true,
+        _count: {
+          select: {
+            applications: true,
+          }
+        }
+      }
+    });
+
+    console.log('Job created successfully:', job.id);
+
+    return NextResponse.json(job, { status: 201 });
   } catch (error) {
     console.error('Error creating job:', error);
     
@@ -114,7 +194,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
