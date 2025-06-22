@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/Button';
 interface CreateCandidateModalProps {
   open: boolean;
   onClose: () => void;
+  jobId?: string; // Optional job ID to automatically assign candidate to
+  onCandidateCreated?: (candidate: any) => void; // Callback when candidate is created
 }
 
 type Step = 'intake' | 'parsing' | 'review' | 'assign';
@@ -64,7 +66,7 @@ interface ParsedCandidate {
   }>;
 }
 
-export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProps) {
+export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated }: CreateCandidateModalProps) {
   const [currentStep, setCurrentStep] = useState<Step>('intake');
   const [inputMethod, setInputMethod] = useState<'upload' | 'linkedin' | 'manual' | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -384,14 +386,40 @@ export function CreateCandidateModal({ open, onClose }: CreateCandidateModalProp
       const result = await response.json();
       
       if (result.success) {
-        setCreatedCandidate({
+        const createdCandidateData = {
           id: result.data.id,
           ...parsedCandidate,
           assignedJobs: selectedJobs,
           talentPools: selectedTalentPools,
           tags: candidateTags,
           notes
-        });
+        };
+        
+        setCreatedCandidate(createdCandidateData);
+        
+        // If jobId is provided, automatically assign candidate to job
+        if (jobId) {
+          try {
+            const assignResponse = await fetch(`/api/jobs/${jobId}/candidates`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ candidateId: result.data.id }),
+            });
+
+            if (assignResponse.ok) {
+              // Call the callback to refresh the candidates list
+              onCandidateCreated?.(createdCandidateData);
+              return; // Skip going to assign step
+            } else {
+              console.error('Failed to assign candidate to job');
+            }
+          } catch (error) {
+            console.error('Error assigning candidate to job:', error);
+          }
+        }
+        
         setCurrentStep('assign');
       } else {
         throw new Error(result.message || 'Failed to create candidate');

@@ -210,6 +210,51 @@ export function PipelineKanban({
     }
   };
 
+  // Show overall empty state if no candidates exist
+  if (candidates.length === 0) {
+    return (
+      <div className="space-y-6">
+        {/* Pipeline Controls - Simplified for empty state */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center space-x-2 text-gray-500">
+              <User className="h-5 w-5" />
+              <span className="font-medium">Candidate Pipeline</span>
+            </div>
+            <button 
+              onClick={onAddCandidate}
+              className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add First Candidate
+            </button>
+          </div>
+        </div>
+
+        {/* Empty State */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <User className="h-8 w-8 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No candidates yet</h3>
+          <p className="text-gray-600 mb-6 max-w-md mx-auto">
+            Start building your candidate pipeline by adding your first candidate. You can upload a CV, 
+            import from LinkedIn, or create manually.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button 
+              onClick={onAddCandidate}
+              className="flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Add Candidate
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Pipeline Controls */}

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { PipelineKanban } from '@/components/jobs/PipelineKanban';
 import { CandidateDrawer } from '@/components/jobs/CandidateDrawer';
+import { CreateCandidateModal } from '@/components/candidates/CreateCandidateModal';
 import {
   ArrowLeft,
   Edit,
@@ -36,6 +37,7 @@ export default function JobDetailPage() {
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCreateCandidateModal, setShowCreateCandidateModal] = useState(false);
 
   // Mock pipeline stages
   const pipelineStages = [
@@ -47,90 +49,22 @@ export default function JobDetailPage() {
     { id: 'hired', name: 'Hired', color: 'bg-green-100', count: 0, description: 'Successfully placed' }
   ];
 
-  // Mock candidates data
-  const mockCandidates = [
-    {
-      id: '1',
-      firstName: 'Sarah',
-      lastName: 'Johnson',
-      email: 'sarah.johnson@email.com',
-      phone: '+41 79 123 4567',
-      currentLocation: 'Zurich, Switzerland',
-      stage: 'sourced',
-      rating: 5,
-      avatar: undefined,
-      lastInteraction: '2 hours ago',
-      availability: 'Available immediately',
-      source: 'LinkedIn',
-      skills: ['React', 'TypeScript', 'Node.js', 'AWS', 'Docker'],
-      experience: '8 years',
-      currentRole: 'Senior Frontend Engineer at TechCorp',
-      notes: 'Excellent technical skills, strong leadership potential. Very interested in the role.',
-      resumeUrl: '/resumes/sarah-johnson.pdf',
-      expectedSalary: 'CHF 140,000 - 160,000',
-      noticePeriod: '2 weeks',
-      tags: ['Hot', 'Top Talent', 'Remote'],
-      timeline: [
-        { date: '2024-01-25', action: 'Profile sourced from LinkedIn', type: 'application' },
-        { date: '2024-01-24', action: 'Initial outreach sent', type: 'email' },
-        { date: '2024-01-23', action: 'Added to pipeline', type: 'stage_change' }
-      ]
-    },
-    {
-      id: '2',
-      firstName: 'David',
-      lastName: 'Chen',
-      email: 'david.chen@email.com',
-      phone: '+41 79 234 5678',
-      currentLocation: 'Basel, Switzerland',
-      stage: 'screened',
-      rating: 4,
-      avatar: undefined,
-      lastInteraction: '1 day ago',
-      availability: 'Available in 4 weeks',
-      source: 'Referral',
-      skills: ['Python', 'Django', 'PostgreSQL', 'Redis', 'Kubernetes'],
-      experience: '6 years',
-      currentRole: 'Backend Engineer at DataFlow',
-      notes: 'Strong backend experience, good cultural fit. Completed phone screening successfully.',
-      resumeUrl: '/resumes/david-chen.pdf',
-      expectedSalary: 'CHF 130,000 - 150,000',
-      noticePeriod: '4 weeks',
-      tags: ['Local', 'Referral'],
-      timeline: [
-        { date: '2024-01-24', action: 'Phone screening completed', type: 'interview' },
-        { date: '2024-01-22', action: 'Referred by John Smith', type: 'application' },
-        { date: '2024-01-21', action: 'Initial contact made', type: 'email' }
-      ]
-    },
-    {
-      id: '3',
-      firstName: 'Mike',
-      lastName: 'Rodriguez',
-      email: 'mike.rodriguez@email.com',
-      phone: '+41 79 345 6789',
-      currentLocation: 'Geneva, Switzerland',
-      stage: 'interviewing',
-      rating: 4,
-      avatar: undefined,
-      lastInteraction: '2 hours ago',
-      availability: 'Available March 2025',
-      source: 'Job Board',
-      skills: ['Java', 'Spring', 'Microservices', 'Kubernetes', 'MongoDB'],
-      experience: '7 years',
-      currentRole: 'Senior Engineer at BigTech',
-      notes: 'Technical interview scheduled for tomorrow. Strong system design skills.',
-      resumeUrl: '/resumes/mike-rodriguez.pdf',
-      expectedSalary: 'CHF 145,000 - 165,000',
-      noticePeriod: '3 weeks',
-      tags: ['Urgent'],
-      timeline: [
-        { date: '2024-01-25', action: 'Technical Interview Scheduled', type: 'scheduling' },
-        { date: '2024-01-23', action: 'First Interview Completed', type: 'interview' },
-        { date: '2024-01-21', action: 'Application Received', type: 'application' }
-      ]
+  // Fetch real candidates from the database
+  const fetchCandidates = async () => {
+    try {
+      const response = await fetch(`/api/jobs/${jobId}/candidates`);
+      if (response.ok) {
+        const candidateData = await response.json();
+        setCandidates(candidateData);
+      } else {
+        console.error('Failed to fetch candidates');
+        setCandidates([]);
+      }
+    } catch (error) {
+      console.error('Error fetching candidates:', error);
+      setCandidates([]);
     }
-  ];
+  };
 
   // Pipeline handlers
   const handleCandidateMove = (candidateId: string, newStage: string) => {
@@ -159,13 +93,8 @@ export default function JobDetailPage() {
   };
 
   const handleAddCandidate = () => {
-    console.log('Add candidate clicked');
+    setShowCreateCandidateModal(true);
   };
-
-  // Initialize candidates
-  useState(() => {
-    setCandidates(mockCandidates);
-  });
 
   // Fetch job data from API
   useEffect(() => {
@@ -211,6 +140,7 @@ export default function JobDetailPage() {
 
     if (jobId) {
       fetchJob();
+      fetchCandidates();
     }
   }, [jobId]);
 
@@ -552,6 +482,18 @@ Requirements:
           if (selectedCandidate?.id === candidateId) {
             setSelectedCandidate((prev: any) => ({ ...prev, notes }));
           }
+        }}
+      />
+
+      {/* Create Candidate Modal */}
+      <CreateCandidateModal
+        open={showCreateCandidateModal}
+        onClose={() => setShowCreateCandidateModal(false)}
+        jobId={jobId}
+        onCandidateCreated={(candidate) => {
+          // Refresh candidates list
+          fetchCandidates();
+          setShowCreateCandidateModal(false);
         }}
       />
     </Layout>
