@@ -16,115 +16,297 @@
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     
     <style>
+        /* Emineon Platform Design System - Exact Match */
         :root {
-            --emineon-primary: #2563eb;
-            --emineon-secondary: #1e40af;
-            --emineon-accent: #3b82f6;
-            --emineon-success: #059669;
-            --emineon-warning: #d97706;
-            --emineon-error: #dc2626;
-            --emineon-purple: #7c3aed;
-            --emineon-teal: #0d9488;
+            /* Primary Colors - Deep Navy Blue */
+            --emineon-primary: #0A2F5A;
+            --emineon-primary-50: #F0F4F8;
+            --emineon-primary-100: #E1E9F1;
+            --emineon-primary-200: #C3D3E3;
+            --emineon-primary-300: #A5BDD5;
+            --emineon-primary-400: #6691B9;
+            --emineon-primary-500: #0A2F5A;
+            --emineon-primary-600: #092951;
+            --emineon-primary-700: #072040;
+            --emineon-primary-800: #051730;
+            --emineon-primary-900: #040E20;
+            
+            /* Secondary Colors - Steel Gray */
+            --emineon-secondary: #444B54;
+            --emineon-secondary-50: #F8F9FA;
+            --emineon-secondary-100: #E9ECEF;
+            --emineon-secondary-200: #DEE2E6;
+            --emineon-secondary-300: #CED4DA;
+            --emineon-secondary-400: #ADB5BD;
+            --emineon-secondary-500: #6C757D;
+            --emineon-secondary-600: #495057;
+            --emineon-secondary-700: #444B54;
+            --emineon-secondary-800: #343A40;
+            --emineon-secondary-900: #232629;
+            
+            /* Accent Colors - Burnt Orange */
+            --emineon-accent: #C75B12;
+            --emineon-accent-50: #FEF4ED;
+            --emineon-accent-100: #FDE8D7;
+            --emineon-accent-200: #FBCEB0;
+            --emineon-accent-300: #F8B088;
+            --emineon-accent-400: #F4985F;
+            --emineon-accent-500: #C75B12;
+            --emineon-accent-600: #B8520F;
+            --emineon-accent-700: #A8490D;
+            --emineon-accent-800: #98400A;
+            --emineon-accent-900: #893708;
+            
+            /* Teal Colors - Balance & Sophistication */
+            --emineon-teal: #008080;
+            --emineon-teal-50: #E6F7F7;
+            --emineon-teal-100: #CCEEEE;
+            --emineon-teal-200: #99DDDD;
+            --emineon-teal-300: #66CCCC;
+            --emineon-teal-400: #33BBBB;
+            --emineon-teal-500: #008080;
+            --emineon-teal-600: #007373;
+            --emineon-teal-700: #006666;
+            --emineon-teal-800: #005959;
+            --emineon-teal-900: #004D4D;
+            
+            /* Neutral Colors - Off-White Balance */
+            --emineon-neutral: #F8F9FA;
+            --emineon-neutral-50: #FFFFFF;
+            --emineon-neutral-100: #F8F9FA;
+            --emineon-neutral-200: #E9ECEF;
+            --emineon-neutral-300: #DEE2E6;
+            --emineon-neutral-400: #CED4DA;
+            --emineon-neutral-500: #ADB5BD;
+            --emineon-neutral-600: #6C757D;
+            --emineon-neutral-700: #495057;
+            --emineon-neutral-800: #343A40;
+            --emineon-neutral-900: #232629;
+            
+            /* Functional Colors */
+            --emineon-success: #10B981;
+            --emineon-success-50: #ECFDF5;
+            --emineon-success-100: #D1FAE5;
+            --emineon-success-200: #A7F3D0;
+            --emineon-success-300: #6EE7B7;
+            --emineon-success-400: #34D399;
+            --emineon-success-500: #10B981;
+            --emineon-success-600: #059669;
+            --emineon-success-700: #047857;
+            --emineon-success-800: #065F46;
+            --emineon-success-900: #064E3B;
+            
+            --emineon-warning: #F59E0B;
+            --emineon-warning-50: #FFFBEB;
+            --emineon-warning-100: #FEF3C7;
+            --emineon-warning-200: #FDE68A;
+            --emineon-warning-300: #FCD34D;
+            --emineon-warning-400: #FBBF24;
+            --emineon-warning-500: #F59E0B;
+            --emineon-warning-600: #D97706;
+            --emineon-warning-700: #B45309;
+            --emineon-warning-800: #92400E;
+            --emineon-warning-900: #78350F;
+            
+            --emineon-error: #EF4444;
+            --emineon-error-50: #FEF2F2;
+            --emineon-error-100: #FEE2E2;
+            --emineon-error-200: #FECACA;
+            --emineon-error-300: #FCA5A5;
+            --emineon-error-400: #F87171;
+            --emineon-error-500: #EF4444;
+            --emineon-error-600: #DC2626;
+            --emineon-error-700: #B91C1C;
+            --emineon-error-800: #991B1B;
+            --emineon-error-900: #7F1D1D;
         }
         
+        /* Typography - Inter Font Family */
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-feature-settings: 'cv08', 'cv11';
+            color: var(--emineon-secondary-900);
+            background: var(--emineon-secondary-50);
+        }
+        
+        /* Emineon Platform Gradients */
         .emineon-gradient {
-            background: linear-gradient(135deg, var(--emineon-primary) 0%, var(--emineon-purple) 100%);
+            background: linear-gradient(135deg, var(--emineon-primary-600) 0%, var(--emineon-teal-600) 100%);
         }
         
+        .emineon-gradient-accent {
+            background: linear-gradient(135deg, var(--emineon-primary-500) 0%, var(--emineon-accent-500) 100%);
+        }
+        
+        /* Card Components - Platform Style */
         .emineon-card {
-            background: white;
-            border-radius: 8px;
+            background: var(--emineon-neutral-50);
+            border-radius: 12px;
+            border: 1px solid var(--emineon-secondary-200);
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            border: 1px solid #e5e7eb;
         }
         
-        .emineon-button {
-            background: var(--emineon-primary);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            padding: 6px 12px;
+        .emineon-card-elevated {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .emineon-card:hover {
+            box-shadow: 0 4px 12px -2px rgba(10, 47, 90, 0.15);
+            transform: translateY(-1px);
+            transition: all 0.2s ease-out;
+        }
+        
+        /* Button Components - Platform Style */
+        .btn-primary {
+            background: var(--emineon-primary-500);
+            color: var(--emineon-neutral-50);
             font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
             cursor: pointer;
-            transition: all 0.2s;
-            font-size: 12px;
+            transition: all 0.2s ease-out;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
         
-        .emineon-button:hover {
-            background: var(--emineon-secondary);
+        .btn-primary:hover {
+            background: var(--emineon-primary-600);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(10, 47, 90, 0.25);
+        }
+        
+        .btn-secondary {
+            background: var(--emineon-secondary-200);
+            color: var(--emineon-secondary-800);
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease-out;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-secondary:hover {
+            background: var(--emineon-secondary-300);
+        }
+        
+        .btn-teal {
+            background: var(--emineon-teal-500);
+            color: var(--emineon-neutral-50);
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease-out;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-teal:hover {
+            background: var(--emineon-teal-600);
             transform: translateY(-1px);
         }
         
-        .emineon-button-sm {
+        .btn-accent {
+            background: var(--emineon-accent-500);
+            color: var(--emineon-neutral-50);
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease-out;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-accent:hover {
+            background: var(--emineon-accent-600);
+            transform: translateY(-1px);
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .btn-xs {
             padding: 4px 8px;
             font-size: 11px;
         }
         
-        .emineon-button-secondary {
-            background: white;
-            color: var(--emineon-primary);
-            border: 1px solid var(--emineon-primary);
-        }
-        
-        .emineon-button-secondary:hover {
-            background: #eff6ff;
-        }
-        
+        /* Template Cards */
         .template-card {
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--emineon-secondary-200);
             border-radius: 8px;
             padding: 12px;
             cursor: pointer;
-            transition: all 0.2s;
-            background: white;
+            transition: all 0.2s ease-out;
+            background: var(--emineon-neutral-50);
         }
         
         .template-card:hover {
-            border-color: var(--emineon-primary);
-            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+            border-color: var(--emineon-primary-300);
+            box-shadow: 0 2px 8px rgba(10, 47, 90, 0.15);
+            transform: translateY(-1px);
         }
         
         .template-card.selected {
-            border-color: var(--emineon-primary);
-            background: #f8faff;
-            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+            border-color: var(--emineon-primary-500);
+            background: var(--emineon-primary-50);
+            box-shadow: 0 2px 8px rgba(10, 47, 90, 0.15);
         }
         
+        /* Category Buttons */
         .category-btn {
-            padding: 4px 12px;
+            padding: 6px 12px;
             border-radius: 20px;
             font-size: 11px;
             font-weight: 500;
-            border: 1px solid #e5e7eb;
-            background: white;
-            color: #6b7280;
+            border: 1px solid var(--emineon-secondary-200);
+            background: var(--emineon-neutral-50);
+            color: var(--emineon-secondary-600);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease-out;
         }
         
         .category-btn.active {
-            background: var(--emineon-primary);
-            color: white;
-            border-color: var(--emineon-primary);
+            background: var(--emineon-primary-500);
+            color: var(--emineon-neutral-50);
+            border-color: var(--emineon-primary-500);
         }
         
         .category-btn:hover {
-            border-color: var(--emineon-primary);
-            color: var(--emineon-primary);
+            border-color: var(--emineon-primary-300);
+            color: var(--emineon-primary-700);
         }
         
         .category-btn.active:hover {
-            color: white;
+            color: var(--emineon-neutral-50);
         }
         
+        /* AI Suggestion Card */
         .ai-suggestion-card {
-            background: linear-gradient(135deg, #f8faff 0%, #eff6ff 100%);
-            border: 1px solid #bfdbfe;
-            border-radius: 8px;
+            background: linear-gradient(135deg, var(--emineon-primary-50) 0%, var(--emineon-primary-100) 100%);
+            border: 1px solid var(--emineon-primary-200);
+            border-radius: 12px;
             padding: 12px;
             margin-bottom: 12px;
         }
         
+        /* Loading Animation */
         .loading-dots {
             display: inline-flex;
             align-items: center;
@@ -135,7 +317,7 @@
             width: 4px;
             height: 4px;
             border-radius: 50%;
-            background: var(--emineon-primary);
+            background: var(--emineon-primary-500);
             animation: loading-dots 1.4s infinite ease-in-out;
         }
         
@@ -147,39 +329,105 @@
             40% { transform: scale(1); opacity: 1; }
         }
         
-        .template-preview {
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 6px;
+        /* Platform Typography */
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--emineon-primary-900);
+            font-weight: 600;
+        }
+        
+        .text-primary { color: var(--emineon-primary-700); }
+        .text-secondary { color: var(--emineon-secondary-600); }
+        .text-muted { color: var(--emineon-secondary-500); }
+        
+        /* Section Headers */
+        .section-header {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--emineon-primary-900);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Input Fields */
+        .input-field {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--emineon-secondary-300);
+            border-radius: 8px;
+            background: var(--emineon-neutral-50);
+            color: var(--emineon-secondary-900);
+            font-size: 13px;
+            transition: all 0.2s ease-out;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: var(--emineon-primary-500);
+            box-shadow: 0 0 0 3px var(--emineon-primary-100);
+        }
+        
+        /* Textarea */
+        .textarea-field {
+            width: 100%;
             padding: 12px;
-            font-size: 12px;
-            line-height: 1.5;
-            max-height: 200px;
-            overflow-y: auto;
+            border: 1px solid var(--emineon-secondary-300);
+            border-radius: 8px;
+            background: var(--emineon-neutral-50);
+            color: var(--emineon-secondary-900);
+            font-size: 13px;
+            font-family: inherit;
+            resize: vertical;
+            transition: all 0.2s ease-out;
+            min-height: 100px;
         }
         
-        .fade-in {
-            animation: fadeIn 0.3s ease-out;
+        .textarea-field:focus {
+            outline: none;
+            border-color: var(--emineon-primary-500);
+            box-shadow: 0 0 0 3px var(--emineon-primary-100);
         }
         
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        /* Scrollbar */
+        .scrollbar-thin {
+            scrollbar-width: thin;
+            scrollbar-color: var(--emineon-secondary-300) var(--emineon-secondary-100);
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: var(--emineon-secondary-100);
+            border-radius: 3px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: var(--emineon-secondary-300);
+            border-radius: 3px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: var(--emineon-secondary-400);
         }
     </style>
 </head>
 
-<body class="bg-gray-50 font-sans text-sm">
+<body class="font-sans text-sm" style="background: var(--emineon-secondary-50);">
     <!-- Header -->
-    <div class="emineon-gradient text-white px-4 py-3">
+    <div class="emineon-gradient text-white px-4 py-4 sticky top-0 z-10">
         <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-2">
-                <div class="w-7 h-7 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                    <i data-lucide="mail" class="w-4 h-4"></i>
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                    <img src="https://res.cloudinary.com/emineon/image/upload/v1750591731/emineon-ats/icons/emineon-32.png" 
+                         alt="Emineon" class="w-6 h-6" />
                 </div>
                 <div>
-                    <h1 class="text-base font-bold">Email Templates</h1>
-                    <p class="text-xs opacity-90">AI-powered recruitment emails</p>
+                    <h1 class="text-base font-bold leading-tight">Email Templates</h1>
+                    <p class="text-xs opacity-90 uppercase tracking-wide font-medium">AI-powered recruitment emails</p>
                 </div>
             </div>
             <button id="customizeBtn" class="p-1.5 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-colors">
@@ -189,58 +437,28 @@
     </div>
 
     <!-- Main Content -->
-    <div class="flex-1 overflow-y-auto">
+    <div class="p-4 space-y-4 max-h-screen overflow-y-auto scrollbar-thin">
         
-        <!-- AI Email Generator -->
-        <div class="p-3 border-b bg-gradient-to-r from-blue-50 to-purple-50">
+        <!-- AI Template Generator -->
+        <div class="emineon-card p-4">
+            <div class="section-header">
+                <i data-lucide="sparkles" class="w-4 h-4 text-primary"></i>
+                AI Template Generator
+            </div>
+            
             <div class="ai-suggestion-card">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="font-semibold text-gray-900 text-sm flex items-center">
-                        <i data-lucide="sparkles" class="w-4 h-4 mr-2 text-purple-600"></i>
-                        AI Email Generator
-                    </h3>
-                    <button id="generateBtn" class="emineon-button emineon-button-sm">
-                        <i data-lucide="wand-2" class="w-3 h-3 mr-1"></i>
-                        Generate
-                    </button>
-                </div>
-                
-                <div class="space-y-3">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Email Purpose</label>
-                        <select id="emailPurpose" class="w-full border border-gray-300 rounded-md px-3 py-2 text-xs">
-                            <option value="">Select purpose...</option>
-                            <option value="initial_outreach">Initial candidate outreach</option>
-                            <option value="follow_up">Follow-up after application</option>
-                            <option value="interview_invite">Interview invitation</option>
-                            <option value="interview_reminder">Interview reminder</option>
-                            <option value="interview_feedback">Interview feedback</option>
-                            <option value="offer_letter">Job offer</option>
-                            <option value="rejection">Polite rejection</option>
-                            <option value="reference_check">Reference check request</option>
-                            <option value="onboarding">Onboarding information</option>
-                            <option value="check_in">General check-in</option>
-                        </select>
+                <div class="flex items-start space-x-2">
+                    <div class="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="wand" class="w-3 h-3 text-white"></i>
                     </div>
-                    
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Context & Details</label>
-                        <textarea 
-                            id="emailContext" 
-                            placeholder="E.g., Senior React Developer position, remote work, urgency level, salary range..."
-                            class="w-full border border-gray-300 rounded-md px-3 py-2 text-xs resize-none"
-                            rows="2"
-                        ></textarea>
-                    </div>
-                    
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <input type="checkbox" id="personalizeEmail" class="rounded text-xs">
-                            <label for="personalizeEmail" class="text-xs text-gray-700">Personalize with candidate info</label>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <input type="checkbox" id="urgentEmail" class="rounded text-xs">
-                            <label for="urgentEmail" class="text-xs text-gray-700">Mark as urgent</label>
+                    <div class="flex-1">
+                        <div class="text-xs font-medium text-primary mb-2">Generate Custom Template</div>
+                        <textarea id="templatePrompt" class="textarea-field" placeholder="Describe the email you want to create (e.g., 'Professional follow-up for senior developer candidate after interview')"></textarea>
+                        <div class="mt-2">
+                            <button id="generateTemplateBtn" class="btn-primary btn-sm">
+                                <i data-lucide="magic-wand" class="w-3 h-3"></i>
+                                Generate Template
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -248,190 +466,276 @@
         </div>
 
         <!-- Template Categories -->
-        <div class="p-3 border-b">
-            <h3 class="font-semibold text-gray-900 text-sm mb-3 flex items-center">
-                <i data-lucide="folder" class="w-4 h-4 mr-2 text-blue-600"></i>
+        <div class="emineon-card p-4">
+            <div class="section-header">
+                <i data-lucide="folder" class="w-4 h-4 text-primary"></i>
                 Template Categories
-            </h3>
+            </div>
             
-            <div class="flex flex-wrap gap-1">
-                <button class="category-btn active" data-category="all">All</button>
+            <div class="flex flex-wrap gap-2 mb-4">
+                <button class="category-btn active" data-category="all">All Templates</button>
                 <button class="category-btn" data-category="outreach">Outreach</button>
                 <button class="category-btn" data-category="follow-up">Follow-up</button>
                 <button class="category-btn" data-category="interview">Interview</button>
                 <button class="category-btn" data-category="offer">Offer</button>
                 <button class="category-btn" data-category="rejection">Rejection</button>
-                <button class="category-btn" data-category="reference">Reference</button>
-                <button class="category-btn" data-category="onboarding">Onboarding</button>
-            </div>
-        </div>
-
-        <!-- Search Bar -->
-        <div class="p-3 border-b">
-            <div class="relative">
-                <input 
-                    type="text" 
-                    id="searchTemplates" 
-                    placeholder="Search templates..."
-                    class="w-full border border-gray-300 rounded-md px-3 py-2 pl-8 text-xs"
-                >
-                <div class="absolute left-2 top-2.5">
-                    <i data-lucide="search" class="w-3 h-3 text-gray-400"></i>
-                </div>
             </div>
         </div>
 
         <!-- Template Library -->
-        <div class="p-3">
-            <div class="flex items-center justify-between mb-3">
-                <h3 class="font-semibold text-gray-900 text-sm flex items-center">
-                    <i data-lucide="library" class="w-4 h-4 mr-2 text-green-600"></i>
-                    Template Library
-                </h3>
-                <button id="createTemplateBtn" class="emineon-button-secondary emineon-button-sm">
-                    <i data-lucide="plus" class="w-3 h-3 mr-1"></i>
-                    Create
-                </button>
+        <div class="emineon-card p-4">
+            <div class="section-header">
+                <i data-lucide="mail" class="w-4 h-4 text-primary"></i>
+                Email Templates
+                <span class="ml-auto text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full">12 Available</span>
             </div>
             
-            <div id="templatesList" class="space-y-2">
+            <div id="templateGrid" class="space-y-3 max-h-64 overflow-y-auto scrollbar-thin">
+                
                 <!-- Outreach Templates -->
                 <div class="template-card" data-category="outreach" data-template="cold-outreach">
-                    <div class="flex items-start justify-between mb-2">
-                        <div>
-                            <h4 class="font-medium text-xs text-gray-900">Cold Outreach - Tech Roles</h4>
-                            <p class="text-xs text-gray-500">Professional introduction for technical positions</p>
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h4 class="text-sm font-semibold text-primary mb-1">Cold Outreach</h4>
+                            <p class="text-xs text-muted mb-2">Initial contact for passive candidates</p>
+                            <div class="flex items-center space-x-2">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-teal-100 text-teal-700">
+                                    <i data-lucide="users" class="w-3 h-3 mr-1"></i>
+                                    Outreach
+                                </span>
+                                <span class="text-xs text-muted">85% open rate</span>
+                            </div>
                         </div>
-                        <div class="flex items-center space-x-1">
-                            <span class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">Outreach</span>
-                            <button class="text-gray-400 hover:text-gray-600">
-                                <i data-lucide="star" class="w-3 h-3"></i>
-                            </button>
-                        </div>
+                        <button class="btn-secondary btn-xs">
+                            <i data-lucide="eye" class="w-3 h-3"></i>
+                            Preview
+                        </button>
                     </div>
-                    <div class="template-preview hidden">
-                        <p><strong>Subject:</strong> Exciting opportunity at [Company] - [Position]</p>
-                        <p><strong>Body:</strong> Hi [Name], I came across your profile and was impressed by your experience in [Technology]. We have an exciting opportunity at [Company] for a [Position] role that I think would be a great fit for your background...</p>
+                </div>
+
+                <div class="template-card" data-category="outreach" data-template="linkedin-connect">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h4 class="text-sm font-semibold text-primary mb-1">LinkedIn Connection</h4>
+                            <p class="text-xs text-muted mb-2">Professional networking outreach</p>
+                            <div class="flex items-center space-x-2">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-teal-100 text-teal-700">
+                                    <i data-lucide="users" class="w-3 h-3 mr-1"></i>
+                                    Outreach
+                                </span>
+                                <span class="text-xs text-muted">92% connect rate</span>
+                            </div>
+                        </div>
+                        <button class="btn-secondary btn-xs">
+                            <i data-lucide="eye" class="w-3 h-3"></i>
+                            Preview
+                        </button>
                     </div>
                 </div>
 
                 <!-- Follow-up Templates -->
                 <div class="template-card" data-category="follow-up" data-template="application-followup">
-                    <div class="flex items-start justify-between mb-2">
-                        <div>
-                            <h4 class="font-medium text-xs text-gray-900">Application Follow-up</h4>
-                            <p class="text-xs text-gray-500">Follow up after candidate application</p>
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h4 class="text-sm font-semibold text-primary mb-1">Application Follow-up</h4>
+                            <p class="text-xs text-muted mb-2">Follow-up after application submission</p>
+                            <div class="flex items-center space-x-2">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-accent-100 text-accent-700">
+                                    <i data-lucide="clock" class="w-3 h-3 mr-1"></i>
+                                    Follow-up
+                                </span>
+                                <span class="text-xs text-muted">78% response rate</span>
+                            </div>
                         </div>
-                        <div class="flex items-center space-x-1">
-                            <span class="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Follow-up</span>
-                            <button class="text-gray-400 hover:text-gray-600">
-                                <i data-lucide="star" class="w-3 h-3"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="template-preview hidden">
-                        <p><strong>Subject:</strong> Thank you for your application - [Position]</p>
-                        <p><strong>Body:</strong> Dear [Name], Thank you for your application for the [Position] role at [Company]. We've received your application and are currently reviewing all submissions. We'll be in touch within [Timeline] with next steps...</p>
+                        <button class="btn-secondary btn-xs">
+                            <i data-lucide="eye" class="w-3 h-3"></i>
+                            Preview
+                        </button>
                     </div>
                 </div>
 
                 <!-- Interview Templates -->
-                <div class="template-card" data-category="interview" data-template="interview-invite">
-                    <div class="flex items-start justify-between mb-2">
-                        <div>
-                            <h4 class="font-medium text-xs text-gray-900">Interview Invitation</h4>
-                            <p class="text-xs text-gray-500">Invite candidate for interview</p>
+                <div class="template-card" data-category="interview" data-template="interview-invitation">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h4 class="text-sm font-semibold text-primary mb-1">Interview Invitation</h4>
+                            <p class="text-xs text-muted mb-2">Professional interview scheduling</p>
+                            <div class="flex items-center space-x-2">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary-100 text-primary-700">
+                                    <i data-lucide="calendar" class="w-3 h-3 mr-1"></i>
+                                    Interview
+                                </span>
+                                <span class="text-xs text-muted">95% attendance</span>
+                            </div>
                         </div>
-                        <div class="flex items-center space-x-1">
-                            <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">Interview</span>
-                            <button class="text-gray-400 hover:text-gray-600">
-                                <i data-lucide="star" class="w-3 h-3"></i>
-                            </button>
-                        </div>
+                        <button class="btn-secondary btn-xs">
+                            <i data-lucide="eye" class="w-3 h-3"></i>
+                            Preview
+                        </button>
                     </div>
-                    <div class="template-preview hidden">
-                        <p><strong>Subject:</strong> Interview Invitation - [Position] at [Company]</p>
-                        <p><strong>Body:</strong> Hi [Name], We were impressed with your application for the [Position] role and would like to invite you for an interview. Are you available for a [Duration] interview on [Date] at [Time]?</p>
+                </div>
+
+                <div class="template-card" data-category="interview" data-template="interview-reminder">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h4 class="text-sm font-semibold text-primary mb-1">Interview Reminder</h4>
+                            <p class="text-xs text-muted mb-2">Friendly reminder 24h before interview</p>
+                            <div class="flex items-center space-x-2">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary-100 text-primary-700">
+                                    <i data-lucide="calendar" class="w-3 h-3 mr-1"></i>
+                                    Interview
+                                </span>
+                                <span class="text-xs text-muted">99% show rate</span>
+                            </div>
+                        </div>
+                        <button class="btn-secondary btn-xs">
+                            <i data-lucide="eye" class="w-3 h-3"></i>
+                            Preview
+                        </button>
                     </div>
                 </div>
 
                 <!-- Offer Templates -->
                 <div class="template-card" data-category="offer" data-template="job-offer">
-                    <div class="flex items-start justify-between mb-2">
-                        <div>
-                            <h4 class="font-medium text-xs text-gray-900">Job Offer</h4>
-                            <p class="text-xs text-gray-500">Formal job offer email</p>
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h4 class="text-sm font-semibold text-primary mb-1">Job Offer</h4>
+                            <p class="text-xs text-muted mb-2">Formal job offer presentation</p>
+                            <div class="flex items-center space-x-2">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-success-100 text-success-700">
+                                    <i data-lucide="check-circle" class="w-3 h-3 mr-1"></i>
+                                    Offer
+                                </span>
+                                <span class="text-xs text-muted">87% acceptance</span>
+                            </div>
                         </div>
-                        <div class="flex items-center space-x-1">
-                            <span class="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">Offer</span>
-                            <button class="text-gray-400 hover:text-gray-600">
-                                <i data-lucide="star" class="w-3 h-3"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="template-preview hidden">
-                        <p><strong>Subject:</strong> Job Offer - [Position] at [Company]</p>
-                        <p><strong>Body:</strong> Dear [Name], We are delighted to offer you the position of [Position] at [Company]. We believe your skills and experience make you an excellent fit for our team...</p>
+                        <button class="btn-secondary btn-xs">
+                            <i data-lucide="eye" class="w-3 h-3"></i>
+                            Preview
+                        </button>
                     </div>
                 </div>
 
                 <!-- Rejection Templates -->
                 <div class="template-card" data-category="rejection" data-template="polite-rejection">
-                    <div class="flex items-start justify-between mb-2">
-                        <div>
-                            <h4 class="font-medium text-xs text-gray-900">Polite Rejection</h4>
-                            <p class="text-xs text-gray-500">Professional rejection with encouragement</p>
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h4 class="text-sm font-semibold text-primary mb-1">Polite Rejection</h4>
+                            <p class="text-xs text-muted mb-2">Professional candidate rejection</p>
+                            <div class="flex items-center space-x-2">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-secondary-100 text-secondary-700">
+                                    <i data-lucide="x-circle" class="w-3 h-3 mr-1"></i>
+                                    Rejection
+                                </span>
+                                <span class="text-xs text-muted">Maintains relationships</span>
+                            </div>
                         </div>
-                        <div class="flex items-center space-x-1">
-                            <span class="text-xs px-2 py-1 bg-red-100 text-red-700 rounded">Rejection</span>
-                            <button class="text-gray-400 hover:text-gray-600">
-                                <i data-lucide="star" class="w-3 h-3"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="template-preview hidden">
-                        <p><strong>Subject:</strong> Update on your application - [Position]</p>
-                        <p><strong>Body:</strong> Dear [Name], Thank you for your interest in the [Position] role at [Company]. After careful consideration, we have decided to move forward with another candidate...</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Selected Template Preview -->
-            <div id="selectedTemplate" class="hidden mt-4 p-3 border-t">
-                <div class="flex items-center justify-between mb-3">
-                    <h4 class="font-semibold text-gray-900 text-sm">Template Preview</h4>
-                    <div class="flex space-x-1">
-                        <button id="customizeTemplateBtn" class="emineon-button-secondary emineon-button-sm">
-                            <i data-lucide="edit" class="w-3 h-3 mr-1"></i>
-                            Customize
-                        </button>
-                        <button id="useTemplateBtn" class="emineon-button emineon-button-sm">
-                            <i data-lucide="send" class="w-3 h-3 mr-1"></i>
-                            Use Template
+                        <button class="btn-secondary btn-xs">
+                            <i data-lucide="eye" class="w-3 h-3"></i>
+                            Preview
                         </button>
                     </div>
-                </div>
-                <div id="templatePreviewContent" class="template-preview">
-                    <!-- Template content will be inserted here -->
                 </div>
             </div>
         </div>
 
+        <!-- Template Preview & Customization -->
+        <div id="templatePreview" class="emineon-card p-4 hidden">
+            <div class="section-header">
+                <i data-lucide="edit-3" class="w-4 h-4 text-primary"></i>
+                Customize Template
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-secondary mb-1">Subject Line</label>
+                    <input type="text" id="emailSubject" class="input-field" placeholder="Enter email subject">
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-medium text-secondary mb-1">Email Body</label>
+                    <textarea id="emailBody" class="textarea-field" rows="8" placeholder="Email content will appear here..."></textarea>
+                </div>
+                
+                <div class="flex space-x-2">
+                    <button id="insertTemplateBtn" class="btn-primary flex-1">
+                        <i data-lucide="mail" class="w-3 h-3"></i>
+                        Insert Email
+                    </button>
+                    <button id="copyTemplateBtn" class="btn-secondary">
+                        <i data-lucide="copy" class="w-3 h-3"></i>
+                        Copy
+                    </button>
+                    <button id="editTemplateBtn" class="btn-teal">
+                        <i data-lucide="edit" class="w-3 h-3"></i>
+                        Edit
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Personalization -->
+        <div class="emineon-card p-4">
+            <div class="section-header">
+                <i data-lucide="user" class="w-4 h-4 text-primary"></i>
+                Quick Personalization
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-medium text-secondary mb-1">Candidate Name</label>
+                    <input type="text" id="candidateName" class="input-field" placeholder="John Doe">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-secondary mb-1">Position</label>
+                    <input type="text" id="positionTitle" class="input-field" placeholder="Senior Developer">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-secondary mb-1">Company</label>
+                    <input type="text" id="companyName" class="input-field" placeholder="Tech Corp">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-secondary mb-1">Your Name</label>
+                    <input type="text" id="recruiterName" class="input-field" placeholder="Your Name">
+                </div>
+            </div>
+            
+            <div class="mt-3">
+                <button id="personalizeBtn" class="btn-accent btn-sm w-full">
+                    <i data-lucide="user-check" class="w-3 h-3"></i>
+                    Apply Personalization
+                </button>
+            </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="emineon-card p-4">
+            <div class="grid grid-cols-2 gap-2">
+                <button id="openTemplateManager" class="btn-secondary">
+                    <i data-lucide="folder-open" class="w-3 h-3"></i>
+                    Manage Templates
+                </button>
+                <button id="helpBtn" class="btn-secondary">
+                    <i data-lucide="help-circle" class="w-3 h-3"></i>
+                    Help & Tips
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 flex items-center space-x-3">
+        <div class="emineon-card p-6 flex items-center space-x-3">
             <div class="loading-dots">
                 <span></span>
                 <span></span>
                 <span></span>
             </div>
-            <span class="text-gray-700 text-sm">Generating email...</span>
+            <span class="text-secondary text-sm">Generating template...</span>
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- JavaScript -->
     <script src="js/compose-taskpane.js"></script>
 </body>
 </html> 
