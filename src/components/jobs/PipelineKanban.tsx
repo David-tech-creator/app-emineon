@@ -63,6 +63,7 @@ interface PipelineKanbanProps {
   onCandidateMove: (candidateId: string, newStage: string) => void;
   onCandidateSelect: (candidate: Candidate) => void;
   onAddCandidate: () => void;
+  AddCandidateComponent?: () => React.ReactElement;
 }
 
 /**
@@ -87,7 +88,8 @@ export function PipelineKanban({
   stages, 
   onCandidateMove, 
   onCandidateSelect, 
-  onAddCandidate 
+  onAddCandidate,
+  AddCandidateComponent
 }: PipelineKanbanProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStage, setSelectedStage] = useState('all');
@@ -221,13 +223,17 @@ export function PipelineKanban({
               <User className="h-5 w-5" />
               <span className="font-medium">Candidate Pipeline</span>
             </div>
-            <button 
-              onClick={onAddCandidate}
-              className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add First Candidate
-            </button>
+            {AddCandidateComponent ? (
+              <AddCandidateComponent />
+            ) : (
+              <button 
+                onClick={onAddCandidate}
+                className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add First Candidate
+              </button>
+            )}
           </div>
         </div>
 
@@ -242,13 +248,17 @@ export function PipelineKanban({
             import from LinkedIn, or create manually.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button 
-              onClick={onAddCandidate}
-              className="flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Add Candidate
-            </button>
+            {AddCandidateComponent ? (
+              <AddCandidateComponent />
+            ) : (
+              <button 
+                onClick={onAddCandidate}
+                className="flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Add Candidate
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -287,13 +297,17 @@ export function PipelineKanban({
               </select>
             </div>
           </div>
-          <button 
-            onClick={onAddCandidate}
-            className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Candidate
-          </button>
+          {AddCandidateComponent ? (
+            <AddCandidateComponent />
+          ) : (
+            <button 
+              onClick={onAddCandidate}
+              className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Candidate
+            </button>
+          )}
         </div>
       </div>
 
@@ -510,12 +524,18 @@ export function PipelineKanban({
                       <User className="h-8 w-8 mx-auto mb-2 text-gray-300" />
                       <p className="text-sm">No candidates in {stage.name.toLowerCase()}</p>
                       {stage.id === 'sourced' && (
-                        <button 
-                          onClick={onAddCandidate}
-                          className="mt-2 text-xs text-primary-600 hover:text-primary-700"
-                        >
-                          Add your first candidate
-                        </button>
+                        AddCandidateComponent ? (
+                          <div className="mt-2">
+                            <AddCandidateComponent />
+                          </div>
+                        ) : (
+                          <button 
+                            onClick={onAddCandidate}
+                            className="mt-2 text-xs text-primary-600 hover:text-primary-700"
+                          >
+                            Add your first candidate
+                          </button>
+                        )
                       )}
                     </div>
                   )}

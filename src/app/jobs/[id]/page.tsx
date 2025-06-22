@@ -8,6 +8,8 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { PipelineKanban } from '@/components/jobs/PipelineKanban';
 import { CandidateDrawer } from '@/components/jobs/CandidateDrawer';
 import { CreateCandidateModal } from '@/components/candidates/CreateCandidateModal';
+import { AddCandidateDropdown } from '@/components/jobs/AddCandidateDropdown';
+import { AddExistingCandidateModal } from '@/components/jobs/AddExistingCandidateModal';
 import {
   ArrowLeft,
   Edit,
@@ -38,6 +40,7 @@ export default function JobDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateCandidateModal, setShowCreateCandidateModal] = useState(false);
+  const [showExistingCandidateModal, setShowExistingCandidateModal] = useState(false);
 
   // Mock pipeline stages
   const pipelineStages = [
@@ -92,8 +95,17 @@ export default function JobDetailPage() {
     setSelectedCandidate(candidate);
   };
 
-  const handleAddCandidate = () => {
+  const handleAddExistingCandidate = () => {
+    setShowExistingCandidateModal(true);
+  };
+
+  const handleCreateNewCandidate = () => {
     setShowCreateCandidateModal(true);
+  };
+
+  const handleCandidateAdded = (candidate: any) => {
+    // Refresh the candidates list
+    fetchCandidates();
   };
 
   // Fetch job data from API
@@ -221,7 +233,13 @@ Requirements:
             stages={pipelineStages}
             onCandidateMove={handleCandidateMove}
             onCandidateSelect={handleCandidateSelect}
-            onAddCandidate={handleAddCandidate}
+            onAddCandidate={handleCreateNewCandidate}
+            AddCandidateComponent={() => (
+              <AddCandidateDropdown
+                onAddExisting={handleAddExistingCandidate}
+                onCreateNew={handleCreateNewCandidate}
+              />
+            )}
           />
         );
       
@@ -495,6 +513,14 @@ Requirements:
           fetchCandidates();
           setShowCreateCandidateModal(false);
         }}
+      />
+
+      {/* Add Existing Candidate Modal */}
+      <AddExistingCandidateModal
+        open={showExistingCandidateModal}
+        onClose={() => setShowExistingCandidateModal(false)}
+        jobId={jobId}
+        onCandidateAdded={handleCandidateAdded}
       />
     </Layout>
   );
