@@ -92,6 +92,7 @@ import StyleCustomizer from './StyleCustomizer';
 
 // Enhanced form schema following E2E flow
 const jobSchema = z.object({
+  // Existing fields
   title: z.string().min(1, 'Job title is required'),
   company: z.string().min(1, 'Company is required'),
   location: z.string().min(1, 'Location is required'),
@@ -106,7 +107,23 @@ const jobSchema = z.object({
   department: z.string().optional(),
   priority: z.enum(['low', 'medium', 'high']),
   owner: z.string().min(1, 'Job owner is required'),
-  status: z.enum(['draft', 'active']).default('draft')
+  status: z.enum(['draft', 'active']).default('draft'),
+  
+  // New fields
+  projectName: z.string().min(1, 'Project name is required'),
+  totalPositions: z.number().min(1, 'Total positions must be at least 1'),
+  urgencyLevel: z.enum(['low', 'medium', 'high']).default('medium'),
+  projectDescription: z.string().optional(),
+  isRemote: z.boolean().default(false),
+  isHybrid: z.boolean().default(false),
+  clientContact: z.string().optional(),
+  clientEmail: z.string().email('Invalid email format').optional().or(z.literal('')),
+  clientPhone: z.string().optional(),
+  slaDate: z.string().optional(), // Closing date
+  vertical: z.string().optional(),
+  budgetRange: z.string().optional(),
+  endDate: z.string().optional(),
+  industryBackground: z.string().optional()
 });
 
 type JobFormData = z.infer<typeof jobSchema>;
@@ -132,6 +149,44 @@ const recentClients = [
   'Global Solutions Ltd',
   'Innovation Hub',
   'Digital Dynamics',
+];
+
+const urgencyLevels = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+];
+
+const verticals = [
+  'Technology',
+  'Healthcare',
+  'Finance',
+  'Manufacturing',
+  'Retail',
+  'Education',
+  'Government',
+  'Non-Profit',
+  'Consulting',
+  'Real Estate',
+  'Other'
+];
+
+const industryBackgrounds = [
+  'Medical/Healthcare',
+  'Financial Services',
+  'Technology',
+  'Manufacturing',
+  'Retail/E-commerce',
+  'Education',
+  'Government/Public Sector',
+  'Non-Profit',
+  'Consulting',
+  'Real Estate',
+  'Energy/Utilities',
+  'Transportation/Logistics',
+  'Media/Entertainment',
+  'Telecommunications',
+  'Other'
 ];
 
 const popularJobTitles = [
@@ -209,6 +264,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
   } = useForm({
     resolver: zodResolver(jobSchema),
     defaultValues: {
+      // Existing fields
       title: '',
       company: '',
       location: '',
@@ -223,7 +279,23 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
       languages: [] as string[],
       duration: '',
       salary: '',
-      department: ''
+      department: '',
+      
+      // New fields
+      projectName: '',
+      totalPositions: 1,
+      urgencyLevel: 'medium' as const,
+      projectDescription: '',
+      isRemote: false,
+      isHybrid: false,
+      clientContact: '',
+      clientEmail: '',
+      clientPhone: '',
+      slaDate: '',
+      vertical: '',
+      budgetRange: '',
+      endDate: '',
+      industryBackground: ''
     }
   });
 
@@ -307,6 +379,22 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
       setValue('skills', editingJob.skills || []);
       setValue('status', editingJob.status?.toLowerCase() || 'draft');
       
+      // New fields
+      setValue('projectName', editingJob.projectName || '');
+      setValue('totalPositions', editingJob.totalPositions || 1);
+      setValue('urgencyLevel', editingJob.urgencyLevel?.toLowerCase() || 'medium');
+      setValue('projectDescription', editingJob.projectDescription || '');
+      setValue('isRemote', editingJob.isRemote || false);
+      setValue('isHybrid', editingJob.isHybrid || false);
+      setValue('clientContact', editingJob.clientContact || '');
+      setValue('clientEmail', editingJob.clientEmail || '');
+      setValue('clientPhone', editingJob.clientPhone || '');
+      setValue('slaDate', editingJob.slaDate || editingJob.expiresAt || '');
+      setValue('vertical', editingJob.vertical || '');
+      setValue('budgetRange', editingJob.budgetRange || '');
+      setValue('endDate', editingJob.endDate || '');
+      setValue('industryBackground', editingJob.industryBackground || '');
+      
       // Skip template selection and go directly to review for editing
       setCurrentStep('review');
       setParsedData({
@@ -319,6 +407,18 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
         salary: editingJob.salary,
         department: editingJob.department,
         skills: editingJob.skills || [],
+        projectName: editingJob.projectName,
+        totalPositions: editingJob.totalPositions,
+        urgencyLevel: editingJob.urgencyLevel?.toLowerCase(),
+        projectDescription: editingJob.projectDescription,
+        isRemote: editingJob.isRemote,
+        isHybrid: editingJob.isHybrid,
+        clientContact: editingJob.clientContact,
+        clientEmail: editingJob.clientEmail,
+        clientPhone: editingJob.clientPhone,
+        vertical: editingJob.vertical,
+        budgetRange: editingJob.budgetRange,
+        industryBackground: editingJob.industryBackground,
       });
     } else if (open && !editingJob) {
       // Reset for new job creation
@@ -864,6 +964,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
     try {
       // Map form data to new API schema
       const apiData = {
+        // Existing fields
         title: data.title,
         company: data.company,
         location: data.location,
@@ -883,6 +984,22 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
         responsibilities: data.responsibilities || [],
         benefits: data.benefits || [],
         experienceLevel: data.experienceLevel,
+        
+        // New fields
+        projectName: data.projectName,
+        totalPositions: data.totalPositions,
+        urgencyLevel: data.urgencyLevel,
+        projectDescription: data.projectDescription,
+        isRemote: data.isRemote,
+        isHybrid: data.isHybrid,
+        clientContact: data.clientContact,
+        clientEmail: data.clientEmail,
+        clientPhone: data.clientPhone,
+        expiresAt: data.slaDate, // Map slaDate to expiresAt for database
+        vertical: data.vertical,
+        budgetRange: data.budgetRange,
+        endDate: data.endDate,
+        industryBackground: data.industryBackground,
       };
 
       console.log('Form data:', data);
@@ -1695,6 +1812,192 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                           {errors.description && <p className="text-red-600 text-sm mt-1">{errors.description.message}</p>}
                         </div>
                       )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Project Information */}
+                <Card>
+                  <CardContent className="p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                      <Briefcase className="h-5 w-5 text-primary-600" />
+                      <span>Project Information</span>
+                    </h4>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Project Name *</label>
+                        <input
+                          {...register('projectName')}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="e.g., DataFlow Innovations - Data Engineers"
+                        />
+                        {errors.projectName && <p className="text-red-600 text-sm mt-1">{errors.projectName.message}</p>}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Total Positions *</label>
+                          <input
+                            type="number"
+                            min="1"
+                            {...register('totalPositions', { valueAsNumber: true })}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            placeholder="5"
+                          />
+                          {errors.totalPositions && <p className="text-red-600 text-sm mt-1">{errors.totalPositions.message}</p>}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Urgency Level</label>
+                          <select
+                            {...register('urgencyLevel')}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          >
+                            {urgencyLevels.map(level => (
+                              <option key={level.value} value={level.value}>{level.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Project Description</label>
+                        <textarea
+                          {...register('projectDescription')}
+                          rows={4}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="Describe the project, context, and objectives..."
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Work Arrangement</label>
+                        <div className="space-y-2">
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              {...register('isRemote')}
+                              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            />
+                            <span className="ml-2 text-sm text-gray-700">Remote Work Available</span>
+                          </label>
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              {...register('isHybrid')}
+                              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            />
+                            <span className="ml-2 text-sm text-gray-700">Hybrid Work Available</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Client Information */}
+                <Card>
+                  <CardContent className="p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                      <Users className="h-5 w-5 text-primary-600" />
+                      <span>Client Information</span>
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Client Contact Person</label>
+                        <input
+                          {...register('clientContact')}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="e.g., Emmanuel Dubois"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Client Email</label>
+                        <input
+                          type="email"
+                          {...register('clientEmail')}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="e.g., emmanuel@company.com"
+                        />
+                        {errors.clientEmail && <p className="text-red-600 text-sm mt-1">{errors.clientEmail.message}</p>}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Client Phone</label>
+                        <input
+                          {...register('clientPhone')}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="e.g., +41 22 123 4567"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Vertical</label>
+                        <select
+                          {...register('vertical')}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        >
+                          <option value="">Select vertical...</option>
+                          {verticals.map(vertical => (
+                            <option key={vertical} value={vertical}>{vertical}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Timeline & Budget */}
+                <Card>
+                  <CardContent className="p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                      <Calendar className="h-5 w-5 text-primary-600" />
+                      <span>Timeline & Budget</span>
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">SLA Date (Closing Date)</label>
+                        <input
+                          type="date"
+                          {...register('slaDate')}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                        <input
+                          type="date"
+                          {...register('endDate')}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Budget Range</label>
+                        <input
+                          {...register('budgetRange')}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="e.g., €500k - €750k"
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Industry Background</label>
+                        <select
+                          {...register('industryBackground')}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        >
+                          <option value="">Select industry background...</option>
+                          {industryBackgrounds.map(industry => (
+                            <option key={industry} value={industry}>{industry}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
