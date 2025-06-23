@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Upload, FileText, Linkedin, User, Brain, CheckCircle, UserPlus, Loader2, Paperclip, Mic, MicOff, Eye, EyeOff, Plus, Trash2, Tag, Briefcase, Users, Star, Save, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -81,8 +81,100 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdCandidate, setCreatedCandidate] = useState<any>(null);
+  
+  // Real data states
+  const [availableJobs, setAvailableJobs] = useState<any[]>([]);
+  const [availableTalentPools, setAvailableTalentPools] = useState<any[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(false);
+  const [loadingTalentPools, setLoadingTalentPools] = useState(false);
+  
+  // Tag input states
+  const [tagInput, setTagInput] = useState('');
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch real jobs and talent pools when modal opens
+  useEffect(() => {
+    if (open) {
+      fetchJobs();
+      fetchTalentPools();
+      fetchAvailableTags();
+    }
+  }, [open]);
+
+  // Auto-assign current job when jobId is provided
+  useEffect(() => {
+    if (jobId && availableJobs.length > 0) {
+      const currentJob = availableJobs.find(job => job.id === jobId);
+      if (currentJob && !selectedJobs.includes(jobId)) {
+        setSelectedJobs([jobId]);
+      }
+    }
+  }, [jobId, availableJobs, selectedJobs]);
+
+  const fetchJobs = async () => {
+    setLoadingJobs(true);
+    try {
+      const response = await fetch('/api/jobs');
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableJobs(data.jobs || []);
+      }
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+    } finally {
+      setLoadingJobs(false);
+    }
+  };
+
+  const fetchTalentPools = async () => {
+    setLoadingTalentPools(true);
+    try {
+      // For now, we'll use mock data since talent pools API might not exist yet
+      // In the future, this would be: const response = await fetch('/api/talent-pools');
+      const mockPools = [
+        { id: '1', name: 'Frontend Specialists', count: 45 },
+        { id: '2', name: 'Backend Engineers', count: 32 },
+        { id: '3', name: 'Full Stack Developers', count: 78 },
+        { id: '4', name: 'Senior Developers', count: 56 },
+        { id: '5', name: 'Swiss Market', count: 156 },
+        { id: '6', name: 'Remote Workers', count: 89 }
+      ];
+      setAvailableTalentPools(mockPools);
+    } catch (error) {
+      console.error('Error fetching talent pools:', error);
+    } finally {
+      setLoadingTalentPools(false);
+    }
+  };
+
+  const fetchAvailableTags = async () => {
+    try {
+      // Mock available tags - in production this could come from API
+      const commonTags = [
+        'Hot Candidate',
+        'Top Talent',
+        'Ready to Submit',
+        'Needs Interview',
+        'Internal Only',
+        'Remote Preferred',
+        'Local Only',
+        'Urgent',
+        'High Potential',
+        'Culture Fit',
+        'Technical Expert',
+        'Leadership Material',
+        'Quick Start',
+        'Flexible',
+        'Bilingual'
+      ];
+      setAvailableTags(commonTags);
+    } catch (error) {
+      console.error('Error fetching tags:', error);
+    }
+  };
 
   const quickStartTemplates = [
     {
@@ -165,6 +257,8 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
     setNotes('');
     setIsSubmitting(false);
     setCreatedCandidate(null);
+    setTagInput('');
+    setShowTagSuggestions(false);
     onClose();
   };
 
@@ -198,6 +292,40 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
     setIsRecording(false);
     // Process recorded audio
   };
+
+  // Tag input handlers
+  const handleTagInputChange = (value: string) => {
+    setTagInput(value);
+    setShowTagSuggestions(value.length > 0);
+  };
+
+  const addTag = (tag: string) => {
+    if (tag.trim() && !candidateTags.includes(tag.trim())) {
+      setCandidateTags([...candidateTags, tag.trim()]);
+    }
+    setTagInput('');
+    setShowTagSuggestions(false);
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setCandidateTags(candidateTags.filter(tag => tag !== tagToRemove));
+  };
+
+  const handleTagInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      if (tagInput.trim()) {
+        addTag(tagInput.trim());
+      }
+    } else if (e.key === 'Backspace' && !tagInput && candidateTags.length > 0) {
+      removeTag(candidateTags[candidateTags.length - 1]);
+    }
+  };
+
+  const filteredTagSuggestions = availableTags.filter(tag => 
+    tag.toLowerCase().includes(tagInput.toLowerCase()) && 
+    !candidateTags.includes(tag)
+  );
 
   const handleParse = async () => {
     setIsParsing(true);
@@ -438,17 +566,7 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
     }
   };
 
-  const mockJobs = [
-    { id: '1', title: 'Senior Software Engineer', company: 'Credit Suisse', match: 95 },
-    { id: '2', title: 'Java Developer', company: 'UBS', match: 88 },
-    { id: '3', title: 'Full Stack Developer', company: 'Nestlé', match: 82 }
-  ];
 
-  const mockTalentPools = [
-    { id: '1', name: 'Frontend Specialists', count: 45 },
-    { id: '2', name: 'Senior Developers', count: 78 },
-    { id: '3', name: 'Swiss Market', count: 156 }
-  ];
 
   const steps = [
     { id: 'intake', label: 'Smart Intake', icon: Upload },
@@ -736,16 +854,20 @@ Bachelor's in Computer Science from ETH Zurich"
                 <span className="text-sm text-gray-600">Processing...</span>
               </div>
               
-              {/* Preview Card */}
-              <div className="mt-8 max-w-md mx-auto p-4 border border-gray-200 rounded-lg bg-gray-50">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-                    DV
+              {/* Processing Animation */}
+              <div className="mt-8 max-w-md mx-auto">
+                <div className="flex flex-col items-center space-y-4">
+                  <div className="relative">
+                    <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Brain className="h-6 w-6 text-blue-600" />
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <h4 className="font-semibold text-gray-900">David Vinkenroye</h4>
-                    <p className="text-sm text-gray-600">Senior IT Consultant</p>
-                    <p className="text-xs text-green-600">Available July 2025</p>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-gray-900">Analyzing Document</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {uploadedFile ? `Processing ${uploadedFile.name}...` : 'Extracting candidate information...'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1319,40 +1441,64 @@ Bachelor's in Computer Science from ETH Zurich"
                 <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
                   <Briefcase className="h-5 w-5 mr-2" />
                   Assign to Jobs
+                  {jobId && (
+                    <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                      Auto-assigned
+                    </span>
+                  )}
                 </h4>
-                <div className="space-y-3">
-                  {mockJobs.map((job) => (
-                    <div key={job.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedJobs.includes(job.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedJobs([...selectedJobs, job.id]);
-                            } else {
-                              setSelectedJobs(selectedJobs.filter(id => id !== job.id));
-                            }
-                          }}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <div>
-                          <h5 className="font-medium text-gray-900">{job.title}</h5>
-                          <p className="text-sm text-gray-600">{job.company}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          job.match >= 90 ? 'bg-green-100 text-green-800' :
-                          job.match >= 80 ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
+                {loadingJobs ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                    <span className="ml-2 text-sm text-gray-600">Loading jobs...</span>
+                  </div>
+                ) : availableJobs.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">
+                    <p className="text-sm">No active jobs found</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-48 overflow-y-auto">
+                    {availableJobs.map((job) => {
+                      const isCurrentJob = job.id === jobId;
+                      return (
+                        <div key={job.id} className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
+                          isCurrentJob ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
                         }`}>
-                          {job.match}% match
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                          <div className="flex items-center space-x-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedJobs.includes(job.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedJobs([...selectedJobs, job.id]);
+                                } else {
+                                  setSelectedJobs(selectedJobs.filter(id => id !== job.id));
+                                }
+                              }}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <div>
+                              <h5 className={`font-medium ${isCurrentJob ? 'text-blue-900' : 'text-gray-900'}`}>
+                                {job.title}
+                                {isCurrentJob && (
+                                  <span className="ml-2 text-xs text-blue-600 font-normal">(Current Job)</span>
+                                )}
+                              </h5>
+                              <p className={`text-sm ${isCurrentJob ? 'text-blue-700' : 'text-gray-600'}`}>
+                                {job.location || 'Location not specified'} • {job.status || 'Active'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                              {job.department || 'General'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Talent Pools */}
@@ -1361,30 +1507,41 @@ Bachelor's in Computer Science from ETH Zurich"
                   <Users className="h-5 w-5 mr-2" />
                   Add to Talent Pools
                 </h4>
-                <div className="space-y-3">
-                  {mockTalentPools.map((pool) => (
-                    <div key={pool.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedTalentPools.includes(pool.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedTalentPools([...selectedTalentPools, pool.id]);
-                            } else {
-                              setSelectedTalentPools(selectedTalentPools.filter(id => id !== pool.id));
-                            }
-                          }}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <div>
-                          <h5 className="font-medium text-gray-900">{pool.name}</h5>
-                          <p className="text-sm text-gray-600">{pool.count} candidates</p>
+                {loadingTalentPools ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                    <span className="ml-2 text-sm text-gray-600">Loading talent pools...</span>
+                  </div>
+                ) : availableTalentPools.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">
+                    <p className="text-sm">No talent pools available</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-48 overflow-y-auto">
+                    {availableTalentPools.map((pool) => (
+                      <div key={pool.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedTalentPools.includes(pool.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedTalentPools([...selectedTalentPools, pool.id]);
+                              } else {
+                                setSelectedTalentPools(selectedTalentPools.filter(id => id !== pool.id));
+                              }
+                            }}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <div>
+                            <h5 className="font-medium text-gray-900">{pool.name}</h5>
+                            <p className="text-sm text-gray-600">{pool.count} candidates</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Tags and Notes */}
@@ -1394,25 +1551,61 @@ Bachelor's in Computer Science from ETH Zurich"
                     <Tag className="h-5 w-5 mr-2" />
                     Tags
                   </h4>
-                  <div className="space-y-3">
-                    {['Ready to Submit', 'Top Talent', 'Needs Interview', 'Internal Only'].map((tag) => (
-                      <label key={tag} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={candidateTags.includes(tag)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setCandidateTags([...candidateTags, tag]);
-                            } else {
-                              setCandidateTags(candidateTags.filter(t => t !== tag));
-                            }
-                          }}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <span className="text-sm text-gray-700">{tag}</span>
-                      </label>
-                    ))}
+                  
+                  {/* Selected Tags */}
+                  {candidateTags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {candidateTags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                        >
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => removeTag(tag)}
+                            className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full text-blue-400 hover:bg-blue-200 hover:text-blue-600"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Tag Input with Autocomplete */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Type to add tags... (Press Enter or comma to add)"
+                      value={tagInput}
+                      onChange={(e) => handleTagInputChange(e.target.value)}
+                      onKeyDown={handleTagInputKeyDown}
+                      onFocus={() => setShowTagSuggestions(tagInput.length > 0)}
+                      onBlur={() => setTimeout(() => setShowTagSuggestions(false), 200)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                    
+                    {/* Autocomplete Suggestions */}
+                    {showTagSuggestions && filteredTagSuggestions.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {filteredTagSuggestions.slice(0, 8).map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => addTag(tag)}
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 focus:bg-gray-50 focus:outline-none first:rounded-t-lg last:rounded-b-lg"
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
+                  
+                  <p className="text-xs text-gray-500 mt-2">
+                    Type and press Enter or comma to add custom tags. Click suggestions to add quickly.
+                  </p>
                 </div>
 
                 <div className="bg-gray-50 rounded-lg p-4">

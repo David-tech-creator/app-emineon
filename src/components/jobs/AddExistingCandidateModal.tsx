@@ -22,7 +22,10 @@ interface Candidate {
   technicalSkills?: string[];
   experienceYears?: number;
   summary?: string;
-  avatar?: string;
+  profileToken?: string;
+  status?: string;
+  createdAt?: string;
+  lastUpdated?: string;
 }
 
 export function AddExistingCandidateModal({ 
@@ -195,17 +198,9 @@ export function AddExistingCandidateModal({
                     <div className="flex items-start space-x-4">
                       <div className="flex-shrink-0">
                         <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
-                          {candidate.avatar ? (
-                            <img 
-                              src={candidate.avatar} 
-                              alt={`${candidate.firstName} ${candidate.lastName}`}
-                              className="w-12 h-12 rounded-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-gray-600 font-medium">
-                              {candidate.firstName[0]}{candidate.lastName[0]}
-                            </span>
-                          )}
+                          <span className="text-gray-600 font-medium">
+                            {candidate.firstName[0]}{candidate.lastName[0]}
+                          </span>
                         </div>
                       </div>
                       

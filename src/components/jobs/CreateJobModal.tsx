@@ -1622,62 +1622,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                   </CardContent>
                 </Card>
 
-                {/* Style Customization */}
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-                        <Palette className="h-5 w-5 text-primary-600" />
-                        <span>Style Customization</span>
-                      </h4>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowStyleCustomizer(!showStyleCustomizer)}
-                      >
-                        {showStyleCustomizer ? (
-                          <>
-                            <ChevronUp className="h-4 w-4 mr-1" />
-                            Hide Customizer
-                          </>
-                        ) : (
-                          <>
-                            <ChevronDown className="h-4 w-4 mr-1" />
-                            Customize Style
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                    
-                    {showStyleCustomizer && (
-                      <StyleCustomizer
-                        styleConfig={customStyleConfig}
-                        onStyleChange={handleStyleChange}
-                        onPresetChange={handlePresetChange}
-                        className="mt-4"
-                      />
-                    )}
-                    
-                    {!showStyleCustomizer && (
-                      <div className="text-sm text-gray-600">
-                        <p className="mb-2">Current style: <span className="font-medium">{selectedTemplate?.name || 'Modern'}</span></p>
-                        <div className="flex items-center space-x-4">
-                          <div className="flex items-center space-x-2">
-                            <div 
-                              className="w-4 h-4 rounded-full border border-gray-300"
-                              style={{ backgroundColor: customStyleConfig.primaryColor }}
-                            />
-                            <span className="text-xs">Primary Color</span>
-                          </div>
-                          <div className="text-xs" style={{ fontFamily: customStyleConfig.titleFont }}>
-                            {customStyleConfig.titleFont} Font
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+
 
                 {/* Basic Information */}
                 <Card>
@@ -2142,6 +2087,63 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                   </CardContent>
                 </Card>
               )}
+
+              {/* Style Customization */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                      <Palette className="h-5 w-5 text-primary-600" />
+                      <span>Style Customization</span>
+                    </h4>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowStyleCustomizer(!showStyleCustomizer)}
+                    >
+                      {showStyleCustomizer ? (
+                        <>
+                          <ChevronUp className="h-4 w-4 mr-1" />
+                          Hide Customizer
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-4 w-4 mr-1" />
+                          Customize Style
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  
+                  {showStyleCustomizer && (
+                    <StyleCustomizer
+                      styleConfig={customStyleConfig}
+                      onStyleChange={handleStyleChange}
+                      onPresetChange={handlePresetChange}
+                      className="mt-4"
+                    />
+                  )}
+                  
+                  {!showStyleCustomizer && (
+                    <div className="text-sm text-gray-600">
+                      <p className="mb-2">Current style: <span className="font-medium">{selectedTemplate?.name || 'Modern'}</span></p>
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-2">
+                          <div 
+                            className="w-4 h-4 rounded-full border border-gray-300"
+                            style={{ backgroundColor: customStyleConfig.primaryColor }}
+                          />
+                          <span className="text-xs">Primary Color</span>
+                        </div>
+                        <div className="text-xs" style={{ fontFamily: customStyleConfig.titleFont }}>
+                          {customStyleConfig.titleFont} Font
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* Preview & Download Section with Company Logo */}
               <Card>

@@ -268,11 +268,41 @@ const swissCandidates = [
 
 export async function GET(request: NextRequest) {
   try {
-    // In a real application, you would fetch this from a database
-    // For now, we return mock Swiss candidates data
+    const { userId } = auth();
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Fetch real candidates from database
+    const candidates = await prisma.candidate.findMany({
+      where: {
+        archived: false,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        currentTitle: true,
+        currentLocation: true,
+        technicalSkills: true,
+        experienceYears: true,
+        summary: true,
+        profileToken: true,
+        status: true,
+        createdAt: true,
+        lastUpdated: true,
+      },
+      orderBy: {
+        lastUpdated: 'desc',
+      },
+    });
+
     return NextResponse.json({
-      candidates: swissCandidates,
-      total: swissCandidates.length
+      candidates: candidates,
+      total: candidates.length
     });
   } catch (error) {
     console.error('Error fetching candidates:', error);
