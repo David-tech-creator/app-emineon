@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/Input';
 import { Card, CardContent } from '@/components/ui/Card';
 import { CreateJobModal } from '@/components/jobs/CreateJobModal';
 import { CreateCandidateModal } from '@/components/candidates/CreateCandidateModal';
+import { AddCandidateDropdown } from '@/components/jobs/AddCandidateDropdown';
+import { AddExistingCandidateModal } from '@/components/jobs/AddExistingCandidateModal';
 import {
   Plus,
   Search,
@@ -44,7 +46,8 @@ export default function JobsPage() {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [showAddCandidateModal, setShowAddCandidateModal] = useState(false);
+  const [showCreateCandidateModal, setShowCreateCandidateModal] = useState(false);
+  const [showAddExistingModal, setShowAddExistingModal] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -128,9 +131,14 @@ export default function JobsPage() {
     router.push(`/jobs/${jobId}`);
   };
 
-  const handleAddCandidate = (jobId: string) => {
+  const handleAddExistingCandidate = (jobId: string) => {
     setSelectedJobId(jobId);
-    setShowAddCandidateModal(true);
+    setShowAddExistingModal(true);
+  };
+
+  const handleCreateNewCandidate = (jobId: string) => {
+    setSelectedJobId(jobId);
+    setShowCreateCandidateModal(true);
   };
 
   const handleEditJob = (job: any) => {
@@ -587,15 +595,11 @@ export default function JobsPage() {
                       <Eye className="h-4 w-4 mr-1" />
                       View
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <AddCandidateDropdown
+                      onAddExisting={() => handleAddExistingCandidate(job.id)}
+                      onCreateNew={() => handleCreateNewCandidate(job.id)}
                       className="flex-1"
-                      onClick={() => handleAddCandidate(job.id)}
-                    >
-                      <UserPlus className="h-4 w-4 mr-1" />
-                      Add
-                    </Button>
+                    />
                   </div>
                 ) : (
                   // Full actions for list view
@@ -609,14 +613,10 @@ export default function JobsPage() {
                         <Eye className="h-4 w-4 mr-1" />
                         View
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleAddCandidate(job.id)}
-                      >
-                        <UserPlus className="h-4 w-4 mr-1" />
-                        Add Candidate
-                      </Button>
+                      <AddCandidateDropdown
+                        onAddExisting={() => handleAddExistingCandidate(job.id)}
+                        onCreateNew={() => handleCreateNewCandidate(job.id)}
+                      />
                     </div>
                     <Button variant="outline" size="sm">
                       <Share2 className="h-4 w-4 mr-1" />
@@ -647,10 +647,22 @@ export default function JobsPage() {
         editingJob={editingJob}
       />
 
-      {/* Add Candidate Modal */}
+      {/* Create New Candidate Modal */}
       <CreateCandidateModal 
-        open={showAddCandidateModal} 
-        onClose={() => setShowAddCandidateModal(false)} 
+        open={showCreateCandidateModal} 
+        onClose={() => setShowCreateCandidateModal(false)}
+        jobId={selectedJobId || undefined}
+      />
+
+      {/* Add Existing Candidate Modal */}
+      <AddExistingCandidateModal 
+        open={showAddExistingModal} 
+        onClose={() => setShowAddExistingModal(false)}
+        jobId={selectedJobId || ''}
+        onCandidateAdded={() => {
+          setShowAddExistingModal(false);
+          // Optionally refresh jobs or show success message
+        }}
       />
 
 

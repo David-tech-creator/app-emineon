@@ -28,7 +28,7 @@ export function AddCandidateDropdown({ onAddExisting, onCreateNew, className = '
     <div className={`relative ${className}`} ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+        className="flex items-center space-x-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition-colors border border-gray-300 shadow-sm"
       >
         <UserPlus className="h-4 w-4" />
         <span>Add Candidate</span>
@@ -36,8 +36,8 @@ export function AddCandidateDropdown({ onAddExisting, onCreateNew, className = '
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-          <div className="py-2">
+        <div className="absolute top-full left-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+          <div className="py-1">
             <button
               onClick={() => {
                 onAddExisting();
@@ -45,16 +45,14 @@ export function AddCandidateDropdown({ onAddExisting, onCreateNew, className = '
               }}
               className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center space-x-3 transition-colors"
             >
-              <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Search className="h-4 w-4 text-blue-600" />
+              <div className="flex-shrink-0 w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                <Search className="h-5 w-5 text-blue-600" />
               </div>
               <div>
                 <div className="font-medium text-gray-900">Add Existing Candidate</div>
                 <div className="text-sm text-gray-500">Select from your database</div>
               </div>
             </button>
-            
-            <div className="border-t border-gray-100 my-1"></div>
             
             <button
               onClick={() => {
@@ -63,8 +61,8 @@ export function AddCandidateDropdown({ onAddExisting, onCreateNew, className = '
               }}
               className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center space-x-3 transition-colors"
             >
-              <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                <UserPlus className="h-4 w-4 text-green-600" />
+              <div className="flex-shrink-0 w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
+                <UserPlus className="h-5 w-5 text-green-600" />
               </div>
               <div>
                 <div className="font-medium text-gray-900">Create New Candidate</div>
