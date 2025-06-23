@@ -25,6 +25,10 @@ export async function GET(
       contentType = 'text/css';
     } else if (filePath.endsWith('.xml')) {
       contentType = 'application/xml';
+      // For manifest downloads, add download disposition
+      if (filePath.includes('manifest')) {
+        contentType = 'application/xml';
+      }
     } else if (filePath.endsWith('.png')) {
       contentType = 'image/png';
       encoding = undefined; // Binary file
