@@ -108,12 +108,12 @@ function setupModalEventListeners() {
 function loadEmailContext() {
     console.log('📧 Loading email context...');
     
-    if (!Office.context.mailbox.item) {
+            if (!Office.context.mailbox.item) {
         console.error('❌ No mailbox item available');
         showAIError('No email selected or available');
-        return;
-    }
-    
+                return;
+            }
+
     // Get subject
     Office.context.mailbox.item.subject.getAsync((result) => {
         console.log('📋 Subject result:', result);
@@ -227,9 +227,9 @@ function displayAttachments(attachments) {
     });
     
     attachmentPanel.classList.add('show');
-    lucide.createIcons();
-}
-
+            lucide.createIcons();
+        }
+        
 /**
  * Get appropriate icon for attachment type
  */
@@ -267,16 +267,16 @@ async function analyzeCurrentEmail() {
             return;
         }
         
-        // Get email body
-        Office.context.mailbox.item.body.getAsync(Office.CoercionType.Text, async (result) => {
+            // Get email body
+            Office.context.mailbox.item.body.getAsync(Office.CoercionType.Text, async (result) => {
             console.log('📄 Body result:', result);
-            if (result.status === Office.AsyncResultStatus.Succeeded) {
+                if (result.status === Office.AsyncResultStatus.Succeeded) {
                 currentEmailData.body = result.value || 'No content available';
                 console.log('✅ Email body loaded, length:', currentEmailData.body.length);
                 
                 // Perform AI analysis
                 await performAIAnalysis();
-            } else {
+                    } else {
                 console.error('❌ Failed to get email body:', result.error);
                 currentEmailData.body = 'Content unavailable';
                 showAIError('Could not read email content');
@@ -285,7 +285,7 @@ async function analyzeCurrentEmail() {
                 await performAIAnalysis();
             }
         });
-    } catch (error) {
+        } catch (error) {
         console.error('❌ Error analyzing email:', error);
         showAIError('Analysis failed. Please try again.');
     }
@@ -662,7 +662,7 @@ async function loadRecentActivity() {
         
         displayRecentActivity(activities);
         
-    } catch (error) {
+        } catch (error) {
         console.error('Error loading recent activity:', error);
         document.getElementById('recentActivity').innerHTML = '<div style="text-align: center; color: var(--secondary-600); padding: 20px;">Unable to load recent activity</div>';
     }
@@ -689,10 +689,10 @@ function displayUrgentItems(items) {
             <div class="urgent-item-header">
                 <div class="urgent-item-title">${item.title}</div>
                 <div class="urgent-item-time">${item.time}</div>
-            </div>
+                    </div>
             <div class="urgent-item-desc">${item.description}</div>
             <button class="urgent-item-action" onclick="handleUrgentAction('${item.id}')">${item.action}</button>
-        </div>
+                                </div>
     `).join('');
 }
 
@@ -717,18 +717,18 @@ function displayPriorityJobs(jobs) {
             <div class="job-header">
                 <div class="job-title">${job.title}</div>
                 <div class="job-status ${job.status}">${job.status.replace('-', ' ')}</div>
-            </div>
+                            </div>
             <div class="job-client">${job.client}</div>
             <div class="job-stats">
                 <span class="job-sla ${job.daysToSLA < 0 ? 'overdue' : job.daysToSLA <= 3 ? 'at-risk' : 'good'}">
                     ${job.daysToSLA < 0 ? `${Math.abs(job.daysToSLA)}d overdue` : `${job.daysToSLA}d to SLA`}
                 </span>
                 <span>${job.candidates} candidates</span>
-            </div>
-        </div>
-    `).join('');
-}
-
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
 /**
  * Display recent activity in UI
  */
@@ -756,8 +756,8 @@ function displayRecentActivity(activities) {
     `).join('');
     
     // Recreate icons
-    lucide.createIcons();
-}
+                lucide.createIcons();
+            }
 
 /**
  * Get icon for activity type
@@ -806,7 +806,7 @@ async function createJob() {
         showNotification('Opening job creation...', 'success');
         const url = `${EMINEON_ATS_URL}/jobs?action=create&source=outlook&email=${encodeURIComponent(JSON.stringify(currentEmailData))}`;
         window.open(url, '_blank');
-    } catch (error) {
+        } catch (error) {
         showNotification('Failed to open job creation', 'error');
     }
 }
