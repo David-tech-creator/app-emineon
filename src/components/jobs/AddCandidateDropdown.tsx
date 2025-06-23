@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, UserPlus, Users, Search } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 
 interface AddCandidateDropdownProps {
   onAddExisting: () => void;
@@ -26,14 +27,16 @@ export function AddCandidateDropdown({ onAddExisting, onCreateNew, className = '
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
-      <button
+      <Button
+        variant="outline"
+        size="sm"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition-colors border border-gray-300 shadow-sm"
+        className="flex items-center space-x-2"
       >
         <UserPlus className="h-4 w-4" />
         <span>Add Candidate</span>
         <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
+      </Button>
 
       {isOpen && (
         <div className="absolute top-full left-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
