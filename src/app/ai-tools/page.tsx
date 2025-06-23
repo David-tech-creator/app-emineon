@@ -178,6 +178,15 @@ Emineon Recruitment`);
       features: ['AI-powered drafting', 'Template customization', 'Client branding', 'Export options']
     },
     {
+      id: 'outlook-plugin',
+      title: 'Outlook Add-in',
+      description: 'Seamlessly integrate Emineon ATS with your email workflow for instant recruitment intelligence',
+      icon: Mail,
+      color: 'primary',
+      metrics: { emails: '100k+', analysis: '98%', workflow: '+65%' },
+      features: ['Email analysis', 'Contact extraction', 'AI templates', 'Quick actions']
+    },
+    {
       id: 'timing',
       title: 'Perfect Timing AI',
       description: 'Detect optimal engagement moments through business signals and behavior analysis',
@@ -305,6 +314,8 @@ Emineon Recruitment`);
                   onClick={() => {
                     if (tool.id === 'competence-files') {
                       window.location.href = '/competence-files';
+                    } else if (tool.id === 'outlook-plugin') {
+                      window.open('https://app-emineon.vercel.app/api/outlook-addin/download.html', '_blank');
                     } else {
                       setActiveTab(tool.id);
                     }
@@ -312,7 +323,7 @@ Emineon Recruitment`);
                   variant="outline"
                   fullWidth
                 >
-                  Explore Tool
+                  {tool.id === 'outlook-plugin' ? 'Download Add-in' : 'Explore Tool'}
                 </Button>
               </div>
             </div>
