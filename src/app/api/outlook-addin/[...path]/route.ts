@@ -13,10 +13,10 @@ export async function GET(
     console.log(`📁 Serving Outlook add-in file: ${filePath}`);
     console.log(`📂 Full path: ${fullPath}`);
     
-    const fileContent = await readFile(fullPath, 'utf-8');
-    
-    // Determine content type
+    // Determine content type and encoding
     let contentType = 'text/plain';
+    let encoding: 'utf-8' | undefined = 'utf-8';
+    
     if (filePath.endsWith('.html')) {
       contentType = 'text/html';
     } else if (filePath.endsWith('.js')) {
@@ -27,7 +27,10 @@ export async function GET(
       contentType = 'application/xml';
     } else if (filePath.endsWith('.png')) {
       contentType = 'image/png';
+      encoding = undefined; // Binary file
     }
+    
+    const fileContent = await readFile(fullPath, encoding);
     
     return new NextResponse(fileContent, {
       headers: {
