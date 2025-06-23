@@ -1,741 +1,563 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Emineon Email Templates</title>
-    
-    <!-- Office.js -->
-    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Lucide Icons -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Emineon Email Composer</title>
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    
     <style>
-        /* Emineon Platform Design System - Exact Match */
-        :root {
-            /* Primary Colors - Deep Navy Blue */
-            --emineon-primary: #0A2F5A;
-            --emineon-primary-50: #F0F4F8;
-            --emineon-primary-100: #E1E9F1;
-            --emineon-primary-200: #C3D3E3;
-            --emineon-primary-300: #A5BDD5;
-            --emineon-primary-400: #6691B9;
-            --emineon-primary-500: #0A2F5A;
-            --emineon-primary-600: #092951;
-            --emineon-primary-700: #072040;
-            --emineon-primary-800: #051730;
-            --emineon-primary-900: #040E20;
-            
-            /* Secondary Colors - Steel Gray */
-            --emineon-secondary: #444B54;
-            --emineon-secondary-50: #F8F9FA;
-            --emineon-secondary-100: #E9ECEF;
-            --emineon-secondary-200: #DEE2E6;
-            --emineon-secondary-300: #CED4DA;
-            --emineon-secondary-400: #ADB5BD;
-            --emineon-secondary-500: #6C757D;
-            --emineon-secondary-600: #495057;
-            --emineon-secondary-700: #444B54;
-            --emineon-secondary-800: #343A40;
-            --emineon-secondary-900: #232629;
-            
-            /* Accent Colors - Burnt Orange */
-            --emineon-accent: #C75B12;
-            --emineon-accent-50: #FEF4ED;
-            --emineon-accent-100: #FDE8D7;
-            --emineon-accent-200: #FBCEB0;
-            --emineon-accent-300: #F8B088;
-            --emineon-accent-400: #F4985F;
-            --emineon-accent-500: #C75B12;
-            --emineon-accent-600: #B8520F;
-            --emineon-accent-700: #A8490D;
-            --emineon-accent-800: #98400A;
-            --emineon-accent-900: #893708;
-            
-            /* Teal Colors - Balance & Sophistication */
-            --emineon-teal: #008080;
-            --emineon-teal-50: #E6F7F7;
-            --emineon-teal-100: #CCEEEE;
-            --emineon-teal-200: #99DDDD;
-            --emineon-teal-300: #66CCCC;
-            --emineon-teal-400: #33BBBB;
-            --emineon-teal-500: #008080;
-            --emineon-teal-600: #007373;
-            --emineon-teal-700: #006666;
-            --emineon-teal-800: #005959;
-            --emineon-teal-900: #004D4D;
-            
-            /* Neutral Colors - Off-White Balance */
-            --emineon-neutral: #F8F9FA;
-            --emineon-neutral-50: #FFFFFF;
-            --emineon-neutral-100: #F8F9FA;
-            --emineon-neutral-200: #E9ECEF;
-            --emineon-neutral-300: #DEE2E6;
-            --emineon-neutral-400: #CED4DA;
-            --emineon-neutral-500: #ADB5BD;
-            --emineon-neutral-600: #6C757D;
-            --emineon-neutral-700: #495057;
-            --emineon-neutral-800: #343A40;
-            --emineon-neutral-900: #232629;
-            
-            /* Functional Colors */
-            --emineon-success: #10B981;
-            --emineon-success-50: #ECFDF5;
-            --emineon-success-100: #D1FAE5;
-            --emineon-success-200: #A7F3D0;
-            --emineon-success-300: #6EE7B7;
-            --emineon-success-400: #34D399;
-            --emineon-success-500: #10B981;
-            --emineon-success-600: #059669;
-            --emineon-success-700: #047857;
-            --emineon-success-800: #065F46;
-            --emineon-success-900: #064E3B;
-            
-            --emineon-warning: #F59E0B;
-            --emineon-warning-50: #FFFBEB;
-            --emineon-warning-100: #FEF3C7;
-            --emineon-warning-200: #FDE68A;
-            --emineon-warning-300: #FCD34D;
-            --emineon-warning-400: #FBBF24;
-            --emineon-warning-500: #F59E0B;
-            --emineon-warning-600: #D97706;
-            --emineon-warning-700: #B45309;
-            --emineon-warning-800: #92400E;
-            --emineon-warning-900: #78350F;
-            
-            --emineon-error: #EF4444;
-            --emineon-error-50: #FEF2F2;
-            --emineon-error-100: #FEE2E2;
-            --emineon-error-200: #FECACA;
-            --emineon-error-300: #FCA5A5;
-            --emineon-error-400: #F87171;
-            --emineon-error-500: #EF4444;
-            --emineon-error-600: #DC2626;
-            --emineon-error-700: #B91C1C;
-            --emineon-error-800: #991B1B;
-            --emineon-error-900: #7F1D1D;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        
-        /* Typography - Inter Font Family */
+
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-feature-settings: 'cv08', 'cv11';
-            color: var(--emineon-secondary-900);
-            background: var(--emineon-secondary-50);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #F8FAFC;
+            color: #0F172A;
+            line-height: 1.5;
+            overflow-x: hidden;
         }
-        
-        /* Emineon Platform Gradients */
-        .emineon-gradient {
-            background: linear-gradient(135deg, var(--emineon-primary-600) 0%, var(--emineon-teal-600) 100%);
-        }
-        
-        .emineon-gradient-accent {
-            background: linear-gradient(135deg, var(--emineon-primary-500) 0%, var(--emineon-accent-500) 100%);
-        }
-        
-        /* Card Components - Platform Style */
-        .emineon-card {
-            background: var(--emineon-neutral-50);
-            border-radius: 12px;
-            border: 1px solid var(--emineon-secondary-200);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-        
-        .emineon-card-elevated {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-        
-        .emineon-card:hover {
-            box-shadow: 0 4px 12px -2px rgba(10, 47, 90, 0.15);
-            transform: translateY(-1px);
-            transition: all 0.2s ease-out;
-        }
-        
-        /* Button Components - Platform Style */
-        .btn-primary {
-            background: var(--emineon-primary-500);
-            color: var(--emineon-neutral-50);
-            font-weight: 500;
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease-out;
-            font-size: 13px;
-            display: inline-flex;
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #0A2F5A 0%, #0891B2 100%);
+            color: white;
+            padding: 16px;
+            display: flex;
             align-items: center;
-            gap: 6px;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        
-        .btn-primary:hover {
-            background: var(--emineon-primary-600);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(10, 47, 90, 0.25);
-        }
-        
-        .btn-secondary {
-            background: var(--emineon-secondary-200);
-            color: var(--emineon-secondary-800);
-            font-weight: 500;
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease-out;
-            font-size: 13px;
-            display: inline-flex;
+
+        .header-left {
+            display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 12px;
         }
-        
-        .btn-secondary:hover {
-            background: var(--emineon-secondary-300);
+
+        .logo {
+            width: 24px;
+            height: 24px;
         }
-        
-        .btn-teal {
-            background: var(--emineon-teal-500);
-            color: var(--emineon-neutral-50);
-            font-weight: 500;
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease-out;
-            font-size: 13px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
         }
-        
-        .btn-teal:hover {
-            background: var(--emineon-teal-600);
-            transform: translateY(-1px);
-        }
-        
-        .btn-accent {
-            background: var(--emineon-accent-500);
-            color: var(--emineon-neutral-50);
-            font-weight: 500;
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease-out;
-            font-size: 13px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .btn-accent:hover {
-            background: var(--emineon-accent-600);
-            transform: translateY(-1px);
-        }
-        
-        .btn-sm {
-            padding: 6px 12px;
-            font-size: 12px;
-        }
-        
-        .btn-xs {
+
+        .status-badge {
+            background: rgba(255,255,255,0.2);
             padding: 4px 8px;
-            font-size: 11px;
-        }
-        
-        /* Template Cards */
-        .template-card {
-            border: 1px solid var(--emineon-secondary-200);
-            border-radius: 8px;
-            padding: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease-out;
-            background: var(--emineon-neutral-50);
-        }
-        
-        .template-card:hover {
-            border-color: var(--emineon-primary-300);
-            box-shadow: 0 2px 8px rgba(10, 47, 90, 0.15);
-            transform: translateY(-1px);
-        }
-        
-        .template-card.selected {
-            border-color: var(--emineon-primary-500);
-            background: var(--emineon-primary-50);
-            box-shadow: 0 2px 8px rgba(10, 47, 90, 0.15);
-        }
-        
-        /* Category Buttons */
-        .category-btn {
-            padding: 6px 12px;
-            border-radius: 20px;
+            border-radius: 12px;
             font-size: 11px;
             font-weight: 500;
-            border: 1px solid var(--emineon-secondary-200);
-            background: var(--emineon-neutral-50);
-            color: var(--emineon-secondary-600);
-            cursor: pointer;
-            transition: all 0.2s ease-out;
+            backdrop-filter: blur(10px);
         }
-        
-        .category-btn.active {
-            background: var(--emineon-primary-500);
-            color: var(--emineon-neutral-50);
-            border-color: var(--emineon-primary-500);
+
+        /* Main Content */
+        .container {
+            padding: 0;
+            max-height: calc(100vh - 64px);
+            overflow-y: auto;
         }
-        
-        .category-btn:hover {
-            border-color: var(--emineon-primary-300);
-            color: var(--emineon-primary-700);
+
+        .section {
+            background: white;
+            margin: 12px;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #E2E8F0;
         }
-        
-        .category-btn.active:hover {
-            color: var(--emineon-neutral-50);
-        }
-        
-        /* AI Suggestion Card */
-        .ai-suggestion-card {
-            background: linear-gradient(135deg, var(--emineon-primary-50) 0%, var(--emineon-primary-100) 100%);
-            border: 1px solid var(--emineon-primary-200);
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 12px;
-        }
-        
-        /* Loading Animation */
-        .loading-dots {
-            display: inline-flex;
-            align-items: center;
-            gap: 2px;
-        }
-        
-        .loading-dots span {
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-            background: var(--emineon-primary-500);
-            animation: loading-dots 1.4s infinite ease-in-out;
-        }
-        
-        .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
-        .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
-        
-        @keyframes loading-dots {
-            0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
-            40% { transform: scale(1); opacity: 1; }
-        }
-        
-        /* Platform Typography */
-        h1, h2, h3, h4, h5, h6 {
-            color: var(--emineon-primary-900);
-            font-weight: 600;
-        }
-        
-        .text-primary { color: var(--emineon-primary-700); }
-        .text-secondary { color: var(--emineon-secondary-600); }
-        .text-muted { color: var(--emineon-secondary-500); }
-        
-        /* Section Headers */
+
         .section-header {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--emineon-primary-900);
-            margin-bottom: 12px;
             display: flex;
             align-items: center;
             gap: 8px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #E2E8F0;
         }
-        
-        /* Input Fields */
-        .input-field {
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0A2F5A;
+        }
+
+        .section-icon {
+            width: 16px;
+            height: 16px;
+            color: #0891B2;
+        }
+
+        /* Template Categories */
+        .template-categories {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .category-btn {
+            padding: 8px 12px;
+            border: 1px solid #E2E8F0;
+            border-radius: 6px;
+            background: white;
+            font-size: 11px;
+            font-weight: 500;
+            color: #64748B;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .category-btn.active {
+            background: #0A2F5A;
+            color: white;
+            border-color: #0A2F5A;
+        }
+
+        .category-btn:hover {
+            background: #F1F5F9;
+            border-color: #CBD5E1;
+        }
+
+        .category-btn.active:hover {
+            background: #0F172A;
+        }
+
+        /* Template Grid */
+        .template-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        .template-card {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 6px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .template-card:hover {
+            background: #F1F5F9;
+            border-color: #0891B2;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .template-card.selected {
+            background: #EFF6FF;
+            border-color: #0A2F5A;
+        }
+
+        .template-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #0A2F5A;
+            margin-bottom: 4px;
+        }
+
+        .template-desc {
+            font-size: 10px;
+            color: #64748B;
+            line-height: 1.4;
+        }
+
+        .template-tags {
+            display: flex;
+            gap: 4px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+
+        .template-tag {
+            background: #E2E8F0;
+            color: #475569;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: 500;
+        }
+
+        /* AI Writing Assistant */
+        .ai-writing {
+            background: linear-gradient(135deg, #FEF7FF 0%, #F3E8FF 100%);
+            border: 1px solid #A855F7;
+            margin: 12px;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .ai-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .ai-icon {
+            width: 16px;
+            height: 16px;
+            color: #A855F7;
+        }
+
+        .ai-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #7C2D12;
+        }
+
+        .ai-prompt {
             width: 100%;
             padding: 8px 12px;
-            border: 1px solid var(--emineon-secondary-300);
-            border-radius: 8px;
-            background: var(--emineon-neutral-50);
-            color: var(--emineon-secondary-900);
-            font-size: 13px;
-            transition: all 0.2s ease-out;
+            border: 1px solid #D1D5DB;
+            border-radius: 6px;
+            font-size: 12px;
+            resize: none;
+            height: 50px;
+            margin-bottom: 8px;
         }
-        
-        .input-field:focus {
-            outline: none;
-            border-color: var(--emineon-primary-500);
-            box-shadow: 0 0 0 3px var(--emineon-primary-100);
+
+        .ai-controls {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
         }
-        
-        /* Textarea */
-        .textarea-field {
-            width: 100%;
+
+        .ai-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .ai-btn.primary {
+            background: #A855F7;
+            color: white;
+        }
+
+        .ai-btn.secondary {
+            background: #E5E7EB;
+            color: #374151;
+        }
+
+        .ai-btn:hover {
+            transform: translateY(-1px);
+            opacity: 0.9;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .action-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .action-btn.primary {
+            background: #0A2F5A;
+            color: white;
+        }
+
+        .action-btn.secondary {
+            background: #0891B2;
+            color: white;
+        }
+
+        .action-btn.success {
+            background: #059669;
+            color: white;
+        }
+
+        .action-btn.warning {
+            background: #D97706;
+            color: white;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .action-icon {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Signature Section */
+        .signature-preview {
+            background: #F1F5F9;
+            border: 1px solid #CBD5E1;
+            border-radius: 6px;
             padding: 12px;
-            border: 1px solid var(--emineon-secondary-300);
-            border-radius: 8px;
-            background: var(--emineon-neutral-50);
-            color: var(--emineon-secondary-900);
-            font-size: 13px;
-            font-family: inherit;
-            resize: vertical;
-            transition: all 0.2s ease-out;
-            min-height: 100px;
+            font-size: 11px;
+            color: #374151;
+            line-height: 1.4;
         }
-        
-        .textarea-field:focus {
-            outline: none;
-            border-color: var(--emineon-primary-500);
-            box-shadow: 0 0 0 3px var(--emineon-primary-100);
+
+        .signature-name {
+            font-weight: 600;
+            color: #0A2F5A;
+            margin-bottom: 4px;
         }
-        
-        /* Scrollbar */
-        .scrollbar-thin {
-            scrollbar-width: thin;
-            scrollbar-color: var(--emineon-secondary-300) var(--emineon-secondary-100);
+
+        .signature-role {
+            color: #64748B;
+            margin-bottom: 8px;
         }
-        
-        .scrollbar-thin::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+
+        .signature-contact {
+            font-size: 10px;
+            color: #64748B;
         }
-        
-        .scrollbar-thin::-webkit-scrollbar-track {
-            background: var(--emineon-secondary-100);
-            border-radius: 3px;
+
+        /* Context Bar */
+        .context-bar {
+            background: #FEF3C7;
+            border: 1px solid #F59E0B;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin: 12px;
+            font-size: 11px;
+            color: #92400E;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
-        
-        .scrollbar-thin::-webkit-scrollbar-thumb {
-            background: var(--emineon-secondary-300);
-            border-radius: 3px;
+
+        .context-icon {
+            width: 12px;
+            height: 12px;
+            color: #F59E0B;
         }
-        
-        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-            background: var(--emineon-secondary-400);
+
+        /* Loading States */
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #64748B;
+            font-size: 11px;
+        }
+
+        .spinner {
+            width: 12px;
+            height: 12px;
+            border: 2px solid #E2E8F0;
+            border-top: 2px solid #0891B2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 320px) {
+            .template-categories {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .quick-actions {
+                grid-template-columns: 1fr;
+            }
+            
+            .section {
+                margin: 8px;
+                padding: 12px;
+            }
         }
     </style>
 </head>
-
-<body class="font-sans text-sm" style="background: var(--emineon-secondary-50);">
+<body>
     <!-- Header -->
-    <div class="emineon-gradient text-white px-4 py-4 sticky top-0 z-10">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                    <img src="https://res.cloudinary.com/emineon/image/upload/v1750591731/emineon-ats/icons/emineon-32.png" 
-                         alt="Emineon" class="w-6 h-6" />
-                </div>
-                <div>
-                    <h1 class="text-base font-bold leading-tight">Email Templates</h1>
-                    <p class="text-xs opacity-90 uppercase tracking-wide font-medium">AI-powered recruitment emails</p>
-                </div>
-            </div>
-            <button id="customizeBtn" class="p-1.5 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-colors">
-                <i data-lucide="settings" class="w-4 h-4"></i>
-            </button>
+    <div class="header">
+        <div class="header-left">
+            <img src="https://res.cloudinary.com/emineon/image/upload/Emineon_logo_tree_white_lfwp8h" alt="Emineon" class="logo">
+            <span class="header-title">Email Composer</span>
         </div>
+        <div class="status-badge">Connected</div>
     </div>
 
-    <!-- Main Content -->
-    <div class="p-4 space-y-4 max-h-screen overflow-y-auto scrollbar-thin">
-        
-        <!-- AI Template Generator -->
-        <div class="emineon-card p-4">
+    <!-- Context Bar -->
+    <div class="context-bar">
+        <i data-lucide="info" class="context-icon"></i>
+        <span>Replying to: <strong id="replyContext">Original Email</strong></span>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Email Templates -->
+        <div class="section">
             <div class="section-header">
-                <i data-lucide="sparkles" class="w-4 h-4 text-primary"></i>
-                AI Template Generator
+                <i data-lucide="file-text" class="section-icon"></i>
+                <span class="section-title">Email Templates</span>
             </div>
             
-            <div class="ai-suggestion-card">
-                <div class="flex items-start space-x-2">
-                    <div class="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                        <i data-lucide="wand" class="w-3 h-3 text-white"></i>
-                    </div>
-                    <div class="flex-1">
-                        <div class="text-xs font-medium text-primary mb-2">Generate Custom Template</div>
-                        <textarea id="templatePrompt" class="textarea-field" placeholder="Describe the email you want to create (e.g., 'Professional follow-up for senior developer candidate after interview')"></textarea>
-                        <div class="mt-2">
-                            <button id="generateTemplateBtn" class="btn-primary btn-sm">
-                                <i data-lucide="magic-wand" class="w-3 h-3"></i>
-                                Generate Template
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Template Categories -->
-        <div class="emineon-card p-4">
-            <div class="section-header">
-                <i data-lucide="folder" class="w-4 h-4 text-primary"></i>
-                Template Categories
+            <!-- Template Categories -->
+            <div class="template-categories">
+                <button class="category-btn active" onclick="selectCategory('candidate')">Candidate</button>
+                <button class="category-btn" onclick="selectCategory('client')">Client</button>
+                <button class="category-btn" onclick="selectCategory('interview')">Interview</button>
             </div>
             
-            <div class="flex flex-wrap gap-2 mb-4">
-                <button class="category-btn active" data-category="all">All Templates</button>
-                <button class="category-btn" data-category="outreach">Outreach</button>
-                <button class="category-btn" data-category="follow-up">Follow-up</button>
-                <button class="category-btn" data-category="interview">Interview</button>
-                <button class="category-btn" data-category="offer">Offer</button>
-                <button class="category-btn" data-category="rejection">Rejection</button>
-            </div>
-        </div>
-
-        <!-- Template Library -->
-        <div class="emineon-card p-4">
-            <div class="section-header">
-                <i data-lucide="mail" class="w-4 h-4 text-primary"></i>
-                Email Templates
-                <span class="ml-auto text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full">12 Available</span>
-            </div>
-            
-            <div id="templateGrid" class="space-y-3 max-h-64 overflow-y-auto scrollbar-thin">
-                
-                <!-- Outreach Templates -->
-                <div class="template-card" data-category="outreach" data-template="cold-outreach">
-                    <div class="flex items-start justify-between">
-                        <div class="flex-1">
-                            <h4 class="text-sm font-semibold text-primary mb-1">Cold Outreach</h4>
-                            <p class="text-xs text-muted mb-2">Initial contact for passive candidates</p>
-                            <div class="flex items-center space-x-2">
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-teal-100 text-teal-700">
-                                    <i data-lucide="users" class="w-3 h-3 mr-1"></i>
-                                    Outreach
-                                </span>
-                                <span class="text-xs text-muted">85% open rate</span>
-                            </div>
-                        </div>
-                        <button class="btn-secondary btn-xs">
-                            <i data-lucide="eye" class="w-3 h-3"></i>
-                            Preview
-                        </button>
+            <!-- Template Grid -->
+            <div class="template-grid" id="templateGrid">
+                <!-- Candidate Templates -->
+                <div class="template-card" onclick="selectTemplate('application-received')">
+                    <div class="template-title">Application Received</div>
+                    <div class="template-desc">Acknowledge candidate application with next steps</div>
+                    <div class="template-tags">
+                        <span class="template-tag">Professional</span>
+                        <span class="template-tag">Auto</span>
                     </div>
-                </div>
-
-                <div class="template-card" data-category="outreach" data-template="linkedin-connect">
-                    <div class="flex items-start justify-between">
-                        <div class="flex-1">
-                            <h4 class="text-sm font-semibold text-primary mb-1">LinkedIn Connection</h4>
-                            <p class="text-xs text-muted mb-2">Professional networking outreach</p>
-                            <div class="flex items-center space-x-2">
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-teal-100 text-teal-700">
-                                    <i data-lucide="users" class="w-3 h-3 mr-1"></i>
-                                    Outreach
-                                </span>
-                                <span class="text-xs text-muted">92% connect rate</span>
-                            </div>
-                        </div>
-                        <button class="btn-secondary btn-xs">
-                            <i data-lucide="eye" class="w-3 h-3"></i>
-                            Preview
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Follow-up Templates -->
-                <div class="template-card" data-category="follow-up" data-template="application-followup">
-                    <div class="flex items-start justify-between">
-                        <div class="flex-1">
-                            <h4 class="text-sm font-semibold text-primary mb-1">Application Follow-up</h4>
-                            <p class="text-xs text-muted mb-2">Follow-up after application submission</p>
-                            <div class="flex items-center space-x-2">
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-accent-100 text-accent-700">
-                                    <i data-lucide="clock" class="w-3 h-3 mr-1"></i>
-                                    Follow-up
-                                </span>
-                                <span class="text-xs text-muted">78% response rate</span>
-                            </div>
-                        </div>
-                        <button class="btn-secondary btn-xs">
-                            <i data-lucide="eye" class="w-3 h-3"></i>
-                            Preview
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Interview Templates -->
-                <div class="template-card" data-category="interview" data-template="interview-invitation">
-                    <div class="flex items-start justify-between">
-                        <div class="flex-1">
-                            <h4 class="text-sm font-semibold text-primary mb-1">Interview Invitation</h4>
-                            <p class="text-xs text-muted mb-2">Professional interview scheduling</p>
-                            <div class="flex items-center space-x-2">
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary-100 text-primary-700">
-                                    <i data-lucide="calendar" class="w-3 h-3 mr-1"></i>
-                                    Interview
-                                </span>
-                                <span class="text-xs text-muted">95% attendance</span>
-                            </div>
-                        </div>
-                        <button class="btn-secondary btn-xs">
-                            <i data-lucide="eye" class="w-3 h-3"></i>
-                            Preview
-                        </button>
-                    </div>
-                </div>
-
-                <div class="template-card" data-category="interview" data-template="interview-reminder">
-                    <div class="flex items-start justify-between">
-                        <div class="flex-1">
-                            <h4 class="text-sm font-semibold text-primary mb-1">Interview Reminder</h4>
-                            <p class="text-xs text-muted mb-2">Friendly reminder 24h before interview</p>
-                            <div class="flex items-center space-x-2">
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary-100 text-primary-700">
-                                    <i data-lucide="calendar" class="w-3 h-3 mr-1"></i>
-                                    Interview
-                                </span>
-                                <span class="text-xs text-muted">99% show rate</span>
-                            </div>
-                        </div>
-                        <button class="btn-secondary btn-xs">
-                            <i data-lucide="eye" class="w-3 h-3"></i>
-                            Preview
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Offer Templates -->
-                <div class="template-card" data-category="offer" data-template="job-offer">
-                    <div class="flex items-start justify-between">
-                        <div class="flex-1">
-                            <h4 class="text-sm font-semibold text-primary mb-1">Job Offer</h4>
-                            <p class="text-xs text-muted mb-2">Formal job offer presentation</p>
-                            <div class="flex items-center space-x-2">
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-success-100 text-success-700">
-                                    <i data-lucide="check-circle" class="w-3 h-3 mr-1"></i>
-                                    Offer
-                                </span>
-                                <span class="text-xs text-muted">87% acceptance</span>
-                            </div>
-                        </div>
-                        <button class="btn-secondary btn-xs">
-                            <i data-lucide="eye" class="w-3 h-3"></i>
-                            Preview
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Rejection Templates -->
-                <div class="template-card" data-category="rejection" data-template="polite-rejection">
-                    <div class="flex items-start justify-between">
-                        <div class="flex-1">
-                            <h4 class="text-sm font-semibold text-primary mb-1">Polite Rejection</h4>
-                            <p class="text-xs text-muted mb-2">Professional candidate rejection</p>
-                            <div class="flex items-center space-x-2">
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-secondary-100 text-secondary-700">
-                                    <i data-lucide="x-circle" class="w-3 h-3 mr-1"></i>
-                                    Rejection
-                                </span>
-                                <span class="text-xs text-muted">Maintains relationships</span>
-                            </div>
-                        </div>
-                        <button class="btn-secondary btn-xs">
-                            <i data-lucide="eye" class="w-3 h-3"></i>
-                            Preview
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Template Preview & Customization -->
-        <div id="templatePreview" class="emineon-card p-4 hidden">
-            <div class="section-header">
-                <i data-lucide="edit-3" class="w-4 h-4 text-primary"></i>
-                Customize Template
-            </div>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-medium text-secondary mb-1">Subject Line</label>
-                    <input type="text" id="emailSubject" class="input-field" placeholder="Enter email subject">
                 </div>
                 
-                <div>
-                    <label class="block text-xs font-medium text-secondary mb-1">Email Body</label>
-                    <textarea id="emailBody" class="textarea-field" rows="8" placeholder="Email content will appear here..."></textarea>
+                <div class="template-card" onclick="selectTemplate('interview-invitation')">
+                    <div class="template-title">Interview Invitation</div>
+                    <div class="template-desc">Invite candidate for interview with details</div>
+                    <div class="template-tags">
+                        <span class="template-tag">Formal</span>
+                        <span class="template-tag">Scheduling</span>
+                    </div>
                 </div>
                 
-                <div class="flex space-x-2">
-                    <button id="insertTemplateBtn" class="btn-primary flex-1">
-                        <i data-lucide="mail" class="w-3 h-3"></i>
-                        Insert Email
-                    </button>
-                    <button id="copyTemplateBtn" class="btn-secondary">
-                        <i data-lucide="copy" class="w-3 h-3"></i>
-                        Copy
-                    </button>
-                    <button id="editTemplateBtn" class="btn-teal">
-                        <i data-lucide="edit" class="w-3 h-3"></i>
-                        Edit
-                    </button>
+                <div class="template-card" onclick="selectTemplate('follow-up')">
+                    <div class="template-title">Candidate Follow-up</div>
+                    <div class="template-desc">Professional follow-up after interview</div>
+                    <div class="template-tags">
+                        <span class="template-tag">Follow-up</span>
+                        <span class="template-tag">Warm</span>
+                    </div>
+                </div>
+                
+                <div class="template-card" onclick="selectTemplate('rejection-feedback')">
+                    <div class="template-title">Constructive Rejection</div>
+                    <div class="template-desc">Professional rejection with helpful feedback</div>
+                    <div class="template-tags">
+                        <span class="template-tag">Respectful</span>
+                        <span class="template-tag">Feedback</span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Quick Personalization -->
-        <div class="emineon-card p-4">
+        <!-- AI Writing Assistant -->
+        <div class="ai-writing">
+            <div class="ai-header">
+                <i data-lucide="bot" class="ai-icon"></i>
+                <span class="ai-title">AI Writing Assistant</span>
+            </div>
+            <textarea class="ai-prompt" placeholder="Describe what you want to write... e.g., 'Write a professional follow-up email to a candidate after their interview for a Senior Developer role'" id="aiPrompt"></textarea>
+            <div class="ai-controls">
+                <button class="ai-btn primary" onclick="generateEmail()">Generate</button>
+                <button class="ai-btn secondary" onclick="improveEmail()">Improve Tone</button>
+                <button class="ai-btn secondary" onclick="makeShorter()">Make Shorter</button>
+                <button class="ai-btn secondary" onclick="makeFormal()">More Formal</button>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="section">
             <div class="section-header">
-                <i data-lucide="user" class="w-4 h-4 text-primary"></i>
-                Quick Personalization
+                <i data-lucide="zap" class="section-icon"></i>
+                <span class="section-title">Quick Actions</span>
             </div>
-            
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-xs font-medium text-secondary mb-1">Candidate Name</label>
-                    <input type="text" id="candidateName" class="input-field" placeholder="John Doe">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-secondary mb-1">Position</label>
-                    <input type="text" id="positionTitle" class="input-field" placeholder="Senior Developer">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-secondary mb-1">Company</label>
-                    <input type="text" id="companyName" class="input-field" placeholder="Tech Corp">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-secondary mb-1">Your Name</label>
-                    <input type="text" id="recruiterName" class="input-field" placeholder="Your Name">
-                </div>
-            </div>
-            
-            <div class="mt-3">
-                <button id="personalizeBtn" class="btn-accent btn-sm w-full">
-                    <i data-lucide="user-check" class="w-3 h-3"></i>
-                    Apply Personalization
+            <div class="quick-actions">
+                <button class="action-btn primary" onclick="insertTemplate()">
+                    <i data-lucide="plus" class="action-icon"></i>
+                    Insert Template
+                </button>
+                <button class="action-btn secondary" onclick="addCalendarLink()">
+                    <i data-lucide="calendar" class="action-icon"></i>
+                    Add Calendar
+                </button>
+                <button class="action-btn success" onclick="addSignature()">
+                    <i data-lucide="pen-tool" class="action-icon"></i>
+                    Add Signature
+                </button>
+                <button class="action-btn warning" onclick="scheduleEmail()">
+                    <i data-lucide="clock" class="action-icon"></i>
+                    Schedule Send
                 </button>
             </div>
         </div>
 
-        <!-- Footer Actions -->
-        <div class="emineon-card p-4">
-            <div class="grid grid-cols-2 gap-2">
-                <button id="openTemplateManager" class="btn-secondary">
-                    <i data-lucide="folder-open" class="w-3 h-3"></i>
-                    Manage Templates
-                </button>
-                <button id="helpBtn" class="btn-secondary">
-                    <i data-lucide="help-circle" class="w-3 h-3"></i>
-                    Help & Tips
-                </button>
+        <!-- Email Signature -->
+        <div class="section">
+            <div class="section-header">
+                <i data-lucide="pen-tool" class="section-icon"></i>
+                <span class="section-title">Email Signature</span>
+            </div>
+            <div class="signature-preview">
+                <div class="signature-name">Your Name</div>
+                <div class="signature-role">Senior Recruitment Consultant</div>
+                <div class="signature-contact">
+                    📧 your.email@emineon.com<br>
+                    📞 +1 (555) 123-4567<br>
+                    🌐 www.emineon.com
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Templates -->
+        <div class="section">
+            <div class="section-header">
+                <i data-lucide="clock" class="section-icon"></i>
+                <span class="section-title">Recently Used</span>
+            </div>
+            <div class="template-grid" id="recentTemplates">
+                <div class="template-card" onclick="selectTemplate('recent-interview')">
+                    <div class="template-title">Interview Confirmation</div>
+                    <div class="template-desc">Last used 2 hours ago</div>
+                    <div class="template-tags">
+                        <span class="template-tag">Recent</span>
+                    </div>
+                </div>
+                
+                <div class="template-card" onclick="selectTemplate('recent-followup')">
+                    <div class="template-title">Client Follow-up</div>
+                    <div class="template-desc">Last used yesterday</div>
+                    <div class="template-tags">
+                        <span class="template-tag">Recent</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="emineon-card p-6 flex items-center space-x-3">
-            <div class="loading-dots">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
-            <span class="text-secondary text-sm">Generating template...</span>
-        </div>
-    </div>
-
-    <!-- JavaScript -->
     <script src="js/compose-taskpane.js"></script>
 </body>
 </html> 
