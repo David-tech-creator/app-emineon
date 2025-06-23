@@ -5,314 +5,178 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Download Emineon Outlook Add-in</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0F172A;
+            background: #0A2F5A;
             color: white;
+            margin: 0;
+            padding: 2rem;
             min-height: 100vh;
-            overflow-x: hidden;
-            position: relative;
-        }
-        
-        .video-background {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -2;
-            object-fit: cover;
-        }
-        
-        .video-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(15, 23, 42, 0.8);
-            z-index: -1;
+            background: linear-gradient(135deg, #0A2F5A 0%, #0891B2 100%);
         }
         
         .container {
-            max-width: 800px;
+            max-width: 700px;
             margin: 0 auto;
-            padding: 2rem;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 3rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 3rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
         
         .logo {
+            text-align: center;
             margin-bottom: 2rem;
         }
         
         .logo img {
-            height: 50px;
-        }
-        
-        .back-link {
-            position: absolute;
-            top: 2rem;
-            left: 2rem;
-            color: white;
-            text-decoration: none;
-            font-size: 0.9rem;
-            opacity: 0.8;
-            transition: opacity 0.3s ease;
-        }
-        
-        .back-link:hover {
-            opacity: 1;
+            height: 60px;
         }
         
         h1 {
-            font-size: 3rem;
+            text-align: center;
+            font-size: 2.5rem;
             font-weight: 700;
             margin-bottom: 1rem;
-            background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: white;
         }
         
         .subtitle {
+            text-align: center;
             font-size: 1.2rem;
-            color: #94a3b8;
+            color: rgba(255, 255, 255, 0.8);
             margin-bottom: 3rem;
         }
         
-        .card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
+        .download-section {
+            background: rgba(255, 255, 255, 0.95);
+            color: #0A2F5A;
+            border-radius: 12px;
             padding: 2.5rem;
-            margin-bottom: 2rem;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-        }
-        
-        .download-card {
             text-align: center;
-            border: 2px solid rgba(59, 130, 246, 0.3);
+            margin-bottom: 2rem;
         }
         
-        .download-card h2 {
+        .download-section h2 {
             font-size: 1.8rem;
             margin-bottom: 1rem;
-            color: #3b82f6;
+            color: #0A2F5A;
         }
         
-        .download-card p {
+        .download-section p {
             font-size: 1.1rem;
-            color: #cbd5e1;
             margin-bottom: 2rem;
             line-height: 1.6;
         }
         
         .download-btn {
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            background: linear-gradient(135deg, #0A2F5A 0%, #0891B2 100%);
             color: white;
             border: none;
             padding: 1rem 2.5rem;
-            border-radius: 12px;
+            border-radius: 8px;
             font-size: 1.1rem;
             font-weight: 600;
             cursor: pointer;
             text-decoration: none;
             display: inline-block;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            transition: transform 0.2s ease;
         }
         
         .download-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.6);
-        }
-        
-        .ats-card {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .ats-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4);
-        }
-        
-        .ats-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1rem;
-        }
-        
-        .ats-icon {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-        }
-        
-        .ats-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: white;
-            margin-bottom: 0.5rem;
-        }
-        
-        .ats-description {
-            color: #94a3b8;
-            margin-bottom: 2rem;
-            line-height: 1.6;
-        }
-        
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-        
-        .stat {
-            text-align: center;
-        }
-        
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #3b82f6;
-            margin-bottom: 0.5rem;
-        }
-        
-        .stat-label {
-            font-size: 0.9rem;
-            color: #64748b;
-        }
-        
-        .features {
-            margin-bottom: 2rem;
-        }
-        
-        .feature {
-            display: flex;
-            align-items: center;
-            margin-bottom: 0.75rem;
-            color: #e2e8f0;
-        }
-        
-        .feature-icon {
-            color: #10b981;
-            margin-right: 0.75rem;
-            font-size: 1.1rem;
-        }
-        
-        .explore-btn {
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            color: #3b82f6;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            display: inline-block;
-            width: 100%;
-            text-align: center;
-        }
-        
-        .explore-btn:hover {
-            background: rgba(59, 130, 246, 0.2);
-            border-color: rgba(59, 130, 246, 0.5);
         }
         
         .instructions {
-            background: rgba(16, 185, 129, 0.05);
-            border: 1px solid rgba(16, 185, 129, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
         }
         
         .instructions h3 {
-            color: #10b981;
+            color: #B8E6FF;
             margin-bottom: 1.5rem;
-            font-size: 1.3rem;
+            font-size: 1.4rem;
         }
         
         .instructions ol {
             padding-left: 1.5rem;
-            color: #e2e8f0;
+            color: white;
         }
         
         .instructions li {
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.8rem;
             line-height: 1.6;
         }
         
         .instructions strong {
-            color: white;
+            color: #B8E6FF;
         }
         
         .instructions code {
-            background: rgba(16, 185, 129, 0.1);
-            color: #10b981;
+            background: rgba(184, 230, 255, 0.2);
+            color: #B8E6FF;
             padding: 0.2rem 0.5rem;
             border-radius: 4px;
             font-size: 0.9rem;
         }
         
-        .note {
-            background: rgba(251, 191, 36, 0.1);
-            border: 1px solid rgba(251, 191, 36, 0.3);
+        .features {
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .features h3 {
+            color: #B8E6FF;
+            margin-bottom: 1.5rem;
+            font-size: 1.4rem;
+        }
+        
+        .features ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .features li {
+            margin-bottom: 0.8rem;
+            line-height: 1.6;
+            color: white;
+        }
+        
+        .features strong {
+            color: #B8E6FF;
+        }
+        
+        .note {
+            background: rgba(255, 193, 7, 0.15);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 8px;
             padding: 1.5rem;
-            margin: 2rem 0;
+            margin-bottom: 2rem;
         }
         
         .note strong {
-            color: #fbbf24;
+            color: #FFC107;
         }
         
         .note p {
-            color: #e2e8f0;
+            color: white;
             margin: 0;
             line-height: 1.6;
         }
         
         .footer {
             text-align: center;
-            margin-top: 3rem;
-            padding-top: 2rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            color: #64748b;
+            margin-top: 2rem;
+            color: rgba(255, 255, 255, 0.7);
         }
         
         .footer a {
-            color: #3b82f6;
+            color: #B8E6FF;
             text-decoration: none;
         }
         
@@ -321,98 +185,38 @@
         }
         
         @media (max-width: 768px) {
-            .container {
+            body {
                 padding: 1rem;
+            }
+            
+            .container {
+                padding: 2rem;
             }
             
             h1 {
                 font-size: 2rem;
             }
-            
-            .card {
-                padding: 1.5rem;
-            }
-            
-            .stats {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
         }
     </style>
 </head>
 <body>
-    <video class="video-background" autoplay muted loop>
-        <source src="https://res.cloudinary.com/emineon/video/upload/contactform_oaktree_sunset_fuwrqx.mp4" type="video/mp4">
-    </video>
-    <div class="video-overlay"></div>
-    
-    <a href="https://emineon.com" class="back-link">← Go Back</a>
-    
     <div class="container">
-        <div class="header">
-            <div class="logo">
-                <img src="https://res.cloudinary.com/emineon/image/upload/Emineon_logo_tree_white_lfwp8h" alt="Emineon" />
-            </div>
-            <h1>Outlook Add-in</h1>
-            <p class="subtitle">Seamlessly integrate Emineon ATS with your email workflow</p>
+        <div class="logo">
+            <img src="https://res.cloudinary.com/emineon/image/upload/Emineon_logo_tree_white_lfwp8h" alt="Emineon" />
         </div>
         
-        <div class="card download-card">
+        <h1>Outlook Add-in</h1>
+        <p class="subtitle">Integrate Emineon ATS directly into your Outlook workflow</p>
+        
+        <div class="download-section">
             <h2>📥 Download Manifest File</h2>
-            <p>Download the manifest file to install the Emineon Outlook Add-in locally and transform your recruitment workflow.</p>
+            <p>Download the manifest file to install the Emineon Outlook Add-in and streamline your recruitment process.</p>
             <a href="./emineon-outlook-addin-manifest.xml" download="emineon-outlook-addin-manifest.xml" class="download-btn">
                 📁 Download Manifest File
             </a>
         </div>
         
-        <div class="card ats-card">
-            <div class="ats-header">
-                <div class="ats-icon">👥</div>
-                <div style="flex: 1; margin-left: 1rem;">
-                    <div class="ats-title">Competence Files</div>
-                    <div class="ats-description">Create polished, client-facing candidate profiles with AI assistance</div>
-                </div>
-                <div style="color: #64748b; font-size: 1.5rem;">↗</div>
-            </div>
-            
-            <div class="stats">
-                <div class="stat">
-                    <div class="stat-value">2.5k+</div>
-                    <div class="stat-label">Files</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">97%</div>
-                    <div class="stat-label">Quality</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">80%</div>
-                    <div class="stat-label">Time Reduction</div>
-                </div>
-            </div>
-            
-            <div class="features">
-                <div class="feature">
-                    <span class="feature-icon">✓</span>
-                    <span>AI-powered drafting</span>
-                </div>
-                <div class="feature">
-                    <span class="feature-icon">✓</span>
-                    <span>Template customization</span>
-                </div>
-                <div class="feature">
-                    <span class="feature-icon">✓</span>
-                    <span>Client branding</span>
-                </div>
-                <div class="feature">
-                    <span class="feature-icon">✓</span>
-                    <span>Export options</span>
-                </div>
-            </div>
-            
-            <a href="https://app-emineon.vercel.app/ai-tools" class="explore-btn">Explore Tool</a>
-        </div>
-        
-        <div class="card instructions">
+        <div class="instructions">
             <h3>🔧 Installation Instructions</h3>
             <ol>
                 <li><strong>Download</strong> the manifest file using the button above</li>
@@ -424,8 +228,18 @@
             </ol>
         </div>
         
+        <div class="features">
+            <h3>✨ Features</h3>
+            <ul>
+                <li><strong>Email Analysis:</strong> Extract contact information and get AI-powered insights</li>
+                <li><strong>Email Templates:</strong> Professional recruitment email templates</li>
+                <li><strong>Quick Actions:</strong> Add candidates, create jobs, schedule interviews</li>
+                <li><strong>AI Copilot:</strong> Get help with recruitment tasks and email composition</li>
+            </ul>
+        </div>
+        
         <div class="note">
-            <p><strong>Note:</strong> After installation, you'll see "Emineon Reader" and "Emineon Composer" buttons in your Outlook ribbon when reading or composing emails. These tools provide AI-powered email analysis, contact extraction, and professional recruitment templates.</p>
+            <p><strong>Note:</strong> After installation, you'll see "Emineon Reader" and "Emineon Composer" buttons in your Outlook ribbon when reading or composing emails.</p>
         </div>
         
         <div class="footer">
