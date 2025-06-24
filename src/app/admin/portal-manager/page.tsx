@@ -6,6 +6,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import PortalManager from '@/components/portal/PortalManager';
+import { CreatePortalModal } from '@/components/portal/CreatePortalModal';
 import { 
   Building2, 
   Users, 
@@ -43,6 +44,7 @@ export default function PortalManagerPage() {
   const [currentPortalId, setCurrentPortalId] = useState<string>();
   const [stats, setStats] = useState<PortalStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Mock data for demo
   useEffect(() => {
@@ -243,7 +245,18 @@ export default function PortalManagerPage() {
 
   const handleManageSettings = (portalId: string) => {
     console.log('Managing settings for portal:', portalId);
-    // Navigate to portal settings page
+    // TODO: Implement settings management
+  };
+
+  const handlePortalCreated = (newPortal: any) => {
+    console.log('New portal created:', newPortal);
+    // TODO: Refresh the portals list or add the new portal to the current list
+    if (stats) {
+      setStats({
+        ...stats,
+        totalPortals: stats.totalPortals + 1
+      });
+    }
   };
 
   if (loading) {
@@ -280,7 +293,7 @@ export default function PortalManagerPage() {
               onInviteUser={handleInviteUser}
               onManageSettings={handleManageSettings}
             />
-            <Button>
+            <Button onClick={() => setShowCreateModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Create Portal
             </Button>
@@ -508,6 +521,13 @@ export default function PortalManagerPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Create Portal Modal */}
+        <CreatePortalModal
+          open={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={handlePortalCreated}
+        />
       </div>
     </Layout>
   );
