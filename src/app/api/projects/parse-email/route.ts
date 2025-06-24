@@ -166,11 +166,54 @@ Only return the JSON object, no other text.`
     // Generate suggested job positions based on the project
     const jobSuggestions = generateJobSuggestionsWithRules(project, parsedData);
 
+    // Automatically create actual Job records for pitch demo
+    const createdJobs = [];
+    for (const suggestion of jobSuggestions) {
+      const job = await prisma.job.create({
+        data: {
+          title: suggestion.title,
+          description: suggestion.description + '\n\nResponsibilities:\n- ' + suggestion.responsibilities.join('\n- '),
+          department: 'Engineering',
+          location: parsedData.location || 'Zurich',
+          status: 'ACTIVE',
+          isRemote: parsedData.isRemote || false,
+          projectId: project.id,
+          requirements: suggestion.requirements || [],
+          responsibilities: suggestion.responsibilities || [],
+          benefits: suggestion.benefits || [],
+          employmentType: ['FULL_TIME'],
+          experienceLevel: suggestion.experienceLevel || 'Mid-level',
+          salaryMin: parsedData.budgetRange ? 80000 : null,
+          salaryMax: parsedData.budgetRange ? 120000 : null,
+          salaryCurrency: 'CHF',
+        }
+      });
+      createdJobs.push(job);
+    }
+
+    // Create project activity for job creation
+    if (createdJobs.length > 0) {
+      await prisma.projectActivity.create({
+        data: {
+          projectId: project.id,
+          type: 'JOB_CREATED',
+          title: 'Jobs Created',
+          description: `${createdJobs.length} job position(s) automatically created from email requirements`,
+          metadata: {
+            jobIds: createdJobs.map(j => j.id),
+            jobTitles: createdJobs.map(j => j.title),
+            source: 'email_parsing_auto_creation'
+          }
+        }
+      });
+    }
+
     return NextResponse.json({
       project,
       parsedData,
       jobSuggestions,
-      message: 'Project created successfully from email'
+      createdJobs,
+      message: `Project created successfully from email with ${createdJobs.length} job positions`
     }, { status: 201 });
 
   } catch (error) {
