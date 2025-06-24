@@ -22,7 +22,7 @@ import {
   MapPin,
   Mail,
   Phone,
-  ExternalLink,
+
   Grid3X3,
   List,
   Download,
@@ -33,7 +33,10 @@ import {
   Eye,
   Share2,
   ChevronDown,
-  Star
+  Star,
+  Trash2,
+  Edit3,
+  X
 } from 'lucide-react';
 
 interface Project {
@@ -92,6 +95,137 @@ interface Project {
     documents: number;
   };
 }
+
+// Utility function to create project summary
+const getProjectSummary = (project: Project) => {
+  if (!project.description) return '';
+  
+  // If this appears to be an email-based project, create a better summary
+  if (project.description.includes('URGENT need') || project.description.includes('We have an') || project.description.length > 200) {
+    const urgencyText = project.urgencyLevel === 'CRITICAL' ? 'Urgent requirement' : 'New requirement';
+    const positionText = project.totalPositions > 1 ? `${project.totalPositions} positions` : '1 position';
+    const skillsText = project.skillsRequired.length > 0 
+      ? ` requiring ${project.skillsRequired.slice(0, 3).join(', ')}${project.skillsRequired.length > 3 ? ' +more' : ''}`
+      : '';
+    const locationText = project.location ? ` in ${project.location}` : '';
+    
+    return `${urgencyText} for ${positionText}${skillsText}${locationText} from ${project.clientName}.`;
+  }
+  
+  // For regular projects, show truncated description
+  return project.description.length > 150 
+    ? `${project.description.substring(0, 150)}...` 
+    : project.description;
+};
+
+// Project Actions Dropdown Component
+const ProjectActionsDropdown = ({ project, onRefresh }: { project: Project; onRefresh: () => void }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleDelete = async () => {
+    try {
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete project');
+      }
+      
+      onRefresh();
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      alert('Failed to delete project. Please try again.');
+    }
+  };
+
+  return (
+    <div className="relative">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setIsOpen(!isOpen)}
+        className="px-2"
+      >
+        <MoreHorizontal className="w-4 h-4" />
+      </Button>
+
+      {isOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => setIsOpen(false)}
+          />
+          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-20">
+            <div className="py-1">
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  // TODO: Implement edit functionality
+                  alert('Edit project functionality coming soon!');
+                }}
+                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                <Edit3 className="w-4 h-4" />
+                Edit Project
+              </button>
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  setShowDeleteConfirm(true);
+                }}
+                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Project
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete Project</h3>
+                <p className="text-sm text-gray-600">This action cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete "<strong>{project.name}</strong>"? 
+              This will permanently remove the project and all associated data.
+            </p>
+            <div className="flex items-center gap-3 justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleDelete}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Delete Project
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function ProjectsPage() {
   const router = useRouter();
@@ -411,9 +545,9 @@ export default function ProjectsPage() {
                       </span>
                     </div>
 
-                    {project.description && (
+                    {getProjectSummary(project) && (
                       <p className="text-gray-600 mb-3 line-clamp-2">
-                        {project.description}
+                        {getProjectSummary(project)}
                       </p>
                     )}
 
@@ -437,13 +571,18 @@ export default function ProjectsPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
-                      <ExternalLink className="w-4 h-4 mr-1" />
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => router.push(`/projects/${project.id}`)}
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
                       View
                     </Button>
-                    <Button variant="outline" size="sm">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
+                    <ProjectActionsDropdown 
+                      project={project} 
+                      onRefresh={fetchProjects} 
+                    />
                   </div>
                 </div>
 

@@ -86,129 +86,129 @@ export default function PortalManagerPage() {
   const mockPortals = [
     {
       id: '1',
-      clientId: 'client-ubs',
-      clientName: 'UBS Group AG',
+      clientId: 'client-alpinebank',
+      clientName: 'Alpine Banking Solutions',
       clientIcon: getCompanyIcon('client-ubs'),
       status: 'active' as const,
       activeJobs: 8,
       totalCandidates: 156,
       lastActivity: '2024-02-15T10:30:00Z',
-      portalUrl: `${baseUrl}/clients/client-ubs/portal`,
+      portalUrl: `${baseUrl}/clients/client-alpinebank/portal`,
       accessLevel: 'ADMIN' as const,
       invitedUsers: [
-        { email: 'talent@ubs.com', role: 'ADMIN', status: 'accepted' as const, invitedAt: '2024-02-01T09:00:00Z' },
-        { email: 'hr.director@ubs.com', role: 'COLLABORATOR', status: 'accepted' as const, invitedAt: '2024-02-10T14:30:00Z' }
+        { email: 'talent@alpinebank.com', role: 'ADMIN', status: 'accepted' as const, invitedAt: '2024-02-01T09:00:00Z' },
+        { email: 'hr.director@alpinebank.com', role: 'COLLABORATOR', status: 'accepted' as const, invitedAt: '2024-02-10T14:30:00Z' }
       ]
     },
     {
       id: '2',
-      clientId: 'client-credit-suisse',
-      clientName: 'Credit Suisse Group AG',
+      clientId: 'client-globalfinance',
+      clientName: 'Global Finance Partners',
       clientIcon: getCompanyIcon('client-credit-suisse'),
       status: 'active' as const,
       activeJobs: 5,
       totalCandidates: 98,
       lastActivity: '2024-02-14T16:45:00Z',
-      portalUrl: `${baseUrl}/clients/client-credit-suisse/portal`,
+      portalUrl: `${baseUrl}/clients/client-globalfinance/portal`,
       accessLevel: 'COLLABORATOR' as const,
       invitedUsers: [
-        { email: 'recruitment@credit-suisse.com', role: 'COLLABORATOR', status: 'accepted' as const, invitedAt: '2024-01-15T11:20:00Z' }
+        { email: 'recruitment@globalfinance.com', role: 'COLLABORATOR', status: 'accepted' as const, invitedAt: '2024-01-15T11:20:00Z' }
       ]
     },
     {
       id: '3',
-      clientId: 'client-rolex',
-      clientName: 'Rolex SA',
+      clientId: 'client-luxurywatch',
+      clientName: 'Swiss Luxury Timepieces',
       clientIcon: getCompanyIcon('client-rolex'),
       status: 'active' as const,
       activeJobs: 4,
       totalCandidates: 67,
       lastActivity: '2024-02-13T08:15:00Z',
-      portalUrl: `${baseUrl}/clients/client-rolex/portal`,
+      portalUrl: `${baseUrl}/clients/client-luxurywatch/portal`,
       accessLevel: 'ADMIN' as const,
       invitedUsers: [
-        { email: 'hr@rolex.com', role: 'ADMIN', status: 'accepted' as const, invitedAt: '2024-01-20T10:00:00Z' },
-        { email: 'talent.acquisition@rolex.com', role: 'COLLABORATOR', status: 'accepted' as const, invitedAt: '2024-02-05T15:30:00Z' }
+        { email: 'hr@luxurywatch.com', role: 'ADMIN', status: 'accepted' as const, invitedAt: '2024-01-20T10:00:00Z' },
+        { email: 'talent.acquisition@luxurywatch.com', role: 'COLLABORATOR', status: 'accepted' as const, invitedAt: '2024-02-05T15:30:00Z' }
       ]
     },
     {
       id: '4',
-      clientId: 'client-novartis',
-      clientName: 'Novartis AG',
+      clientId: 'client-biopharma',
+      clientName: 'BioPharma Innovations',
       clientIcon: getCompanyIcon('client-novartis'),
       status: 'active' as const,
       activeJobs: 12,
       totalCandidates: 289,
       lastActivity: '2024-02-15T12:20:00Z',
-      portalUrl: `${baseUrl}/clients/client-novartis/portal`,
+      portalUrl: `${baseUrl}/clients/client-biopharma/portal`,
       accessLevel: 'ADMIN' as const,
       invitedUsers: [
-        { email: 'global.talent@novartis.com', role: 'ADMIN', status: 'accepted' as const, invitedAt: '2024-01-20T10:00:00Z' },
-        { email: 'hr.basel@novartis.com', role: 'COLLABORATOR', status: 'accepted' as const, invitedAt: '2024-01-25T15:30:00Z' },
-        { email: 'recruiter.emea@novartis.com', role: 'COLLABORATOR', status: 'accepted' as const, invitedAt: '2024-02-12T09:45:00Z' }
+        { email: 'global.talent@biopharma.com', role: 'ADMIN', status: 'accepted' as const, invitedAt: '2024-01-20T10:00:00Z' },
+        { email: 'hr.basel@biopharma.com', role: 'COLLABORATOR', status: 'accepted' as const, invitedAt: '2024-01-25T15:30:00Z' },
+        { email: 'recruiter.emea@biopharma.com', role: 'COLLABORATOR', status: 'accepted' as const, invitedAt: '2024-02-12T09:45:00Z' }
       ]
     },
     {
       id: '5',
-      clientId: 'client-roche',
-      clientName: 'F. Hoffmann-La Roche AG',
+      clientId: 'client-healthtech',
+      clientName: 'HealthTech Research Group',
       clientIcon: getCompanyIcon('client-roche'),
       status: 'active' as const,
       activeJobs: 9,
       totalCandidates: 201,
       lastActivity: '2024-02-15T09:15:00Z',
-      portalUrl: `${baseUrl}/clients/client-roche/portal`,
+      portalUrl: `${baseUrl}/clients/client-healthtech/portal`,
       accessLevel: 'ADMIN' as const,
       invitedUsers: [
-        { email: 'talent.acquisition@roche.com', role: 'ADMIN', status: 'accepted' as const, invitedAt: '2024-01-18T14:00:00Z' },
-        { email: 'hr.switzerland@roche.com', role: 'COLLABORATOR', status: 'accepted' as const, invitedAt: '2024-02-01T11:30:00Z' }
+        { email: 'talent.acquisition@healthtech.com', role: 'ADMIN', status: 'accepted' as const, invitedAt: '2024-01-18T14:00:00Z' },
+        { email: 'hr.switzerland@healthtech.com', role: 'COLLABORATOR', status: 'accepted' as const, invitedAt: '2024-02-01T11:30:00Z' }
       ]
     },
     {
       id: '6',
-      clientId: 'client-nestle',
-      clientName: 'Nestlé S.A.',
+      clientId: 'client-foodglobal',
+      clientName: 'Global Food Solutions',
       clientIcon: getCompanyIcon('client-nestle'),
       status: 'active' as const,
       activeJobs: 15,
       totalCandidates: 342,
       lastActivity: '2024-02-15T14:45:00Z',
-      portalUrl: `${baseUrl}/clients/client-nestle/portal`,
+      portalUrl: `${baseUrl}/clients/client-foodglobal/portal`,
       accessLevel: 'ADMIN' as const,
       invitedUsers: [
-        { email: 'global.recruitment@nestle.com', role: 'ADMIN', status: 'accepted' as const, invitedAt: '2024-01-10T09:00:00Z' },
-        { email: 'hr.vevey@nestle.com', role: 'COLLABORATOR', status: 'accepted' as const, invitedAt: '2024-01-22T16:20:00Z' },
-        { email: 'talent.emea@nestle.com', role: 'COLLABORATOR', status: 'pending' as const, invitedAt: '2024-02-14T10:15:00Z' }
+        { email: 'global.recruitment@foodglobal.com', role: 'ADMIN', status: 'accepted' as const, invitedAt: '2024-01-10T09:00:00Z' },
+        { email: 'hr.vevey@foodglobal.com', role: 'COLLABORATOR', status: 'accepted' as const, invitedAt: '2024-01-22T16:20:00Z' },
+        { email: 'talent.emea@foodglobal.com', role: 'COLLABORATOR', status: 'pending' as const, invitedAt: '2024-02-14T10:15:00Z' }
       ]
     },
     {
       id: '7',
-      clientId: 'client-zurich-insurance',
-      clientName: 'Zurich Insurance Group AG',
+      clientId: 'client-insuranceplus',
+      clientName: 'Insurance Plus Group',
       clientIcon: getCompanyIcon('client-zurich-insurance'),
       status: 'active' as const,
       activeJobs: 6,
       totalCandidates: 134,
       lastActivity: '2024-02-14T17:30:00Z',
-      portalUrl: `${baseUrl}/clients/client-zurich-insurance/portal`,
+      portalUrl: `${baseUrl}/clients/client-insuranceplus/portal`,
       accessLevel: 'COLLABORATOR' as const,
       invitedUsers: [
-        { email: 'talent@zurich.com', role: 'COLLABORATOR', status: 'accepted' as const, invitedAt: '2024-01-28T13:45:00Z' }
+        { email: 'talent@insuranceplus.com', role: 'COLLABORATOR', status: 'accepted' as const, invitedAt: '2024-01-28T13:45:00Z' }
       ]
     },
     {
       id: '8',
-      clientId: 'client-patek-philippe',
-      clientName: 'Patek Philippe SA',
+      clientId: 'client-prestige',
+      clientName: 'Prestige Craft Manufacturing',
       clientIcon: getCompanyIcon('client-patek-philippe'),
       status: 'pending' as const,
       activeJobs: 3,
       totalCandidates: 45,
       lastActivity: '2024-02-12T11:20:00Z',
-      portalUrl: `${baseUrl}/clients/client-patek-philippe/portal`,
+      portalUrl: `${baseUrl}/clients/client-prestige/portal`,
       accessLevel: 'VIEWER' as const,
       invitedUsers: [
-        { email: 'hr@patek.com', role: 'VIEWER', status: 'pending' as const, invitedAt: '2024-02-10T15:00:00Z' }
+        { email: 'hr@prestige.com', role: 'VIEWER', status: 'pending' as const, invitedAt: '2024-02-10T15:00:00Z' }
       ]
     }
   ];
@@ -465,25 +465,25 @@ export default function PortalManagerPage() {
             <div className="space-y-3">
               {[
                 { 
-                  portal: 'TechCorp AG', 
+                  portal: 'Alpine Banking Solutions', 
                   action: 'New candidate rated by client', 
                   time: '2 hours ago',
                   type: 'rating'
                 },
                 { 
-                  portal: 'Retail Excellence Group', 
-                  action: 'User invited: manager@retail.com', 
+                  portal: 'Global Food Solutions', 
+                  action: 'User invited: manager@foodglobal.com', 
                   time: '4 hours ago',
                   type: 'invitation'
                 },
                 { 
-                  portal: 'FinServ Solutions', 
+                  portal: 'BioPharma Innovations', 
                   action: 'Comment added on candidate pipeline', 
                   time: '6 hours ago',
                   type: 'comment'
                 },
                 { 
-                  portal: 'HealthTech Innovation', 
+                  portal: 'HealthTech Research Group', 
                   action: 'Portal access granted', 
                   time: '1 day ago',
                   type: 'access'

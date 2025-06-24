@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import { X, Upload, FileText, Linkedin, User, Brain, CheckCircle, UserPlus, Loader2, Paperclip, Mic, MicOff, Eye, EyeOff, Plus, Trash2, Tag, Briefcase, Users, Star, Save, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -67,6 +68,7 @@ interface ParsedCandidate {
 }
 
 export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated }: CreateCandidateModalProps) {
+  const { getToken } = useAuth();
   const [currentStep, setCurrentStep] = useState<Step>('intake');
   const [inputMethod, setInputMethod] = useState<'upload' | 'linkedin' | 'manual' | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -117,7 +119,13 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
   const fetchJobs = async () => {
     setLoadingJobs(true);
     try {
-      const response = await fetch('/api/jobs');
+      const token = await getToken();
+      const response = await fetch('/api/jobs', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setAvailableJobs(data.jobs || []);
@@ -504,9 +512,11 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
 
       console.log('Submitting candidate data:', candidateData);
 
+      const token = await getToken();
       const response = await fetch('/api/candidates', {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(candidateData),
@@ -537,6 +547,7 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
             const assignResponse = await fetch(`/api/jobs/${jobId}/candidates`, {
               method: 'POST',
               headers: {
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({ candidateId: result.data.id }),
@@ -583,8 +594,8 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <UserPlus className="h-6 w-6 text-blue-600" />
+            <div className="p-2 bg-[#0A2F5A]/10 rounded-lg">
+              <UserPlus className="h-6 w-6 text-[#0A2F5A]" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">Add Candidate</h2>
@@ -615,7 +626,7 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
               return (
                 <div key={step.id} className="flex items-center">
                   <div className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-                    isActive ? 'bg-blue-100 text-blue-700' : 
+                    isActive ? 'bg-[#0A2F5A]/10 text-[#0A2F5A]' : 
                     isCompleted ? 'bg-green-100 text-green-700' : 
                     'text-gray-500'
                   }`}>
@@ -640,8 +651,8 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
             <div className="space-y-6">
               <div className="text-center">
                 <div className="mb-6">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <UserPlus className="h-8 w-8 text-blue-600" />
+                  <div className="w-16 h-16 bg-[#0A2F5A]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <UserPlus className="h-8 w-8 text-[#0A2F5A]" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
                     How would you like to add this candidate?
@@ -657,7 +668,7 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
                 {/* Upload CV */}
                 <div
                   className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-                    inputMethod === 'upload' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                    inputMethod === 'upload' ? 'border-[#0A2F5A] bg-[#0A2F5A]/5' : 'border-gray-300 hover:border-gray-400'
                   }`}
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
@@ -669,7 +680,7 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
                     Drag & drop or click to upload
                   </p>
                   {uploadedFile && (
-                    <div className="text-sm text-blue-600 font-medium">
+                    <div className="text-sm text-[#0A2F5A] font-medium">
                       ✓ {uploadedFile.name}
                     </div>
                   )}
@@ -685,11 +696,11 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
                 {/* LinkedIn Profile Text */}
                 <div
                   className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-                    inputMethod === 'linkedin' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                    inputMethod === 'linkedin' ? 'border-[#0A2F5A] bg-[#0A2F5A]/5' : 'border-gray-300 hover:border-gray-400'
                   }`}
                   onClick={() => setInputMethod('linkedin')}
                 >
-                  <Linkedin className="h-8 w-8 text-blue-600 mx-auto mb-3" />
+                  <Linkedin className="h-8 w-8 text-[#0A2F5A] mx-auto mb-3" />
                   <h4 className="font-medium text-gray-900 mb-2">LinkedIn Profile</h4>
                   <p className="text-sm text-gray-600 mb-3">
                     Paste LinkedIn profile text
@@ -708,7 +719,7 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
                 {/* Manual Entry */}
                 <div
                   className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-                    inputMethod === 'manual' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                    inputMethod === 'manual' ? 'border-[#0A2F5A] bg-[#0A2F5A]/5' : 'border-gray-300 hover:border-gray-400'
                   }`}
                   onClick={() => setInputMethod('manual')}
                 >
@@ -738,7 +749,7 @@ Skills: React, TypeScript, Python, AWS
 Bachelor's in Computer Science from ETH Zurich"
                       value={manualInput}
                       onChange={(e) => setManualInput(e.target.value)}
-                      className="w-full h-40 p-4 border border-gray-300 rounded-xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      className="w-full h-40 p-4 border border-gray-300 rounded-xl resize-none focus:ring-2 focus:ring-[#0A2F5A] focus:border-[#0A2F5A] text-sm"
                     />
                     <div className="absolute bottom-3 left-3 text-xs text-gray-400">
                       {manualInput.length}/50 min
@@ -793,23 +804,23 @@ Bachelor's in Computer Science from ETH Zurich"
                         }}
                         className={`min-w-[180px] px-4 py-3 text-left border-2 rounded-lg transition-all duration-200 shadow-sm focus:outline-none ${
                           isSelected 
-                            ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-100' 
-                            : 'border-gray-300 bg-white hover:border-blue-300 hover:bg-blue-50 hover:shadow-md'
+                            ? 'border-[#0A2F5A] bg-[#0A2F5A]/5 shadow-md ring-2 ring-[#0A2F5A]/20' 
+                            : 'border-gray-300 bg-white hover:border-[#0A2F5A]/30 hover:bg-[#0A2F5A]/5 hover:shadow-md'
                         }`}
                         aria-label={`Insert ${template.role} template`}
                       >
                         <div className={`font-semibold mb-1 ${
-                          isSelected ? 'text-blue-800' : 'text-gray-800'
+                          isSelected ? 'text-[#0A2F5A]' : 'text-gray-800'
                         }`}>
                           {template.role}
                         </div>
                         <div className={`text-xs line-clamp-2 ${
-                          isSelected ? 'text-blue-600' : 'text-gray-500'
+                          isSelected ? 'text-[#0A2F5A]/80' : 'text-gray-500'
                         }`}>
                           {template.preview}
                         </div>
                         {isSelected && (
-                          <div className="mt-2 flex items-center text-xs text-blue-600">
+                          <div className="mt-2 flex items-center text-xs text-[#0A2F5A]">
                             <CheckCircle className="h-3 w-3 mr-1" />
                             Selected
                           </div>
@@ -840,8 +851,8 @@ Bachelor's in Computer Science from ETH Zurich"
           {/* Step 2: AI Parsing */}
           {currentStep === 'parsing' && (
             <div className="text-center py-12">
-              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Brain className="h-10 w-10 text-blue-600 animate-pulse" />
+              <div className="w-20 h-20 bg-[#0A2F5A]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Brain className="h-10 w-10 text-[#0A2F5A] animate-pulse" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 Extracting candidate information...
@@ -850,7 +861,7 @@ Bachelor's in Computer Science from ETH Zurich"
                 Smart AI is analyzing and structuring the candidate profile
               </p>
               <div className="flex items-center justify-center space-x-2">
-                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                <Loader2 className="h-5 w-5 animate-spin text-[#0A2F5A]" />
                 <span className="text-sm text-gray-600">Processing...</span>
               </div>
               
@@ -858,9 +869,9 @@ Bachelor's in Computer Science from ETH Zurich"
               <div className="mt-8 max-w-md mx-auto">
                 <div className="flex flex-col items-center space-y-4">
                   <div className="relative">
-                    <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                    <div className="w-16 h-16 border-4 border-[#0A2F5A]/20 border-t-[#0A2F5A] rounded-full animate-spin"></div>
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <Brain className="h-6 w-6 text-blue-600" />
+                      <Brain className="h-6 w-6 text-[#0A2F5A]" />
                     </div>
                   </div>
                   <div className="text-center">
@@ -996,19 +1007,19 @@ Bachelor's in Computer Science from ETH Zurich"
                   {/* Frameworks */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                      <span className="w-3 h-3 bg-blue-500 rounded-full mr-2"></span>
+                      <span className="w-3 h-3 bg-[#0A2F5A] rounded-full mr-2"></span>
                       Frameworks & Libraries
                     </label>
                     <div className="flex flex-wrap gap-2 mb-2">
                       {parsedCandidate.frameworks?.map((skill, index) => (
-                        <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm flex items-center">
+                        <span key={index} className="px-3 py-1 bg-[#0A2F5A]/10 text-[#0A2F5A] rounded-full text-sm flex items-center">
                           {skill}
                           <button
                             onClick={() => {
                               const newSkills = parsedCandidate.frameworks?.filter((_, i) => i !== index) || [];
                               setParsedCandidate({...parsedCandidate, frameworks: newSkills});
                             }}
-                            className="ml-2 text-blue-600 hover:text-blue-800"
+                            className="ml-2 text-[#0A2F5A] hover:text-[#083248]"
                           >
                             <X className="h-3 w-3" />
                           </button>
@@ -1217,7 +1228,7 @@ Bachelor's in Computer Science from ETH Zurich"
                         type="checkbox"
                         checked={parsedCandidate.relocationWillingness || false}
                         onChange={(e) => setParsedCandidate({...parsedCandidate, relocationWillingness: e.target.checked})}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        className="h-4 w-4 text-[#0A2F5A] focus:ring-[#0A2F5A] border-gray-300 rounded"
                       />
                       <span className="text-sm text-gray-700">Open to relocation</span>
                     </label>
@@ -1226,7 +1237,7 @@ Bachelor's in Computer Science from ETH Zurich"
                         type="checkbox"
                         checked={parsedCandidate.freelancer || false}
                         onChange={(e) => setParsedCandidate({...parsedCandidate, freelancer: e.target.checked})}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        className="h-4 w-4 text-[#0A2F5A] focus:ring-[#0A2F5A] border-gray-300 rounded"
                       />
                       <span className="text-sm text-gray-700">Available for freelance</span>
                     </label>
@@ -1442,7 +1453,7 @@ Bachelor's in Computer Science from ETH Zurich"
                   <Briefcase className="h-5 w-5 mr-2" />
                   Assign to Jobs
                   {jobId && (
-                    <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                    <span className="ml-2 px-2 py-1 bg-[#0A2F5A]/10 text-[#0A2F5A] text-xs rounded-full">
                       Auto-assigned
                     </span>
                   )}
@@ -1462,7 +1473,7 @@ Bachelor's in Computer Science from ETH Zurich"
                       const isCurrentJob = job.id === jobId;
                       return (
                         <div key={job.id} className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
-                          isCurrentJob ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+                          isCurrentJob ? 'border-[#0A2F5A]/30 bg-[#0A2F5A]/5' : 'border-gray-200'
                         }`}>
                           <div className="flex items-center space-x-3">
                             <input
@@ -1475,16 +1486,16 @@ Bachelor's in Computer Science from ETH Zurich"
                                   setSelectedJobs(selectedJobs.filter(id => id !== job.id));
                                 }
                               }}
-                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                              className="h-4 w-4 text-[#0A2F5A] focus:ring-[#0A2F5A] border-gray-300 rounded"
                             />
                             <div>
-                              <h5 className={`font-medium ${isCurrentJob ? 'text-blue-900' : 'text-gray-900'}`}>
+                              <h5 className={`font-medium ${isCurrentJob ? 'text-[#0A2F5A]' : 'text-gray-900'}`}>
                                 {job.title}
                                 {isCurrentJob && (
-                                  <span className="ml-2 text-xs text-blue-600 font-normal">(Current Job)</span>
+                                  <span className="ml-2 text-xs text-[#0A2F5A]/80 font-normal">(Current Job)</span>
                                 )}
                               </h5>
-                              <p className={`text-sm ${isCurrentJob ? 'text-blue-700' : 'text-gray-600'}`}>
+                              <p className={`text-sm ${isCurrentJob ? 'text-[#0A2F5A]/70' : 'text-gray-600'}`}>
                                 {job.location || 'Location not specified'} • {job.status || 'Active'}
                               </p>
                             </div>
@@ -1531,7 +1542,7 @@ Bachelor's in Computer Science from ETH Zurich"
                                 setSelectedTalentPools(selectedTalentPools.filter(id => id !== pool.id));
                               }
                             }}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            className="h-4 w-4 text-[#0A2F5A] focus:ring-[#0A2F5A] border-gray-300 rounded"
                           />
                           <div>
                             <h5 className="font-medium text-gray-900">{pool.name}</h5>
@@ -1558,13 +1569,13 @@ Bachelor's in Computer Science from ETH Zurich"
                       {candidateTags.map((tag) => (
                         <span
                           key={tag}
-                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#0A2F5A]/10 text-[#0A2F5A]"
                         >
                           {tag}
                           <button
                             type="button"
                             onClick={() => removeTag(tag)}
-                            className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full text-blue-400 hover:bg-blue-200 hover:text-blue-600"
+                            className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full text-[#0A2F5A]/60 hover:bg-[#0A2F5A]/20 hover:text-[#0A2F5A]"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -1583,7 +1594,7 @@ Bachelor's in Computer Science from ETH Zurich"
                       onKeyDown={handleTagInputKeyDown}
                       onFocus={() => setShowTagSuggestions(tagInput.length > 0)}
                       onBlur={() => setTimeout(() => setShowTagSuggestions(false), 200)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0A2F5A] focus:border-[#0A2F5A] text-sm"
                     />
                     
                     {/* Autocomplete Suggestions */}

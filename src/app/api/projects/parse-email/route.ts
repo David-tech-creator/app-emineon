@@ -3,10 +3,10 @@ import { prisma } from '@/lib/prisma';
 import OpenAI from 'openai';
 import { z } from 'zod';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
+// Initialize OpenAI client (optional for demo)
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-});
+}) : null;
 
 const parseEmailSchema = z.object({
   emailContent: z.string().min(1, 'Email content is required'),
@@ -21,13 +21,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { emailContent, emailSubject, senderEmail, receivedDate } = parseEmailSchema.parse(body);
 
-    // Use OpenAI to parse the email and extract project information
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert recruitment assistant. Parse the following email to extract project information for a recruitment opportunity. 
+    let parsedData;
+
+    // Try OpenAI first, fallback to rule-based parsing
+    if (openai) {
+      try {
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4",
+          messages: [
+            {
+              role: "system",
+              content: `You are an expert recruitment assistant. Parse the following email to extract project information for a recruitment opportunity. 
 
 Extract the following information and return it as a JSON object:
 {
@@ -61,26 +65,28 @@ Be intelligent about extracting information. For example:
 - Extract location details and remote work preferences
 
 Only return the JSON object, no other text.`
-        },
-        {
-          role: "user",
-          content: `Email Subject: ${emailSubject}\n\nEmail Content:\n${emailContent}`
-        }
-      ],
-      temperature: 0.1,
-    });
+            },
+            {
+              role: "user",
+              content: `Email Subject: ${emailSubject}\n\nEmail Content:\n${emailContent}`
+            }
+          ],
+          temperature: 0.1,
+        });
 
-    const aiResponse = completion.choices[0]?.message?.content;
-    if (!aiResponse) {
-      throw new Error('No response from AI');
+        const aiResponse = completion.choices[0]?.message?.content;
+        if (aiResponse) {
+          parsedData = JSON.parse(aiResponse);
+        }
+      } catch (error) {
+        console.log('OpenAI parsing failed, using rule-based fallback:', error instanceof Error ? error.message : 'Unknown error');
+        parsedData = null;
+      }
     }
 
-    let parsedData;
-    try {
-      parsedData = JSON.parse(aiResponse);
-    } catch (error) {
-      console.error('Failed to parse AI response:', aiResponse);
-      throw new Error('Invalid AI response format');
+    // Fallback to rule-based parsing if OpenAI is unavailable or failed
+    if (!parsedData) {
+      parsedData = parseEmailWithRules(emailContent, emailSubject, senderEmail);
     }
 
     // Create the project with parsed data
@@ -102,8 +108,8 @@ Only return the JSON object, no other text.`
         industryBackground: parsedData.industryBackground,
         languageRequirements: parsedData.languageRequirements || [],
         budgetRange: parsedData.budgetRange,
-        startDate: parsedData.startDate ? new Date(parsedData.startDate) : null,
-        endDate: parsedData.endDate ? new Date(parsedData.endDate) : null,
+        startDate: parsedData.startDate && parsedData.startDate !== '' && !isNaN(Date.parse(parsedData.startDate)) ? new Date(parsedData.startDate) : null,
+        endDate: parsedData.endDate && parsedData.endDate !== '' && !isNaN(Date.parse(parsedData.endDate)) ? new Date(parsedData.endDate) : null,
         sourceEmail: emailContent,
         sourceEmailSubject: emailSubject,
         sourceEmailDate: receivedDate ? new Date(receivedDate) : new Date(),
@@ -113,6 +119,7 @@ Only return the JSON object, no other text.`
           `Key requirements: ${parsedData.keyRequirements?.join(', ') || 'Not specified'}`,
           parsedData.additionalInfo || ''
         ].filter(Boolean),
+        tags: ['Email Generated', 'Auto-Parsed', parsedData.industryBackground || 'Technology'].filter(Boolean),
         activities: {
           create: [
             {
@@ -124,6 +131,7 @@ Only return the JSON object, no other text.`
                 senderEmail,
                 originalSubject: emailSubject,
                 parsedData: parsedData,
+                parsingMethod: openai ? 'openai' : 'rule_based'
               }
             },
             {
@@ -156,7 +164,7 @@ Only return the JSON object, no other text.`
     });
 
     // Generate suggested job positions based on the project
-    const jobSuggestions = await generateJobSuggestions(project, parsedData);
+    const jobSuggestions = generateJobSuggestionsWithRules(project, parsedData);
 
     return NextResponse.json({
       project,
@@ -181,8 +189,209 @@ Only return the JSON object, no other text.`
   }
 }
 
-// Helper function to generate job position suggestions
+// Rule-based email parsing for demo purposes
+function parseEmailWithRules(emailContent: string, emailSubject: string, senderEmail: string) {
+  const content = (emailContent + ' ' + emailSubject).toLowerCase();
+  
+  // Extract company name from email domain
+  const emailDomain = senderEmail.split('@')[1];
+  let clientName = emailDomain?.split('.')[0] || 'Unknown Client';
+  
+  // Look for company name mentions in the email
+  const companyMatches = emailContent.match(/we are ([^,.\n]+)/i) || 
+                         emailContent.match(/company[:\s]+([^,.\n]+)/i) ||
+                         emailContent.match(/at ([^,.\n]+)/i);
+  if (companyMatches && companyMatches[1]) {
+    clientName = companyMatches[1].trim();
+  }
+
+  // Extract contact name (often from signature)
+  let clientContact = '';
+  const nameMatches = emailContent.match(/best regards[,:\s]*\n?([^\n]+)/i) ||
+                      emailContent.match(/regards[,:\s]*\n?([^\n]+)/i) ||
+                      emailContent.match(/sincerely[,:\s]*\n?([^\n]+)/i);
+  if (nameMatches && nameMatches[1]) {
+    clientContact = nameMatches[1].trim();
+  }
+
+  // Extract number of positions
+  const positionMatches = content.match(/(\d+)\s+(data\s+engineers?|developers?|positions?|people|candidates?)/) ||
+                          content.match(/(need|require|looking\s+for)\s+(\d+)/) ||
+                          content.match(/(\d+)\s+(experienced|senior|junior|mid|positions?)/);
+  let totalPositions = 1;
+  if (positionMatches) {
+    totalPositions = parseInt(positionMatches[1] || positionMatches[2] || '1') || 1;
+  }
+
+  // Extract skills (common tech skills)
+  const skillsRegex = /(mongodb|typescript|javascript|sql|python|react|node\.?js|java|c\+\+|c#|php|ruby|go|rust|swift|kotlin|docker|kubernetes|aws|azure|gcp|mysql|postgresql|redis|elasticsearch|kafka|spark|hadoop|git|jenkins|ci\/cd|agile|scrum|devops|machine\s+learning|ai|data\s+science|etl|big\s+data|cloud|microservices|rest\s+api|graphql|nosql)/gi;
+  const skillMatches = emailContent.match(skillsRegex) || [];
+  const skillsRequired = Array.from(new Set(skillMatches.map(skill => 
+    skill.replace(/\s+/g, ' ').trim()
+      .replace(/node\.?js/i, 'Node.js')
+      .replace(/mongodb/i, 'MongoDB')
+      .replace(/typescript/i, 'TypeScript')
+      .replace(/javascript/i, 'JavaScript')
+      .replace(/sql/i, 'SQL')
+  )));
+
+  // Extract experience requirements
+  const experienceMatches = emailContent.match(/(\d+)\+?\s*years?\s+(?:of\s+)?(?:experience|exp)/gi) ||
+                            emailContent.match(/(minimum|min|at least)\s+(\d+)\s*years?/gi) ||
+                            emailContent.match(/(senior|junior|mid|experienced|expert|proficient)/gi);
+  const experienceRequired = experienceMatches?.map(exp => exp.trim()) || [];
+  if (skillsRequired.length > 0 && experienceRequired.length === 0) {
+    experienceRequired.push('3+ years experience', 'Professional experience required');
+  }
+
+  // Detect urgency
+  let urgencyLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'MEDIUM';
+  if (content.includes('urgent') || content.includes('asap') || content.includes('immediately') || 
+      content.includes('rush') || content.includes('critical') || emailSubject.toUpperCase().includes('URGENT')) {
+    urgencyLevel = 'HIGH';
+  }
+  if (content.includes('flexible') || content.includes('when available')) {
+    urgencyLevel = 'LOW';
+  }
+
+  // Extract location
+  let location = '';
+  let isRemote = false;
+  let isHybrid = false;
+  
+  const locationMatches = emailContent.match(/(zurich|geneva|basel|bern|lausanne|london|berlin|paris|amsterdam|stockholm|oslo|copenhagen|madrid|barcelona|milan|rome|vienna|prague|budapest|warsaw|dublin|edinburgh|manchester|birmingham|bristol)/gi);
+  if (locationMatches) {
+    location = locationMatches[0];
+  }
+  
+  if (content.includes('remote') || content.includes('work from home') || content.includes('wfh')) {
+    isRemote = true;
+  }
+  if (content.includes('hybrid') || (content.includes('remote') && content.includes('office'))) {
+    isHybrid = true;
+  }
+
+  // Extract budget information
+  let budgetRange = '';
+  const budgetMatches = emailContent.match(/[€$£]\s?(\d{1,3}(?:[,\.]\d{3})*)\s?[-–]\s?[€$£]?\s?(\d{1,3}(?:[,\.]\d{3})*)/g) ||
+                        emailContent.match(/budget[:\s]*[€$£]?\s?(\d{1,3}(?:[,\.]\d{3})*)/gi) ||
+                        emailContent.match(/salary[:\s]*[€$£]?\s?(\d{1,3}(?:[,\.]\d{3})*)/gi);
+  if (budgetMatches) {
+    budgetRange = budgetMatches[0];
+  }
+
+  // Generate project name and description
+  const roleMatch = emailContent.match(/(data\s+engineer|software\s+engineer|developer|analyst|scientist|architect|manager)/gi);
+  const primaryRole = roleMatch ? roleMatch[0] : 'Professional';
+  const projectName = `${clientName} - ${primaryRole}${totalPositions > 1 ? 's' : ''}`;
+  
+  const description = `${clientName} is seeking ${totalPositions} ${primaryRole}${totalPositions > 1 ? 's' : ''} with expertise in ${skillsRequired.slice(0, 3).join(', ')}. ${urgencyLevel === 'HIGH' ? 'This is an urgent requirement with immediate start needed.' : 'Looking for qualified professionals to join their growing team.'}`;
+
+  return {
+    projectName,
+    clientName,
+    clientContact,
+    totalPositions,
+    description,
+    location,
+    isRemote,
+    isHybrid,
+    skillsRequired,
+    experienceRequired,
+    industryBackground: clientName.toLowerCase().includes('bank') || clientName.toLowerCase().includes('finance') ? 'Financial Services' : 'Technology',
+    languageRequirements: location?.toLowerCase().includes('zurich') || location?.toLowerCase().includes('switzerland') ? ['English', 'German'] : ['English'],
+    urgencyLevel,
+    priority: urgencyLevel,
+    budgetRange,
+    startDate: '',
+    endDate: '',
+    keyRequirements: skillsRequired.slice(0, 5),
+    additionalInfo: `Parsed from email with ${skillsRequired.length} technical skills identified. ${isRemote ? 'Remote work possible.' : ''} ${isHybrid ? 'Hybrid arrangement available.' : ''}`
+  };
+}
+
+// Rule-based job suggestions for demo
+function generateJobSuggestionsWithRules(project: any, parsedData: any) {
+  const suggestions = [];
+  const totalPositions = project.totalPositions || 1;
+  const skills = project.skillsRequired || [];
+  
+  if (totalPositions === 1) {
+    suggestions.push({
+      title: `Senior ${skills[0] || 'Technology'} Specialist - ${project.clientName}`,
+      description: `Lead ${skills[0] || 'technology'} development and implementation for ${project.clientName}. Work with cutting-edge technologies in a dynamic environment.`,
+      requirements: project.skillsRequired,
+      responsibilities: [
+        `Develop and maintain ${skills[0] || 'technology'} solutions`,
+        'Collaborate with cross-functional teams',
+        'Mentor junior developers',
+        'Ensure code quality and best practices'
+      ],
+      experienceLevel: 'Senior',
+      benefits: ['Competitive salary', 'Professional development', 'Modern tech stack', 'Team collaboration'],
+      priority: 1
+    });
+  } else {
+    // Multiple positions - create varied roles
+    suggestions.push({
+      title: `Senior ${skills[0] || 'Technology'} Engineer - ${project.clientName}`,
+      description: `Lead ${skills[0] || 'technology'} initiatives and guide technical decisions at ${project.clientName}.`,
+      requirements: project.skillsRequired,
+      responsibilities: [
+        'Lead technical architecture decisions',
+        'Mentor team members',
+        'Drive best practices implementation',
+        'Collaborate on strategic initiatives'
+      ],
+      experienceLevel: 'Senior',
+      benefits: ['Leadership opportunities', 'Competitive package', 'Modern tech stack'],
+      priority: 1
+    });
+
+    if (totalPositions >= 2) {
+      suggestions.push({
+        title: `Mid-Level ${skills[0] || 'Technology'} Developer - ${project.clientName}`,
+        description: `Contribute to ${skills[0] || 'technology'} development projects at ${project.clientName} with growth opportunities.`,
+        requirements: project.skillsRequired.slice(0, 3), // Fewer requirements for mid-level
+        responsibilities: [
+          'Develop features and functionality',
+          'Participate in code reviews',
+          'Collaborate with senior team members',
+          'Contribute to project planning'
+        ],
+        experienceLevel: 'Mid-Level',
+        benefits: ['Growth opportunities', 'Mentorship program', 'Competitive salary'],
+        priority: 2
+      });
+    }
+
+    if (totalPositions >= 3) {
+      suggestions.push({
+        title: `${skills[0] || 'Technology'} Specialist - ${project.clientName}`,
+        description: `Specialized role focusing on ${skills.slice(0, 2).join(' and ')} development at ${project.clientName}.`,
+        requirements: project.skillsRequired.slice(0, 4),
+        responsibilities: [
+          `Focus on ${skills[0] || 'technology'} implementation`,
+          'Support technical solutions',
+          'Learn and adapt to new technologies',
+          'Contribute to team objectives'
+        ],
+        experienceLevel: 'Mid-Level to Senior',
+        benefits: ['Specialization opportunities', 'Professional development', 'Team environment'],
+        priority: 2
+      });
+    }
+  }
+
+  return suggestions;
+}
+
+// Legacy OpenAI function (kept for compatibility if API key is added later)
 async function generateJobSuggestions(project: any, parsedData: any) {
+  if (!openai) {
+    return generateJobSuggestionsWithRules(project, parsedData);
+  }
+
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
@@ -239,14 +448,6 @@ Additional Context: ${parsedData.additionalInfo || 'None'}`
     console.error('Error generating job suggestions:', error);
   }
 
-  // Fallback: create basic job suggestions
-  return [{
-    title: `${parsedData.skillsRequired?.[0] || 'Position'} - ${project.clientName}`,
-    description: project.description || 'Position details to be defined',
-    requirements: project.skillsRequired || [],
-    responsibilities: ['Responsibilities to be defined based on client requirements'],
-    experienceLevel: 'Mid-Senior',
-    benefits: ['Competitive package', 'Professional development opportunities'],
-    priority: 1
-  }];
+  // Fallback to rule-based suggestions
+  return generateJobSuggestionsWithRules(project, parsedData);
 } 

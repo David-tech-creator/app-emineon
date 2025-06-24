@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { useAuth } from '@clerk/nextjs';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -31,6 +32,7 @@ import {
 } from 'lucide-react';
 
 export default function JobDetailPage() {
+  const { getToken } = useAuth();
   const params = useParams();
   const jobId = params.id as string;
   const [activeTab, setActiveTab] = useState('pipeline');
@@ -55,12 +57,19 @@ export default function JobDetailPage() {
   // Fetch real candidates from the database
   const fetchCandidates = async () => {
     try {
-      const response = await fetch(`/api/jobs/${jobId}/candidates`);
+      const token = await getToken();
+      const response = await fetch(`/api/jobs/${jobId}/candidates`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
       if (response.ok) {
         const candidateData = await response.json();
         setCandidates(candidateData);
       } else {
-        console.error('Failed to fetch candidates');
+        const errorData = await response.json();
+        console.error('Failed to fetch candidates:', errorData);
         setCandidates([]);
       }
     } catch (error) {
@@ -113,7 +122,13 @@ export default function JobDetailPage() {
     const fetchJob = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/jobs/${jobId}`);
+        const token = await getToken();
+        const response = await fetch(`/api/jobs/${jobId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
         if (response.ok) {
           const jobData = await response.json();
           setJob({

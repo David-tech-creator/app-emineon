@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Search, User, MapPin, Mail, Phone, Plus, Loader2 } from 'lucide-react';
+import { useAuth } from '@clerk/nextjs';
 import { Button } from '@/components/ui/Button';
 
 interface AddExistingCandidateModalProps {
@@ -34,6 +35,7 @@ export function AddExistingCandidateModal({
   jobId, 
   onCandidateAdded 
 }: AddExistingCandidateModalProps) {
+  const { getToken } = useAuth();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,15 +52,25 @@ export function AddExistingCandidateModal({
   const fetchCandidates = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/candidates');
+      const token = await getToken();
+      const response = await fetch('/api/candidates', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
       if (response.ok) {
         const data = await response.json();
         setCandidates(data.candidates || []);
       } else {
-        console.error('Failed to fetch candidates');
+        const errorData = await response.json();
+        console.error('Failed to fetch candidates:', errorData);
+        alert(`Failed to fetch candidates: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error fetching candidates:', error);
+      alert('Error fetching candidates. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -86,35 +98,58 @@ export function AddExistingCandidateModal({
 
   const handleAddCandidates = async () => {
     if (selectedCandidates.length === 0) return;
-
+    
     setIsSubmitting(true);
     try {
-      // Add each selected candidate to the job
-      for (const candidateId of selectedCandidates) {
-        const response = await fetch(`/api/jobs/${jobId}/candidates`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ candidateId }),
-        });
+      console.log('Adding candidates to job:', { jobId, selectedCandidates });
+      
+      const token = await getToken();
+      console.log('Auth token obtained:', token ? 'Yes' : 'No');
+      
+      const response = await fetch(`/api/jobs/${jobId}/candidates`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ candidateIds: selectedCandidates }),
+      });
 
-        if (!response.ok) {
-          throw new Error(`Failed to add candidate ${candidateId}`);
-        }
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
+      
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse JSON response:', parseError);
+        throw new Error(`Server returned invalid JSON. Status: ${response.status}, Response: ${responseText}`);
       }
 
-      // Call success callback
-      const addedCandidates = candidates.filter(c => selectedCandidates.includes(c.id));
-      addedCandidates.forEach(candidate => onCandidateAdded(candidate));
+      if (!response.ok) {
+        console.error('API Error Response:', result);
+        throw new Error(result.error || result.message || `Failed to add candidates. Server responded with status ${response.status}`);
+      }
+
+      console.log('Success! Added candidates:', result);
       
-      // Reset and close
-      setSelectedCandidates([]);
-      setSearchQuery('');
+      // Notify parent component
+      selectedCandidates.forEach(candidateId => {
+        const candidate = candidates.find(c => c.id === candidateId);
+        if (candidate) {
+          onCandidateAdded(candidate);
+        }
+      });
+      
+      // Close modal
       onClose();
     } catch (error) {
       console.error('Error adding candidates:', error);
-      alert('Failed to add candidates. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Please try again.';
+      alert(`Failed to add candidates: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -156,7 +191,7 @@ export function AddExistingCandidateModal({
               placeholder="Search candidates by name, email, title, or skills..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0A2F5A] focus:border-[#0A2F5A]"
             />
           </div>
         </div>
@@ -165,7 +200,7 @@ export function AddExistingCandidateModal({
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-[#0A2F5A]" />
               <span className="ml-2 text-gray-600">Loading candidates...</span>
             </div>
           ) : filteredCandidates.length === 0 ? (
@@ -181,7 +216,7 @@ export function AddExistingCandidateModal({
                 }
               </p>
             </div>
-          ) : (
+                        ) : (
             <div className="space-y-3">
               {filteredCandidates.map((candidate) => {
                 const isSelected = selectedCandidates.includes(candidate.id);
@@ -191,7 +226,7 @@ export function AddExistingCandidateModal({
                     onClick={() => handleCandidateToggle(candidate.id)}
                     className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                       isSelected 
-                        ? 'border-blue-500 bg-blue-50' 
+                        ? 'border-[#0A2F5A] bg-[#0A2F5A]/5' 
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     }`}
                   >
@@ -210,7 +245,7 @@ export function AddExistingCandidateModal({
                             {candidate.firstName} {candidate.lastName}
                           </h4>
                           <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                            isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                            isSelected ? 'border-[#0A2F5A] bg-[#0A2F5A]' : 'border-gray-300'
                           }`}>
                             {isSelected && <Plus className="h-3 w-3 text-white rotate-45" />}
                           </div>
@@ -275,7 +310,7 @@ export function AddExistingCandidateModal({
             <button
               onClick={handleAddCandidates}
               disabled={selectedCandidates.length === 0 || isSubmitting}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              className="px-6 py-2.5 bg-[#0A2F5A] text-white rounded-lg hover:bg-[#083248] disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 font-medium transition-colors"
             >
               {isSubmitting ? (
                 <>

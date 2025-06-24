@@ -14,6 +14,7 @@ export default authMiddleware({
     '/api/outlook-addin/(.*)',
     '/outlook-addin/(.*)',
     '/api/projects/parse-email',
+    '/api/ai/candidate-matching', // For demo purposes
   ],
 
   // Routes that are ignored by Clerk (no auth check at all)

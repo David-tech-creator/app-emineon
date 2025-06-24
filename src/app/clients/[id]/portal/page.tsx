@@ -90,15 +90,78 @@ export default function ClientPortalPage() {
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
 
+  // Get client name based on client ID
+  const getClientData = (clientId: string) => {
+    const clientMapping: { [key: string]: { name: string; industry: string; primaryContact: string; email: string } } = {
+      'client-alpinebank': {
+        name: 'Alpine Banking Solutions',
+        industry: 'Financial Services',
+        primaryContact: 'Marcus Weber',
+        email: 'marcus.weber@alpinebank.com'
+      },
+      'client-globalfinance': {
+        name: 'Global Finance Partners',
+        industry: 'Investment Banking',
+        primaryContact: 'Elena Rossi',
+        email: 'elena.rossi@globalfinance.com'
+      },
+      'client-luxurywatch': {
+        name: 'Swiss Luxury Timepieces',
+        industry: 'Luxury Goods',
+        primaryContact: 'Hans Mueller',
+        email: 'hans.mueller@luxurywatch.com'
+      },
+      'client-biopharma': {
+        name: 'BioPharma Innovations',
+        industry: 'Pharmaceuticals',
+        primaryContact: 'Dr. Anna Schmidt',
+        email: 'anna.schmidt@biopharma.com'
+      },
+      'client-healthtech': {
+        name: 'HealthTech Research Group',
+        industry: 'Medical Technology',
+        primaryContact: 'Prof. Thomas Klein',
+        email: 'thomas.klein@healthtech.com'
+      },
+      'client-foodglobal': {
+        name: 'Global Food Solutions',
+        industry: 'Food & Beverage',
+        primaryContact: 'Marie Dubois',
+        email: 'marie.dubois@foodglobal.com'
+      },
+      'client-insuranceplus': {
+        name: 'Insurance Plus Group',
+        industry: 'Insurance',
+        primaryContact: 'Robert Johnson',
+        email: 'robert.johnson@insuranceplus.com'
+      },
+      'client-prestige': {
+        name: 'Prestige Craft Manufacturing',
+        industry: 'Luxury Manufacturing',
+        primaryContact: 'Isabella Franconi',
+        email: 'isabella.franconi@prestige.com'
+      }
+    };
+
+    return clientMapping[clientId] || {
+      name: 'Demo Client Solutions',
+      industry: 'Technology',
+      primaryContact: 'John Smith',
+      email: 'john.smith@democlient.com'
+    };
+  };
+
   // Mock data for demo - replace with actual API call
   useEffect(() => {
+    const clientData = getClientData(clientId);
+    
     const mockData: ClientPortalData = {
       client: {
         id: clientId,
-        name: 'TechCorp Solutions',
-        industry: 'Technology',
-        primaryContact: 'Sarah Johnson',
-        email: 'sarah.johnson@techcorp.com',
+        name: clientData.name,
+        industry: clientData.industry,
+        primaryContact: clientData.primaryContact,
+        email: clientData.email,
         logo: '/api/placeholder/120/120'
       },
       activeJobs: [
