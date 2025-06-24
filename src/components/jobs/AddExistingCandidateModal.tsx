@@ -80,11 +80,11 @@ export function AddExistingCandidateModal({
   const filteredCandidates = candidates.filter(candidate => {
     const searchLower = searchQuery.toLowerCase();
     return (
-      candidate.firstName.toLowerCase().includes(searchLower) ||
-      candidate.lastName.toLowerCase().includes(searchLower) ||
-      candidate.email.toLowerCase().includes(searchLower) ||
+      candidate.firstName?.toLowerCase().includes(searchLower) ||
+      candidate.lastName?.toLowerCase().includes(searchLower) ||
+      candidate.email?.toLowerCase().includes(searchLower) ||
       candidate.currentTitle?.toLowerCase().includes(searchLower) ||
-      candidate.technicalSkills?.some(skill => skill.toLowerCase().includes(searchLower))
+      candidate.technicalSkills?.some(skill => skill?.toLowerCase().includes(searchLower))
     );
   });
 
@@ -234,7 +234,7 @@ export function AddExistingCandidateModal({
                       <div className="flex-shrink-0">
                         <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
                           <span className="text-gray-600 font-medium">
-                            {candidate.firstName[0]}{candidate.lastName[0]}
+                            {candidate.firstName?.[0] || '?'}{candidate.lastName?.[0] || '?'}
                           </span>
                         </div>
                       </div>
@@ -242,7 +242,7 @@ export function AddExistingCandidateModal({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <h4 className="text-lg font-medium text-gray-900">
-                            {candidate.firstName} {candidate.lastName}
+                            {candidate.firstName || 'Unknown'} {candidate.lastName || 'Unknown'}
                           </h4>
                           <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
                             isSelected ? 'border-[#0A2F5A] bg-[#0A2F5A]' : 'border-gray-300'
