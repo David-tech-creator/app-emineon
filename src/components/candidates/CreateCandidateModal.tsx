@@ -428,11 +428,11 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
           softSkills: [], // Will be filled from skills analysis
           spokenLanguages: parsedData.languages || [],
           linkedinUrl: linkedinUrl || '',
-          seniorityLevel: parsedData.yearsOfExperience > 5 ? 'Senior' : parsedData.yearsOfExperience > 2 ? 'Mid' : 'Junior',
+          seniorityLevel: parsedData.yearsOfExperience > 5 ? 'SENIOR' : parsedData.yearsOfExperience > 2 ? 'MID_LEVEL' : 'JUNIOR',
           primaryIndustry: 'Technology', // Default - could be enhanced with AI classification
           availability: 'Available',
           expectedSalary: '',
-          remotePreference: 'Hybrid',
+          remotePreference: 'HYBRID',
           // Additional fields matching Prisma schema
           professionalHeadline: parsedData.currentTitle || '',
           nationality: '',
@@ -440,9 +440,9 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
           workPermitType: '',
           availableFrom: '',
           graduationYear: new Date().getFullYear(),
-          educationLevel: 'BACHELORS',
+          educationLevel: 'BACHELOR',
           functionalDomain: '',
-          preferredContractType: 'FULL_TIME',
+          preferredContractType: 'PERMANENT',
           relocationWillingness: false,
           freelancer: false,
           programmingLanguages: parsedData.skills?.filter((skill: string) => 
@@ -1133,13 +1133,16 @@ Bachelor's in Computer Science from ETH Zurich"
                       onChange={(e) => setParsedCandidate({...parsedCandidate, seniorityLevel: e.target.value})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     >
-                      <option value="ENTRY">Entry Level</option>
+                      <option value="INTERN">Intern</option>
                       <option value="JUNIOR">Junior</option>
-                      <option value="MID">Mid-level</option>
+                      <option value="MID_LEVEL">Mid-level</option>
                       <option value="SENIOR">Senior</option>
                       <option value="LEAD">Lead</option>
                       <option value="PRINCIPAL">Principal</option>
+                      <option value="ARCHITECT">Architect</option>
                       <option value="DIRECTOR">Director</option>
+                      <option value="VP">VP</option>
+                      <option value="C_LEVEL">C-Level</option>
                     </select>
                   </div>
                   <div>
@@ -1184,10 +1187,10 @@ Bachelor's in Computer Science from ETH Zurich"
                       onChange={(e) => setParsedCandidate({...parsedCandidate, remotePreference: e.target.value})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     >
-                      <option value="REMOTE_ONLY">Remote Only</option>
+                      <option value="REMOTE">Remote Only</option>
                       <option value="HYBRID">Hybrid</option>
-                      <option value="ON_SITE">On-site</option>
-                      <option value="NO_PREFERENCE">No Preference</option>
+                      <option value="ONSITE">On-site</option>
+                      <option value="FLEXIBLE">Flexible</option>
                     </select>
                   </div>
                   <div>
@@ -1198,10 +1201,10 @@ Bachelor's in Computer Science from ETH Zurich"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     >
                       <option value="">Select...</option>
-                      <option value="FULL_TIME">Full Time</option>
-                      <option value="PART_TIME">Part Time</option>
-                      <option value="CONTRACT">Contract</option>
+                      <option value="PERMANENT">Permanent</option>
                       <option value="FREELANCE">Freelance</option>
+                      <option value="FIXED_TERM">Fixed Term</option>
+                      <option value="CONTRACT">Contract</option>
                       <option value="INTERNSHIP">Internship</option>
                     </select>
                   </div>
@@ -1305,11 +1308,13 @@ Bachelor's in Computer Science from ETH Zurich"
                     >
                       <option value="">Select...</option>
                       <option value="HIGH_SCHOOL">High School</option>
-                      <option value="BACHELORS">Bachelor's Degree</option>
-                      <option value="MASTERS">Master's Degree</option>
+                      <option value="ASSOCIATE">Associate Degree</option>
+                      <option value="BACHELOR">Bachelor's Degree</option>
+                      <option value="MASTER">Master's Degree</option>
                       <option value="PHD">PhD</option>
-                      <option value="PROFESSIONAL">Professional Certification</option>
-                      <option value="OTHER">Other</option>
+                      <option value="CERTIFICATION">Professional Certification</option>
+                      <option value="BOOTCAMP">Bootcamp</option>
+                      <option value="SELF_TAUGHT">Self-taught</option>
                     </select>
 
                     {/* Degrees */}

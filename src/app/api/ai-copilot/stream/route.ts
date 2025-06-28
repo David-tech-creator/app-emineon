@@ -18,7 +18,7 @@ const candidateSearchTool = tool({
       experienceYears: z.number().nullable().optional(),
       skills: z.array(z.string()).nullable().optional(),
       location: z.string().nullable().optional(),
-      seniorityLevel: z.enum(['ENTRY', 'JUNIOR', 'MID', 'SENIOR', 'LEAD', 'PRINCIPAL']).nullable().optional(),
+      seniorityLevel: z.enum(['INTERN', 'JUNIOR', 'MID_LEVEL', 'SENIOR', 'LEAD', 'PRINCIPAL', 'ARCHITECT', 'DIRECTOR', 'VP', 'C_LEVEL']).nullable().optional(),
     }).nullable().optional(),
     limit: z.number().default(10).describe('Maximum number of candidates to return'),
   }),
