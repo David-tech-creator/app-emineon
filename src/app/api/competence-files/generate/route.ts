@@ -440,7 +440,9 @@ export function generateSectionsHTML(sections: any[], candidateData: CandidateDa
 }
 
 export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, sections?: any[], jobDescription?: JobDescription): string {
-  // Generate functional skills with explanatory text (like Emineon)
+  const experienceHTML = generateExperienceHTML(candidateData.experience);
+  
+  // Generate functional skills with explanatory text
   const generateFunctionalSkills = (skills: string[]) => {
     if (!skills || skills.length === 0) return '';
     
@@ -493,11 +495,11 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
       .filter(([_, category]) => category.skills.length > 0)
       .map(([categoryName, category]) => `
         <div class="functional-skill-category">
-          <div class="skill-category-title">${categoryName}*</div>
-          <div class="skill-content">
-            ${category.skills.map(skill => `<div class="skill-item">${skill}</div>`).join('')}
-            <p class="skill-description">${category.description}</p>
-          </div>
+          <div class="skill-category-title">${categoryName}</div>
+          <ul class="skill-list">
+            ${category.skills.map(skill => `<li>${skill}</li>`).join('')}
+          </ul>
+          <p class="skill-description">${category.description}</p>
         </div>
       `).join('');
   };
@@ -565,11 +567,11 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
       .filter(([_, category]) => category.skills.length > 0)
       .map(([categoryName, category]) => `
         <div class="technical-skill-category">
-          <div class="skill-category-title">${categoryName}*</div>
-          <div class="skill-content">
-            ${category.skills.map(skill => `<div class="skill-item">${skill}</div>`).join('')}
-            <p class="skill-description">${category.description}</p>
-          </div>
+          <div class="skill-category-title">${categoryName}</div>
+          <ul class="skill-list">
+            ${category.skills.map(skill => `<li>${skill}</li>`).join('')}
+          </ul>
+          <p class="skill-description">${category.description}</p>
         </div>
       `).join('');
   };
@@ -637,15 +639,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
     return expertiseAreas.slice(0, 6);
   };
 
-  const experienceHTML = generateExperienceHTML(candidateData.experience);
-  const areasOfExpertise = generateAreasOfExpertise(candidateData.currentTitle, candidateData.skills);
-  
-  // Use sections if provided, otherwise generate default sections
-  if (sections && sections.length > 0) {
-    const sectionsContent = generateSectionsHTML(sections, candidateData, generateFunctionalSkills, experienceHTML, jobDescription, 'antaes');
-    
-    // Wrap sections content in full Antaes HTML template
-    return `
+  return `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -685,7 +679,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           align-items: flex-start;
           margin-bottom: 40px;
           padding-bottom: 25px;
-          border-bottom: 2px solid #2C4F7C;
+          border-bottom: 2px solid #0A2F5A;
         }
         
         .header-left {
@@ -695,7 +689,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         .header h1 {
           font-size: 32px;
           font-weight: 700;
-          color: #2C4F7C;
+          color: #0A2F5A;
           margin-bottom: 8px;
           letter-spacing: -0.5px;
         }
@@ -703,7 +697,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         .header-role {
           font-size: 18px;
           font-weight: 600;
-          color: #FFB800;
+          color: #D97732;
           margin-bottom: 5px;
         }
         
@@ -754,12 +748,12 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         .section-title {
           font-size: 16px;
           font-weight: 700;
-          color: #2C4F7C;
+          color: #0A2F5A;
           text-transform: uppercase;
           letter-spacing: 1px;
           margin-bottom: 15px;
           padding-bottom: 8px;
-          border-bottom: 2px solid #2C4F7C;
+          border-bottom: 2px solid #0A2F5A;
         }
         
         .section-content {
@@ -788,7 +782,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         
         .section-content li:before {
           content: "•";
-          color: #FFB800;
+          color: #FF8C00;
           font-weight: bold;
           position: absolute;
           left: 0;
@@ -797,7 +791,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         
         .section-content strong {
           font-weight: 700;
-          color: #2C4F7C;
+          color: #0A2F5A;
         }
         
         .section-content em {
@@ -814,573 +808,57 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         
         /* Functional Skills */
         .functional-skill-category {
-          margin-bottom: 25px;
-          page-break-inside: avoid;
+          margin-bottom: 20px;
+          padding: 15px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          border-left: 4px solid #0A2F5A;
         }
         
         .skill-category-title {
-          font-size: 14px;
+          font-size: 15px;
           font-weight: 700;
-          color: #2C4F7C;
-          margin-bottom: 15px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          padding-bottom: 5px;
-          border-bottom: 1px solid #2C4F7C;
+          color: #0A2F5A;
+          margin-bottom: 10px;
         }
         
-        .skill-content {
-          margin-bottom: 15px;
+        .skill-list {
+          list-style: none;
+          padding-left: 0;
+          margin-bottom: 10px;
         }
         
-        .skill-item {
-          margin-bottom: 8px;
-          padding-left: 15px;
+        .skill-list li {
           position: relative;
+          padding-left: 15px;
+          margin-bottom: 5px;
           color: #444B54;
-          line-height: 1.6;
+          font-weight: 500;
         }
         
-        .skill-item:before {
+        .skill-list li:before {
           content: "•";
-          color: #FFB800;
+          color: #D97732;
           font-weight: bold;
           position: absolute;
           left: 0;
-          top: 0;
         }
         
         .skill-description {
-          font-size: 13px;
-          color: #666666;
-          line-height: 1.6;
-          margin-top: 12px;
           font-style: italic;
-          padding-left: 15px;
-          border-left: 3px solid #FFB800;
-          padding-left: 15px;
-          background-color: #fafafa;
-          padding: 12px 15px;
-          border-radius: 4px;
+          color: #666;
+          font-size: 13px;
+          line-height: 1.5;
         }
         
         /* Technical Skills */
         .technical-skill-category {
-          margin-bottom: 25px;
-          page-break-inside: avoid;
-        }
-        
-        /* Areas of Expertise */
-        .expertise-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 15px;
-          margin: 20px 0;
-        }
-        
-        .expertise-item {
-          text-align: center;
-          padding: 15px 12px;
-          background: #f8f9fa;
-          border-radius: 8px;
-          font-weight: 600;
-          font-size: 14px;
-          color: #444B54;
-          border-left: 3px solid #FFB800;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-        
-        /* Experience Blocks */
-        .experience-block {
-          margin-bottom: 30px;
-          padding: 20px;
-          background: #f8f9fa;
-          border-radius: 8px;
-          border-left: 4px solid #2C4F7C;
-        }
-        
-        .experience-header {
-          margin-bottom: 15px;
-        }
-        
-        .experience-title {
-          font-size: 16px;
-          font-weight: 700;
-          color: #2C4F7C;
-          margin-bottom: 5px;
-        }
-        
-        .experience-company {
-          font-size: 15px;
-          font-weight: 600;
-          color: #FFB800;
-          margin-bottom: 3px;
-        }
-        
-        .experience-period {
-          font-size: 13px;
-          color: #444B54;
-          font-weight: 500;
-        }
-        
-        .experience-content {
-          line-height: 1.7;
-        }
-        
-        .experience-section {
-          margin-bottom: 15px;
-        }
-        
-        .experience-section h4 {
-          font-size: 14px;
-          font-weight: 700;
-          color: #2C4F7C;
-          margin-bottom: 8px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        
-        /* Education & Certifications */
-        .education-item, .cert-item {
-          margin-bottom: 12px;
-          padding-left: 15px;
-          position: relative;
-        }
-        
-        .education-item:before, .cert-item:before {
-          content: "•";
-          color: #2C4F7C;
-          font-weight: bold;
-          position: absolute;
-          left: 0;
-        }
-        
-        .education-degree, .cert-name {
-          font-weight: 600;
-          color: #232629;
-        }
-        
-        /* Languages */
-        .languages-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 10px;
-          margin-top: 10px;
-        }
-        
-        .language-item {
-          padding: 8px 12px;
-          background: #f8f9fa;
-          border-radius: 6px;
-          text-align: center;
-          font-weight: 600;
-          color: #444B54;
-          border-left: 3px solid #2C4F7C;
-        }
-        
-        /* Experience Summary */
-        .experiences-summary {
-          background: #f8f9fa;
-          padding: 20px;
-          border-radius: 8px;
-          border-left: 4px solid #2C4F7C;
-        }
-        
-        .experience-summary-item {
-          margin-bottom: 10px;
-          color: #444B54;
-          line-height: 1.6;
-        }
-        
-        /* Experience Blocks */
-        .experience-block {
-          margin-bottom: 30px;
-          padding: 25px;
-          background: #f8f9fa;
-          border-radius: 8px;
-          border-left: 4px solid #2C4F7C;
-          page-break-inside: avoid;
-        }
-        
-        .exp-header {
           margin-bottom: 20px;
-          padding-bottom: 15px;
-          border-bottom: 1px solid #e9ecef;
+          padding: 15px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          border-left: 4px solid #D97732;
         }
-        
-        .exp-company {
-          font-size: 18px;
-          font-weight: 700;
-          color: #2C4F7C;
-          margin-bottom: 5px;
-        }
-        
-        .exp-title {
-          font-size: 16px;
-          font-weight: 600;
-          color: #FFB800;
-          margin-bottom: 5px;
-        }
-        
-        .exp-dates {
-          font-size: 14px;
-          color: #444B54;
-          font-weight: 600;
-        }
-        
-        .exp-section {
-          margin-bottom: 15px;
-        }
-        
-        .exp-section-title {
-          font-size: 14px;
-          font-weight: 700;
-          color: #2C4F7C;
-          margin-bottom: 8px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        
-        .exp-description {
-          color: #444B54;
-          line-height: 1.6;
-          margin-bottom: 10px;
-          font-style: italic;
-        }
-        
-        .exp-responsibilities, .exp-achievements, .exp-technical {
-          list-style: none;
-          padding-left: 0;
-        }
-        
-        .exp-responsibilities li, .exp-achievements li, .exp-technical li {
-          position: relative;
-          padding-left: 15px;
-          margin-bottom: 8px;
-          color: #444B54;
-          line-height: 1.6;
-          font-weight: 500;
-        }
-        
-        .exp-responsibilities li:before, .exp-achievements li:before, .exp-technical li:before {
-          content: "•";
-          color: #FFB800;
-          font-weight: bold;
-          position: absolute;
-          left: 0;
-        }
-        
-        /* Footer */
-        .footer {
-          position: fixed;
-          bottom: 20px;
-          left: 30px;
-          right: 30px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 15px 0;
-          border-top: 1px solid #e0e0e0;
-          font-size: 12px;
-          color: #444B54;
-        }
-        
-        .footer-left {
-          display: flex;
-          align-items: center;
-        }
-        
-        .footer-logo {
-          height: 25px;
-          width: auto;
-          margin-right: 10px;
-        }
-        
-        .footer-text {
-          font-weight: 500;
-        }
-        
-        .page-number {
-          font-weight: 600;
-          color: #2C4F7C;
-        }
-        
-        /* Print Optimization */
-        @media print {
-          .container {
-            padding: 20px;
-            margin: 0;
-            max-width: none;
-            width: 100%;
-            min-height: auto;
-          }
-          
-          .footer {
-            position: fixed;
-            bottom: 0;
-          }
-          
-          .section {
-            page-break-inside: avoid;
-          }
-          
-          .experience-block {
-            page-break-inside: avoid;
-          }
-        }
-        
-        @page {
-          margin: 20mm;
-          counter-increment: page;
-        }
-        
-        @page :first {
-          counter-reset: page 1;
-        }
-        
-        .page-number:after {
-          content: counter(page);
-        }
-        
-        /* Mobile Responsiveness */
-        @media (max-width: 768px) {
-          .container {
-            padding: 20px;
-          }
-          
-          .header {
-            flex-direction: column;
-            align-items: flex-start;
-          }
-          
-          .header-logo {
-            margin-left: 0;
-            margin-top: 20px;
-          }
-          
-          .contact-info {
-            flex-direction: column;
-            gap: 10px;
-          }
-          
-          .expertise-grid, .languages-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <!-- Header Section -->
-        <div class="header">
-          <div class="header-left">
-            <h1>${candidateData.fullName}</h1>
-            <div class="header-role">${candidateData.currentTitle}</div>
-            <div class="header-experience">${candidateData.yearsOfExperience}+ years of professional experience</div>
-            <div class="contact-info">
-              ${candidateData.email ? `<div class="contact-item"><span class="contact-label">Email:</span> ${candidateData.email}</div>` : ''}
-              ${candidateData.phone ? `<div class="contact-item"><span class="contact-label">Phone:</span> ${candidateData.phone}</div>` : ''}
-              ${candidateData.location ? `<div class="contact-item"><span class="contact-label">Location:</span> ${candidateData.location}</div>` : ''}
-            </div>
-          </div>
-          <div class="header-logo">
-            <img src="https://res.cloudinary.com/dtkn5djt5/image/upload/v1749926503/Antaes_logo.png" alt="Antaes Logo" class="logo-image" />
-          </div>
-        </div>
-        
-        <!-- Content Area -->
-        <div class="content">
-          ${sectionsContent}
-        </div>
-        
-        <!-- Footer -->
-        <div class="footer">
-          <div class="footer-left">
-            <img src="https://res.cloudinary.com/dtkn5djt5/image/upload/v1749926503/Antaes_logo.png" alt="Antaes Logo" class="footer-logo" />
-            <span class="footer-text">Partnership for Excellence</span>
-          </div>
-          <div class="page-number">Page </div>
-        </div>
-      </div>
-    </body>
-    </html>
-    `;
-  }
-  
-  return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${candidateData.fullName} - Competence File</title>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-      <style>
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        
-        body {
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          line-height: 1.6;
-          color: #232629;
-          background: #ffffff;
-          font-size: 14px;
-        }
-        
-        .container {
-          max-width: 210mm;
-          margin: 0 auto;
-          background: white;
-          min-height: 297mm;
-          padding: 30px;
-          position: relative;
-          padding-bottom: 80px;
-        }
-        
-        /* Header Styling - Clean layout with logo on right */
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 40px;
-          padding-bottom: 25px;
-          border-bottom: 2px solid #2C4F7C;
-        }
-        
-        .header-left {
-          flex: 1;
-        }
-        
-        .header h1 {
-          font-size: 32px;
-          font-weight: 700;
-          color: #2C4F7C;
-          margin-bottom: 8px;
-          letter-spacing: -0.5px;
-        }
-        
-        .header-role {
-          font-size: 18px;
-          font-weight: 600;
-          color: #FFB800;
-          margin-bottom: 5px;
-        }
-        
-        .header-experience {
-          font-size: 16px;
-          font-weight: 500;
-          color: #444B54;
-          margin-bottom: 15px;
-        }
-        
-        .contact-info {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 20px;
-          font-size: 14px;
-        }
-        
-        .contact-item {
-          color: #444B54;
-        }
-        
-        .contact-label {
-          font-weight: 700;
-          color: #232629;
-        }
-        
-        .header-logo {
-          flex-shrink: 0;
-          margin-left: 30px;
-        }
-        
-        .logo-image {
-          height: 80px;
-          width: auto;
-        }
-        
-        /* Content Area */
-        .content {
-          margin-bottom: 60px;
-        }
-        
-        /* Section Styling */
-        .section {
-          margin-bottom: 35px;
-          page-break-inside: avoid;
-        }
-        
-        .section-title {
-          font-size: 16px;
-          font-weight: 700;
-          color: #2C4F7C;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          margin-bottom: 15px;
-          padding-bottom: 8px;
-          border-bottom: 2px solid #2C4F7C;
-        }
-        
-        .section-content {
-          font-size: 14px;
-          line-height: 1.7;
-        }
-        
-        /* Content Formatting */
-        .section-content p {
-          margin-bottom: 12px;
-          line-height: 1.7;
-        }
-        
-        .section-content ul {
-          margin: 12px 0;
-          padding-left: 0;
-          list-style: none;
-        }
-        
-        .section-content li {
-          position: relative;
-          padding-left: 20px;
-          margin-bottom: 8px;
-          line-height: 1.6;
-        }
-        
-        .section-content li:before {
-          content: "•";
-          color: #FFB800;
-          font-weight: bold;
-          position: absolute;
-          left: 0;
-          top: 0;
-        }
-        
-        .section-content strong {
-          font-weight: 700;
-          color: #2C4F7C;
-        }
-        
-        .section-content em {
-          font-style: italic;
-          color: #444B54;
-        }
-        
-        /* Professional Summary */
-        .summary-text {
-          font-weight: 400;
-          line-height: 1.8;
-          color: #444B54;
-        }
-        
-
         
         /* Areas of Expertise */
         .expertise-areas {
@@ -1397,10 +875,60 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           border-radius: 8px;
           font-weight: 600;
           color: #444B54;
-          border-left: 3px solid #FFB800;
+          border-left: 3px solid #D97732;
         }
         
-
+        /* Education & Certifications */
+        .education-item, .cert-item {
+          margin-bottom: 12px;
+          padding-left: 15px;
+          position: relative;
+        }
+        
+        .education-item:before, .cert-item:before {
+          content: "•";
+          color: #0A2F5A;
+          font-weight: bold;
+          position: absolute;
+          left: 0;
+        }
+        
+        .education-degree, .cert-name {
+          font-weight: 600;
+          color: #232629;
+        }
+        
+        /* Languages */
+        .languages-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+          margin-top: 10px;
+        }
+        
+        .language-item {
+          padding: 8px 12px;
+          background: #f8f9fa;
+          border-radius: 6px;
+          text-align: center;
+          font-weight: 600;
+          color: #444B54;
+          border-left: 3px solid #0A2F5A;
+        }
+        
+        /* Experience Summary */
+        .experiences-summary {
+          background: #f8f9fa;
+          padding: 20px;
+          border-radius: 8px;
+          border-left: 4px solid #0A2F5A;
+        }
+        
+        .experience-summary-item {
+          margin-bottom: 10px;
+          color: #444B54;
+          line-height: 1.6;
+        }
         
         /* Experience Blocks */
         .experience-block {
@@ -1408,7 +936,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           padding: 25px;
           background: #f8f9fa;
           border-radius: 8px;
-          border-left: 4px solid #2C4F7C;
+          border-left: 4px solid #0A2F5A;
           page-break-inside: avoid;
         }
         
@@ -1421,14 +949,14 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         .exp-company {
           font-size: 18px;
           font-weight: 700;
-          color: #2C4F7C;
+          color: #0A2F5A;
           margin-bottom: 5px;
         }
         
         .exp-title {
           font-size: 16px;
           font-weight: 600;
-          color: #FFB800;
+          color: #D97732;
           margin-bottom: 5px;
         }
         
@@ -1445,7 +973,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         .exp-section-title {
           font-size: 14px;
           font-weight: 700;
-          color: #2C4F7C;
+          color: #0A2F5A;
           margin-bottom: 8px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
@@ -1474,48 +1002,10 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         
         .exp-responsibilities li:before, .exp-achievements li:before, .exp-technical li:before {
           content: "•";
-          color: #FFB800;
+          color: #D97732;
           font-weight: bold;
           position: absolute;
           left: 0;
-        }
-        
-        /* Education & Certifications */
-        .education-item, .cert-item {
-          margin-bottom: 12px;
-          padding-left: 15px;
-          position: relative;
-        }
-        
-        .education-item:before, .cert-item:before {
-          content: "•";
-          color: #2C4F7C;
-          font-weight: bold;
-          position: absolute;
-          left: 0;
-        }
-        
-        .education-degree, .cert-name {
-          font-weight: 600;
-          color: #232629;
-        }
-        
-        /* Languages */
-        .languages-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 10px;
-          margin-top: 10px;
-        }
-        
-        .language-item {
-          padding: 8px 12px;
-          background: #f8f9fa;
-          border-radius: 6px;
-          text-align: center;
-          font-weight: 600;
-          color: #444B54;
-          border-left: 3px solid #2C4F7C;
         }
         
         /* Footer - appears on every page */
@@ -1553,7 +1043,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         
         .page-number {
           font-weight: 600;
-          color: #2C4F7C;
+          color: #0A2F5A;
         }
         
         /* Print Optimization */
@@ -1589,10 +1079,10 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
             font-family: 'Inter', sans-serif;
             font-size: 12px;
             font-weight: 600;
-            color: #2C4F7C;
+            color: #0A2F5A;
           }
           @bottom-left {
-            content: "Partnership for Excellence • ANTAES";
+            content: "Powered by EMINEON • forge your edge";
             font-family: 'Inter', sans-serif;
             font-size: 10px;
             color: #444B54;
@@ -1637,7 +1127,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
             </div>
           </div>
           <div class="header-logo">
-            <img src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Antaes_logo.png" alt="ANTAES" class="logo-image" />
+            <img src="https://res.cloudinary.com/emineon/image/upload/Emineon_logo_no_background_yjmchn" alt="EMINEON" class="logo-image" />
           </div>
         </div>
 
@@ -1733,8 +1223,8 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         <!-- Footer with logo and page numbers -->
         <div class="footer">
           <div class="footer-left">
-            <img src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Antaes_logo.png" alt="ANTAES" class="footer-logo" />
-            <span class="footer-text">Partnership for Excellence • ANTAES</span>
+            <img src="https://res.cloudinary.com/emineon/image/upload/Emineon_logo_no_background_yjmchn" alt="EMINEON" class="footer-logo" />
+            <span class="footer-text">Powered by EMINEON • forge your edge</span>
           </div>
           <div class="page-number">Page <span id="pageNumber"></span></div>
         </div>

@@ -591,35 +591,25 @@ function generateFunctionalSkillsContent(candidateData: CandidateData, template?
     return 'No functional skills provided';
   }
   
-  // Antaes template uses different categorization
+  // Antaes template now uses same categorization as Emineon
   if (template === 'antaes') {
-    return `**Strategic Planning**
-• Strategic planning and execution
-• Business transformation initiatives
-• Stakeholder engagement and management
+    return `**Delivery & Project Management**
+• Project planning and execution
+• Stakeholder management and communication
 • Risk assessment and mitigation strategies
 Proven ability to deliver complex projects on time and within budget while maintaining high quality standards.
 
-**Technical Expertise**
-• Technical architecture and design
-• System integration and optimization
-• Process improvement and automation
-• Quality assurance and governance
-Expertise in managing technical delivery and coordinating implementations across multiple environments.
+**Service & Release Management**
+• Service lifecycle management
+• Release planning and coordination
+• Change management processes
+Expertise in managing service delivery and coordinating releases across multiple environments.
 
-**Leadership**
-• Team leadership and development
-• Cross-functional collaboration
-• Change management and communication
-• Performance optimization and coaching
-Strong background in leading teams and working with stakeholders to deliver business-focused solutions.
-
-**Core Competencies**
-• Project management and delivery
-• Client relationship management
-• Solution design and implementation
-• Continuous improvement and innovation
-Demonstrated expertise in managing end-to-end solution delivery with focus on client satisfaction.`;
+**Product Management/Owner**
+• Product roadmap development
+• User story creation and prioritization
+• Cross-functional team collaboration
+Strong background in product strategy and working with development teams to deliver user-focused solutions.`;
   }
   
   // Default Emineon template structure
