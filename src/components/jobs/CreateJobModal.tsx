@@ -109,10 +109,11 @@ const jobSchema = z.object({
   owner: z.string().min(1, 'Job owner is required'),
   status: z.enum(['draft', 'active']).default('draft'),
   
-  // New fields
-  projectName: z.string().min(1, 'Project name is required'),
-  totalPositions: z.number().min(1, 'Total positions must be at least 1'),
-  urgencyLevel: z.enum(['low', 'medium', 'high']).default('medium'),
+  // Project fields (now optional)
+  projectId: z.string().optional(), // For existing project selection
+  projectName: z.string().optional(), // For new project creation
+  totalPositions: z.number().optional(),
+  urgencyLevel: z.enum(['low', 'medium', 'high']).optional(),
   projectDescription: z.string().optional(),
   isRemote: z.boolean().default(false),
   isHybrid: z.boolean().default(false),
@@ -123,7 +124,10 @@ const jobSchema = z.object({
   vertical: z.string().optional(),
   budgetRange: z.string().optional(),
   endDate: z.string().optional(),
-  industryBackground: z.string().optional()
+  industryBackground: z.string().optional(),
+  
+  // Pipeline configuration
+  pipelineStages: z.array(z.string()).min(1, 'At least one pipeline stage is required').default(['Sourced', 'Screened', 'Interviewing', 'Offer', 'Hired'])
 });
 
 type JobFormData = z.infer<typeof jobSchema>;
@@ -205,37 +209,45 @@ const popularJobTitles = [
 export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProps) {
   const router = useRouter();
   const { user } = useUser();
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showPostEditor, setShowPostEditor] = useState(false);
-  const [customPost, setCustomPost] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentStep, setCurrentStep] = useState<'template' | 'intake' | 'analysis' | 'review' | 'configure' | 'success'>('template');
+  const [selectedTemplate, setSelectedTemplate] = useState<JobTemplate | null>(null);
+  const [templateSearchQuery, setTemplateSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [parsedData, setParsedData] = useState<any>(null);
   const [titleSuggestions, setTitleSuggestions] = useState<string[]>([]);
-  const [clientSuggestions, setClientSuggestions] = useState<string[]>([]);
-  const [currentStep, setCurrentStep] = useState<'template' | 'intake' | 'parsing' | 'review' | 'configure' | 'success'>('template');
-
-  const [jobDescription, setJobDescription] = useState('');
-  const [isParsingAI, setIsParsingAI] = useState(false);
-  const [parsedData, setParsedData] = useState<Partial<JobFormData> | null>(null);
-  const [createdJob, setCreatedJob] = useState<any>(null);
-  const [dragActive, setDragActive] = useState(false);
+  const [companySuggestions, setCompanySuggestions] = useState<string[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [chatInput, setChatInput] = useState('');
-  
-  // New state for logo upload and preview
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoUrl, setLogoUrl] = useState<string>('');
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  
-  // Template selection state
-  const [selectedTemplate, setSelectedTemplate] = useState<JobTemplate | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [templateSearchQuery, setTemplateSearchQuery] = useState('');
-  
-  // Style customization state
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatHistory, setChatHistory] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [customStyleConfig, setCustomStyleConfig] = useState<StyleConfig>(stylePresets.modern);
   const [showStyleCustomizer, setShowStyleCustomizer] = useState(false);
+  const [customPost, setCustomPost] = useState('');
+  const [showPostEditor, setShowPostEditor] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  
+  // New state for projects and pipeline management
+  const [existingProjects, setExistingProjects] = useState<any[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [selectedProjectOption, setSelectedProjectOption] = useState<'existing' | 'new' | 'none'>('none');
+  const [pipelineStages, setPipelineStages] = useState<string[]>(['Sourced', 'Screened', 'Interviewing', 'Offer', 'Hired']);
+  const [newStageInput, setNewStageInput] = useState('');
+  
+  // Additional state variables
+  const [jobDescription, setJobDescription] = useState('');
+  const [createdJob, setCreatedJob] = useState<any>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   
   // Field selection state for template customization
   const [selectedFields, setSelectedFields] = useState({
@@ -253,7 +265,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
     duration: false,
     priority: false
   });
-
+  
   const {
     register,
     handleSubmit,
@@ -281,7 +293,8 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
       salary: '',
       department: '',
       
-      // New fields
+      // Project fields (now optional)
+      projectId: '',
       projectName: '',
       totalPositions: 1,
       urgencyLevel: 'medium' as const,
@@ -295,7 +308,10 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
       vertical: '',
       budgetRange: '',
       endDate: '',
-      industryBackground: ''
+      industryBackground: '',
+      
+      // Pipeline configuration
+      pipelineStages: ['Sourced', 'Screened', 'Interviewing', 'Offer', 'Hired']
     }
   });
 
@@ -317,9 +333,9 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
       const suggestions = recentClients.filter(client =>
         client.toLowerCase().includes(value.toLowerCase())
       );
-      setClientSuggestions(suggestions.slice(0, 5));
+      setCompanySuggestions(suggestions.slice(0, 5));
     } else {
-      setClientSuggestions([]);
+      setCompanySuggestions([]);
     }
   };
 
@@ -437,8 +453,8 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
 
   // Enhanced AI parsing function with real GPT integration
   const parseJobDescription = async (text: string) => {
-    setIsParsingAI(true);
-    setCurrentStep('parsing');
+    setIsProcessing(true);
+    setCurrentStep('analysis');
     
     try {
       console.log('🔄 Starting job description parsing...', { textLength: text.length });
@@ -591,7 +607,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
       }, 100);
     }
 
-    setIsParsingAI(false);
+    setIsProcessing(false);
     setCurrentStep('review');
   };
 
@@ -823,8 +839,8 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
 
   // Improved file upload handler with better error handling
   const handleFileUpload = async (file: File) => {
-    setIsParsingAI(true);
-    setCurrentStep('parsing');
+    setIsProcessing(true);
+    setCurrentStep('analysis');
     
     try {
       console.log('📁 Processing uploaded file:', file.name, file.type);
@@ -860,7 +876,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
       }
     } catch (error) {
       console.error('❌ File upload error:', error);
-      setIsParsingAI(false);
+      setIsProcessing(false);
       setCurrentStep('intake');
       // Show error to user
       alert(`Failed to process file: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -878,15 +894,15 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
     e.preventDefault();
     e.stopPropagation();
     if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
+      setIsDragOver(true);
     } else if (e.type === 'dragleave') {
-      setDragActive(false);
+      setIsDragOver(false);
     }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    setDragActive(false);
+    setIsDragOver(false);
     
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
@@ -925,7 +941,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
         // Here you would typically send the audio to a speech-to-text service
         // For now, we'll simulate it
         setIsRecording(false);
-        setChatInput(prev => prev + ' [Voice input transcribed]');
+        setChatMessage(prev => prev + ' [Voice input transcribed]');
         stream.getTracks().forEach(track => track.stop());
       };
 
@@ -946,9 +962,9 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
   };
 
   const handleChatSubmit = () => {
-    if (chatInput.trim()) {
-      setJobDescription(chatInput);
-      parseJobDescription(chatInput);
+    if (chatMessage.trim()) {
+      setJobDescription(chatMessage);
+      parseJobDescription(chatMessage);
     }
   };
 
@@ -985,21 +1001,29 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
         benefits: data.benefits || [],
         experienceLevel: data.experienceLevel,
         
-        // New fields
-        projectName: data.projectName,
-        totalPositions: data.totalPositions,
-        urgencyLevel: data.urgencyLevel,
-        projectDescription: data.projectDescription,
-        isRemote: data.isRemote,
-        isHybrid: data.isHybrid,
-        clientContact: data.clientContact,
-        clientEmail: data.clientEmail,
-        clientPhone: data.clientPhone,
-        expiresAt: data.slaDate, // Map slaDate to expiresAt for database
-        vertical: data.vertical,
-        budgetRange: data.budgetRange,
-        endDate: data.endDate,
-        industryBackground: data.industryBackground,
+        // Pipeline stages
+        pipelineStages: pipelineStages,
+        
+        // Project information (conditional based on selection)
+        ...(selectedProjectOption === 'existing' && data.projectId ? { 
+          projectId: data.projectId 
+        } : {}),
+        ...(selectedProjectOption === 'new' ? {
+          projectName: data.projectName,
+          totalPositions: data.totalPositions,
+          urgencyLevel: data.urgencyLevel,
+          projectDescription: data.projectDescription,
+          isRemote: data.isRemote,
+          isHybrid: data.isHybrid,
+          clientContact: data.clientContact,
+          clientEmail: data.clientEmail,
+          clientPhone: data.clientPhone,
+          expiresAt: data.slaDate, // Map slaDate to expiresAt for database
+          vertical: data.vertical,
+          budgetRange: data.budgetRange,
+          endDate: data.endDate,
+          industryBackground: data.industryBackground,
+        } : {}),
       };
 
       console.log('Form data:', data);
@@ -1029,6 +1053,8 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
         setCurrentStep('success');
         // Store job data for success screen
         setCreatedJob(job);
+        // Auto-scroll to top for success step
+        setTimeout(scrollToTop, 100);
         
         // Refresh the jobs page if we're on it
         if (window.location.pathname === '/jobs') {
@@ -1049,10 +1075,10 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
 
   const resetModal = () => {
     setCurrentStep('template');
-    setChatInput('');
+    setChatMessage('');
     setJobDescription('');
     setParsedData(null);
-    setIsParsingAI(false);
+    setIsProcessing(false);
     setIsRecording(false);
     if (mediaRecorder) {
       mediaRecorder.stop();
@@ -1073,7 +1099,80 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
     onClose();
   };
 
-  if (!open) return null;
+  // Fetch existing projects when modal opens
+  useEffect(() => {
+    if (open) {
+      fetchExistingProjects();
+    }
+  }, [open]);
+
+  const fetchExistingProjects = async () => {
+    setLoadingProjects(true);
+    try {
+      const response = await fetch('/api/projects?limit=50');
+      if (response.ok) {
+        const data = await response.json();
+        setExistingProjects(data.projects || []);
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
+  // Pipeline stage management functions
+  const addPipelineStage = () => {
+    if (newStageInput.trim() && !pipelineStages.includes(newStageInput.trim())) {
+      setPipelineStages([...pipelineStages, newStageInput.trim()]);
+      setNewStageInput('');
+    }
+  };
+
+  const removePipelineStage = (index: number) => {
+    if (pipelineStages.length > 1) { // Keep at least one stage
+      setPipelineStages(pipelineStages.filter((_, i) => i !== index));
+    }
+  };
+
+  const movePipelineStage = (fromIndex: number, toIndex: number) => {
+    const newStages = [...pipelineStages];
+    const [movedStage] = newStages.splice(fromIndex, 1);
+    newStages.splice(toIndex, 0, movedStage);
+    setPipelineStages(newStages);
+  };
+
+  // Auto-scroll to top when step changes
+  const scrollToTop = () => {
+    const modalContent = document.querySelector('.modal-content');
+    if (modalContent) {
+      modalContent.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      // Fallback: scroll the window
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Enhanced step navigation with auto-scroll
+  const goToNextStep = () => {
+    if (currentStep === 'template') setCurrentStep('intake');
+    else if (currentStep === 'intake') setCurrentStep('analysis');
+    else if (currentStep === 'analysis') setCurrentStep('review');
+    else if (currentStep === 'review') setCurrentStep('configure');
+    
+    // Auto-scroll to top after a brief delay to allow for step transition
+    setTimeout(scrollToTop, 100);
+  };
+
+  const goToPreviousStep = () => {
+    if (currentStep === 'configure') setCurrentStep('review');
+    else if (currentStep === 'review') setCurrentStep('analysis');
+    else if (currentStep === 'analysis') setCurrentStep('intake');
+    else if (currentStep === 'intake') setCurrentStep('template');
+    
+    // Auto-scroll to top after a brief delay to allow for step transition
+    setTimeout(scrollToTop, 100);
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1093,7 +1192,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                   <>
                     {currentStep === 'template' && 'Choose a template that matches your job posting style'}
                     {currentStep === 'intake' && 'Chat with AI to create your job posting'}
-                    {currentStep === 'parsing' && 'Analyzing your job description...'}
+                    {currentStep === 'analysis' && 'Analyzing your job description...'}
                     {currentStep === 'review' && 'Review and edit the extracted information'}
                     {currentStep === 'configure' && 'Configure job settings and publish'}
                   </>
@@ -1112,22 +1211,22 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
         {/* Progress Steps */}
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className={`flex items-center space-x-2 ${currentStep === 'template' ? 'text-primary-600' : currentStep === 'intake' || currentStep === 'parsing' || currentStep === 'review' || currentStep === 'configure' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep === 'template' ? 'bg-primary-100 text-primary-600' : currentStep === 'intake' || currentStep === 'parsing' || currentStep === 'review' || currentStep === 'configure' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                {currentStep === 'intake' || currentStep === 'parsing' || currentStep === 'review' || currentStep === 'configure' ? <CheckCircle className="h-4 w-4" /> : <Layout className="h-4 w-4" />}
+            <div className={`flex items-center space-x-2 ${currentStep === 'template' ? 'text-primary-600' : currentStep === 'intake' || currentStep === 'analysis' || currentStep === 'review' || currentStep === 'configure' ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep === 'template' ? 'bg-primary-100 text-primary-600' : currentStep === 'intake' || currentStep === 'analysis' || currentStep === 'review' || currentStep === 'configure' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                {currentStep === 'intake' || currentStep === 'analysis' || currentStep === 'review' || currentStep === 'configure' ? <CheckCircle className="h-4 w-4" /> : <Layout className="h-4 w-4" />}
               </div>
               <span className="font-medium">Template</span>
             </div>
             <ArrowRight className="h-4 w-4 text-gray-400" />
-            <div className={`flex items-center space-x-2 ${currentStep === 'intake' ? 'text-primary-600' : currentStep === 'parsing' || currentStep === 'review' || currentStep === 'configure' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep === 'intake' ? 'bg-primary-100 text-primary-600' : currentStep === 'parsing' || currentStep === 'review' || currentStep === 'configure' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                {currentStep === 'parsing' || currentStep === 'review' || currentStep === 'configure' ? <CheckCircle className="h-4 w-4" /> : '1'}
+            <div className={`flex items-center space-x-2 ${currentStep === 'intake' ? 'text-primary-600' : currentStep === 'analysis' || currentStep === 'review' || currentStep === 'configure' ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep === 'intake' ? 'bg-primary-100 text-primary-600' : currentStep === 'analysis' || currentStep === 'review' || currentStep === 'configure' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                {currentStep === 'analysis' || currentStep === 'review' || currentStep === 'configure' ? <CheckCircle className="h-4 w-4" /> : '1'}
               </div>
               <span className="font-medium">Smart Intake</span>
             </div>
             <ArrowRight className="h-4 w-4 text-gray-400" />
-            <div className={`flex items-center space-x-2 ${currentStep === 'parsing' ? 'text-primary-600' : currentStep === 'review' || currentStep === 'configure' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep === 'parsing' ? 'bg-primary-100 text-primary-600' : currentStep === 'review' || currentStep === 'configure' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+            <div className={`flex items-center space-x-2 ${currentStep === 'analysis' ? 'text-primary-600' : currentStep === 'review' || currentStep === 'configure' ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep === 'analysis' ? 'bg-primary-100 text-primary-600' : currentStep === 'review' || currentStep === 'configure' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
                 {currentStep === 'review' || currentStep === 'configure' ? <CheckCircle className="h-4 w-4" /> : '2'}
               </div>
               <span className="font-medium">Smart Analysis</span>
@@ -1150,7 +1249,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(95vh-200px)]">
+        <div className="p-6 overflow-y-auto max-h-[calc(95vh-200px)] modal-content">
           {/* Step 0: Template Selection */}
           {currentStep === 'template' && (
             <div className="space-y-6">
@@ -1256,7 +1355,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                 <div className="flex space-x-3">
                   <Button
                     variant="outline"
-                    onClick={() => setCurrentStep('intake')}
+                    onClick={goToNextStep}
                     className="px-6"
                   >
                     Skip Template
@@ -1311,7 +1410,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                 {/* Drag & Drop Zone */}
                 <div
                   className={`relative border-2 border-dashed rounded-2xl transition-all duration-200 ${
-                    dragActive 
+                    isDragOver 
                       ? 'border-primary-400 bg-primary-50' 
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
@@ -1324,8 +1423,8 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                   <div className="p-4">
                     <div className="relative">
                       <textarea
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
+                        value={chatMessage}
+                        onChange={(e) => setChatMessage(e.target.value)}
                         onKeyPress={handleKeyPress}
                         placeholder="Paste your job description here, or start typing to describe the role you're hiring for..."
                         className="w-full min-h-[120px] max-h-[300px] p-4 pr-20 border-0 resize-none focus:outline-none text-gray-900 placeholder-gray-500 bg-transparent"
@@ -1370,9 +1469,9 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                         {/* Send Button */}
                         <button
                           onClick={handleChatSubmit}
-                          disabled={!chatInput.trim()}
+                          disabled={!chatMessage.trim()}
                           className={`p-2 rounded-lg transition-colors ${
-                            chatInput.trim()
+                            chatMessage.trim()
                               ? 'text-white bg-primary-600 hover:bg-primary-700'
                               : 'text-gray-400 bg-gray-100 cursor-not-allowed'
                           }`}
@@ -1385,7 +1484,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                   </div>
 
                   {/* Drag & Drop Overlay */}
-                  {dragActive && (
+                  {isDragOver && (
                     <div className="absolute inset-0 bg-primary-50 bg-opacity-90 rounded-2xl flex items-center justify-center">
                       <div className="text-center">
                         <Upload className="h-12 w-12 text-primary-600 mx-auto mb-3" />
@@ -1402,147 +1501,147 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                   <div className="overflow-x-auto">
                     <div className="flex space-x-3 pb-2" style={{ minWidth: 'max-content' }}>
                       <button
-                        onClick={() => setChatInput("Job Title: Senior Software Engineer\n\nCompany: TechCorp AG\nLocation: Zurich, Switzerland\nContract Type: Permanent\nWork Mode: Hybrid (3 days office, 2 days remote)\nDepartment: Engineering\nSalary: CHF 110,000 - 140,000\nStart Date: Immediate\nPriority: High\n\nJob Description:\nWe are seeking a highly skilled Senior Software Engineer to join our growing engineering team. You will be responsible for designing, developing, and maintaining scalable web applications using modern technologies. This role offers the opportunity to work on cutting-edge projects and mentor junior developers.\n\nKey Responsibilities:\n- Design and develop high-quality software solutions\n- Collaborate with cross-functional teams to deliver features\n- Code review and mentor junior developers\n- Participate in architecture decisions\n- Ensure code quality and best practices\n\nRequired Skills:\n- 5+ years of experience in software development\n- Proficiency in JavaScript, TypeScript, React, Node.js\n- Experience with cloud platforms (AWS, Azure)\n- Strong knowledge of databases (PostgreSQL, MongoDB)\n- Experience with microservices architecture\n- Knowledge of CI/CD pipelines\n- Excellent problem-solving skills\n\nPreferred Skills:\n- Experience with Docker and Kubernetes\n- Knowledge of GraphQL and REST APIs\n- Familiarity with agile methodologies\n- Previous experience in fintech or healthcare\n\nLanguages: English (fluent), German (conversational)\n\nWhat We Offer:\n- Competitive salary and equity package\n- Flexible working arrangements\n- Professional development opportunities\n- Health insurance and wellness benefits\n- Modern office in central Zurich")}
+                        onClick={() => setChatMessage("Job Title: Senior Software Engineer\n\nCompany: TechCorp AG\nLocation: Zurich, Switzerland\nContract Type: Permanent\nWork Mode: Hybrid (3 days office, 2 days remote)\nDepartment: Engineering\nSalary: CHF 110,000 - 140,000\nStart Date: Immediate\nPriority: High\n\nJob Description:\nWe are seeking a highly skilled Senior Software Engineer to join our growing engineering team. You will be responsible for designing, developing, and maintaining scalable web applications using modern technologies. This role offers the opportunity to work on cutting-edge projects and mentor junior developers.\n\nKey Responsibilities:\n- Design and develop high-quality software solutions\n- Collaborate with cross-functional teams to deliver features\n- Code review and mentor junior developers\n- Participate in architecture decisions\n- Ensure code quality and best practices\n\nRequired Skills:\n- 5+ years of experience in software development\n- Proficiency in JavaScript, TypeScript, React, Node.js\n- Experience with cloud platforms (AWS, Azure)\n- Strong knowledge of databases (PostgreSQL, MongoDB)\n- Experience with microservices architecture\n- Knowledge of CI/CD pipelines\n- Excellent problem-solving skills\n\nPreferred Skills:\n- Experience with Docker and Kubernetes\n- Knowledge of GraphQL and REST APIs\n- Familiarity with agile methodologies\n- Previous experience in fintech or healthcare\n\nLanguages: English (fluent), German (conversational)\n\nWhat We Offer:\n- Competitive salary and equity package\n- Flexible working arrangements\n- Professional development opportunities\n- Health insurance and wellness benefits\n- Modern office in central Zurich")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Code className="h-4 w-4" />
                         <span>Software Engineer</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("Job Title: Senior Product Manager\n\nCompany: InnovateCorp\nLocation: Basel, Switzerland\nContract Type: Permanent\nWork Mode: Hybrid (2 days office, 3 days remote)\nDepartment: Product\nSalary: CHF 120,000 - 150,000\nStart Date: March 2024\nPriority: High\n\nJob Description:\nWe are looking for an experienced Senior Product Manager to drive our product strategy and execution. You will lead cross-functional teams to deliver innovative solutions that delight our customers and drive business growth. This role requires a strategic thinker with strong analytical skills and excellent stakeholder management abilities.\n\nKey Responsibilities:\n- Define and execute product roadmap and strategy\n- Conduct market research and competitive analysis\n- Collaborate with engineering, design, and marketing teams\n- Gather and prioritize product requirements\n- Analyze product metrics and user feedback\n- Lead product launches and go-to-market strategies\n- Manage stakeholder expectations and communications\n\nRequired Skills:\n- 5+ years of product management experience\n- Strong analytical and data-driven decision making\n- Experience with agile development methodologies\n- Proficiency in product management tools (Jira, Figma, Analytics)\n- Excellent communication and presentation skills\n- Experience with B2B or SaaS products\n- Strong understanding of UX/UI principles\n\nPreferred Skills:\n- MBA or equivalent business education\n- Technical background or engineering degree\n- Experience in fintech or healthcare industry\n- Knowledge of A/B testing and experimentation\n- Previous startup or scale-up experience\n\nLanguages: English (fluent), German (fluent), French (basic)\n\nWhat We Offer:\n- Competitive salary with performance bonuses\n- Equity participation program\n- Flexible working arrangements\n- Budget for conferences and training\n- Comprehensive health and wellness benefits\n- Modern office space in Basel city center")}
+                        onClick={() => setChatMessage("Job Title: Senior Product Manager\n\nCompany: InnovateCorp\nLocation: Basel, Switzerland\nContract Type: Permanent\nWork Mode: Hybrid (2 days office, 3 days remote)\nDepartment: Product\nSalary: CHF 120,000 - 150,000\nStart Date: March 2024\nPriority: High\n\nJob Description:\nWe are looking for an experienced Senior Product Manager to drive our product strategy and execution. You will lead cross-functional teams to deliver innovative solutions that delight our customers and drive business growth. This role requires a strategic thinker with strong analytical skills and excellent stakeholder management abilities.\n\nKey Responsibilities:\n- Define and execute product roadmap and strategy\n- Conduct market research and competitive analysis\n- Collaborate with engineering, design, and marketing teams\n- Gather and prioritize product requirements\n- Analyze product metrics and user feedback\n- Lead product launches and go-to-market strategies\n- Manage stakeholder expectations and communications\n\nRequired Skills:\n- 5+ years of product management experience\n- Strong analytical and data-driven decision making\n- Experience with agile development methodologies\n- Proficiency in product management tools (Jira, Figma, Analytics)\n- Excellent communication and presentation skills\n- Experience with B2B or SaaS products\n- Strong understanding of UX/UI principles\n\nPreferred Skills:\n- MBA or equivalent business education\n- Technical background or engineering degree\n- Experience in fintech or healthcare industry\n- Knowledge of A/B testing and experimentation\n- Previous startup or scale-up experience\n\nLanguages: English (fluent), German (fluent), French (basic)\n\nWhat We Offer:\n- Competitive salary with performance bonuses\n- Equity participation program\n- Flexible working arrangements\n- Budget for conferences and training\n- Comprehensive health and wellness benefits\n- Modern office space in Basel city center")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <BarChart3 className="h-4 w-4" />
                         <span>Product Manager</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("Job Title: Senior UX Designer\n\nCompany: DesignStudio Ltd\nLocation: Geneva, Switzerland\nContract Type: Permanent\nWork Mode: Hybrid (2 days office, 3 days remote)\nDepartment: Design\nSalary: CHF 85,000 - 115,000\nStart Date: April 2024\nPriority: Medium\n\nJob Description:\nWe are seeking a talented Senior UX Designer to join our creative team and help shape the future of digital experiences. You will be responsible for creating intuitive, user-centered designs that solve complex problems and delight our users. This role offers the opportunity to work on diverse projects across web and mobile platforms.\n\nKey Responsibilities:\n- Conduct user research and usability testing\n- Create wireframes, prototypes, and high-fidelity designs\n- Collaborate with product managers and developers\n- Develop and maintain design systems\n- Present design concepts to stakeholders\n- Iterate designs based on user feedback and analytics\n- Mentor junior designers and promote design thinking\n\nRequired Skills:\n- 4+ years of UX/UI design experience\n- Proficiency in design tools (Figma, Sketch, Adobe Creative Suite)\n- Strong understanding of user-centered design principles\n- Experience with user research and testing methodologies\n- Knowledge of responsive and mobile design\n- Understanding of accessibility standards (WCAG)\n- Excellent visual design and typography skills\n\nPreferred Skills:\n- Experience with design systems and component libraries\n- Knowledge of HTML/CSS and front-end development\n- Familiarity with prototyping tools (Principle, Framer)\n- Background in psychology or human-computer interaction\n- Experience in B2B or enterprise software design\n\nLanguages: English (fluent), French (fluent), German (conversational)\n\nWhat We Offer:\n- Competitive salary and creative freedom\n- State-of-the-art design tools and equipment\n- Flexible working arrangements\n- Professional development budget\n- Creative workshops and design conferences\n- Beautiful studio space in Geneva")}
+                        onClick={() => setChatMessage("Job Title: Senior UX Designer\n\nCompany: DesignStudio Ltd\nLocation: Geneva, Switzerland\nContract Type: Permanent\nWork Mode: Hybrid (2 days office, 3 days remote)\nDepartment: Design\nSalary: CHF 85,000 - 115,000\nStart Date: April 2024\nPriority: Medium\n\nJob Description:\nWe are seeking a talented Senior UX Designer to join our creative team and help shape the future of digital experiences. You will be responsible for creating intuitive, user-centered designs that solve complex problems and delight our users. This role offers the opportunity to work on diverse projects across web and mobile platforms.\n\nKey Responsibilities:\n- Conduct user research and usability testing\n- Create wireframes, prototypes, and high-fidelity designs\n- Collaborate with product managers and developers\n- Develop and maintain design systems\n- Present design concepts to stakeholders\n- Iterate designs based on user feedback and analytics\n- Mentor junior designers and promote design thinking\n\nRequired Skills:\n- 4+ years of UX/UI design experience\n- Proficiency in design tools (Figma, Sketch, Adobe Creative Suite)\n- Strong understanding of user-centered design principles\n- Experience with user research and testing methodologies\n- Knowledge of responsive and mobile design\n- Understanding of accessibility standards (WCAG)\n- Excellent visual design and typography skills\n\nPreferred Skills:\n- Experience with design systems and component libraries\n- Knowledge of HTML/CSS and front-end development\n- Familiarity with prototyping tools (Principle, Framer)\n- Background in psychology or human-computer interaction\n- Experience in B2B or enterprise software design\n\nLanguages: English (fluent), French (fluent), German (conversational)\n\nWhat We Offer:\n- Competitive salary and creative freedom\n- State-of-the-art design tools and equipment\n- Flexible working arrangements\n- Professional development budget\n- Creative workshops and design conferences\n- Beautiful studio space in Geneva")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Palette className="h-4 w-4" />
                         <span>UX Designer</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("Job Title: Senior Data Scientist\n\nCompany: DataTech Analytics\nLocation: Lausanne, Switzerland\nContract Type: Permanent\nWork Mode: Remote\nDepartment: Data Science\nSalary: CHF 130,000 - 160,000\nStart Date: May 2024\nPriority: High\n\nJob Description:\nWe are seeking an experienced Senior Data Scientist to join our AI/ML team and drive data-driven insights across our organization. You will work with large datasets, develop predictive models, and collaborate with cross-functional teams to solve complex business problems using advanced analytics and machine learning techniques.\n\nKey Responsibilities:\n- Design and implement machine learning models and algorithms\n- Analyze large, complex datasets to extract actionable insights\n- Collaborate with engineers to deploy models in production\n- Present findings and recommendations to stakeholders\n- Mentor junior data scientists and analysts\n- Stay current with latest ML/AI research and techniques\n- Lead data science projects from conception to deployment\n\nRequired Skills:\n- PhD or Master's in Data Science, Statistics, Computer Science, or related field\n- 5+ years of experience in data science and machine learning\n- Proficiency in Python, R, SQL, and statistical analysis\n- Experience with ML frameworks (TensorFlow, PyTorch, scikit-learn)\n- Knowledge of cloud platforms (AWS, GCP, Azure)\n- Strong experience with data visualization tools\n- Excellent analytical and problem-solving skills\n\nPreferred Skills:\n- Experience with deep learning and neural networks\n- Knowledge of MLOps and model deployment pipelines\n- Familiarity with big data technologies (Spark, Hadoop)\n- Experience in NLP or computer vision\n- Previous experience in fintech or healthcare\n- Publications in peer-reviewed journals\n\nLanguages: English (fluent), German (conversational), French (basic)\n\nWhat We Offer:\n- Highly competitive salary and equity package\n- Fully remote work with flexible hours\n- Access to cutting-edge technology and datasets\n- Conference and research publication support\n- Comprehensive benefits package\n- Collaborative and innovative work environment")}
+                        onClick={() => setChatMessage("Job Title: Senior Data Scientist\n\nCompany: DataTech Analytics\nLocation: Lausanne, Switzerland\nContract Type: Permanent\nWork Mode: Remote\nDepartment: Data Science\nSalary: CHF 130,000 - 160,000\nStart Date: May 2024\nPriority: High\n\nJob Description:\nWe are seeking an experienced Senior Data Scientist to join our AI/ML team and drive data-driven insights across our organization. You will work with large datasets, develop predictive models, and collaborate with cross-functional teams to solve complex business problems using advanced analytics and machine learning techniques.\n\nKey Responsibilities:\n- Design and implement machine learning models and algorithms\n- Analyze large, complex datasets to extract actionable insights\n- Collaborate with engineers to deploy models in production\n- Present findings and recommendations to stakeholders\n- Mentor junior data scientists and analysts\n- Stay current with latest ML/AI research and techniques\n- Lead data science projects from conception to deployment\n\nRequired Skills:\n- PhD or Master's in Data Science, Statistics, Computer Science, or related field\n- 5+ years of experience in data science and machine learning\n- Proficiency in Python, R, SQL, and statistical analysis\n- Experience with ML frameworks (TensorFlow, PyTorch, scikit-learn)\n- Knowledge of cloud platforms (AWS, GCP, Azure)\n- Strong experience with data visualization tools\n- Excellent analytical and problem-solving skills\n\nPreferred Skills:\n- Experience with deep learning and neural networks\n- Knowledge of MLOps and model deployment pipelines\n- Familiarity with big data technologies (Spark, Hadoop)\n- Experience in NLP or computer vision\n- Previous experience in fintech or healthcare\n- Publications in peer-reviewed journals\n\nLanguages: English (fluent), German (conversational), French (basic)\n\nWhat We Offer:\n- Highly competitive salary and equity package\n- Fully remote work with flexible hours\n- Access to cutting-edge technology and datasets\n- Conference and research publication support\n- Comprehensive benefits package\n- Collaborative and innovative work environment")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Database className="h-4 w-4" />
                         <span>Data Scientist</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("Job Title: Senior DevOps Engineer\n\nCompany: CloudTech Solutions\nLocation: Bern, Switzerland\nContract Type: Permanent\nWork Mode: Hybrid (3 days office, 2 days remote)\nDepartment: Infrastructure\nSalary: CHF 115,000 - 145,000\nStart Date: Immediate\nPriority: High\n\nJob Description:\nWe are looking for an experienced Senior DevOps Engineer to lead our infrastructure automation and cloud operations. You will be responsible for designing, implementing, and maintaining scalable, secure, and reliable infrastructure solutions. This role is critical to enabling our development teams to deliver high-quality software efficiently.\n\nKey Responsibilities:\n- Design and maintain CI/CD pipelines and automation tools\n- Manage cloud infrastructure on AWS/Azure/GCP\n- Implement monitoring, logging, and alerting systems\n- Ensure security best practices and compliance\n- Collaborate with development teams on deployment strategies\n- Troubleshoot production issues and optimize performance\n- Lead infrastructure as code initiatives\n\nRequired Skills:\n- 5+ years of DevOps or infrastructure engineering experience\n- Expertise in cloud platforms (AWS, Azure, or GCP)\n- Proficiency in Infrastructure as Code (Terraform, CloudFormation)\n- Experience with containerization (Docker, Kubernetes)\n- Strong knowledge of CI/CD tools (Jenkins, GitLab CI, GitHub Actions)\n- Scripting skills (Python, Bash, PowerShell)\n- Experience with monitoring tools (Prometheus, Grafana, ELK Stack)\n\nPreferred Skills:\n- Certification in AWS, Azure, or GCP\n- Experience with service mesh technologies (Istio, Linkerd)\n- Knowledge of security scanning and compliance tools\n- Experience with database administration\n- Previous experience in fintech or regulated industries\n\nLanguages: English (fluent), German (fluent)\n\nWhat We Offer:\n- Competitive salary with performance bonuses\n- Cutting-edge technology stack\n- Flexible working arrangements\n- Professional certification support\n- Comprehensive health and pension benefits\n- Modern office in Bern with excellent transport links")}
+                        onClick={() => setChatMessage("Job Title: Senior DevOps Engineer\n\nCompany: CloudTech Solutions\nLocation: Bern, Switzerland\nContract Type: Permanent\nWork Mode: Hybrid (3 days office, 2 days remote)\nDepartment: Infrastructure\nSalary: CHF 115,000 - 145,000\nStart Date: Immediate\nPriority: High\n\nJob Description:\nWe are looking for an experienced Senior DevOps Engineer to lead our infrastructure automation and cloud operations. You will be responsible for designing, implementing, and maintaining scalable, secure, and reliable infrastructure solutions. This role is critical to enabling our development teams to deliver high-quality software efficiently.\n\nKey Responsibilities:\n- Design and maintain CI/CD pipelines and automation tools\n- Manage cloud infrastructure on AWS/Azure/GCP\n- Implement monitoring, logging, and alerting systems\n- Ensure security best practices and compliance\n- Collaborate with development teams on deployment strategies\n- Troubleshoot production issues and optimize performance\n- Lead infrastructure as code initiatives\n\nRequired Skills:\n- 5+ years of DevOps or infrastructure engineering experience\n- Expertise in cloud platforms (AWS, Azure, or GCP)\n- Proficiency in Infrastructure as Code (Terraform, CloudFormation)\n- Experience with containerization (Docker, Kubernetes)\n- Strong knowledge of CI/CD tools (Jenkins, GitLab CI, GitHub Actions)\n- Scripting skills (Python, Bash, PowerShell)\n- Experience with monitoring tools (Prometheus, Grafana, ELK Stack)\n\nPreferred Skills:\n- Certification in AWS, Azure, or GCP\n- Experience with service mesh technologies (Istio, Linkerd)\n- Knowledge of security scanning and compliance tools\n- Experience with database administration\n- Previous experience in fintech or regulated industries\n\nLanguages: English (fluent), German (fluent)\n\nWhat We Offer:\n- Competitive salary with performance bonuses\n- Cutting-edge technology stack\n- Flexible working arrangements\n- Professional certification support\n- Comprehensive health and pension benefits\n- Modern office in Bern with excellent transport links")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Shield className="h-4 w-4" />
                         <span>DevOps Engineer</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("Looking for a Frontend Developer with React experience...")}
+                        onClick={() => setChatMessage("Looking for a Frontend Developer with React experience...")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Monitor className="h-4 w-4" />
                         <span>Frontend Developer</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("We're hiring a Backend Developer to build scalable APIs...")}
+                        onClick={() => setChatMessage("We're hiring a Backend Developer to build scalable APIs...")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Database className="h-4 w-4" />
                         <span>Backend Developer</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("Looking for a Business Analyst to optimize our processes...")}
+                        onClick={() => setChatMessage("Looking for a Business Analyst to optimize our processes...")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Calculator className="h-4 w-4" />
                         <span>Business Analyst</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("Job Title: Digital Marketing Manager\n\nCompany: GrowthCorp\nLocation: Lucerne, Switzerland\nContract Type: Permanent\nWork Mode: Hybrid (2 days office, 3 days remote)\nDepartment: Marketing\nSalary: CHF 75,000 - 95,000\nStart Date: June 2024\nPriority: Medium\n\nJob Description:\nWe are seeking a dynamic Digital Marketing Manager to drive our online presence and lead generation efforts. You will develop and execute comprehensive digital marketing strategies across multiple channels to increase brand awareness, generate leads, and drive revenue growth. This role offers the opportunity to work with cutting-edge marketing technologies and data analytics.\n\nKey Responsibilities:\n- Develop and execute digital marketing strategies and campaigns\n- Manage social media presence and content marketing\n- Optimize SEO/SEM and paid advertising campaigns\n- Analyze marketing metrics and ROI\n- Collaborate with sales team on lead generation\n- Manage marketing automation and CRM systems\n- Create compelling content across various digital channels\n\nRequired Skills:\n- 3+ years of digital marketing experience\n- Proficiency in Google Analytics, Google Ads, Facebook Ads\n- Experience with marketing automation tools (HubSpot, Marketo)\n- Strong understanding of SEO/SEM best practices\n- Knowledge of social media marketing and content creation\n- Excellent analytical and data interpretation skills\n- Strong written and verbal communication skills\n\nPreferred Skills:\n- Experience with B2B marketing and lead generation\n- Knowledge of email marketing best practices\n- Familiarity with CRM systems (Salesforce, HubSpot)\n- Basic understanding of HTML/CSS\n- Certification in Google Analytics or Google Ads\n- Previous experience in SaaS or technology companies\n\nLanguages: English (fluent), German (fluent), French (conversational)\n\nWhat We Offer:\n- Competitive salary with performance incentives\n- Flexible working arrangements\n- Marketing technology budget\n- Professional development opportunities\n- Health and wellness benefits\n- Dynamic and creative work environment")}
+                        onClick={() => setChatMessage("Job Title: Digital Marketing Manager\n\nCompany: GrowthCorp\nLocation: Lucerne, Switzerland\nContract Type: Permanent\nWork Mode: Hybrid (2 days office, 3 days remote)\nDepartment: Marketing\nSalary: CHF 75,000 - 95,000\nStart Date: June 2024\nPriority: Medium\n\nJob Description:\nWe are seeking a dynamic Digital Marketing Manager to drive our online presence and lead generation efforts. You will develop and execute comprehensive digital marketing strategies across multiple channels to increase brand awareness, generate leads, and drive revenue growth. This role offers the opportunity to work with cutting-edge marketing technologies and data analytics.\n\nKey Responsibilities:\n- Develop and execute digital marketing strategies and campaigns\n- Manage social media presence and content marketing\n- Optimize SEO/SEM and paid advertising campaigns\n- Analyze marketing metrics and ROI\n- Collaborate with sales team on lead generation\n- Manage marketing automation and CRM systems\n- Create compelling content across various digital channels\n\nRequired Skills:\n- 3+ years of digital marketing experience\n- Proficiency in Google Analytics, Google Ads, Facebook Ads\n- Experience with marketing automation tools (HubSpot, Marketo)\n- Strong understanding of SEO/SEM best practices\n- Knowledge of social media marketing and content creation\n- Excellent analytical and data interpretation skills\n- Strong written and verbal communication skills\n\nPreferred Skills:\n- Experience with B2B marketing and lead generation\n- Knowledge of email marketing best practices\n- Familiarity with CRM systems (Salesforce, HubSpot)\n- Basic understanding of HTML/CSS\n- Certification in Google Analytics or Google Ads\n- Previous experience in SaaS or technology companies\n\nLanguages: English (fluent), German (fluent), French (conversational)\n\nWhat We Offer:\n- Competitive salary with performance incentives\n- Flexible working arrangements\n- Marketing technology budget\n- Professional development opportunities\n- Health and wellness benefits\n- Dynamic and creative work environment")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Megaphone className="h-4 w-4" />
                         <span>Marketing Manager</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("Looking for a Sales Representative to drive revenue growth...")}
+                        onClick={() => setChatMessage("Looking for a Sales Representative to drive revenue growth...")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Coins className="h-4 w-4" />
                         <span>Sales Representative</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("We're hiring an HR Manager to support our growing team...")}
+                        onClick={() => setChatMessage("We're hiring an HR Manager to support our growing team...")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Users className="h-4 w-4" />
                         <span>HR Manager</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("Looking for an Accountant to manage our financial operations...")}
+                        onClick={() => setChatMessage("Looking for an Accountant to manage our financial operations...")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Calculator className="h-4 w-4" />
                         <span>Accountant</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("We need a Customer Support Specialist to help our clients...")}
+                        onClick={() => setChatMessage("We need a Customer Support Specialist to help our clients...")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Headphones className="h-4 w-4" />
                         <span>Customer Support</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("Looking for a Graphic Designer to create visual content...")}
+                        onClick={() => setChatMessage("Looking for a Graphic Designer to create visual content...")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <PenTool className="h-4 w-4" />
                         <span>Graphic Designer</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("We're hiring a Content Writer to create engaging content...")}
+                        onClick={() => setChatMessage("We're hiring a Content Writer to create engaging content...")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <BookOpen className="h-4 w-4" />
                         <span>Content Writer</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("Looking for a Project Manager to coordinate our initiatives...")}
+                        onClick={() => setChatMessage("Looking for a Project Manager to coordinate our initiatives...")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Presentation className="h-4 w-4" />
                         <span>Project Manager</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("We need a QA Engineer to ensure product quality...")}
+                        onClick={() => setChatMessage("We need a QA Engineer to ensure product quality...")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <FlaskConical className="h-4 w-4" />
                         <span>QA Engineer</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("Looking for a Photographer to capture our brand story...")}
+                        onClick={() => setChatMessage("Looking for a Photographer to capture our brand story...")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Camera className="h-4 w-4" />
                         <span>Photographer</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("We're hiring a Mobile Developer to build our app...")}
+                        onClick={() => setChatMessage("We're hiring a Mobile Developer to build our app...")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Smartphone className="h-4 w-4" />
                         <span>Mobile Developer</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("Looking for a Game Developer to create interactive experiences...")}
+                        onClick={() => setChatMessage("Looking for a Game Developer to create interactive experiences...")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Gamepad2 className="h-4 w-4" />
                         <span>Game Developer</span>
                       </button>
                       <button
-                        onClick={() => setChatInput("We need a System Administrator to manage our IT infrastructure...")}
+                        onClick={() => setChatMessage("We need a System Administrator to manage our IT infrastructure...")}
                         className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors whitespace-nowrap"
                       >
                         <Wrench className="h-4 w-4" />
@@ -1571,7 +1670,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
           )}
 
           {/* Step 2: Smart Analysis */}
-          {currentStep === 'parsing' && (
+          {currentStep === 'analysis' && (
             <div className="text-center space-y-6">
               <div className="w-24 h-24 bg-primary-100 rounded-full flex items-center justify-center mx-auto">
                 <Sparkles className="h-12 w-12 text-primary-600 animate-pulse" />
@@ -1761,85 +1860,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                   </CardContent>
                 </Card>
 
-                {/* Project Information */}
-                <Card>
-                  <CardContent className="p-6">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-                      <Briefcase className="h-5 w-5 text-primary-600" />
-                      <span>Project Information</span>
-                    </h4>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Project Name *</label>
-                        <input
-                          {...register('projectName')}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                          placeholder="e.g., DataFlow Innovations - Data Engineers"
-                        />
-                        {errors.projectName && <p className="text-red-600 text-sm mt-1">{errors.projectName.message}</p>}
-                      </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Total Positions *</label>
-                          <input
-                            type="number"
-                            min="1"
-                            {...register('totalPositions', { valueAsNumber: true })}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                            placeholder="5"
-                          />
-                          {errors.totalPositions && <p className="text-red-600 text-sm mt-1">{errors.totalPositions.message}</p>}
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Urgency Level</label>
-                          <select
-                            {...register('urgencyLevel')}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                          >
-                            {urgencyLevels.map(level => (
-                              <option key={level.value} value={level.value}>{level.label}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Project Description</label>
-                        <textarea
-                          {...register('projectDescription')}
-                          rows={4}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                          placeholder="Describe the project, context, and objectives..."
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Work Arrangement</label>
-                        <div className="space-y-2">
-                          <label className="flex items-center">
-                            <input
-                              type="checkbox"
-                              {...register('isRemote')}
-                              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                            />
-                            <span className="ml-2 text-sm text-gray-700">Remote Work Available</span>
-                          </label>
-                          <label className="flex items-center">
-                            <input
-                              type="checkbox"
-                              {...register('isHybrid')}
-                              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                            />
-                            <span className="ml-2 text-sm text-gray-700">Hybrid Work Available</span>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
 
                 {/* Client Information */}
                 <Card>
@@ -1996,12 +2017,12 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                       {/* Display current skills */}
                       <div className="flex flex-wrap gap-2 min-h-[40px] p-3 border border-gray-300 rounded-lg bg-gray-50">
                         {(watch('skills') || []).length > 0 ? (
-                          (watch('skills') || []).map((skill, index) => (
-                            <span 
-                              key={index} 
-                              className="flex items-center space-x-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm"
-                            >
-                              <span>{skill}</span>
+                                                        (watch('skills') || []).map((skill: string, index: number) => (
+                                <span 
+                                  key={index} 
+                                  className="flex items-center space-x-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm"
+                                >
+                                  <span>{skill}</span>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -2065,8 +2086,8 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                       <span className="text-sm text-gray-600">Suggested skills from job description:</span>
                       <div className="flex flex-wrap gap-2">
                         {parsedData.skills
-                          .filter(skill => !(watch('skills') || []).includes(skill))
-                          .map((skill, index) => (
+                          .filter((skill: string) => !(watch('skills') || []).includes(skill))
+                          .map((skill: string, index: number) => (
                             <button
                               key={index}
                               type="button"
@@ -2087,6 +2108,133 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                   </CardContent>
                 </Card>
               )}
+
+              {/* Project Information (Optional) */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                      <Briefcase className="h-5 w-5 text-primary-600" />
+                      <span>Add to Project (Optional)</span>
+                    </h4>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    {/* Project Selection Options */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Project Options</label>
+                      <div className="space-y-2">
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name="projectOption"
+                            value="none"
+                            checked={selectedProjectOption === 'none'}
+                            onChange={(e) => setSelectedProjectOption(e.target.value as 'existing' | 'new' | 'none')}
+                            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">Create job without project</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name="projectOption"
+                            value="existing"
+                            checked={selectedProjectOption === 'existing'}
+                            onChange={(e) => setSelectedProjectOption(e.target.value as 'existing' | 'new' | 'none')}
+                            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">Add to existing project</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name="projectOption"
+                            value="new"
+                            checked={selectedProjectOption === 'new'}
+                            onChange={(e) => setSelectedProjectOption(e.target.value as 'existing' | 'new' | 'none')}
+                            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">Create new project</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Existing Project Selection */}
+                    {selectedProjectOption === 'existing' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Select Project</label>
+                        {loadingProjects ? (
+                          <div className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+                            Loading projects...
+                          </div>
+                        ) : (
+                          <select
+                            {...register('projectId')}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          >
+                            <option value="">Select a project...</option>
+                            {existingProjects.map((project) => (
+                              <option key={project.id} value={project.id}>
+                                {project.name} - {project.clientName}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    )}
+
+                    {/* New Project Creation */}
+                    {selectedProjectOption === 'new' && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
+                          <input
+                            {...register('projectName')}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            placeholder="e.g., DataFlow Innovations - Data Engineers"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Total Positions</label>
+                            <input
+                              type="number"
+                              min="1"
+                              {...register('totalPositions', { valueAsNumber: true })}
+                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                              placeholder="5"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Urgency Level</label>
+                            <select
+                              {...register('urgencyLevel')}
+                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            >
+                              <option value="low">Low</option>
+                              <option value="medium">Medium</option>
+                              <option value="high">High</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Project Description</label>
+                          <textarea
+                            {...register('projectDescription')}
+                            rows={3}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            placeholder="Describe the project, context, and objectives..."
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Style Customization */}
               <Card>
@@ -2258,7 +2406,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setCurrentStep('intake')}
+                                      onClick={goToNextStep}
                 >
                   Back to Intake
                 </Button>
@@ -2276,7 +2424,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                   </Button>
                   <Button
                     type="button"
-                    onClick={() => setCurrentStep('configure')}
+                    onClick={goToNextStep}
                     className="bg-primary-600 hover:bg-primary-700 text-white"
                   >
                     Continue to Configure
@@ -2307,14 +2455,112 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Select Pipeline Template
+                        Custom Pipeline Stages
                       </label>
-                      <select className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                        <option value="standard">Standard Pipeline (Sourced → Screened → Interview → Offer → Hired)</option>
-                        <option value="technical">Technical Pipeline (Applied → Technical Screen → Interview → Final → Offer)</option>
-                        <option value="executive">Executive Pipeline (Sourced → Initial → Panel → Reference → Offer)</option>
-                        <option value="custom">Custom Pipeline</option>
-                      </select>
+                      <p className="text-sm text-gray-600 mb-3">
+                        Add and arrange the stages for your recruitment pipeline. These will appear in the kanban board.
+                      </p>
+                      
+                      {/* Current Pipeline Stages */}
+                      <div className="space-y-2 mb-4">
+                        {pipelineStages.map((stage, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  type="button"
+                                  onClick={() => movePipelineStage(index, Math.max(0, index - 1))}
+                                  disabled={index === 0}
+                                  className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <ChevronUp className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => movePipelineStage(index, Math.min(pipelineStages.length - 1, index + 1))}
+                                  disabled={index === pipelineStages.length - 1}
+                                  className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <ChevronDown className="h-4 w-4" />
+                                </button>
+                              </div>
+                              <span className="font-medium text-gray-900">{stage}</span>
+                              <span className="text-xs text-gray-500">#{index + 1}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removePipelineStage(index)}
+                              disabled={pipelineStages.length <= 1}
+                              className="p-1 text-red-400 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Add New Stage */}
+                      <div className="flex space-x-2">
+                        <input
+                          type="text"
+                          value={newStageInput}
+                          onChange={(e) => setNewStageInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              addPipelineStage();
+                            }
+                          }}
+                          placeholder="Add new stage (e.g., Phone Screen, Assessment)"
+                          className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        />
+                        <Button
+                          type="button"
+                          onClick={addPipelineStage}
+                          disabled={!newStageInput.trim() || pipelineStages.includes(newStageInput.trim())}
+                          className="bg-primary-600 hover:bg-primary-700 text-white"
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+
+                      {/* Quick Add Suggestions */}
+                      <div className="space-y-2">
+                        <span className="text-sm text-gray-600">Quick add common stages:</span>
+                        <div className="flex flex-wrap gap-2">
+                          {['Phone Screen', 'Technical Assessment', 'Panel Interview', 'Reference Check', 'Background Check', 'Final Review'].map((suggestedStage) => (
+                            <button
+                              key={suggestedStage}
+                              type="button"
+                              onClick={() => {
+                                if (!pipelineStages.includes(suggestedStage)) {
+                                  setPipelineStages([...pipelineStages, suggestedStage]);
+                                }
+                              }}
+                              disabled={pipelineStages.includes(suggestedStage)}
+                              className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              + {suggestedStage}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Pipeline Preview */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <h5 className="text-sm font-medium text-blue-900 mb-2">Pipeline Preview:</h5>
+                        <div className="flex items-center space-x-2 text-sm text-blue-800">
+                          {pipelineStages.map((stage, index) => (
+                            <div key={index} className="flex items-center">
+                              <span className="px-2 py-1 bg-blue-100 rounded text-xs">{stage}</span>
+                              {index < pipelineStages.length - 1 && (
+                                <ArrowRight className="h-3 w-3 mx-1 text-blue-600" />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
@@ -2530,7 +2776,7 @@ Apply now 👉 [link]
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setCurrentStep('review')}
+                  onClick={goToPreviousStep}
                 >
                   Back to Review
                 </Button>
@@ -2692,7 +2938,7 @@ Apply now 👉 [link]
            languages: watch('languages') || [],
            priority: watch('priority')
          }}
-         logoUrl={logoUrl}
+         logoUrl={logoUrl || undefined}
          selectedFields={selectedFields}
          selectedTemplate={selectedTemplate}
         customStyleConfig={customStyleConfig}
