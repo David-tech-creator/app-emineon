@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       // For testing, accept any non-empty API key
       authStatus = apiKey ? 'authenticated' : 'invalid';
     }
-
+    
     // Database connectivity check
     let databaseStatus = 'disconnected';
     let databaseLatency = 0;
@@ -96,9 +96,9 @@ export async function GET(request: NextRequest) {
     console.error('Health check error:', error);
     
     const errorResponse = { 
-      success: false, 
-      status: 'unhealthy',
-      error: 'Service temporarily unavailable',
+        success: false, 
+        status: 'unhealthy',
+        error: 'Service temporarily unavailable',
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
       performance: {

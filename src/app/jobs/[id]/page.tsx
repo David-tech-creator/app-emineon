@@ -368,7 +368,7 @@ export default function JobDetailPage() {
 
   const handleCandidateSelect = (candidate: Candidate) => {
     if (candidate) {
-      setSelectedCandidate(candidate);
+    setSelectedCandidate(candidate);
     }
   };
 
@@ -510,14 +510,14 @@ export default function JobDetailPage() {
               <p className="text-sm text-gray-600">Manage candidates through your hiring process</p>
             </div>
 
-            <PipelineKanban 
-              candidates={candidates}
-              stages={pipelineStages}
-              onCandidateMove={handleCandidateMove}
-              onCandidateSelect={handleCandidateSelect}
+          <PipelineKanban 
+            candidates={candidates}
+            stages={pipelineStages}
+            onCandidateMove={handleCandidateMove}
+            onCandidateSelect={handleCandidateSelect}
               onAddCandidate={() => setShowAddExistingModal(true)}
               onCandidateRemove={handleCandidateRemove}
-              AddCandidateComponent={() => (
+            AddCandidateComponent={() => (
                 <AddCandidateDropdown
                   onAddExisting={() => setShowAddExistingModal(true)}
                   onCreateNew={() => setShowCreateCandidateModal(true)}
@@ -749,8 +749,8 @@ export default function JobDetailPage() {
 
   return (
     <ErrorBoundary>
-      <Layout>
-        {/* Header */}
+    <Layout>
+      {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">

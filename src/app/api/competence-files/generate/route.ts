@@ -493,11 +493,11 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
       .filter(([_, category]) => category.skills.length > 0)
       .map(([categoryName, category]) => `
         <div class="functional-skill-category">
-          <div class="skill-category-title">${categoryName}</div>
-          <ul class="skill-list">
-            ${category.skills.map(skill => `<li>${skill}</li>`).join('')}
-          </ul>
-          <p class="skill-description">${category.description}</p>
+          <div class="skill-category-title">${categoryName}*</div>
+          <div class="skill-content">
+            ${category.skills.map(skill => `<div class="skill-item">${skill}</div>`).join('')}
+            <p class="skill-description">${category.description}</p>
+          </div>
         </div>
       `).join('');
   };
@@ -565,11 +565,11 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
       .filter(([_, category]) => category.skills.length > 0)
       .map(([categoryName, category]) => `
         <div class="technical-skill-category">
-          <div class="skill-category-title">${categoryName}</div>
-          <ul class="skill-list">
-            ${category.skills.map(skill => `<li>${skill}</li>`).join('')}
-          </ul>
-          <p class="skill-description">${category.description}</p>
+          <div class="skill-category-title">${categoryName}*</div>
+          <div class="skill-content">
+            ${category.skills.map(skill => `<div class="skill-item">${skill}</div>`).join('')}
+            <p class="skill-description">${category.description}</p>
+          </div>
         </div>
       `).join('');
   };
@@ -814,71 +814,80 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         
         /* Functional Skills */
         .functional-skill-category {
-          margin-bottom: 20px;
-          padding: 15px;
-          background: #f8f9fa;
-          border-radius: 8px;
-          border-left: 4px solid #2C4F7C;
+          margin-bottom: 25px;
+          page-break-inside: avoid;
         }
         
         .skill-category-title {
-          font-size: 15px;
+          font-size: 14px;
           font-weight: 700;
           color: #2C4F7C;
-          margin-bottom: 10px;
+          margin-bottom: 15px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          padding-bottom: 5px;
+          border-bottom: 1px solid #2C4F7C;
         }
         
-        .skill-list {
-          list-style: none;
-          padding-left: 0;
-          margin: 8px 0;
+        .skill-content {
+          margin-bottom: 15px;
         }
         
-        .skill-list li {
-          display: inline-block;
-          background: #fff;
-          padding: 4px 10px;
-          margin: 2px 4px 2px 0;
-          border: 1px solid #2C4F7C;
-          border-radius: 4px;
-          font-size: 13px;
-          font-weight: 500;
-          color: #2C4F7C;
+        .skill-item {
+          margin-bottom: 8px;
+          padding-left: 15px;
+          position: relative;
+          color: #444B54;
+          line-height: 1.6;
+        }
+        
+        .skill-item:before {
+          content: "•";
+          color: #FFB800;
+          font-weight: bold;
+          position: absolute;
+          left: 0;
+          top: 0;
         }
         
         .skill-description {
           font-size: 13px;
-          color: #444B54;
+          color: #666666;
           line-height: 1.6;
-          margin-top: 10px;
+          margin-top: 12px;
           font-style: italic;
+          padding-left: 15px;
+          border-left: 3px solid #FFB800;
+          padding-left: 15px;
+          background-color: #fafafa;
+          padding: 12px 15px;
+          border-radius: 4px;
         }
         
         /* Technical Skills */
         .technical-skill-category {
-          margin-bottom: 20px;
-          padding: 15px;
-          background: #f8f9fa;
-          border-radius: 8px;
-          border-left: 4px solid #FFB800;
+          margin-bottom: 25px;
+          page-break-inside: avoid;
         }
         
         /* Areas of Expertise */
         .expertise-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 12px;
-          margin: 15px 0;
+          gap: 15px;
+          margin: 20px 0;
         }
         
         .expertise-item {
+          text-align: center;
+          padding: 15px 12px;
           background: #f8f9fa;
-          padding: 12px 15px;
-          border-radius: 6px;
-          border-left: 3px solid #2C4F7C;
-          font-weight: 500;
+          border-radius: 8px;
+          font-weight: 600;
           font-size: 14px;
-          color: #232629;
+          color: #444B54;
+          border-left: 3px solid #FFB800;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
         
         /* Experience Blocks */
@@ -1272,59 +1281,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           color: #444B54;
         }
         
-        /* Functional Skills */
-        .functional-skill-category {
-          margin-bottom: 20px;
-          padding: 15px;
-          background: #f8f9fa;
-          border-radius: 8px;
-          border-left: 4px solid #2C4F7C;
-        }
-        
-        .skill-category-title {
-          font-size: 15px;
-          font-weight: 700;
-          color: #2C4F7C;
-          margin-bottom: 10px;
-        }
-        
-        .skill-list {
-          list-style: none;
-          padding-left: 0;
-          margin-bottom: 10px;
-        }
-        
-        .skill-list li {
-          position: relative;
-          padding-left: 15px;
-          margin-bottom: 5px;
-          color: #444B54;
-          font-weight: 500;
-        }
-        
-        .skill-list li:before {
-          content: "•";
-          color: #FFB800;
-          font-weight: bold;
-          position: absolute;
-          left: 0;
-        }
-        
-        .skill-description {
-          font-style: italic;
-          color: #666;
-          font-size: 13px;
-          line-height: 1.5;
-        }
-        
-        /* Technical Skills */
-        .technical-skill-category {
-          margin-bottom: 20px;
-          padding: 15px;
-          background: #f8f9fa;
-          border-radius: 8px;
-          border-left: 4px solid #FFB800;
-        }
+
         
         /* Areas of Expertise */
         .expertise-areas {
@@ -2758,13 +2715,13 @@ export async function POST(request: NextRequest) {
 
     // Return file for download
     return new NextResponse(fileBuffer, {
-      status: 200,
-      headers: {
+        status: 200,
+        headers: {
         'Content-Type': contentType,
-        'Content-Disposition': `attachment; filename="${filename}"`,
+          'Content-Disposition': `attachment; filename="${filename}"`,
         'Content-Length': fileBuffer.length.toString(),
-      },
-    });
+        },
+      });
 
   } catch (error) {
     console.error('💥 Error generating competence file:', error);
