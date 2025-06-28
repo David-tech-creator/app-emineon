@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs';
 import { prisma } from '@/lib/prisma';
 
+// Helper function to get template display name
+function getTemplateDisplayName(template: string): string {
+  switch (template) {
+    case 'antaes':
+    case 'cf-antaes-consulting':
+      return 'Antaes Consulting';
+    case 'emineon':
+      return 'Emineon Professional';
+    case 'modern':
+      return 'Modern Template';
+    case 'minimal':
+      return 'Minimal Template';
+    default:
+      return 'Professional Template';
+  }
+}
+
 // GET - List all competence files for the authenticated user
 export async function GET(request: NextRequest) {
   try {
@@ -18,78 +35,96 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
     const status = searchParams.get('status');
 
-    // For now, return mock data until we have a proper database schema
-    // In a real implementation, this would query the database
-    const mockCompetenceFiles = [
-      {
-        id: '1',
-        candidateId: '1',
-        candidateName: 'Sarah Johnson',
-        candidateTitle: 'Senior Frontend Engineer',
-        template: 'emineon',
-        templateName: 'Emineon Professional',
-        client: 'UBS Investment Bank',
-        job: 'Senior React Developer',
-        status: 'Generated',
-        createdAt: '2024-01-15T10:00:00.000Z',
-        updatedAt: '2024-01-15T10:00:00.000Z',
-        version: 1,
-        downloadCount: 3,
-        isAnonymized: false,
-        fileName: 'Sarah_Johnson_UBS_Competence_File.pdf',
-        fileUrl: 'https://res.cloudinary.com/emineon/raw/upload/v1749930214/emineon-ats/competence-files/Test_Download_Fix_1749930214191',
-        format: 'pdf',
-        sections: [
-          { id: 'header', title: 'Header', content: 'Sarah Johnson\nSenior Frontend Engineer', type: 'header', visible: true, order: 0 },
-          { id: 'summary', title: 'Professional Summary', content: 'Experienced frontend engineer...', type: 'summary', visible: true, order: 1 },
-          { id: 'skills', title: 'Technical Skills', content: 'React, TypeScript, Node.js...', type: 'skills', visible: true, order: 2 }
-        ]
-      },
-      {
-        id: '2',
-        candidateId: '2',
-        candidateName: 'David Chen',
-        candidateTitle: 'Backend Engineer',
-        template: 'antaes',
-        templateName: 'Antaes Consulting',
-        client: 'Credit Suisse',
-        job: 'Python Developer',
-        status: 'Draft',
-        createdAt: '2024-01-14T10:00:00.000Z',
-        updatedAt: '2024-01-15T10:00:00.000Z',
-        version: 2,
-        downloadCount: 0,
-        isAnonymized: true,
-        fileName: 'David_Chen_CS_Competence_File.pdf',
-        fileUrl: null,
-        format: 'pdf',
-        sections: [
-          { id: 'header', title: 'Header', content: 'David Chen\nBackend Engineer', type: 'header', visible: true, order: 0 },
-          { id: 'summary', title: 'Executive Summary', content: 'Backend engineer with expertise...', type: 'summary', visible: true, order: 1 }
-        ]
-      }
-    ];
-
-    // Apply filters
-    let filteredFiles = mockCompetenceFiles;
+    // Build where clause for filtering
+    const whereClause: any = {};
     
     if (search) {
-      filteredFiles = filteredFiles.filter(file =>
-        file.candidateName.toLowerCase().includes(search.toLowerCase()) ||
-        file.client.toLowerCase().includes(search.toLowerCase()) ||
-        file.job.toLowerCase().includes(search.toLowerCase())
-      );
+      whereClause.OR = [
+        {
+          candidate: {
+            OR: [
+              { firstName: { contains: search, mode: 'insensitive' } },
+              { lastName: { contains: search, mode: 'insensitive' } },
+              { currentTitle: { contains: search, mode: 'insensitive' } }
+            ]
+          }
+        },
+        { fileName: { contains: search, mode: 'insensitive' } },
+        {
+          metadata: {
+            path: ['client'],
+            string_contains: search
+          }
+        },
+        {
+          metadata: {
+            path: ['jobTitle'],
+            string_contains: search
+          }
+        }
+      ];
     }
     
     if (status && status !== 'all') {
-      filteredFiles = filteredFiles.filter(file =>
-        file.status.toLowerCase() === status.toLowerCase()
-      );
+      whereClause.status = status.toUpperCase();
     }
+
+    // Fetch competence files from database
+    const competenceFiles = await prisma.competenceFile.findMany({
+      where: whereClause,
+      include: {
+        candidate: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            currentTitle: true,
+            email: true
+          }
+        },
+        template: {
+          select: {
+            id: true,
+            name: true,
+            category: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    // Transform data to match frontend interface
+    const transformedFiles = competenceFiles.map(file => {
+      const metadata = file.metadata as any || {};
+      const candidateName = `${file.candidate.firstName} ${file.candidate.lastName}`.trim();
+      
+      return {
+        id: file.id,
+        candidateId: file.candidateId,
+        candidateName,
+        candidateTitle: file.candidate.currentTitle || 'Unknown Title',
+        template: metadata.template || 'unknown',
+        templateName: file.template?.name || getTemplateDisplayName(metadata.template),
+        client: metadata.client || 'Unknown Client',
+        job: metadata.jobTitle || 'Unknown Position',
+        status: file.status,
+        createdAt: file.createdAt.toISOString(),
+        updatedAt: file.updatedAt.toISOString(),
+        version: file.version,
+        downloadCount: file.downloadCount,
+        isAnonymized: file.isAnonymized,
+        fileName: file.fileName,
+        fileUrl: file.downloadUrl,
+        format: file.format,
+        sections: file.sectionsConfig || []
+      };
+    });
 
     return NextResponse.json({
       success: true,
-      data: filteredFiles
+      data: transformedFiles
     });
 
   } catch (error) {

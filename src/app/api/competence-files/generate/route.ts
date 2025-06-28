@@ -2,6 +2,74 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { generatePDF } from '@/lib/pdf-service';
 import { auth } from '@clerk/nextjs/server';
+import { prisma } from '@/lib/prisma';
+import { put } from '@vercel/blob';
+
+// Function to extract client information from job description
+function extractClientInfo(jobDescription?: JobDescription): { client: string; jobTitle: string } {
+  if (!jobDescription) {
+    return { client: 'Unknown Client', jobTitle: 'Unknown Position' };
+  }
+
+  let client = 'Unknown Client';
+  let jobTitle = jobDescription.title || 'Unknown Position';
+
+  // Extract company name from job description text or company field
+  if (jobDescription.company) {
+    client = jobDescription.company;
+  } else if (jobDescription.text) {
+    // Common patterns for company names in job descriptions
+    const companyPatterns = [
+      /(?:at|for|with|join)\s+([A-Z][A-Za-z\s&-]+?)(?:\s+(?:is|are|has|offers|provides|seeks|looking|hiring))/i,
+      /([A-Z][A-Za-z\s&-]+?)\s+(?:is|are)\s+(?:hiring|looking|seeking|recruiting)/i,
+      /(?:Company|Organization|Firm):\s*([A-Z][A-Za-z\s&-]+)/i,
+      /([A-Z][A-Za-z\s&-]+?)\s+(?:AG|GmbH|Ltd|Inc|Corp|LLC|SA|SE|NV|BV|AB|AS|Oy|SpA|SRL|SARL|Sàrl)/i,
+      /([A-Z][A-Za-z\s&-]+?)\s+(?:Bank|Investment|Consulting|Technology|Software|Solutions|Group|Holdings|Partners|Capital|Management|Services|International|Global|Digital|Systems|Innovations|Corporation|Company)/i
+    ];
+
+    for (const pattern of companyPatterns) {
+      const match = jobDescription.text.match(pattern);
+      if (match && match[1]) {
+        client = match[1].trim();
+        break;
+      }
+    }
+
+    // Clean up common suffixes/prefixes
+    client = client
+      .replace(/^(The|A|An)\s+/i, '')
+      .replace(/\s+(team|department|division|group)$/i, '')
+      .trim();
+
+    // If still unknown, try to extract from requirements or responsibilities
+    if (client === 'Unknown Client') {
+      const allText = [
+        jobDescription.text,
+        jobDescription.requirements.join(' '),
+        jobDescription.responsibilities.join(' ')
+      ].join(' ');
+
+      // Look for well-known company names
+      const knownCompanies = [
+        'UBS', 'Credit Suisse', 'Deutsche Bank', 'JPMorgan', 'Goldman Sachs',
+        'McKinsey', 'BCG', 'Bain', 'Deloitte', 'PwC', 'EY', 'KPMG',
+        'Google', 'Microsoft', 'Amazon', 'Apple', 'Meta', 'Netflix',
+        'Spotify', 'Airbnb', 'Uber', 'Tesla', 'SpaceX', 'PayPal',
+        'Salesforce', 'Oracle', 'SAP', 'Adobe', 'IBM', 'Intel',
+        'Cisco', 'VMware', 'ServiceNow', 'Workday', 'Snowflake'
+      ];
+
+      for (const company of knownCompanies) {
+        if (allText.toLowerCase().includes(company.toLowerCase())) {
+          client = company;
+          break;
+        }
+      }
+    }
+  }
+
+  return { client, jobTitle };
+}
 
 // Request schema validation
 const GenerateRequestSchema = z.object({
@@ -1876,10 +1944,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Extract client information from job description
+    const { client, jobTitle } = extractClientInfo(jobDescription);
+
     console.log('🎨 Generating competence file...', {
       candidate: candidateData.fullName,
       template,
       format,
+      client,
+      jobTitle,
       experienceCount: candidateData.experience?.length || 0
     });
 
@@ -1891,51 +1964,147 @@ export async function POST(request: NextRequest) {
       htmlContent = generateCompetenceFileHTML(candidateData, sections, jobDescription);
     }
 
+    let fileBuffer: Buffer;
+    let fileFormat = format;
+    let contentType: string;
+
     if (format === 'pdf') {
       try {
         // Attempt PDF generation
         console.log('📄 Attempting PDF generation...');
-        const pdfBuffer = await generatePDF(htmlContent);
-        
-        const filename = `${candidateData.fullName.replace(/[^a-zA-Z0-9]/g, '_')}_Competence_File.pdf`;
-
-        return new NextResponse(pdfBuffer, {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="${filename}"`,
-            'Content-Length': pdfBuffer.length.toString(),
-          },
-        });
+        fileBuffer = await generatePDF(htmlContent);
+        contentType = 'application/pdf';
       } catch (pdfError) {
         console.error('❌ PDF generation failed:', pdfError);
         console.log('🔄 Falling back to HTML format...');
         
         // Fallback to HTML
-        const filename = `${candidateData.fullName.replace(/[^a-zA-Z0-9]/g, '_')}_Competence_File.html`;
-        
-        return new NextResponse(htmlContent, {
-          status: 200,
-          headers: {
-            'Content-Type': 'text/html',
-            'Content-Disposition': `attachment; filename="${filename}"`,
-            'Content-Length': Buffer.byteLength(htmlContent, 'utf8').toString(),
-          },
-        });
+        fileBuffer = Buffer.from(htmlContent, 'utf8');
+        fileFormat = 'html';
+        contentType = 'text/html';
       }
     } else {
       // For non-PDF formats, return HTML
-      const filename = `${candidateData.fullName.replace(/[^a-zA-Z0-9]/g, '_')}_Competence_File.html`;
-      
-      return new NextResponse(htmlContent, {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/html',
-          'Content-Disposition': `attachment; filename="${filename}"`,
-          'Content-Length': Buffer.byteLength(htmlContent, 'utf8').toString(),
-        },
-      });
+      fileBuffer = Buffer.from(htmlContent, 'utf8');
+      fileFormat = 'html';
+      contentType = 'text/html';
     }
+
+    const filename = `${candidateData.fullName.replace(/[^a-zA-Z0-9]/g, '_')}_${client.replace(/[^a-zA-Z0-9]/g, '_')}_Competence_File.${fileFormat}`;
+
+    try {
+      // Upload file to Vercel Blob storage
+      console.log('☁️ Uploading file to storage...');
+      const blob = await put(
+        `competence-files/${filename}`,
+        fileBuffer,
+        {
+          contentType,
+          access: 'public',
+        }
+      );
+
+      console.log('✅ File uploaded to:', blob.url);
+
+      // Save competence file record to database
+      console.log('💾 Saving competence file to database...');
+      
+      // Find or create candidate first
+      let candidate = await prisma.candidate.findFirst({
+        where: {
+          OR: [
+            { id: candidateData.id },
+            { email: candidateData.email || '' },
+            { 
+              AND: [
+                { firstName: candidateData.fullName.split(' ')[0] || '' },
+                { lastName: candidateData.fullName.split(' ').slice(1).join(' ') || '' }
+              ]
+            }
+          ]
+        }
+      });
+
+      if (!candidate && candidateData.email) {
+        // Create candidate if not found
+        candidate = await prisma.candidate.create({
+          data: {
+            firstName: candidateData.fullName.split(' ')[0] || 'Unknown',
+            lastName: candidateData.fullName.split(' ').slice(1).join(' ') || '',
+            email: candidateData.email,
+            currentTitle: candidateData.currentTitle,
+            phone: candidateData.phone || null,
+            currentLocation: candidateData.location || null,
+            experienceYears: candidateData.yearsOfExperience || null,
+            summary: candidateData.summary || null,
+            technicalSkills: candidateData.skills || [],
+            certifications: candidateData.certifications || [],
+            spokenLanguages: candidateData.languages || [],
+            lastUpdated: new Date(),
+            status: 'ACTIVE'
+          }
+        });
+        console.log('👤 Created new candidate:', candidate.id);
+      }
+
+      if (candidate) {
+        // Find template ID if it exists
+        let templateId = null;
+        if (template === 'antaes' || template === 'cf-antaes-consulting') {
+          const antaesTemplate = await prisma.competenceFileTemplate.findFirst({
+            where: { name: { contains: 'Antaes', mode: 'insensitive' } }
+          });
+          templateId = antaesTemplate?.id || null;
+        } else if (template === 'emineon') {
+          const emineonTemplate = await prisma.competenceFileTemplate.findFirst({
+            where: { name: { contains: 'Emineon', mode: 'insensitive' } }
+          });
+          templateId = emineonTemplate?.id || null;
+        }
+
+        // Save competence file record
+        const competenceFile = await prisma.competenceFile.create({
+          data: {
+            candidateId: candidate.id,
+            templateId,
+            fileName: filename,
+            filePath: blob.pathname,
+            downloadUrl: blob.url,
+            format: fileFormat,
+            fileSize: fileBuffer.length,
+            status: 'GENERATED',
+            version: 1,
+            downloadCount: 0,
+            isAnonymized: false,
+            metadata: {
+              client,
+              jobTitle,
+              template,
+              sectionsCount: sections?.length || 0,
+              hasJobDescription: !!jobDescription
+            },
+            sectionsConfig: sections || null,
+            generatedBy: userId
+          }
+        });
+
+        console.log('✅ Competence file saved to database:', competenceFile.id);
+      }
+
+    } catch (storageError) {
+      console.error('❌ Failed to save file:', storageError);
+      // Continue with direct download even if storage fails
+    }
+
+    // Return file for download
+    return new NextResponse(fileBuffer, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': fileBuffer.length.toString(),
+      },
+    });
 
   } catch (error) {
     console.error('💥 Error generating competence file:', error);

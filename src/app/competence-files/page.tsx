@@ -629,8 +629,8 @@ export default function CompetenceFilesPage() {
           setIsCreateModalOpen(false);
           setSelectedFile(null);
         }}
-        onSuccess={(fileData) => {
-          handleCreateFile(fileData);
+        onSuccess={(message) => {
+          console.log('✅ Competence file generated:', message);
           setSelectedFile(null);
           fetchCompetenceFiles(); // Refresh the list
         }}
