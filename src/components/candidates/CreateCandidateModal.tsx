@@ -850,37 +850,20 @@ Bachelor's in Computer Science from ETH Zurich"
 
           {/* Step 2: AI Parsing */}
           {currentStep === 'parsing' && (
-            <div className="text-center py-12">
-              <div className="w-20 h-20 bg-[#0A2F5A]/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Brain className="h-10 w-10 text-[#0A2F5A] animate-pulse" />
+            <div className="text-center py-16">
+              <div className="w-16 h-16 bg-[#0A2F5A]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Brain className="h-8 w-8 text-[#0A2F5A] animate-pulse" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Extracting candidate information...
+                Processing candidate information...
               </h3>
-              <p className="text-gray-600 mb-6">
-                Smart AI is analyzing and structuring the candidate profile
+              <p className="text-gray-600 mb-8">
+                {uploadedFile ? `Analyzing ${uploadedFile.name}` : 'Extracting and structuring profile data'}
               </p>
               <div className="flex items-center justify-center space-x-2">
-                <Loader2 className="h-5 w-5 animate-spin text-[#0A2F5A]" />
-                <span className="text-sm text-gray-600">Processing...</span>
-              </div>
-              
-              {/* Processing Animation */}
-              <div className="mt-8 max-w-md mx-auto">
-                <div className="flex flex-col items-center space-y-4">
-                  <div className="relative">
-                    <div className="w-16 h-16 border-4 border-[#0A2F5A]/20 border-t-[#0A2F5A] rounded-full animate-spin"></div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Brain className="h-6 w-6 text-[#0A2F5A]" />
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-900">Analyzing Document</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {uploadedFile ? `Processing ${uploadedFile.name}...` : 'Extracting candidate information...'}
-                    </p>
-                  </div>
-                </div>
+                <div className="w-2 h-2 bg-[#0A2F5A] rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-[#0A2F5A] rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-2 h-2 bg-[#0A2F5A] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
               </div>
             </div>
           )}
