@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs';
+import { prisma } from '@/lib/prisma';
 
 // Mock data store (in real implementation, this would be a database)
 const mockCompetenceFiles = [
@@ -122,7 +123,33 @@ export async function GET(
     }
 
     const { id } = params;
-    const competenceFile = mockCompetenceFiles.find(file => file.id === id);
+    const competenceFile = await prisma.competenceFile.findUnique({
+      where: { id },
+      include: {
+        candidate: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            currentTitle: true,
+            email: true,
+            phone: true,
+            currentLocation: true,
+            experienceYears: true,
+            technicalSkills: true,
+            certifications: true,
+            spokenLanguages: true,
+            summary: true
+          }
+        },
+        template: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    });
 
     if (!competenceFile) {
       return NextResponse.json(
@@ -131,9 +158,44 @@ export async function GET(
       );
     }
 
+    // Format the response to match the expected interface
+    const formattedFile = {
+      id: competenceFile.id,
+      candidateId: competenceFile.candidateId,
+      candidateName: `${competenceFile.candidate?.firstName} ${competenceFile.candidate?.lastName}`,
+      candidateTitle: competenceFile.candidate?.currentTitle || '',
+      template: competenceFile.template?.name || 'Unknown',
+      templateName: competenceFile.template?.name || 'Unknown Template',
+      client: (competenceFile.metadata as any)?.client || 'Unknown Client',
+      job: (competenceFile.metadata as any)?.jobTitle || 'Unknown Position',
+      status: competenceFile.status,
+      createdAt: competenceFile.createdAt.toISOString(),
+      updatedAt: competenceFile.updatedAt.toISOString(),
+      version: competenceFile.version,
+      downloadCount: competenceFile.downloadCount,
+      isAnonymized: competenceFile.isAnonymized,
+      fileName: competenceFile.fileName,
+      fileUrl: competenceFile.downloadUrl,
+      format: competenceFile.format,
+      sections: competenceFile.sectionsConfig || [],
+      candidateData: competenceFile.candidate ? {
+        id: competenceFile.candidate.id,
+        fullName: `${competenceFile.candidate.firstName} ${competenceFile.candidate.lastName}`,
+        currentTitle: competenceFile.candidate.currentTitle,
+        email: competenceFile.candidate.email,
+        phone: competenceFile.candidate.phone,
+        location: competenceFile.candidate.currentLocation,
+        yearsOfExperience: competenceFile.candidate.experienceYears,
+        skills: competenceFile.candidate.technicalSkills,
+        certifications: competenceFile.candidate.certifications,
+        languages: competenceFile.candidate.spokenLanguages,
+        summary: competenceFile.candidate.summary
+      } : null
+    };
+
     return NextResponse.json({
       success: true,
-      data: competenceFile
+      data: formattedFile
     });
 
   } catch (error) {
@@ -167,36 +229,64 @@ export async function PUT(
     const body = await request.json();
     const { sections, status, isAnonymized, ...updateData } = body;
 
-    const fileIndex = mockCompetenceFiles.findIndex(file => file.id === id);
+    // First check if the file exists
+    const existingFile = await prisma.competenceFile.findUnique({
+      where: { id },
+      include: {
+        candidate: {
+          select: {
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
+    });
     
-    if (fileIndex === -1) {
+    if (!existingFile) {
       return NextResponse.json(
         { success: false, message: 'Competence file not found' },
         { status: 404 }
       );
     }
 
-    // Update the file
-    mockCompetenceFiles[fileIndex] = {
-      ...mockCompetenceFiles[fileIndex],
-      ...updateData,
-      sections: sections || mockCompetenceFiles[fileIndex].sections,
-      status: status || mockCompetenceFiles[fileIndex].status,
-      isAnonymized: isAnonymized !== undefined ? isAnonymized : mockCompetenceFiles[fileIndex].isAnonymized,
-      updatedAt: new Date().toISOString(),
-      version: mockCompetenceFiles[fileIndex].version + 1
-    };
+    // Update the file in the database
+    const updatedFile = await prisma.competenceFile.update({
+      where: { id },
+      data: {
+        sectionsConfig: sections || existingFile.sectionsConfig,
+        status: status || existingFile.status,
+        isAnonymized: isAnonymized !== undefined ? isAnonymized : existingFile.isAnonymized,
+        version: existingFile.version + 1,
+        updatedAt: new Date()
+      },
+      include: {
+        candidate: {
+          select: {
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
+    });
 
     console.log('📝 Updated competence file:', {
       id,
-      candidate: mockCompetenceFiles[fileIndex].candidateName,
+      candidate: `${updatedFile.candidate?.firstName} ${updatedFile.candidate?.lastName}`,
       sectionsCount: sections?.length || 0,
-      status: status || mockCompetenceFiles[fileIndex].status
+      status: status || updatedFile.status
     });
 
     return NextResponse.json({
       success: true,
-      data: mockCompetenceFiles[fileIndex]
+      data: {
+        id: updatedFile.id,
+        candidateId: updatedFile.candidateId,
+        candidateName: `${updatedFile.candidate?.firstName} ${updatedFile.candidate?.lastName}`,
+        status: updatedFile.status,
+        version: updatedFile.version,
+        updatedAt: updatedFile.updatedAt.toISOString(),
+        sections: updatedFile.sectionsConfig
+      }
     });
 
   } catch (error) {
@@ -227,22 +317,37 @@ export async function DELETE(
     }
 
     const { id } = params;
-    const fileIndex = mockCompetenceFiles.findIndex(file => file.id === id);
     
-    if (fileIndex === -1) {
+    // First check if the file exists in the database
+    const competenceFile = await prisma.competenceFile.findUnique({
+      where: { id },
+      include: {
+        candidate: {
+          select: {
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
+    });
+    
+    if (!competenceFile) {
       return NextResponse.json(
         { success: false, message: 'Competence file not found' },
         { status: 404 }
       );
     }
 
-    const deletedFile = mockCompetenceFiles[fileIndex];
-    mockCompetenceFiles.splice(fileIndex, 1);
+    // Delete the file from the database
+    await prisma.competenceFile.delete({
+      where: { id }
+    });
 
     console.log('🗑️ Deleted competence file:', {
       id,
-      candidate: deletedFile.candidateName,
-      template: deletedFile.template
+      candidate: `${competenceFile.candidate?.firstName} ${competenceFile.candidate?.lastName}`,
+      fileName: competenceFile.fileName,
+      status: competenceFile.status
     });
 
     return NextResponse.json({
