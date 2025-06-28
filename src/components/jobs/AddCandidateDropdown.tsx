@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, UserPlus, Users, Search } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
 
 interface AddCandidateDropdownProps {
   onAddExisting: () => void;
@@ -12,7 +11,9 @@ interface AddCandidateDropdownProps {
 
 export function AddCandidateDropdown({ onAddExisting, onCreateNew, className = '' }: AddCandidateDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState<'left' | 'right'>('left');
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -25,21 +26,39 @@ export function AddCandidateDropdown({ onAddExisting, onCreateNew, className = '
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Calculate dropdown position when opening
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const dropdownWidth = 288; // w-72 = 18rem = 288px
+      const viewportWidth = window.innerWidth;
+      const spaceOnRight = viewportWidth - buttonRect.right;
+      
+      // If there's not enough space on the right, position it to the right of the button
+      if (spaceOnRight < dropdownWidth) {
+        setDropdownPosition('right');
+      } else {
+        setDropdownPosition('left');
+      }
+    }
+  }, [isOpen]);
+
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
-      <Button
-        variant="outline"
-        size="sm"
+      <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2"
+        className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 bg-transparent hover:bg-gray-50 text-gray-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 space-x-2"
       >
         <UserPlus className="h-4 w-4" />
         <span>Add Candidate</span>
         <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </Button>
+      </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+        <div className={`absolute top-full mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50 ${
+          dropdownPosition === 'right' ? 'right-0' : 'left-0'
+        }`}>
           <div className="py-1">
             <button
               onClick={() => {

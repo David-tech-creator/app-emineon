@@ -390,17 +390,10 @@ export default function JobDetailPage() {
       case 'pipeline':
         return (
           <div className="space-y-6">
-            {/* Add Candidate Section */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Candidate Pipeline</h3>
-                <p className="text-sm text-gray-600">Manage candidates through your hiring process</p>
-              </div>
-              <AddCandidateDropdown
-                onAddExisting={() => setShowAddExistingModal(true)}
-                onCreateNew={() => setShowCreateCandidateModal(true)}
-                className="ml-4"
-              />
+            {/* Pipeline Header - No Add Candidate button here */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Candidate Pipeline</h3>
+              <p className="text-sm text-gray-600">Manage candidates through your hiring process</p>
             </div>
 
             <PipelineKanban 
