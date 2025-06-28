@@ -586,12 +586,43 @@ ${candidateData.yearsOfExperience ? `${candidateData.yearsOfExperience}+ years o
 ${candidateData.location || ''}`;
 }
 
-function generateFunctionalSkillsContent(candidateData: CandidateData): string {
+function generateFunctionalSkillsContent(candidateData: CandidateData, template?: string): string {
   if (!candidateData.skills || candidateData.skills.length === 0) {
     return 'No functional skills provided';
   }
   
-  // Group skills into functional categories with explanatory text
+  // Antaes template uses different categorization
+  if (template === 'antaes') {
+    return `**Strategic Planning**
+• Strategic planning and execution
+• Business transformation initiatives
+• Stakeholder engagement and management
+• Risk assessment and mitigation strategies
+Proven ability to deliver complex projects on time and within budget while maintaining high quality standards.
+
+**Technical Expertise**
+• Technical architecture and design
+• System integration and optimization
+• Process improvement and automation
+• Quality assurance and governance
+Expertise in managing technical delivery and coordinating implementations across multiple environments.
+
+**Leadership**
+• Team leadership and development
+• Cross-functional collaboration
+• Change management and communication
+• Performance optimization and coaching
+Strong background in leading teams and working with stakeholders to deliver business-focused solutions.
+
+**Core Competencies**
+• Project management and delivery
+• Client relationship management
+• Solution design and implementation
+• Continuous improvement and innovation
+Demonstrated expertise in managing end-to-end solution delivery with focus on client satisfaction.`;
+  }
+  
+  // Default Emineon template structure
   return `**Delivery & Project Management**
 • Project planning and execution
 • Stakeholder management and communication
@@ -611,7 +642,7 @@ Expertise in managing service delivery and coordinating releases across multiple
 Strong background in product strategy and working with development teams to deliver user-focused solutions.`;
 }
 
-function generateTechnicalSkillsContent(candidateData: CandidateData): string {
+function generateTechnicalSkillsContent(candidateData: CandidateData, template?: string): string {
   if (!candidateData.skills || candidateData.skills.length === 0) {
     return 'No technical skills provided';
   }
@@ -646,7 +677,7 @@ Proficient in designing and implementing cloud-native solutions with high availa
 Strong background in data modeling, analysis, and business intelligence solutions.`;
 }
 
-function generateAreasOfExpertiseContent(candidateData: CandidateData): string {
+function generateAreasOfExpertiseContent(candidateData: CandidateData, template?: string): string {
   // Generate based on candidate's experience and skills
   const industries = [];
   
@@ -813,30 +844,30 @@ async function generateAIContent(sectionType: string, candidateData: CandidateDa
 
     if (response.ok) {
       const { suggestion } = await response.json();
-      return suggestion || generateSectionContent(sectionType, candidateData);
+      return suggestion || generateSectionContent(sectionType, candidateData, undefined);
     } else {
       console.warn(`AI generation failed for ${sectionType}, falling back to default`);
-      return generateSectionContent(sectionType, candidateData);
+      return generateSectionContent(sectionType, candidateData, undefined);
     }
   } catch (error) {
     console.warn(`AI generation error for ${sectionType}:`, error);
-    return generateSectionContent(sectionType, candidateData);
+    return generateSectionContent(sectionType, candidateData, undefined);
   }
 }
 
 // Function to generate content for a specific section
-function generateSectionContent(sectionType: string, candidateData: CandidateData): string {
+function generateSectionContent(sectionType: string, candidateData: CandidateData, template?: string): string {
   switch (sectionType) {
     case 'header':
       return generateHeaderContent(candidateData);
     case 'summary':
       return generateSummaryContent(candidateData);
     case 'functional-skills':
-      return generateFunctionalSkillsContent(candidateData);
+      return generateFunctionalSkillsContent(candidateData, template);
     case 'technical-skills':
-      return generateTechnicalSkillsContent(candidateData);
+      return generateTechnicalSkillsContent(candidateData, template);
     case 'areas-of-expertise':
-      return generateAreasOfExpertiseContent(candidateData);
+      return generateAreasOfExpertiseContent(candidateData, template);
     case 'experience':
       return generateExperienceContent(candidateData);
     case 'experiences-summary':
@@ -1183,7 +1214,7 @@ export function CreateCompetenceFileModal({
         { id: 'experiences-summary', type: 'experiences-summary', title: sectionTitles['experiences-summary'], content: '', visible: true, order: 8 + experienceSections.length, editable: true },
       ].map(section => ({
         ...section,
-        content: section.content || generateSectionContent(section.type, selectedCandidate)
+        content: section.content || generateSectionContent(section.type, selectedCandidate, selectedTemplate)
       }));
       
       // Combine base sections with experience sections
