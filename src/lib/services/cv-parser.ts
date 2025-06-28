@@ -160,7 +160,7 @@ ${content}`;
         }
       ],
       temperature: 0.1, // Low temperature for consistent parsing
-      max_tokens: 3000, // Increased token limit for comprehensive parsing
+      max_tokens: 2000, // Reduced token limit for faster processing
       response_format: { type: "json_object" } // Ensure JSON response
     });
 
