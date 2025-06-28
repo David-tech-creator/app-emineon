@@ -367,50 +367,210 @@ export function generateSectionsHTML(sections: any[], candidateData: CandidateDa
 }
 
 export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, sections?: any[], jobDescription?: JobDescription): string {
+  // Generate functional skills with explanatory text (like Emineon)
   const generateFunctionalSkills = (skills: string[]) => {
     if (!skills || skills.length === 0) return '';
     
-    // Group skills by category for better organization
-    const skillCategories: { [key: string]: string[] } = {
-      'Strategic Planning': skills.filter(skill => 
-        skill.toLowerCase().includes('strategy') || 
-        skill.toLowerCase().includes('planning') ||
-        skill.toLowerCase().includes('management')
-      ),
-      'Technical Expertise': skills.filter(skill => 
-        skill.toLowerCase().includes('technical') || 
-        skill.toLowerCase().includes('programming') ||
-        skill.toLowerCase().includes('development')
-      ),
-      'Leadership': skills.filter(skill => 
-        skill.toLowerCase().includes('leadership') || 
-        skill.toLowerCase().includes('team') ||
-        skill.toLowerCase().includes('communication')
-      )
+    const skillCategories: Record<string, { skills: string[]; description: string }> = {
+      'Leadership & Management': {
+        skills: skills.filter(skill => 
+          skill.toLowerCase().includes('lead') || 
+          skill.toLowerCase().includes('manage') || 
+          skill.toLowerCase().includes('team') ||
+          skill.toLowerCase().includes('project')
+        ),
+        description: 'Proven ability to guide teams and manage complex projects with strategic oversight and operational excellence.'
+      },
+      'Communication & Collaboration': {
+        skills: skills.filter(skill => 
+          skill.toLowerCase().includes('communication') || 
+          skill.toLowerCase().includes('presentation') || 
+          skill.toLowerCase().includes('stakeholder')
+        ),
+        description: 'Strong interpersonal skills enabling effective collaboration across diverse teams and stakeholder groups.'
+      },
+      'Problem Solving & Analysis': {
+        skills: skills.filter(skill => 
+          skill.toLowerCase().includes('analysis') || 
+          skill.toLowerCase().includes('problem') || 
+          skill.toLowerCase().includes('research')
+        ),
+        description: 'Analytical mindset with systematic approach to identifying solutions and optimizing processes.'
+      },
+      'Innovation & Strategy': {
+        skills: skills.filter(skill => 
+          skill.toLowerCase().includes('innovation') || 
+          skill.toLowerCase().includes('strategy') || 
+          skill.toLowerCase().includes('planning')
+        ),
+        description: 'Forward-thinking approach to business challenges with focus on sustainable growth and competitive advantage.'
+      }
     };
     
-    // If no categorized skills, put them all in a general category
-    const uncategorizedSkills = skills.filter(skill => 
-      !Object.values(skillCategories).some(category => category.includes(skill))
-    );
-    
-    if (uncategorizedSkills.length > 0) {
-      skillCategories['Core Competencies'] = uncategorizedSkills;
+    // If no categorized skills found, create a general category
+    const categorizedSkills = Object.values(skillCategories).some(cat => cat.skills.length > 0);
+    if (!categorizedSkills) {
+      skillCategories['Core Competencies'] = {
+        skills: skills.slice(0, 6),
+        description: 'Comprehensive skill set developed through professional experience and continuous learning initiatives.'
+      };
     }
     
     return Object.entries(skillCategories)
-      .filter(([_, categorySkills]) => categorySkills.length > 0)
-      .map(([category, categorySkills]) => `
+      .filter(([_, category]) => category.skills.length > 0)
+      .map(([categoryName, category]) => `
         <div class="functional-skill-category">
-          <div class="skill-category-title">${category}</div>
+          <div class="skill-category-title">${categoryName}</div>
           <ul class="skill-list">
-            ${categorySkills.map(skill => `<li>${skill}</li>`).join('')}
+            ${category.skills.map(skill => `<li>${skill}</li>`).join('')}
           </ul>
+          <p class="skill-description">${category.description}</p>
         </div>
       `).join('');
   };
 
+  // Generate technical skills with explanatory text
+  const generateTechnicalSkills = (skills: string[]) => {
+    if (!skills || skills.length === 0) return '';
+    
+    const techCategories: Record<string, { skills: string[]; description: string }> = {
+      'Programming Languages': {
+        skills: skills.filter(skill => 
+          ['javascript', 'python', 'java', 'typescript', 'c#', 'php', 'ruby', 'go', 'rust', 'swift', 'kotlin'].some(lang => 
+            skill.toLowerCase().includes(lang)
+          )
+        ),
+        description: 'Proficient in multiple programming languages with deep understanding of software development principles.'
+      },
+      'Frameworks & Libraries': {
+        skills: skills.filter(skill => 
+          ['react', 'angular', 'vue', 'node', 'express', 'django', 'spring', 'laravel', '.net'].some(framework => 
+            skill.toLowerCase().includes(framework)
+          )
+        ),
+        description: 'Extensive experience with modern frameworks enabling rapid development and scalable solutions.'
+      },
+      'Databases & Storage': {
+        skills: skills.filter(skill => 
+          ['sql', 'mysql', 'postgresql', 'mongodb', 'redis', 'elasticsearch', 'oracle', 'sqlite'].some(db => 
+            skill.toLowerCase().includes(db)
+          )
+        ),
+        description: 'Comprehensive database management skills across relational and NoSQL technologies.'
+      },
+      'Cloud & DevOps': {
+        skills: skills.filter(skill => 
+          ['aws', 'azure', 'gcp', 'docker', 'kubernetes', 'jenkins', 'terraform', 'ansible'].some(cloud => 
+            skill.toLowerCase().includes(cloud)
+          )
+        ),
+        description: 'Advanced cloud computing and DevOps expertise for scalable infrastructure management.'
+      },
+      'Tools & Technologies': {
+        skills: skills.filter(skill => 
+          !['javascript', 'python', 'java', 'typescript', 'c#', 'php', 'ruby', 'go', 'rust', 'swift', 'kotlin',
+            'react', 'angular', 'vue', 'node', 'express', 'django', 'spring', 'laravel', '.net',
+            'sql', 'mysql', 'postgresql', 'mongodb', 'redis', 'elasticsearch', 'oracle', 'sqlite',
+            'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'jenkins', 'terraform', 'ansible'].some(tech => 
+            skill.toLowerCase().includes(tech)
+          )
+        ),
+        description: 'Diverse technical toolkit supporting efficient development workflows and project delivery.'
+      }
+    };
+    
+    // If no categorized skills found, create a general category
+    const categorizedSkills = Object.values(techCategories).some(cat => cat.skills.length > 0);
+    if (!categorizedSkills) {
+      techCategories['Technical Competencies'] = {
+        skills: skills,
+        description: 'Comprehensive technical skill set acquired through hands-on experience and professional development.'
+      };
+    }
+    
+    return Object.entries(techCategories)
+      .filter(([_, category]) => category.skills.length > 0)
+      .map(([categoryName, category]) => `
+        <div class="technical-skill-category">
+          <div class="skill-category-title">${categoryName}</div>
+          <ul class="skill-list">
+            ${category.skills.map(skill => `<li>${skill}</li>`).join('')}
+          </ul>
+          <p class="skill-description">${category.description}</p>
+        </div>
+      `).join('');
+  };
+
+  // Generate areas of expertise based on role and skills
+  const generateAreasOfExpertise = (currentTitle: string, skills: string[]): string[] => {
+    const expertiseAreas: string[] = [];
+    
+    // Add based on current title
+    if (currentTitle.toLowerCase().includes('software') || currentTitle.toLowerCase().includes('developer')) {
+      expertiseAreas.push('Software Development & Engineering');
+    }
+    if (currentTitle.toLowerCase().includes('senior') || currentTitle.toLowerCase().includes('lead')) {
+      expertiseAreas.push('Technical Leadership & Mentoring');
+    }
+    if (currentTitle.toLowerCase().includes('full') || currentTitle.toLowerCase().includes('stack')) {
+      expertiseAreas.push('Full-Stack Development');
+    }
+    if (currentTitle.toLowerCase().includes('frontend') || currentTitle.toLowerCase().includes('ui')) {
+      expertiseAreas.push('User Interface Development');
+    }
+    if (currentTitle.toLowerCase().includes('backend') || currentTitle.toLowerCase().includes('api')) {
+      expertiseAreas.push('Backend Systems & APIs');
+    }
+    if (currentTitle.toLowerCase().includes('devops') || currentTitle.toLowerCase().includes('infrastructure')) {
+      expertiseAreas.push('DevOps & Infrastructure');
+    }
+    if (currentTitle.toLowerCase().includes('data') || currentTitle.toLowerCase().includes('analytics')) {
+      expertiseAreas.push('Data Analysis & Business Intelligence');
+    }
+    if (currentTitle.toLowerCase().includes('architect')) {
+      expertiseAreas.push('System Architecture & Design');
+    }
+    if (currentTitle.toLowerCase().includes('manager') || currentTitle.toLowerCase().includes('director')) {
+      expertiseAreas.push('Project Management & Strategy');
+    }
+    
+    // Add based on skills
+    if (skills.some(skill => skill.toLowerCase().includes('cloud') || skill.toLowerCase().includes('aws') || skill.toLowerCase().includes('azure'))) {
+      expertiseAreas.push('Cloud Computing & Scalability');
+    }
+    if (skills.some(skill => skill.toLowerCase().includes('agile') || skill.toLowerCase().includes('scrum'))) {
+      expertiseAreas.push('Agile Methodologies & Process Optimization');
+    }
+    
+    // Ensure we have at least 6 areas
+    const defaultAreas = [
+      'Digital Transformation',
+      'Technology Innovation',
+      'Process Optimization',
+      'Quality Assurance',
+      'Cross-functional Collaboration',
+      'Continuous Learning & Development'
+    ];
+    
+    while (expertiseAreas.length < 6) {
+      const nextArea = defaultAreas.find(area => !expertiseAreas.includes(area));
+      if (nextArea) {
+        expertiseAreas.push(nextArea);
+      } else {
+        break;
+      }
+    }
+    
+    return expertiseAreas.slice(0, 6);
+  };
+
   const experienceHTML = generateExperienceHTML(candidateData.experience);
+  const areasOfExpertise = generateAreasOfExpertise(candidateData.currentTitle, candidateData.skills);
+  
+  // Use sections if provided, otherwise generate default sections
+  if (sections && sections.length > 0) {
+    return generateSectionsHTML(sections, candidateData, generateFunctionalSkills, experienceHTML, jobDescription, 'antaes');
+  }
   
   return `
     <!DOCTYPE html>
@@ -421,6 +581,11 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
       <title>${candidateData.fullName} - Professional Profile</title>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
       <style>
+        @page {
+          margin: 0;
+          size: A4;
+        }
+        
         * {
           margin: 0;
           padding: 0;
@@ -440,23 +605,19 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           margin: 0 auto;
           background: white;
           min-height: 297mm;
-          padding: 30px;
+          padding: 0 30px 80px 30px;
           position: relative;
-          padding-bottom: 80px;
         }
         
-        /* Header Banner - Solid professional blue with soft borders */
+        /* Header Banner */
         .header-banner {
           background: #073C51;
           padding: 25px 35px;
-          margin: -30px -30px 40px -30px;
+          margin: 0 -30px 40px -30px;
           display: flex;
           justify-content: space-between;
           align-items: center;
           min-height: 90px;
-          border-radius: 0 0 12px 12px;
-          box-shadow: 0 4px 20px rgba(7, 60, 81, 0.15);
-          border: none;
         }
         
         .header-left {
@@ -470,7 +631,6 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           color: white;
           margin-bottom: 8px;
           letter-spacing: -0.8px;
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
         
         .header-role {
@@ -496,7 +656,6 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         .logo-image {
           height: 65px;
           width: auto;
-          filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.1));
         }
         
         /* Content Area */
@@ -504,7 +663,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           margin-bottom: 60px;
         }
         
-        /* Section Styling - Minimalist and clean */
+        /* Section Styling */
         .section {
           margin-bottom: 30px;
           page-break-inside: avoid;
@@ -569,19 +728,37 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           font-weight: 400;
           line-height: 1.8;
           color: #4A5568;
-          padding: 15px;
-          background: #F9FBFC;
+          padding: 20px;
+          background: #F8FAFC;
           border-radius: 8px;
-          border-left: 3px solid #073C51;
+          border-left: 4px solid #073C51;
+        }
+        
+        /* Areas of Expertise */
+        .expertise-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+          margin-top: 15px;
+        }
+        
+        .expertise-item {
+          background: #F8FAFC;
+          padding: 12px 15px;
+          border-radius: 6px;
+          border-left: 3px solid #FFB800;
+          font-weight: 500;
+          color: #073C51;
+          font-size: 13px;
         }
         
         /* Functional Skills */
-        .functional-skill-category {
+        .functional-skill-category, .technical-skill-category {
           margin-bottom: 20px;
-          padding: 15px;
-          background: #F9FBFC;
+          padding: 18px;
+          background: #F8FAFC;
           border-radius: 8px;
-          border-left: 3px solid #073C51;
+          border-left: 4px solid #073C51;
         }
         
         .skill-category-title {
@@ -607,19 +784,27 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         
         .skill-list li:before {
           content: "•";
-          color: #073C51;
+          color: #FFB800;
           font-weight: bold;
           position: absolute;
           left: 0;
+        }
+        
+        .skill-description {
+          font-size: 13px;
+          color: #757575;
+          font-style: italic;
+          margin-top: 8px;
+          line-height: 1.5;
         }
         
         /* Experience Blocks */
         .experience-block {
           margin-bottom: 25px;
           padding: 20px;
-          background: #F9FBFC;
+          background: #F8FAFC;
           border-radius: 8px;
-          border-left: 3px solid #073C51;
+          border-left: 4px solid #073C51;
           page-break-inside: avoid;
         }
         
@@ -773,28 +958,49 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
             </div>
           </div>
           <div class="header-logo">
-            <img src="https://res.cloudinary.com/emineon/image/upload/Antaes_logo_white" alt="ANTAES" class="logo-image" />
+            <img src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Antaes_logo_white.png" alt="ANTAES" class="logo-image" />
           </div>
         </div>
 
         <div class="content">
-          ${sections ? generateSectionsHTML(sections, candidateData, generateFunctionalSkills, experienceHTML, jobDescription, 'antaes') : `
           <!-- Professional Summary -->
           ${candidateData.summary ? `
           <div class="section">
             <h2 class="section-title">Executive Summary</h2>
             <div class="section-content">
-              <p class="summary-text">${candidateData.summary}</p>
+              <p class="summary-text">${highlightRelevantContent(candidateData.summary, jobDescription, 'antaes')}</p>
             </div>
           </div>
           ` : ''}
 
-          <!-- Core Competencies -->
+          <!-- Areas of Expertise -->
+          <div class="section">
+            <h2 class="section-title">Areas of Expertise</h2>
+            <div class="section-content">
+              <div class="expertise-grid">
+                ${areasOfExpertise.map(area => `
+                  <div class="expertise-item">${area}</div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+
+          <!-- Functional Skills -->
           ${candidateData.skills && candidateData.skills.length > 0 ? `
           <div class="section">
-            <h2 class="section-title">Core Competencies</h2>
+            <h2 class="section-title">Functional Skills</h2>
             <div class="section-content">
               ${generateFunctionalSkills(candidateData.skills)}
+            </div>
+          </div>
+          ` : ''}
+
+          <!-- Technical Skills -->
+          ${candidateData.skills && candidateData.skills.length > 0 ? `
+          <div class="section">
+            <h2 class="section-title">Technical Skills</h2>
+            <div class="section-content">
+              ${generateTechnicalSkills(candidateData.skills)}
             </div>
           </div>
           ` : ''}
@@ -839,13 +1045,12 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
             </div>
           </div>
           ` : ''}
-          `}
         </div>
 
         <!-- Footer with Antaes branding -->
         <div class="footer">
           <div class="footer-content">
-            <img src="https://res.cloudinary.com/emineon/image/upload/Antaes_logo" alt="ANTAES" class="footer-logo" />
+            <img src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Antaes_logo.png" alt="ANTAES" class="footer-logo" />
             <span class="footer-slogan">Partnership for Excellence</span>
           </div>
         </div>
