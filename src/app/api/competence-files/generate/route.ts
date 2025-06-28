@@ -374,15 +374,18 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           padding-bottom: 80px;
         }
         
-        /* Header Banner - Thin with logo and candidate info */
+        /* Header Banner - Solid professional blue with soft borders */
         .header-banner {
-          background: linear-gradient(135deg, #2C4F7C 0%, #3B6494 100%);
-          padding: 20px 30px;
+          background: #073C51;
+          padding: 25px 35px;
           margin: -30px -30px 40px -30px;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          min-height: 80px;
+          min-height: 90px;
+          border-radius: 0 0 12px 12px;
+          box-shadow: 0 4px 20px rgba(7, 60, 81, 0.15);
+          border: none;
         }
         
         .header-left {
@@ -391,25 +394,27 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         }
         
         .header h1 {
-          font-size: 28px;
+          font-size: 32px;
           font-weight: 700;
           color: white;
-          margin-bottom: 5px;
-          letter-spacing: -0.5px;
+          margin-bottom: 8px;
+          letter-spacing: -0.8px;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
         
         .header-role {
-          font-size: 16px;
+          font-size: 18px;
           font-weight: 500;
-          color: rgba(255, 255, 255, 0.9);
-          margin-bottom: 8px;
+          color: rgba(255, 255, 255, 0.95);
+          margin-bottom: 12px;
+          letter-spacing: 0.2px;
         }
         
         .contact-info {
           display: flex;
-          gap: 20px;
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.8);
+          gap: 24px;
+          font-size: 14px;
+          color: rgba(255, 255, 255, 0.85);
           flex-wrap: wrap;
         }
         
@@ -418,8 +423,9 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         }
         
         .logo-image {
-          height: 60px;
+          height: 65px;
           width: auto;
+          filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.1));
         }
         
         /* Content Area */
@@ -436,12 +442,12 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         .section-title {
           font-size: 14px;
           font-weight: 700;
-          color: #2C4F7C;
+          color: #073C51;
           text-transform: uppercase;
           letter-spacing: 1px;
           margin-bottom: 15px;
           padding-bottom: 5px;
-          border-bottom: 1px solid #E8F1FA;
+          border-bottom: 1px solid #E8F4F7;
         }
         
         .section-content {
@@ -455,24 +461,24 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           line-height: 1.8;
           color: #4A5568;
           padding: 15px;
-          background: #F8FAFE;
+          background: #F9FBFC;
           border-radius: 8px;
-          border-left: 3px solid #2C4F7C;
+          border-left: 3px solid #073C51;
         }
         
         /* Functional Skills */
         .functional-skill-category {
           margin-bottom: 20px;
           padding: 15px;
-          background: #F8FAFE;
+          background: #F9FBFC;
           border-radius: 8px;
-          border-left: 3px solid #2C4F7C;
+          border-left: 3px solid #073C51;
         }
         
         .skill-category-title {
           font-size: 14px;
           font-weight: 700;
-          color: #2C4F7C;
+          color: #073C51;
           margin-bottom: 10px;
         }
         
@@ -492,7 +498,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         
         .skill-list li:before {
           content: "•";
-          color: #2C4F7C;
+          color: #073C51;
           font-weight: bold;
           position: absolute;
           left: 0;
@@ -502,29 +508,29 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         .experience-block {
           margin-bottom: 25px;
           padding: 20px;
-          background: #F8FAFE;
+          background: #F9FBFC;
           border-radius: 8px;
-          border-left: 3px solid #2C4F7C;
+          border-left: 3px solid #073C51;
           page-break-inside: avoid;
         }
         
         .exp-header {
           margin-bottom: 15px;
           padding-bottom: 10px;
-          border-bottom: 1px solid #E8F1FA;
+          border-bottom: 1px solid #E8F4F7;
         }
         
         .exp-company {
           font-size: 16px;
           font-weight: 700;
-          color: #2C4F7C;
+          color: #073C51;
           margin-bottom: 3px;
         }
         
         .exp-title {
           font-size: 14px;
           font-weight: 600;
-          color: #3B6494;
+          color: #0A4A5E;
           margin-bottom: 3px;
         }
         
@@ -543,7 +549,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         
         .education-item:before, .cert-item:before {
           content: "•";
-          color: #2C4F7C;
+          color: #073C51;
           font-weight: bold;
           position: absolute;
           left: 0;
@@ -559,28 +565,25 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         
         .language-item {
           padding: 8px 12px;
-          background: #F8FAFE;
+          background: #F9FBFC;
           border-radius: 6px;
           text-align: center;
           font-weight: 600;
-          color: #2C4F7C;
-          border: 1px solid #E8F1FA;
+          color: #073C51;
+          border: 1px solid #E8F4F7;
         }
         
         /* Footer with Antaes branding */
         .footer {
-          position: fixed;
-          bottom: 20px;
-          left: 0;
-          right: 0;
           display: flex;
           justify-content: center;
           align-items: center;
-          padding: 15px 30px;
-          border-top: 1px solid #E8F1FA;
+          padding: 20px 30px;
+          border-top: 1px solid #E8F4F7;
           background: white;
           font-size: 12px;
           color: #4A5568;
+          margin-top: 40px;
         }
         
         .footer-content {
@@ -597,7 +600,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         
         .footer-slogan {
           font-weight: 600;
-          color: #2C4F7C;
+          color: #073C51;
           letter-spacing: 0.5px;
         }
         
@@ -612,32 +615,16 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
             max-width: none; 
             margin: 0; 
             padding: 0;
-            padding-bottom: 60px;
           }
           .header-banner {
             margin: 0 0 30px 0;
+            border-radius: 0;
           }
           .section { 
             page-break-inside: avoid; 
           }
           .experience-block { 
             page-break-inside: avoid; 
-          }
-          .footer {
-            position: fixed;
-            bottom: 0;
-          }
-        }
-        
-        /* Page counter for PDF generation */
-        @page {
-          margin: 20mm;
-          @bottom-center {
-            content: "Partnership for Excellence";
-            font-family: 'Inter', sans-serif;
-            font-size: 10px;
-            color: #2C4F7C;
-            font-weight: 600;
           }
         }
       </style>
