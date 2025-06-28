@@ -944,7 +944,7 @@ export function CreateCompetenceFileModal({
   const [urlInput, setUrlInput] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<CandidateData | null>(preselectedCandidate || null);
-  const [selectedTemplate, setSelectedTemplate] = useState<'professional' | 'modern' | 'minimal' | 'emineon'>('emineon');
+  const [selectedTemplate, setSelectedTemplate] = useState<'professional' | 'modern' | 'minimal' | 'emineon' | 'antaes'>('emineon');
   const [documentSections, setDocumentSections] = useState<DocumentSection[]>([
     { id: 'header', type: 'header', title: 'HEADER', content: '', visible: true, order: 0, editable: true },
     { id: 'summary', type: 'summary', title: 'PROFESSIONAL SUMMARY', content: '', visible: true, order: 1, editable: true },
@@ -964,25 +964,57 @@ export function CreateCompetenceFileModal({
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Get template-specific section titles
+  const getSectionTitles = (template: string) => {
+    if (template === 'antaes') {
+      return {
+        header: 'CANDIDATE PROFILE',
+        summary: 'EXECUTIVE SUMMARY', 
+        'functional-skills': 'CORE COMPETENCIES',
+        'technical-skills': 'TECHNICAL EXPERTISE',
+        'areas-of-expertise': 'AREAS OF EXPERTISE',
+        education: 'ACADEMIC BACKGROUND',
+        certifications: 'PROFESSIONAL CERTIFICATIONS',
+        languages: 'LANGUAGES',
+        'experiences-summary': 'PROFESSIONAL EXPERIENCE OVERVIEW'
+      };
+    }
+    // Default titles for other templates
+    return {
+      header: 'HEADER',
+      summary: 'PROFESSIONAL SUMMARY',
+      'functional-skills': 'FUNCTIONAL SKILLS',
+      'technical-skills': 'TECHNICAL SKILLS', 
+      'areas-of-expertise': 'AREAS OF EXPERTISE',
+      education: 'EDUCATION',
+      certifications: 'CERTIFICATIONS',
+      languages: 'LANGUAGES',
+      'experiences-summary': 'PROFESSIONAL EXPERIENCES SUMMARY'
+    };
+  };
+
   // Pre-populate sections when candidate data changes
   useEffect(() => {
     if (selectedCandidate && currentStep >= 2) {
       console.log('🔄 Pre-populating sections with candidate data:', selectedCandidate);
+      
+      // Get template-specific section titles
+      const sectionTitles = getSectionTitles(selectedTemplate);
       
       // Create separate experience sections
       const experienceSections = createExperienceSections(selectedCandidate);
       
       // Update existing sections with section-specific content
       const updatedBaseSections = [
-        { id: 'header', type: 'header', title: 'HEADER', content: '', visible: true, order: 0, editable: true },
-        { id: 'summary', type: 'summary', title: 'PROFESSIONAL SUMMARY', content: '', visible: true, order: 1, editable: true },
-        { id: 'functional-skills', type: 'functional-skills', title: 'FUNCTIONAL SKILLS', content: '', visible: true, order: 2, editable: true },
-        { id: 'technical-skills', type: 'technical-skills', title: 'TECHNICAL SKILLS', content: '', visible: true, order: 3, editable: true },
-        { id: 'areas-of-expertise', type: 'areas-of-expertise', title: 'AREAS OF EXPERTISE', content: '', visible: true, order: 4, editable: true },
-        { id: 'education', type: 'education', title: 'EDUCATION', content: '', visible: true, order: 5 + experienceSections.length, editable: true },
-        { id: 'certifications', type: 'certifications', title: 'CERTIFICATIONS', content: '', visible: true, order: 6 + experienceSections.length, editable: true },
-        { id: 'languages', type: 'languages', title: 'LANGUAGES', content: '', visible: true, order: 7 + experienceSections.length, editable: true },
-        { id: 'experiences-summary', type: 'experiences-summary', title: 'PROFESSIONAL EXPERIENCES SUMMARY', content: '', visible: true, order: 8 + experienceSections.length, editable: true },
+        { id: 'header', type: 'header', title: sectionTitles.header, content: '', visible: true, order: 0, editable: true },
+        { id: 'summary', type: 'summary', title: sectionTitles.summary, content: '', visible: true, order: 1, editable: true },
+        { id: 'functional-skills', type: 'functional-skills', title: sectionTitles['functional-skills'], content: '', visible: true, order: 2, editable: true },
+        { id: 'technical-skills', type: 'technical-skills', title: sectionTitles['technical-skills'], content: '', visible: true, order: 3, editable: true },
+        { id: 'areas-of-expertise', type: 'areas-of-expertise', title: sectionTitles['areas-of-expertise'], content: '', visible: true, order: 4, editable: true },
+        { id: 'education', type: 'education', title: sectionTitles.education, content: '', visible: true, order: 5 + experienceSections.length, editable: true },
+        { id: 'certifications', type: 'certifications', title: sectionTitles.certifications, content: '', visible: true, order: 6 + experienceSections.length, editable: true },
+        { id: 'languages', type: 'languages', title: sectionTitles.languages, content: '', visible: true, order: 7 + experienceSections.length, editable: true },
+        { id: 'experiences-summary', type: 'experiences-summary', title: sectionTitles['experiences-summary'], content: '', visible: true, order: 8 + experienceSections.length, editable: true },
       ].map(section => ({
         ...section,
         content: section.content || generateSectionContent(section.type, selectedCandidate)
@@ -998,7 +1030,7 @@ export function CreateCompetenceFileModal({
       setDocumentSections(allSections);
       console.log('✅ Sections populated with separate experience blocks:', allSections.length, 'total sections');
     }
-  }, [selectedCandidate, currentStep]);
+  }, [selectedCandidate, currentStep, selectedTemplate]);
   
   // Zoom controls
   const handleZoomIn = () => {
@@ -1702,8 +1734,8 @@ export function CreateCompetenceFileModal({
                     {/* Template Selection */}
                     <Card className="p-6">
                       <h4 className="text-lg font-medium text-gray-900 mb-4">Choose Template</h4>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {(['emineon', 'professional', 'modern', 'minimal'] as const).map((template) => (
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        {(['emineon', 'antaes', 'professional', 'modern', 'minimal'] as const).map((template) => (
                           <button
                             key={template}
                             onClick={() => setSelectedTemplate(template)}
@@ -1717,15 +1749,24 @@ export function CreateCompetenceFileModal({
                               {template === 'emineon' && (
                                 <span className="text-blue-600 font-bold text-sm">✨</span>
                               )}
-                              {template}
+                              {template === 'antaes' && (
+                                <span className="text-blue-900 font-bold text-sm">🏛️</span>
+                              )}
+                              {template === 'antaes' ? 'Antaes' : template}
                               {template === 'emineon' && (
                                 <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full font-medium">
                                   BRANDED
                                 </span>
                               )}
+                              {template === 'antaes' && (
+                                <span className="text-xs bg-blue-900 text-white px-2 py-1 rounded-full font-medium">
+                                  CONSULTING
+                                </span>
+                              )}
                             </div>
                             <div className="text-sm text-gray-600">
                               {template === 'emineon' && 'Premium Emineon-branded template with strategic logo placement and professional styling'}
+                              {template === 'antaes' && 'Antaes consulting template with minimalist design, blue accents, and partnership excellence branding'}
                               {template === 'professional' && 'Classic layout with traditional formatting'}
                               {template === 'modern' && 'Contemporary design with clean lines'}
                               {template === 'minimal' && 'Simple and focused presentation'}
