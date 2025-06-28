@@ -159,7 +159,7 @@ export async function GET(
           top: 0;
           left: 0;
           right: 0;
-          background: linear-gradient(135deg, #3B82F6 0%, #1E40AF 100%);
+          background: #0A2F5A;
           color: white;
           padding: 8px 16px;
           text-align: center;

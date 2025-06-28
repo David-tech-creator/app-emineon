@@ -160,15 +160,18 @@ function generateAntaesPreviewHTML(candidateData: any): string {
           padding-bottom: 80px;
         }
         
-        /* Header Banner - Thin with logo and candidate info */
+        /* Header Banner - Solid professional blue with soft borders */
         .header-banner {
-          background: linear-gradient(135deg, #2C4F7C 0%, #3B6494 100%);
-          padding: 20px 30px;
+          background: #073C51;
+          padding: 25px 35px;
           margin: -30px -30px 40px -30px;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          min-height: 80px;
+          min-height: 90px;
+          border-radius: 0 0 12px 12px;
+          box-shadow: 0 4px 20px rgba(7, 60, 81, 0.15);
+          border: none;
         }
         
         .header-left {
@@ -177,25 +180,27 @@ function generateAntaesPreviewHTML(candidateData: any): string {
         }
         
         .header h1 {
-          font-size: 28px;
+          font-size: 32px;
           font-weight: 700;
           color: white;
-          margin-bottom: 5px;
-          letter-spacing: -0.5px;
+          margin-bottom: 8px;
+          letter-spacing: -0.8px;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
         
         .header-role {
-          font-size: 16px;
+          font-size: 18px;
           font-weight: 500;
-          color: rgba(255, 255, 255, 0.9);
-          margin-bottom: 8px;
+          color: #FFB800;
+          margin-bottom: 12px;
+          letter-spacing: 0.2px;
         }
         
         .contact-info {
           display: flex;
-          gap: 20px;
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.8);
+          gap: 24px;
+          font-size: 14px;
+          color: #757575;
           flex-wrap: wrap;
         }
         
@@ -445,9 +450,7 @@ function generateAntaesPreviewHTML(candidateData: any): string {
             <h1>${candidateData.fullName}</h1>
             <div class="header-role">${candidateData.currentTitle}</div>
             <div class="contact-info">
-              ${candidateData.email ? `<span>${candidateData.email}</span>` : ''}
-              ${candidateData.phone ? `<span>${candidateData.phone}</span>` : ''}
-              ${candidateData.location ? `<span>${candidateData.location}</span>` : ''}
+              <span>${candidateData.yearsOfExperience}+ Years of Experience</span>
             </div>
           </div>
           <div class="header-logo">

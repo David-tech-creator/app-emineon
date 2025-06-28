@@ -405,7 +405,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         .header-role {
           font-size: 18px;
           font-weight: 500;
-          color: rgba(255, 255, 255, 0.95);
+          color: #FFB800;
           margin-bottom: 12px;
           letter-spacing: 0.2px;
         }
@@ -414,7 +414,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           display: flex;
           gap: 24px;
           font-size: 14px;
-          color: rgba(255, 255, 255, 0.85);
+          color: #757575;
           flex-wrap: wrap;
         }
         
@@ -530,7 +530,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         .exp-title {
           font-size: 14px;
           font-weight: 600;
-          color: #0A4A5E;
+          color: #757575;
           margin-bottom: 3px;
         }
         
@@ -637,9 +637,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
             <h1>${candidateData.fullName}</h1>
             <div class="header-role">${candidateData.currentTitle}</div>
             <div class="contact-info">
-              ${candidateData.email ? `<span>${candidateData.email}</span>` : ''}
-              ${candidateData.phone ? `<span>${candidateData.phone}</span>` : ''}
-              ${candidateData.location ? `<span>${candidateData.location}</span>` : ''}
+              <span>${candidateData.yearsOfExperience}+ Years of Experience</span>
             </div>
           </div>
           <div class="header-logo">
