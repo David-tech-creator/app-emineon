@@ -773,7 +773,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
             </div>
           </div>
           <div class="header-logo">
-            <img src="https://res.cloudinary.com/emineon/image/upload/Antaes_logo_white" alt="ANTAES" class="logo-image" />
+            <img src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Antaes_logo_white_lfwp8h" alt="ANTAES" class="logo-image" />
           </div>
         </div>
 
@@ -845,7 +845,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         <!-- Footer with Antaes branding -->
         <div class="footer">
           <div class="footer-content">
-            <img src="https://res.cloudinary.com/emineon/image/upload/Antaes_logo" alt="ANTAES" class="footer-logo" />
+            <img src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Antaes_logo_k8n5vj" alt="ANTAES" class="footer-logo" />
             <span class="footer-slogan">Partnership for Excellence</span>
           </div>
         </div>
@@ -1543,7 +1543,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
             </div>
           </div>
           <div class="header-logo">
-            <img src="https://res.cloudinary.com/emineon/image/upload/v1/Emineon_logo_no_background_yjmchn" alt="EMINEON" class="logo-image" />
+            <img src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_white_lfwp8h" alt="EMINEON" class="logo-image" />
           </div>
         </div>
 
@@ -1639,7 +1639,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         <!-- Footer with logo and page numbers -->
         <div class="footer">
           <div class="footer-left">
-            <img src="https://res.cloudinary.com/emineon/image/upload/v1/Emineon_logo_tree_k8n5vj" alt="EMINEON" class="footer-logo" />
+            <img src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj" alt="EMINEON" class="footer-logo" />
             <span class="footer-text">Powered by EMINEON • forge your edge</span>
           </div>
           <div class="page-number">Page <span id="pageNumber"></span></div>

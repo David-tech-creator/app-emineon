@@ -458,7 +458,7 @@ function generateAntaesPreviewHTML(candidateData: any): string {
             </div>
           </div>
           <div class="header-logo">
-            <img src="https://res.cloudinary.com/emineon/image/upload/Antaes_logo_white" alt="ANTAES" class="logo-image" />
+            <img src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Antaes_logo_white_lfwp8h" alt="ANTAES" class="logo-image" />
           </div>
         </div>
 
@@ -535,7 +535,7 @@ function generateAntaesPreviewHTML(candidateData: any): string {
         <!-- Footer with Antaes branding -->
         <div class="footer">
           <div class="footer-content">
-            <img src="https://res.cloudinary.com/emineon/image/upload/Antaes_logo" alt="ANTAES" class="footer-logo" />
+            <img src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Antaes_logo_k8n5vj" alt="ANTAES" class="footer-logo" />
             <span class="footer-slogan">Partnership for Excellence</span>
           </div>
         </div>
