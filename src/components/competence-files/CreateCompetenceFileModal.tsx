@@ -1045,8 +1045,8 @@ export function CreateCompetenceFileModal({
     setZoomLevel(100);
   };
   
-  // AI Improve All functionality
-  const handleImproveAll = useCallback(async () => {
+  // Generic AI processing function for all sections
+  const handleAIProcessAllSections = useCallback(async (type: 'improve' | 'expand' | 'rewrite') => {
     if (!selectedCandidate) return;
     
     setIsGenerating(true);
@@ -1056,15 +1056,15 @@ export function CreateCompetenceFileModal({
         throw new Error('Authentication token not available');
       }
       
-      console.log('🤖 Starting AI improvement for all sections...');
+      console.log(`🤖 Starting AI ${type} for all sections...`);
       
       // Get all visible sections that have content
-      const sectionsToImprove = documentSections.filter(section => 
+      const sectionsToProcess = documentSections.filter(section => 
         section.visible && section.content && section.content.trim().length > 0
       );
       
       // Process sections in parallel for better performance
-      const improvementPromises = sectionsToImprove.map(async (section) => {
+      const processingPromises = sectionsToProcess.map(async (section) => {
         try {
           const response = await fetch('/api/ai/generate-suggestion', {
             method: 'POST',
@@ -1073,7 +1073,7 @@ export function CreateCompetenceFileModal({
               'Authorization': `Bearer ${token}`,
             },
             body: JSON.stringify({
-              type: 'improve',
+              type,
               sectionType: section.type,
               currentContent: section.content,
               candidateData: selectedCandidate,
@@ -1084,45 +1084,60 @@ export function CreateCompetenceFileModal({
             const { suggestion } = await response.json();
             return { sectionId: section.id, suggestion };
           } else {
-            console.error(`Failed to improve section ${section.type}`);
+            console.error(`Failed to ${type} section ${section.type}`);
             return null;
           }
         } catch (error) {
-          console.error(`Error improving section ${section.type}:`, error);
+          console.error(`Error ${type}ing section ${section.type}:`, error);
           return null;
         }
       });
       
-      const results = await Promise.all(improvementPromises);
+      const results = await Promise.all(processingPromises);
       
-      // Update sections with improved content
-      const successfulImprovements = results.filter(result => result !== null);
+      // Update sections with processed content
+      const successfulUpdates = results.filter(result => result !== null);
       
-      if (successfulImprovements.length > 0) {
+      if (successfulUpdates.length > 0) {
         setDocumentSections(prev => 
           prev.map(section => {
-            const improvement = successfulImprovements.find(imp => imp.sectionId === section.id);
-            return improvement 
-              ? { ...section, content: improvement.suggestion }
+            const update = successfulUpdates.find(upd => upd.sectionId === section.id);
+            return update 
+              ? { ...section, content: update.suggestion }
               : section;
           })
         );
         
-        console.log(`✅ Successfully improved ${successfulImprovements.length} sections`);
+        console.log(`✅ Successfully ${type}d ${successfulUpdates.length} sections`);
         
         // Show success feedback
         setLastSaved(new Date());
       } else {
-        console.warn('⚠️ No sections were improved');
+        console.warn(`⚠️ No sections were ${type}d`);
       }
       
     } catch (error) {
-      console.error('💥 AI improvement error:', error);
-      alert('Failed to improve sections. Please try again.');
+      console.error(`💥 AI ${type} error:`, error);
+      alert(`Failed to ${type} sections. Please try again.`);
     } finally {
       setIsGenerating(false);
     }
   }, [selectedCandidate, documentSections, getToken]);
+
+  // AI Improve All functionality
+  const handleImproveAll = useCallback(async () => {
+    await handleAIProcessAllSections('improve');
+  }, [handleAIProcessAllSections]);
+
+  // AI Expand All functionality
+  const handleExpandAll = useCallback(async () => {
+    await handleAIProcessAllSections('expand');
+  }, [handleAIProcessAllSections]);
+
+  // AI Rewrite All functionality
+  const handleRewriteAll = useCallback(async () => {
+    await handleAIProcessAllSections('rewrite');
+  }, [handleAIProcessAllSections]);
   
   // Drag and drop handlers
   const handleDragEnd = useCallback((event: DragEndEvent) => {
@@ -1820,21 +1835,51 @@ export function CreateCompetenceFileModal({
                 
                 {/* AI and Zoom Controls */}
                 <div className="flex items-center space-x-4">
-                  {/* AI Improve All Button */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleImproveAll}
-                    disabled={isGenerating}
-                    className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200 hover:from-purple-100 hover:to-blue-100"
-                  >
-                    {isGenerating ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Sparkles className="h-4 w-4 mr-2 text-purple-600" />
-                    )}
-                    Improve All
-                  </Button>
+                  {/* AI Action Buttons */}
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleImproveAll}
+                      disabled={isGenerating}
+                      className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:from-green-100 hover:to-emerald-100"
+                    >
+                      {isGenerating ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Sparkles className="h-4 w-4 mr-2 text-green-600" />
+                      )}
+                      Improve All
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleExpandAll}
+                      disabled={isGenerating}
+                      className="bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200 hover:from-blue-100 hover:to-cyan-100"
+                    >
+                      {isGenerating ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Plus className="h-4 w-4 mr-2 text-blue-600" />
+                      )}
+                      Expand All
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRewriteAll}
+                      disabled={isGenerating}
+                      className="bg-gradient-to-r from-purple-50 to-violet-50 border-purple-200 hover:from-purple-100 hover:to-violet-100"
+                    >
+                      {isGenerating ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 mr-2 text-purple-600" />
+                      )}
+                      Rewrite All
+                    </Button>
+                  </div>
                   
                   {/* Zoom Controls */}
                   <div className="flex items-center space-x-2 bg-white rounded-lg border px-3 py-1">
