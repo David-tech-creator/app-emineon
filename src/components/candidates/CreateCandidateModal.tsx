@@ -541,6 +541,60 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
           notes
         };
         
+        // Upload the original file if one was provided
+        if (inputMethod === 'upload' && uploadedFile) {
+          try {
+            console.log('Uploading original CV file for candidate:', result.data.id);
+            
+            const fileFormData = new FormData();
+            fileFormData.append('file', uploadedFile);
+            fileFormData.append('metadata', JSON.stringify({
+              category: 'cv-uploads',
+              candidateId: result.data.id,
+              description: 'Original CV uploaded during candidate creation',
+              tags: ['original-cv', 'candidate-creation']
+            }));
+
+            const fileUploadResponse = await fetch('/api/files/upload', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+              body: fileFormData,
+            });
+
+            if (fileUploadResponse.ok) {
+              const fileResult = await fileUploadResponse.json();
+              console.log('File uploaded successfully:', fileResult);
+              
+              // Update candidate with file information
+              const updateResponse = await fetch(`/api/candidates/${result.data.id}`, {
+                method: 'PATCH',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  originalCvUrl: fileResult.file.url,
+                  originalCvFileName: uploadedFile.name,
+                  originalCvUploadedAt: new Date().toISOString()
+                }),
+              });
+
+              if (updateResponse.ok) {
+                console.log('Candidate updated with file information');
+              } else {
+                console.error('Failed to update candidate with file information');
+              }
+            } else {
+              console.error('Failed to upload file:', await fileUploadResponse.text());
+            }
+          } catch (fileError) {
+            console.error('Error uploading file:', fileError);
+            // Don't fail the whole candidate creation if file upload fails
+          }
+        }
+        
         setCreatedCandidate(createdCandidateData);
         
         // If jobId is provided, automatically assign candidate to job

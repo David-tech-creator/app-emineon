@@ -73,6 +73,11 @@ model Candidate {
   competenceFileType    String? // pdf, docx, etc.
   competenceFileUploadedAt DateTime?
   
+  // Original documents from candidate creation
+  originalCvUrl         String? // Original CV/resume uploaded during creation
+  originalCvFileName    String? // Original filename
+  originalCvUploadedAt  DateTime? // When it was uploaded
+  
   workPermitType        String?
   firstName             String
   lastName              String

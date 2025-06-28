@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: NextRequest,
@@ -31,6 +32,69 @@ export async function GET(
       {
         success: false,
         error: 'Failed to fetch candidate',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH /api/candidates/[id] - Update candidate
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { userId } = auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Authentication required',
+        },
+        { status: 401 }
+      );
+    }
+
+    const { id } = params;
+    const body = await request.json();
+
+    console.log(`🔄 Updating candidate ${id} with data:`, body);
+
+    // Update candidate in database
+    const updatedCandidate = await prisma.candidate.update({
+      where: { id },
+      data: {
+        ...body,
+        lastUpdated: new Date(),
+      },
+    });
+
+    console.log(`✅ Candidate ${id} updated successfully`);
+
+    return NextResponse.json({
+      success: true,
+      data: updatedCandidate,
+      message: 'Candidate updated successfully',
+    });
+  } catch (error) {
+    console.error('Error updating candidate:', error);
+    
+    if (error instanceof Error && error.message.includes('Record to update not found')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Candidate not found',
+        },
+        { status: 404 }
+      );
+    }
+    
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to update candidate',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
