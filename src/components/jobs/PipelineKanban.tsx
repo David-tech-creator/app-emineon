@@ -18,7 +18,8 @@ import {
   Award,
   TrendingUp,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Trash2
 } from 'lucide-react';
 
 interface Candidate {
@@ -63,6 +64,7 @@ interface PipelineKanbanProps {
   onCandidateMove: (candidateId: string, newStage: string) => void;
   onCandidateSelect: (candidate: Candidate) => void;
   onAddCandidate: () => void;
+  onCandidateRemove?: (candidateId: string) => void;
   AddCandidateComponent?: () => React.ReactElement;
 }
 
@@ -89,6 +91,7 @@ export function PipelineKanban({
   onCandidateMove, 
   onCandidateSelect, 
   onAddCandidate,
+  onCandidateRemove,
   AddCandidateComponent
 }: PipelineKanbanProps) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -412,9 +415,25 @@ export function PipelineKanban({
                               />
                             ))}
                           </div>
-                          <button className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <MoreHorizontal className="h-3 w-3" />
-                          </button>
+                          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {onCandidateRemove && (
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`Remove ${candidate.firstName} ${candidate.lastName} from this job?`)) {
+                                    onCandidateRemove(candidate.id);
+                                  }
+                                }}
+                                className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                                title="Remove from job"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            )}
+                            <button className="p-1 text-gray-400 hover:text-gray-600 transition-opacity">
+                              <MoreHorizontal className="h-3 w-3" />
+                            </button>
+                          </div>
                         </div>
                       </div>
 

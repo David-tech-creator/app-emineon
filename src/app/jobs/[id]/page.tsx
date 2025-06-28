@@ -353,6 +353,60 @@ export default function JobDetailPage() {
     handleCandidateAdded(newCandidate);
   };
 
+  // Handle candidate removal
+  const handleCandidateRemove = async (candidateId: string) => {
+    if (!candidateId || !jobId) return;
+
+    try {
+      console.log(`🗑️ Removing candidate ${candidateId} from job ${jobId}`);
+      
+      // Optimistically remove from UI
+      const candidateToRemove = candidates.find(c => c.id === candidateId);
+      setCandidates(prev => prev.filter(c => c.id !== candidateId));
+      
+      // Update job counts
+      setJob(prev => prev ? { 
+        ...prev, 
+        candidates: Math.max(0, prev.candidates - 1), 
+        applications: Math.max(0, prev.applications - 1) 
+      } : null);
+
+      // Call API to remove candidate from job
+      const token = await getToken();
+      const response = await fetch(`/api/jobs/${jobId}/candidates`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ candidateId })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to remove candidate');
+      }
+
+      const result = await response.json();
+      console.log('✅ Candidate removed successfully:', result);
+
+    } catch (error) {
+      console.error('💥 Error removing candidate:', error);
+      
+      // Revert optimistic update on error
+      const candidateToRestore = candidates.find(c => c.id === candidateId);
+      if (candidateToRestore) {
+        setCandidates(prev => [...prev, candidateToRestore]);
+        setJob(prev => prev ? { 
+          ...prev, 
+          candidates: prev.candidates + 1, 
+          applications: prev.applications + 1 
+        } : null);
+      }
+      
+      alert('Failed to remove candidate. Please try again.');
+    }
+  };
+
   const tabs = [
     { id: 'pipeline', label: 'Pipeline', icon: Users },
     { id: 'overview', label: 'Overview', icon: Eye },
@@ -402,6 +456,7 @@ export default function JobDetailPage() {
               onCandidateMove={handleCandidateMove}
               onCandidateSelect={handleCandidateSelect}
               onAddCandidate={() => setShowAddExistingModal(true)}
+              onCandidateRemove={handleCandidateRemove}
               AddCandidateComponent={() => (
                 <AddCandidateDropdown
                   onAddExisting={() => setShowAddExistingModal(true)}

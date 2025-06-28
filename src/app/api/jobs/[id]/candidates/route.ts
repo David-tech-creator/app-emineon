@@ -204,4 +204,90 @@ export async function POST(
       { status: 500 }
     );
   }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { userId } = auth();
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const jobId = params.id;
+    const body = await request.json();
+    const { candidateId } = body;
+    
+    if (!candidateId) {
+      return NextResponse.json(
+        { error: 'Candidate ID is required' },
+        { status: 400 }
+      );
+    }
+
+    console.log(`🗑️ Removing candidate ${candidateId} from job ${jobId}`);
+
+    // Validate that job exists
+    const job = await prisma.job.findUnique({ where: { id: jobId } });
+    if (!job) {
+      return NextResponse.json(
+        { error: 'Job not found' },
+        { status: 404 }
+      );
+    }
+
+    // Find the application to remove
+    const application = await prisma.application.findFirst({
+      where: {
+        jobId: jobId,
+        candidateId: candidateId
+      },
+      include: {
+        candidate: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          }
+        }
+      }
+    });
+
+    if (!application) {
+      return NextResponse.json(
+        { error: 'Candidate is not assigned to this job' },
+        { status: 404 }
+      );
+    }
+
+    // Delete the application
+    await prisma.application.delete({
+      where: {
+        id: application.id
+      }
+    });
+
+    console.log(`✅ Successfully removed candidate ${candidateId} from job ${jobId}`);
+
+    return NextResponse.json({
+      success: true,
+      message: `Removed ${application.candidate.firstName} ${application.candidate.lastName} from job`,
+      candidate: application.candidate
+    });
+
+  } catch (error: any) {
+    console.error('💥 Error removing candidate from job:', error);
+    
+    return NextResponse.json(
+      { 
+        error: 'Failed to remove candidate from job',
+        details: error.message 
+      },
+      { status: 500 }
+    );
+  }
 } 
