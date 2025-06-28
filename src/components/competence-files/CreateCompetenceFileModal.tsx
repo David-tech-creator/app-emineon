@@ -76,6 +76,8 @@ import {
   Mic,
   MicOff,
   Briefcase,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 
 // Types
@@ -989,6 +991,9 @@ export function CreateCompetenceFileModal({
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(100); // Zoom functionality
+  const [isJobDescriptionExpanded, setIsJobDescriptionExpanded] = useState(false);
+  const [customElements, setCustomElements] = useState<string[]>([]);
+  const [newElementInput, setNewElementInput] = useState('');
   
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1204,6 +1209,25 @@ export function CreateCompetenceFileModal({
   
   const handleZoomReset = () => {
     setZoomLevel(100);
+  };
+
+  // Custom elements handlers
+  const addCustomElement = () => {
+    if (newElementInput.trim() && !customElements.includes(newElementInput.trim())) {
+      setCustomElements(prev => [...prev, newElementInput.trim()]);
+      setNewElementInput('');
+    }
+  };
+
+  const removeCustomElement = (element: string) => {
+    setCustomElements(prev => prev.filter(el => el !== element));
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addCustomElement();
+    }
   };
   
   // Generic AI processing function for all sections
@@ -2165,28 +2189,147 @@ export function CreateCompetenceFileModal({
                         </div>
                       )}
                       
-                      {/* Job Description Preview */}
+                      {/* Job Description Preview - Enhanced & Expandable */}
                       {jobDescription.text && (
-                        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                          <h5 className="font-medium text-gray-900 mb-2">Job Description Preview:</h5>
-                          <div className="text-sm text-gray-700 max-h-32 overflow-y-auto">
-                            {jobDescription.text.substring(0, 500)}
-                            {jobDescription.text.length > 500 && '...'}
+                        <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="flex items-center justify-between mb-3">
+                            <h5 className="font-medium text-gray-900">Job Description Preview</h5>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setIsJobDescriptionExpanded(!isJobDescriptionExpanded)}
+                              className="text-xs"
+                            >
+                              {isJobDescriptionExpanded ? (
+                                <>
+                                  <ChevronUp className="h-3 w-3 mr-1" />
+                                  Collapse
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="h-3 w-3 mr-1" />
+                                  Expand Full Preview
+                                </>
+                              )}
+                            </Button>
                           </div>
-                          {(jobDescription.requirements.length > 0 || jobDescription.skills.length > 0) && (
-                            <div className="mt-3 pt-3 border-t border-gray-200">
-                              <p className="text-xs text-gray-600 mb-2">AI identified key elements:</p>
-                              <div className="flex flex-wrap gap-1">
-                                {jobDescription.requirements.slice(0, 3).map((req, idx) => (
-                                  <span key={idx} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                                    {req}
-                                  </span>
-                                ))}
-                                {jobDescription.skills.slice(0, 3).map((skill, idx) => (
-                                  <span key={idx} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                                    {skill}
-                                  </span>
-                                ))}
+                          
+                          <div className={`text-sm text-gray-700 ${
+                            isJobDescriptionExpanded 
+                              ? 'max-h-96 overflow-y-auto' 
+                              : 'max-h-32 overflow-hidden'
+                          } transition-all duration-200`}>
+                            <div className="whitespace-pre-wrap">
+                              {isJobDescriptionExpanded 
+                                ? jobDescription.text 
+                                : `${jobDescription.text.substring(0, 500)}${jobDescription.text.length > 500 ? '...' : ''}`
+                              }
+                            </div>
+                          </div>
+                          
+                          {/* Enhanced AI Identified Elements */}
+                          {(jobDescription.requirements.length > 0 || jobDescription.skills.length > 0 || jobDescription.responsibilities.length > 0) && (
+                            <div className="mt-4 pt-4 border-t border-gray-200">
+                              <div className="flex items-center justify-between mb-3">
+                                <p className="text-sm font-medium text-gray-800">AI Identified Key Elements</p>
+                                <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded">
+                                  {jobDescription.requirements.length + jobDescription.skills.length + jobDescription.responsibilities.length} elements found
+                                </span>
+                              </div>
+                              
+                              <div className="space-y-3">
+                                {/* Requirements */}
+                                {jobDescription.requirements.length > 0 && (
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-600 mb-2 flex items-center">
+                                      <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                                      Requirements ({jobDescription.requirements.length})
+                                    </p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {jobDescription.requirements.map((req, idx) => (
+                                        <span key={idx} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-md border border-blue-200">
+                                          {req}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Skills */}
+                                {jobDescription.skills.length > 0 && (
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-600 mb-2 flex items-center">
+                                      <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                      Skills ({jobDescription.skills.length})
+                                    </p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {jobDescription.skills.map((skill, idx) => (
+                                        <span key={idx} className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-md border border-green-200">
+                                          {skill}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Responsibilities */}
+                                {jobDescription.responsibilities.length > 0 && (
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-600 mb-2 flex items-center">
+                                      <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
+                                      Responsibilities ({jobDescription.responsibilities.length})
+                                    </p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {jobDescription.responsibilities.map((resp, idx) => (
+                                        <span key={idx} className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-md border border-purple-200">
+                                          {resp}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Custom Elements Section */}
+                                <div>
+                                  <p className="text-xs font-medium text-gray-600 mb-2 flex items-center">
+                                    <span className="w-2 h-2 bg-orange-500 rounded-full mr-2"></span>
+                                    Custom Elements ({customElements.length})
+                                  </p>
+                                  <div className="space-y-2">
+                                    <div className="flex flex-wrap gap-1 mb-2">
+                                      {customElements.map((element, idx) => (
+                                        <span key={idx} className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-md border border-orange-200 flex items-center">
+                                          {element}
+                                          <button
+                                            onClick={() => removeCustomElement(element)}
+                                            className="ml-1 text-orange-600 hover:text-orange-800"
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </button>
+                                        </span>
+                                      ))}
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      <input
+                                        type="text"
+                                        value={newElementInput}
+                                        onChange={(e) => setNewElementInput(e.target.value)}
+                                        onKeyPress={handleKeyPress}
+                                        placeholder="Add custom element..."
+                                        className="flex-1 text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                      />
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={addCustomElement}
+                                        disabled={!newElementInput.trim()}
+                                        className="text-xs"
+                                      >
+                                        <Plus className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           )}
