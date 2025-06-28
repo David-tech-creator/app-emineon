@@ -247,7 +247,55 @@ function generateExperienceHTML(experience: ExperienceItem[]): string {
   `;
 }
 
-function generateAntaesCompetenceFileHTML(candidateData: CandidateData): string {
+function generateSectionsHTML(sections: any[], candidateData: CandidateData, generateFunctionalSkills: Function, experienceHTML: string): string {
+  return sections
+    .sort((a, b) => a.order - b.order)
+    .map(section => {
+      if (section.type === 'header') return ''; // Header is handled separately
+      
+      let sectionContent = section.content;
+      
+      // For empty sections, generate default content based on type
+      if (!sectionContent || sectionContent.trim().length === 0) {
+        switch (section.type) {
+          case 'summary':
+            sectionContent = candidateData.summary || 'Professional summary to be provided.';
+            break;
+          case 'functional-skills':
+          case 'core-competencies':
+            sectionContent = generateFunctionalSkills(candidateData.skills);
+            break;
+          case 'experience':
+          case 'professional-experience':
+            return experienceHTML;
+          case 'education':
+            sectionContent = candidateData.education?.map(edu => `<div class="education-item">${edu}</div>`).join('') || 'Education details to be provided.';
+            break;
+          case 'certifications':
+            sectionContent = candidateData.certifications?.map(cert => `<div class="cert-item">${cert}</div>`).join('') || 'Professional certifications to be provided.';
+            break;
+          case 'languages':
+            sectionContent = candidateData.languages?.map(lang => `<div class="language-item">${lang}</div>`).join('') || 'Language skills to be provided.';
+            break;
+          default:
+            sectionContent = 'Content to be provided.';
+        }
+      }
+      
+      return `
+        <div class="section">
+          <h2 class="section-title">${section.title}</h2>
+          <div class="section-content">
+            ${section.type === 'summary' ? `<p class="summary-text">${sectionContent}</p>` : 
+              section.type === 'languages' ? `<div class="languages-grid">${sectionContent}</div>` :
+              sectionContent}
+          </div>
+        </div>
+      `;
+    }).join('');
+}
+
+function generateAntaesCompetenceFileHTML(candidateData: CandidateData, sections?: any[]): string {
   const generateFunctionalSkills = (skills: string[]) => {
     if (!skills || skills.length === 0) return '';
     
@@ -613,6 +661,7 @@ function generateAntaesCompetenceFileHTML(candidateData: CandidateData): string 
         </div>
 
         <div class="content">
+          ${sections ? generateSectionsHTML(sections, candidateData, generateFunctionalSkills, experienceHTML) : `
           <!-- Professional Summary -->
           ${candidateData.summary ? `
           <div class="section">
@@ -673,6 +722,7 @@ function generateAntaesCompetenceFileHTML(candidateData: CandidateData): string 
             </div>
           </div>
           ` : ''}
+          `}
         </div>
 
         <!-- Footer with Antaes branding -->
@@ -688,7 +738,7 @@ function generateAntaesCompetenceFileHTML(candidateData: CandidateData): string 
   `;
 }
 
-function generateCompetenceFileHTML(candidateData: CandidateData): string {
+function generateCompetenceFileHTML(candidateData: CandidateData, sections?: any[]): string {
   const experienceHTML = generateExperienceHTML(candidateData.experience);
   
   // Generate functional skills with explanatory text
@@ -1457,7 +1507,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { candidateData, template = 'professional', content, format = 'pdf' } = body;
+    const { candidateData, template = 'professional', content, format = 'pdf', sections } = body;
 
     if (!candidateData) {
       return NextResponse.json(
@@ -1476,9 +1526,9 @@ export async function POST(request: NextRequest) {
     // Generate HTML content based on template
     let htmlContent: string;
     if (template === 'antaes' || template === 'cf-antaes-consulting') {
-      htmlContent = generateAntaesCompetenceFileHTML(candidateData);
+      htmlContent = generateAntaesCompetenceFileHTML(candidateData, sections);
     } else {
-      htmlContent = generateCompetenceFileHTML(candidateData);
+      htmlContent = generateCompetenceFileHTML(candidateData, sections);
     }
 
     if (format === 'pdf') {

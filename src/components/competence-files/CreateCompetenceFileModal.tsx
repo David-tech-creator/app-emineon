@@ -1754,32 +1754,39 @@ export function CreateCompetenceFileModal({
                           <button
                             key={template}
                             onClick={() => setSelectedTemplate(template)}
-                            className={`p-4 border-2 rounded-lg text-left transition-colors ${
+                            className={`p-4 border-2 rounded-lg text-left transition-colors h-32 flex flex-col ${
                               selectedTemplate === template
                                 ? 'border-blue-500 bg-blue-50'
                                 : 'border-gray-200 hover:border-gray-300'
                             }`}
                           >
-                            <div className="font-medium capitalize mb-2 flex items-center gap-2">
+                            <div className="font-medium capitalize mb-2 flex items-center gap-1 flex-wrap">
                               {template === 'emineon' && (
-                                <span className="text-blue-600 font-bold text-sm">✨</span>
+                                <Sparkles className="h-4 w-4 text-blue-600" />
                               )}
                               {template === 'antaes' && (
-                                <span className="text-blue-900 font-bold text-sm">🏛️</span>
+                                <div className="h-4 w-4 bg-blue-900 rounded-sm flex items-center justify-center">
+                                  <div className="h-2 w-2 bg-white rounded-sm"></div>
+                                </div>
                               )}
-                              {template === 'antaes' ? 'Antaes' : template}
+                              <span className="truncate">{template === 'antaes' ? 'Antaes' : template}</span>
                               {template === 'emineon' && (
-                                <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full font-medium">
+                                <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full font-medium">
                                   BRANDED
                                 </span>
                               )}
                               {template === 'antaes' && (
-                                <span className="text-xs bg-blue-900 text-white px-2 py-1 rounded-full font-medium">
+                                <span className="text-xs bg-blue-900 text-white px-1.5 py-0.5 rounded-full font-medium">
                                   CONSULTING
                                 </span>
                               )}
                             </div>
-                            <div className="text-sm text-gray-600">
+                            <div className="text-xs text-gray-600 flex-1 overflow-hidden" style={{ 
+                              display: '-webkit-box',
+                              WebkitLineClamp: 3,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden'
+                            }}>
                               {template === 'emineon' && 'Premium Emineon-branded template with strategic logo placement and professional styling'}
                               {template === 'antaes' && 'Antaes consulting template with minimalist design, blue accents, and partnership excellence branding'}
                               {template === 'professional' && 'Classic layout with traditional formatting'}
