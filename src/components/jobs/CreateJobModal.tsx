@@ -1144,7 +1144,11 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
 
   // Auto-scroll to top when step changes
   const scrollToTop = () => {
-    const modalContent = document.querySelector('.modal-content');
+    // Try multiple selectors to find the modal content
+    const modalContent = document.querySelector('.modal-content') ||
+                        document.querySelector('[class*="overflow-y-auto"]') ||
+                        document.querySelector('[class*="max-h-"]');
+    
     if (modalContent) {
       modalContent.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
@@ -2525,40 +2529,65 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                         </Button>
                       </div>
 
-                      {/* Quick Add Suggestions */}
-                      <div className="space-y-2">
-                        <span className="text-sm text-gray-600">Quick add common stages:</span>
+                      {/* Quick add common stages */}
+                      <div className="mb-4">
+                        <p className="text-sm text-gray-600 mb-3">Quick add common stages:</p>
                         <div className="flex flex-wrap gap-2">
-                          {['Phone Screen', 'Technical Assessment', 'Panel Interview', 'Reference Check', 'Background Check', 'Final Review'].map((suggestedStage) => (
+                          {['Phone Screen', 'Technical Assessment', 'Panel Interview', 'Reference Check', 'Background Check', 'Final Review'].map((stage) => (
                             <button
-                              key={suggestedStage}
+                              key={stage}
                               type="button"
                               onClick={() => {
-                                if (!pipelineStages.includes(suggestedStage)) {
-                                  setPipelineStages([...pipelineStages, suggestedStage]);
+                                if (!pipelineStages.includes(stage)) {
+                                  setPipelineStages([...pipelineStages, stage]);
                                 }
                               }}
-                              disabled={pipelineStages.includes(suggestedStage)}
-                              className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
                             >
-                              + {suggestedStage}
+                              + {stage}
                             </button>
                           ))}
                         </div>
                       </div>
-
-                      {/* Pipeline Preview */}
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <h5 className="text-sm font-medium text-blue-900 mb-2">Pipeline Preview:</h5>
-                        <div className="flex items-center space-x-2 text-sm text-blue-800">
-                          {pipelineStages.map((stage, index) => (
-                            <div key={index} className="flex items-center">
-                              <span className="px-2 py-1 bg-blue-100 rounded text-xs">{stage}</span>
-                              {index < pipelineStages.length - 1 && (
-                                <ArrowRight className="h-3 w-3 mx-1 text-blue-600" />
-                              )}
-                            </div>
-                          ))}
+                      
+                      {/* Pipeline Preview with proper spacing and kanban colors */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+                        <h5 className="text-sm font-medium text-blue-900 mb-3">Pipeline Preview:</h5>
+                        <div className="flex items-center space-x-2 text-sm">
+                          {pipelineStages.map((stage, index) => {
+                            // Get colors that match the kanban board
+                            const getStageColor = (stageName: string, stageIndex: number) => {
+                              const lowerStage = stageName.toLowerCase();
+                              if (lowerStage.includes('sourced') || lowerStage.includes('source')) return 'bg-gray-100 text-gray-800';
+                              if (lowerStage.includes('screen') || lowerStage.includes('phone')) return 'bg-blue-100 text-blue-800';
+                              if (lowerStage.includes('interview') || lowerStage.includes('technical')) return 'bg-yellow-100 text-yellow-800';
+                              if (lowerStage.includes('submit') || lowerStage.includes('assessment')) return 'bg-purple-100 text-purple-800';
+                              if (lowerStage.includes('offer') || lowerStage.includes('reference')) return 'bg-orange-100 text-orange-800';
+                              if (lowerStage.includes('hired') || lowerStage.includes('final')) return 'bg-green-100 text-green-800';
+                              
+                              // Fallback colors based on position
+                              const colors = [
+                                'bg-gray-100 text-gray-800',
+                                'bg-blue-100 text-blue-800', 
+                                'bg-yellow-100 text-yellow-800',
+                                'bg-purple-100 text-purple-800',
+                                'bg-orange-100 text-orange-800',
+                                'bg-green-100 text-green-800'
+                              ];
+                              return colors[stageIndex % colors.length];
+                            };
+                            
+                            return (
+                              <div key={index} className="flex items-center">
+                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStageColor(stage, index)}`}>
+                                  {stage}
+                                </span>
+                                {index < pipelineStages.length - 1 && (
+                                  <ArrowRight className="h-3 w-3 mx-2 text-blue-600" />
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
