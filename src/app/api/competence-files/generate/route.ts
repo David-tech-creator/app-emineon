@@ -36,6 +36,14 @@ const GenerateRequestSchema = z.object({
     order: z.number(),
   })),
   format: z.enum(['pdf', 'docx']),
+  jobDescription: z.object({
+    text: z.string(),
+    requirements: z.array(z.string()),
+    skills: z.array(z.string()),
+    responsibilities: z.array(z.string()),
+    title: z.string().optional(),
+    company: z.string().optional(),
+  }).optional(),
 });
 
 interface ExperienceItem {
@@ -60,6 +68,65 @@ interface CandidateData {
   education: string[];
   languages: string[];
   summary: string;
+}
+
+interface JobDescription {
+  text: string;
+  requirements: string[];
+  skills: string[];
+  responsibilities: string[];
+  title?: string;
+  company?: string;
+}
+
+// Function to highlight text based on job requirements
+function convertMarkdownToHTML(text: string): string {
+  if (!text) return text;
+  
+  // Convert markdown formatting to HTML
+  let htmlText = text
+    // Convert **bold** to <strong>
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    // Convert bullet points that start with * to proper list items (do this first)
+    .replace(/^\* (.+)$/gm, '<li>$1</li>')
+    // Convert remaining *italic* to <em> (after bullet points are handled)
+    .replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
+    // Convert multiple consecutive list items to proper ul structure
+    .replace(/(<li>.*?<\/li>\s*)+/g, (match) => `<ul>${match}</ul>`)
+    // Convert line breaks to proper spacing
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+  
+  // Wrap in paragraph tags if not already structured
+  if (!htmlText.includes('<p>') && !htmlText.includes('<ul>') && !htmlText.includes('<div>')) {
+    htmlText = `<p>${htmlText}</p>`;
+  }
+  
+  return htmlText;
+}
+
+function highlightRelevantContent(text: string, jobDescription?: JobDescription, template?: string): string {
+  if (!jobDescription || !text) return text;
+  
+  // Get accent color based on template
+  const accentColor = template === 'antaes' ? '#FFB800' : '#FF8C00';
+  
+  // Combine all job-related keywords
+  const keywords = [
+    ...jobDescription.requirements,
+    ...jobDescription.skills,
+    ...jobDescription.responsibilities
+  ].filter(keyword => keyword && keyword.length > 2); // Filter out short words
+  
+  let highlightedText = text;
+  
+  // Highlight each keyword (case-insensitive)
+  keywords.forEach(keyword => {
+    const regex = new RegExp(`\\b(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})\\b`, 'gi');
+    highlightedText = highlightedText.replace(regex, `<span style="border-bottom: 2px solid ${accentColor}; font-weight: 600;">$1</span>`);
+  });
+  
+  return highlightedText;
 }
 
 function generateExperienceHTML(experience: ExperienceItem[]): string {
@@ -247,7 +314,7 @@ function generateExperienceHTML(experience: ExperienceItem[]): string {
   `;
 }
 
-export function generateSectionsHTML(sections: any[], candidateData: CandidateData, generateFunctionalSkills: Function, experienceHTML: string): string {
+export function generateSectionsHTML(sections: any[], candidateData: CandidateData, generateFunctionalSkills: Function, experienceHTML: string, jobDescription?: JobDescription, template?: string): string {
   return sections
     .sort((a, b) => a.order - b.order)
     .map(section => {
@@ -282,20 +349,24 @@ export function generateSectionsHTML(sections: any[], candidateData: CandidateDa
         }
       }
       
+      // Convert markdown to HTML first, then apply highlighting
+      const htmlContent = convertMarkdownToHTML(sectionContent);
+      const highlightedContent = highlightRelevantContent(htmlContent, jobDescription, template);
+      
       return `
         <div class="section">
           <h2 class="section-title">${section.title}</h2>
           <div class="section-content">
-            ${section.type === 'summary' ? `<p class="summary-text">${sectionContent}</p>` : 
-              section.type === 'languages' ? `<div class="languages-grid">${sectionContent}</div>` :
-              sectionContent}
+            ${section.type === 'summary' ? `<p class="summary-text">${highlightedContent}</p>` : 
+              section.type === 'languages' ? `<div class="languages-grid">${highlightedContent}</div>` :
+              highlightedContent}
           </div>
         </div>
       `;
     }).join('');
 }
 
-export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, sections?: any[]): string {
+export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, sections?: any[], jobDescription?: JobDescription): string {
   const generateFunctionalSkills = (skills: string[]) => {
     if (!skills || skills.length === 0) return '';
     
@@ -453,6 +524,44 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         .section-content {
           font-size: 14px;
           line-height: 1.7;
+        }
+        
+        /* Content Formatting */
+        .section-content p {
+          margin-bottom: 12px;
+          line-height: 1.7;
+        }
+        
+        .section-content ul {
+          margin: 12px 0;
+          padding-left: 0;
+          list-style: none;
+        }
+        
+        .section-content li {
+          position: relative;
+          padding-left: 20px;
+          margin-bottom: 8px;
+          line-height: 1.6;
+        }
+        
+        .section-content li:before {
+          content: "•";
+          color: #FFB800;
+          font-weight: bold;
+          position: absolute;
+          left: 0;
+          top: 0;
+        }
+        
+        .section-content strong {
+          font-weight: 700;
+          color: #073C51;
+        }
+        
+        .section-content em {
+          font-style: italic;
+          color: #4A5568;
         }
         
         /* Professional Summary */
@@ -669,7 +778,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         </div>
 
         <div class="content">
-          ${sections ? generateSectionsHTML(sections, candidateData, generateFunctionalSkills, experienceHTML) : `
+          ${sections ? generateSectionsHTML(sections, candidateData, generateFunctionalSkills, experienceHTML, jobDescription, 'antaes') : `
           <!-- Professional Summary -->
           ${candidateData.summary ? `
           <div class="section">
@@ -746,7 +855,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
   `;
 }
 
-export function generateCompetenceFileHTML(candidateData: CandidateData, sections?: any[]): string {
+export function generateCompetenceFileHTML(candidateData: CandidateData, sections?: any[], jobDescription?: JobDescription): string {
   const experienceHTML = generateExperienceHTML(candidateData.experience);
   
   // Generate functional skills with explanatory text
@@ -1066,6 +1175,44 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         .section-content {
           font-size: 14px;
           line-height: 1.7;
+        }
+        
+        /* Content Formatting */
+        .section-content p {
+          margin-bottom: 12px;
+          line-height: 1.7;
+        }
+        
+        .section-content ul {
+          margin: 12px 0;
+          padding-left: 0;
+          list-style: none;
+        }
+        
+        .section-content li {
+          position: relative;
+          padding-left: 20px;
+          margin-bottom: 8px;
+          line-height: 1.6;
+        }
+        
+        .section-content li:before {
+          content: "•";
+          color: #FF8C00;
+          font-weight: bold;
+          position: absolute;
+          left: 0;
+          top: 0;
+        }
+        
+        .section-content strong {
+          font-weight: 700;
+          color: #0A2F5A;
+        }
+        
+        .section-content em {
+          font-style: italic;
+          color: #444B54;
         }
         
         /* Professional Summary */
@@ -1515,7 +1662,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { candidateData, template = 'professional', content, format = 'pdf', sections } = body;
+    const { candidateData, template = 'professional', content, format = 'pdf', sections, jobDescription } = body;
 
     if (!candidateData) {
       return NextResponse.json(
@@ -1534,9 +1681,9 @@ export async function POST(request: NextRequest) {
     // Generate HTML content based on template
     let htmlContent: string;
     if (template === 'antaes' || template === 'cf-antaes-consulting') {
-      htmlContent = generateAntaesCompetenceFileHTML(candidateData, sections);
+      htmlContent = generateAntaesCompetenceFileHTML(candidateData, sections, jobDescription);
     } else {
-      htmlContent = generateCompetenceFileHTML(candidateData, sections);
+      htmlContent = generateCompetenceFileHTML(candidateData, sections, jobDescription);
     }
 
     if (format === 'pdf') {

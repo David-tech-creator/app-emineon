@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { type, sectionType, currentContent, candidateData } = await request.json();
+    const { type, sectionType, currentContent, candidateData, jobDescription } = await request.json();
 
     if (!type || !sectionType || !candidateData) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
     let prompt = '';
     let systemPrompt = 'You are an expert HR professional and executive resume writer with 15+ years of experience. You specialize in creating compelling, ATS-optimized competence files that highlight candidates\' unique value propositions and achievements.';
     
-    // Enhanced context about the candidate
+    // Enhanced context about the candidate and job
     const candidateContext = `
 Candidate Profile:
 - Name: ${candidateData.fullName}
@@ -224,6 +224,16 @@ Candidate Profile:
 - Education: ${candidateData.education?.join(', ') || 'Not specified'}
 - Location: ${candidateData.location || 'Not specified'}
 - Summary: ${candidateData.summary || 'Not provided'}
+${jobDescription ? `
+
+Target Job Context:
+- Job Title: ${jobDescription.title || 'Not specified'}
+- Company: ${jobDescription.company || 'Not specified'}
+- Key Requirements: ${jobDescription.requirements?.slice(0, 5).join(', ') || 'Not specified'}
+- Required Skills: ${jobDescription.skills?.slice(0, 8).join(', ') || 'Not specified'}
+- Main Responsibilities: ${jobDescription.responsibilities?.slice(0, 3).join(', ') || 'Not specified'}
+
+IMPORTANT: Tailor the content to align with the job requirements while staying truthful to the candidate's actual experience. Emphasize relevant skills and experiences that match the job needs.` : ''}
 `;
 
     switch (type) {

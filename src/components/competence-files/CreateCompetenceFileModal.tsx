@@ -73,6 +73,9 @@ import {
   RefreshCw,
   ZoomOut,
   ZoomIn,
+  Mic,
+  MicOff,
+  Briefcase,
 } from 'lucide-react';
 
 // Types
@@ -113,6 +116,15 @@ interface CreateCompetenceFileModalProps {
   onClose: () => void;
   onSuccess: (fileUrl: string) => void;
   preselectedCandidate?: CandidateData | null;
+}
+
+interface JobDescription {
+  text: string;
+  requirements: string[];
+  skills: string[];
+  responsibilities: string[];
+  title?: string;
+  company?: string;
 }
 
 // Sortable Section Item Component for Step 2
@@ -189,13 +201,15 @@ function SortableSectionEditor({
   onUpdate, 
   onTitleUpdate,
   getToken, 
-  candidateData 
+  candidateData,
+  jobDescription
 }: {
   section: DocumentSection;
   onUpdate: (content: string) => void;
   onTitleUpdate: (title: string) => void;
   getToken: () => Promise<string | null>;
   candidateData: CandidateData | null;
+  jobDescription?: JobDescription;
 }) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState(section.title);
@@ -254,12 +268,13 @@ function SortableSectionEditor({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          type,
-          sectionType: section.type,
-          currentContent: section.content,
-          candidateData,
-        }),
+                  body: JSON.stringify({
+            type,
+            sectionType: section.type,
+            currentContent: section.content,
+            candidateData,
+            jobDescription: jobDescription?.text ? jobDescription : undefined,
+          }),
       });
       
       console.log('📡 API Response status:', response.status);
@@ -945,6 +960,20 @@ export function CreateCompetenceFileModal({
   const [isParsing, setIsParsing] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<CandidateData | null>(preselectedCandidate || null);
   const [selectedTemplate, setSelectedTemplate] = useState<'professional' | 'modern' | 'minimal' | 'emineon' | 'antaes'>('emineon');
+  
+  // Job Description state
+  const [jobDescription, setJobDescription] = useState<JobDescription>({
+    text: '',
+    requirements: [],
+    skills: [],
+    responsibilities: [],
+    title: '',
+    company: ''
+  });
+  const [jobInputMethod, setJobInputMethod] = useState<'text' | 'file' | 'voice'>('text');
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [jobDescriptionFiles, setJobDescriptionFiles] = useState<File[]>([]);
   const [documentSections, setDocumentSections] = useState<DocumentSection[]>([
     { id: 'header', type: 'header', title: 'HEADER', content: '', visible: true, order: 0, editable: true },
     { id: 'summary', type: 'summary', title: 'PROFESSIONAL SUMMARY', content: '', visible: true, order: 1, editable: true },
@@ -963,6 +992,7 @@ export function CreateCompetenceFileModal({
   
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const jobFileInputRef = useRef<HTMLInputElement>(null);
   
   // Get template-specific section titles
   const getSectionTitles = (template: string) => {
@@ -993,9 +1023,140 @@ export function CreateCompetenceFileModal({
     };
   };
 
+  // Job Description Handlers
+  const handleJobFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+    
+    setJobDescriptionFiles(files);
+    setIsParsing(true);
+    
+    try {
+      const token = await getToken();
+      const formData = new FormData();
+      files.forEach(file => formData.append('files', file));
+      
+      const response = await fetch('/api/files/extract-text', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+      
+      if (response.ok) {
+        const { texts } = await response.json();
+        const combinedText = texts.join('\n\n');
+        await parseJobDescription(combinedText);
+      } else {
+        throw new Error('Failed to extract text from files');
+      }
+    } catch (error) {
+      console.error('Error processing job description files:', error);
+      alert('Failed to process job description files. Please try again.');
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  const parseJobDescription = async (text: string) => {
+    try {
+      const token = await getToken();
+      const response = await fetch('/api/ai/job-description/parse', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ text }),
+      });
+      
+      if (response.ok) {
+        const parsed = await response.json();
+        setJobDescription({
+          text,
+          requirements: parsed.requirements || [],
+          skills: parsed.skills || [],
+          responsibilities: parsed.responsibilities || [],
+          title: parsed.title || '',
+          company: parsed.company || ''
+        });
+      } else {
+        // Fallback: just set the text
+        setJobDescription(prev => ({ ...prev, text }));
+      }
+    } catch (error) {
+      console.error('Error parsing job description:', error);
+      // Fallback: just set the text
+      setJobDescription(prev => ({ ...prev, text }));
+    }
+  };
+
+  const startVoiceRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+      
+      recorder.ondataavailable = (event) => {
+        chunks.push(event.data);
+      };
+      
+      recorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'audio/wav' });
+        await transcribeAudio(blob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Error starting voice recording:', error);
+      alert('Failed to start voice recording. Please check microphone permissions.');
+    }
+  };
+
+  const stopVoiceRecording = () => {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+      setMediaRecorder(null);
+    }
+  };
+
+  const transcribeAudio = async (audioBlob: Blob) => {
+    setIsParsing(true);
+    try {
+      const token = await getToken();
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.wav');
+      
+      const response = await fetch('/api/ai/transcribe', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+      
+      if (response.ok) {
+        const { text } = await response.json();
+        await parseJobDescription(text);
+      } else {
+        throw new Error('Failed to transcribe audio');
+      }
+    } catch (error) {
+      console.error('Error transcribing audio:', error);
+      alert('Failed to transcribe audio. Please try typing the job description instead.');
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
   // Pre-populate sections when candidate data changes
   useEffect(() => {
-    if (selectedCandidate && currentStep >= 2) {
+    if (selectedCandidate && currentStep >= 3) {
       console.log('🔄 Pre-populating sections with candidate data:', selectedCandidate);
       
       // Get template-specific section titles
@@ -1077,6 +1238,7 @@ export function CreateCompetenceFileModal({
               sectionType: section.type,
               currentContent: section.content,
               candidateData: selectedCandidate,
+              jobDescription: jobDescription.text ? jobDescription : undefined,
             }),
           });
           
@@ -1525,6 +1687,7 @@ export function CreateCompetenceFileModal({
           template: selectedTemplate,
           sections: documentSections.filter(s => s.visible),
           format,
+          jobDescription: jobDescription.text ? jobDescription : undefined,
         }),
       });
       
@@ -1558,7 +1721,7 @@ export function CreateCompetenceFileModal({
   
   // Auto-save effect
   useEffect(() => {
-    if (currentStep === 3 && selectedCandidate) {
+    if (currentStep === 4 && selectedCandidate) {
       const interval = setInterval(handleAutoSave, 30000); // Auto-save every 30 seconds
       return () => clearInterval(interval);
     }
@@ -1569,9 +1732,9 @@ export function CreateCompetenceFileModal({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className={`bg-white rounded-lg flex flex-col ${ 
-        currentStep === 3 
+        currentStep === 4 
           ? 'w-full h-full m-0 rounded-none' // Full screen for editor
-          : 'w-full max-w-6xl h-[90vh] m-4' // Fixed height for steps 1-2
+          : 'w-full max-w-6xl h-[90vh] m-4' // Fixed height for steps 1-3
       }`}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b flex-shrink-0">
@@ -1584,10 +1747,14 @@ export function CreateCompetenceFileModal({
               </div>
               <div className={`flex items-center space-x-2 ${currentStep >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${currentStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>2</div>
-                <span className="text-sm">Select</span>
+                <span className="text-sm">Template</span>
               </div>
               <div className={`flex items-center space-x-2 ${currentStep >= 3 ? 'text-blue-600' : 'text-gray-400'}`}>
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${currentStep >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>3</div>
+                <span className="text-sm">Job</span>
+              </div>
+              <div className={`flex items-center space-x-2 ${currentStep >= 4 ? 'text-blue-600' : 'text-gray-400'}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${currentStep >= 4 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>4</div>
                 <span className="text-sm">Edit</span>
               </div>
             </div>
@@ -1810,6 +1977,236 @@ export function CreateCompetenceFileModal({
                       <Button
                         onClick={() => setCurrentStep(3)}
                       >
+                        Continue to Job Description
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Step 3: Job Description Input */}
+          {currentStep === 3 && selectedCandidate && (
+            <div className="h-full flex flex-col">
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-8">
+                  <div className="max-w-4xl mx-auto space-y-6">
+                    <div className="text-center">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Add Job Description</h3>
+                      <p className="text-gray-600">Provide the job description to create a targeted competence file</p>
+                    </div>
+                    
+                    {/* Candidate Info */}
+                    <Card className="p-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 font-semibold text-lg">
+                            {selectedCandidate.fullName.charAt(0)}
+                          </span>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium">{selectedCandidate.fullName}</h4>
+                          <p className="text-gray-600">{selectedCandidate.currentTitle}</p>
+                          <p className="text-sm text-gray-500">{selectedTemplate} template selected</p>
+                        </div>
+                        <div className="text-right">
+                          <Briefcase className="h-6 w-6 text-blue-600 mx-auto mb-1" />
+                          <p className="text-xs text-gray-500">Job Targeting</p>
+                        </div>
+                      </div>
+                    </Card>
+                    
+                    {/* Job Description Input Method Selection */}
+                    <Card className="p-6">
+                      <h4 className="text-lg font-medium text-gray-900 mb-4">How would you like to add the job description?</h4>
+                      <div className="flex gap-4 justify-center mb-6">
+                        <Button
+                          onClick={() => setJobInputMethod('text')}
+                          variant={jobInputMethod === 'text' ? 'primary' : 'outline'}
+                          className="flex-1 max-w-xs"
+                        >
+                          Type/Paste Text
+                        </Button>
+                        <Button
+                          onClick={() => setJobInputMethod('file')}
+                          variant={jobInputMethod === 'file' ? 'primary' : 'outline'}
+                          className="flex-1 max-w-xs"
+                        >
+                          Upload File
+                        </Button>
+                        <Button
+                          onClick={() => setJobInputMethod('voice')}
+                          variant={jobInputMethod === 'voice' ? 'primary' : 'outline'}
+                          className="flex-1 max-w-xs"
+                        >
+                          Voice Dictation
+                        </Button>
+                      </div>
+                      
+                      {/* Text Input Method */}
+                      {jobInputMethod === 'text' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Job Description
+                          </label>
+                          <textarea
+                            value={jobDescription.text}
+                            onChange={(e) => setJobDescription(prev => ({ ...prev, text: e.target.value }))}
+                            placeholder="Paste the job description here, or start typing to describe the role you're hiring for..."
+                            className="w-full h-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          />
+                          {jobDescription.text.trim() && (
+                            <Button 
+                              onClick={() => parseJobDescription(jobDescription.text)}
+                              disabled={isParsing}
+                              className="w-full mt-4"
+                            >
+                              {isParsing ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                  Analyzing Job Description...
+                                </>
+                              ) : (
+                                'Analyze Job Requirements'
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* File Upload Method */}
+                      {jobInputMethod === 'file' && (
+                        <div>
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                            <input
+                              type="file"
+                              ref={jobFileInputRef}
+                              onChange={handleJobFileSelect}
+                              accept=".pdf,.doc,.docx,.txt"
+                              multiple
+                              className="hidden"
+                            />
+                            <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                            <p className="text-lg font-medium text-gray-900 mb-2">Upload Job Description</p>
+                            <p className="text-gray-600 mb-4">Supports PDF, DOC, DOCX, TXT files</p>
+                            <Button onClick={() => jobFileInputRef.current?.click()}>
+                              Choose Files
+                            </Button>
+                          </div>
+                          {jobDescriptionFiles.length > 0 && (
+                            <div className="mt-4">
+                              <p className="text-sm font-medium text-gray-700 mb-2">Selected files:</p>
+                              <ul className="space-y-1">
+                                {jobDescriptionFiles.map((file, index) => (
+                                  <li key={index} className="text-sm text-gray-600 flex items-center">
+                                    <FileText className="h-4 w-4 mr-2" />
+                                    {file.name}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Voice Input Method */}
+                      {jobInputMethod === 'voice' && (
+                        <div className="text-center">
+                          <div className="mb-6">
+                            <div className={`w-24 h-24 rounded-full mx-auto mb-4 flex items-center justify-center ${
+                              isRecording ? 'bg-red-100 animate-pulse' : 'bg-gray-100'
+                            }`}>
+                              {isRecording ? (
+                                <MicOff className="h-12 w-12 text-red-600" />
+                              ) : (
+                                <Mic className="h-12 w-12 text-gray-600" />
+                              )}
+                            </div>
+                            <p className="text-lg font-medium text-gray-900 mb-2">
+                              {isRecording ? 'Recording...' : 'Voice Dictation'}
+                            </p>
+                            <p className="text-gray-600 mb-4">
+                              {isRecording ? 'Speak clearly and describe the job requirements' : 'Click to start recording your job description'}
+                            </p>
+                          </div>
+                          
+                          <div className="flex gap-4 justify-center">
+                            {!isRecording ? (
+                              <Button
+                                onClick={startVoiceRecording}
+                                disabled={isParsing}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                <Mic className="h-4 w-4 mr-2" />
+                                Start Recording
+                              </Button>
+                            ) : (
+                              <Button
+                                onClick={stopVoiceRecording}
+                                variant="outline"
+                                className="border-red-600 text-red-600 hover:bg-red-50"
+                              >
+                                <MicOff className="h-4 w-4 mr-2" />
+                                Stop Recording
+                              </Button>
+                            )}
+                          </div>
+                          
+                          {isParsing && (
+                            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                              <div className="flex items-center justify-center">
+                                <Loader2 className="h-4 w-4 animate-spin mr-2 text-blue-600" />
+                                <span className="text-blue-600">Transcribing and analyzing...</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Job Description Preview */}
+                      {jobDescription.text && (
+                        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                          <h5 className="font-medium text-gray-900 mb-2">Job Description Preview:</h5>
+                          <div className="text-sm text-gray-700 max-h-32 overflow-y-auto">
+                            {jobDescription.text.substring(0, 500)}
+                            {jobDescription.text.length > 500 && '...'}
+                          </div>
+                          {(jobDescription.requirements.length > 0 || jobDescription.skills.length > 0) && (
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <p className="text-xs text-gray-600 mb-2">AI identified key elements:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {jobDescription.requirements.slice(0, 3).map((req, idx) => (
+                                  <span key={idx} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                    {req}
+                                  </span>
+                                ))}
+                                {jobDescription.skills.slice(0, 3).map((skill, idx) => (
+                                  <span key={idx} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                                    {skill}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </Card>
+                    
+                    {/* Navigation */}
+                    <div className="flex justify-between pt-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => setCurrentStep(2)}
+                      >
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Back to Template
+                      </Button>
+                      <Button
+                        onClick={() => setCurrentStep(4)}
+                        disabled={!jobDescription.text.trim()}
+                      >
                         Continue to Editor
                         <ArrowRight className="h-4 w-4 ml-2" />
                       </Button>
@@ -1820,8 +2217,8 @@ export function CreateCompetenceFileModal({
             </div>
           )}
           
-          {/* Step 3: Lexical Editor */}
-          {currentStep === 3 && selectedCandidate && (
+          {/* Step 4: Lexical Editor */}
+          {currentStep === 4 && selectedCandidate && (
             <div className="flex-1 flex flex-col h-full">
               {/* Editor Header */}
               <div className="flex items-center justify-between p-4 border-b bg-gray-50 flex-shrink-0">
@@ -1829,7 +2226,7 @@ export function CreateCompetenceFileModal({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentStep(2)}
+                    onClick={() => setCurrentStep(3)}
                   >
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Back
@@ -1995,6 +2392,7 @@ export function CreateCompetenceFileModal({
                                 }}
                                 getToken={getToken}
                                 candidateData={selectedCandidate}
+                                jobDescription={jobDescription}
                               />
                             ))}
                         </div>
