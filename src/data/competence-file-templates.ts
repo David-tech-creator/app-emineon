@@ -148,6 +148,72 @@ export const competenceFileTemplates: CompetenceFileTemplate[] = [
       { key: 'education', label: 'Medical Education', show: true, order: 7 },
       { key: 'languages', label: 'Languages', show: true, order: 8 },
     ]
+  },
+  {
+    id: 'cf-antaes-consulting',
+    name: 'Antaes Consulting Professional',
+    description: 'Minimalist and professional design for Antaes consulting with strategic branding',
+    category: 'Consulting',
+    industry: 'Professional Services',
+    colors: ['#2C4F7C', '#3B6494', '#E8F1FA', '#F8FAFE'],
+    features: ['Partnership Excellence', 'Strategic Layout', 'Antaes Branding', 'Minimalist Design'],
+    styleConfig: {
+      // Typography - Clean and professional
+      titleFont: 'Inter',
+      titleSize: '2.5rem',
+      titleWeight: '700',
+      titleColor: '#2C4F7C', // Antaes Blue
+      
+      subtitleFont: 'Inter',
+      subtitleSize: '1.375rem',
+      subtitleWeight: '600',
+      subtitleColor: '#3B6494', // Lighter Antaes Blue
+      
+      bodyFont: 'Inter',
+      bodySize: '1.125rem',
+      bodyWeight: '400',
+      bodyColor: '#4A5568', // Professional gray
+      
+      // Colors - Antaes brand palette
+      primaryColor: '#2C4F7C', // Antaes Blue
+      secondaryColor: '#3B6494', // Lighter Blue
+      accentColor: '#2C4F7C', // Accent Blue
+      backgroundColor: '#FFFFFF',
+      borderColor: '#E8F1FA', // Light blue border
+      
+      // Layout
+      spacing: 'normal',
+      borderRadius: '8px',
+      borderWidth: '1px',
+      
+      // Section styling
+      sectionHeaderFont: 'Inter',
+      sectionHeaderSize: '1.25rem',
+      sectionHeaderWeight: '700',
+      sectionHeaderColor: '#2C4F7C',
+      sectionHeaderBackground: 'linear-gradient(135deg, #F8FAFE 0%, #E8F1FA 100%)',
+      
+      // List styling - Blue bullets
+      bulletStyle: 'custom',
+      bulletColor: '#2C4F7C', // Blue bullets
+      listIndent: '1.75rem',
+      
+      // Skills/Tags styling
+      tagBackground: '#F8FAFE', // Very light blue
+      tagColor: '#2C4F7C', // Antaes Blue
+      tagBorder: '#E8F1FA', // Light blue border
+      tagBorderRadius: '6px'
+    },
+    sections: [
+      { key: 'header', label: 'Professional Profile', show: true, order: 1 },
+      { key: 'summary', label: 'Executive Summary', show: true, order: 2 },
+      { key: 'experience', label: 'Professional Experience', show: true, order: 3 },
+      { key: 'expertise', label: 'Core Expertise', show: true, order: 4 },
+      { key: 'skills', label: 'Technical Competencies', show: true, order: 5 },
+      { key: 'education', label: 'Education & Qualifications', show: true, order: 6 },
+      { key: 'certifications', label: 'Professional Certifications', show: true, order: 7 },
+      { key: 'languages', label: 'Languages', show: true, order: 8 },
+    ]
   }
 ];
 
