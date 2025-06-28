@@ -247,7 +247,7 @@ function generateExperienceHTML(experience: ExperienceItem[]): string {
   `;
 }
 
-function generateSectionsHTML(sections: any[], candidateData: CandidateData, generateFunctionalSkills: Function, experienceHTML: string): string {
+export function generateSectionsHTML(sections: any[], candidateData: CandidateData, generateFunctionalSkills: Function, experienceHTML: string): string {
   return sections
     .sort((a, b) => a.order - b.order)
     .map(section => {
@@ -295,7 +295,7 @@ function generateSectionsHTML(sections: any[], candidateData: CandidateData, gen
     }).join('');
 }
 
-function generateAntaesCompetenceFileHTML(candidateData: CandidateData, sections?: any[]): string {
+export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, sections?: any[]): string {
   const generateFunctionalSkills = (skills: string[]) => {
     if (!skills || skills.length === 0) return '';
     
@@ -738,7 +738,7 @@ function generateAntaesCompetenceFileHTML(candidateData: CandidateData, sections
   `;
 }
 
-function generateCompetenceFileHTML(candidateData: CandidateData, sections?: any[]): string {
+export function generateCompetenceFileHTML(candidateData: CandidateData, sections?: any[]): string {
   const experienceHTML = generateExperienceHTML(candidateData.experience);
   
   // Generate functional skills with explanatory text
