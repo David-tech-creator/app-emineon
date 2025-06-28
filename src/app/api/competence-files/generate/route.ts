@@ -383,7 +383,8 @@ function generateExperienceHTML(experience: ExperienceItem[]): string {
 }
 
 export function generateSectionsHTML(sections: any[], candidateData: CandidateData, generateFunctionalSkills: Function, experienceHTML: string, jobDescription?: JobDescription, template?: string): string {
-  return sections
+  // Generate the sections content
+  const sectionsContent = sections
     .sort((a, b) => a.order - b.order)
     .map(section => {
       if (section.type === 'header') return ''; // Header is handled separately
@@ -432,6 +433,10 @@ export function generateSectionsHTML(sections: any[], candidateData: CandidateDa
         </div>
       `;
     }).join('');
+  
+  // For Antaes template, we need to return just the sections content
+  // The full HTML wrapper will be handled by the calling function
+  return sectionsContent;
 }
 
 export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, sections?: any[], jobDescription?: JobDescription): string {
@@ -637,7 +642,461 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
   
   // Use sections if provided, otherwise generate default sections
   if (sections && sections.length > 0) {
-    return generateSectionsHTML(sections, candidateData, generateFunctionalSkills, experienceHTML, jobDescription, 'antaes');
+    const sectionsContent = generateSectionsHTML(sections, candidateData, generateFunctionalSkills, experienceHTML, jobDescription, 'antaes');
+    
+    // Wrap sections content in full Antaes HTML template
+    return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${candidateData.fullName} - Competence File</title>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          line-height: 1.6;
+          color: #232629;
+          background: #ffffff;
+          font-size: 14px;
+        }
+        
+        .container {
+          max-width: 210mm;
+          margin: 0 auto;
+          background: white;
+          min-height: 297mm;
+          padding: 30px;
+          position: relative;
+          padding-bottom: 80px;
+        }
+        
+        /* Header Styling - Clean layout with logo on right */
+        .header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 40px;
+          padding-bottom: 25px;
+          border-bottom: 2px solid #2C4F7C;
+        }
+        
+        .header-left {
+          flex: 1;
+        }
+        
+        .header h1 {
+          font-size: 32px;
+          font-weight: 700;
+          color: #2C4F7C;
+          margin-bottom: 8px;
+          letter-spacing: -0.5px;
+        }
+        
+        .header-role {
+          font-size: 18px;
+          font-weight: 600;
+          color: #FFB800;
+          margin-bottom: 5px;
+        }
+        
+        .header-experience {
+          font-size: 16px;
+          font-weight: 500;
+          color: #444B54;
+          margin-bottom: 15px;
+        }
+        
+        .contact-info {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 20px;
+          font-size: 14px;
+        }
+        
+        .contact-item {
+          color: #444B54;
+        }
+        
+        .contact-label {
+          font-weight: 700;
+          color: #232629;
+        }
+        
+        .header-logo {
+          flex-shrink: 0;
+          margin-left: 30px;
+        }
+        
+        .logo-image {
+          height: 80px;
+          width: auto;
+        }
+        
+        /* Content Area */
+        .content {
+          margin-bottom: 60px;
+        }
+        
+        /* Section Styling */
+        .section {
+          margin-bottom: 35px;
+          page-break-inside: avoid;
+        }
+        
+        .section-title {
+          font-size: 16px;
+          font-weight: 700;
+          color: #2C4F7C;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          margin-bottom: 15px;
+          padding-bottom: 8px;
+          border-bottom: 2px solid #2C4F7C;
+        }
+        
+        .section-content {
+          font-size: 14px;
+          line-height: 1.7;
+        }
+        
+        /* Content Formatting */
+        .section-content p {
+          margin-bottom: 12px;
+          line-height: 1.7;
+        }
+        
+        .section-content ul {
+          margin: 12px 0;
+          padding-left: 0;
+          list-style: none;
+        }
+        
+        .section-content li {
+          position: relative;
+          padding-left: 20px;
+          margin-bottom: 8px;
+          line-height: 1.6;
+        }
+        
+        .section-content li:before {
+          content: "•";
+          color: #FFB800;
+          font-weight: bold;
+          position: absolute;
+          left: 0;
+          top: 0;
+        }
+        
+        .section-content strong {
+          font-weight: 700;
+          color: #2C4F7C;
+        }
+        
+        .section-content em {
+          font-style: italic;
+          color: #444B54;
+        }
+        
+        /* Professional Summary */
+        .summary-text {
+          font-weight: 400;
+          line-height: 1.8;
+          color: #444B54;
+        }
+        
+        /* Functional Skills */
+        .functional-skill-category {
+          margin-bottom: 20px;
+          padding: 15px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          border-left: 4px solid #2C4F7C;
+        }
+        
+        .skill-category-title {
+          font-size: 15px;
+          font-weight: 700;
+          color: #2C4F7C;
+          margin-bottom: 10px;
+        }
+        
+        .skill-list {
+          list-style: none;
+          padding-left: 0;
+          margin: 8px 0;
+        }
+        
+        .skill-list li {
+          display: inline-block;
+          background: #fff;
+          padding: 4px 10px;
+          margin: 2px 4px 2px 0;
+          border: 1px solid #2C4F7C;
+          border-radius: 4px;
+          font-size: 13px;
+          font-weight: 500;
+          color: #2C4F7C;
+        }
+        
+        .skill-description {
+          font-size: 13px;
+          color: #444B54;
+          line-height: 1.6;
+          margin-top: 10px;
+          font-style: italic;
+        }
+        
+        /* Technical Skills */
+        .technical-skill-category {
+          margin-bottom: 20px;
+          padding: 15px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          border-left: 4px solid #FFB800;
+        }
+        
+        /* Areas of Expertise */
+        .expertise-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+          margin: 15px 0;
+        }
+        
+        .expertise-item {
+          background: #f8f9fa;
+          padding: 12px 15px;
+          border-radius: 6px;
+          border-left: 3px solid #2C4F7C;
+          font-weight: 500;
+          font-size: 14px;
+          color: #232629;
+        }
+        
+        /* Experience Blocks */
+        .experience-block {
+          margin-bottom: 30px;
+          padding: 20px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          border-left: 4px solid #2C4F7C;
+        }
+        
+        .experience-header {
+          margin-bottom: 15px;
+        }
+        
+        .experience-title {
+          font-size: 16px;
+          font-weight: 700;
+          color: #2C4F7C;
+          margin-bottom: 5px;
+        }
+        
+        .experience-company {
+          font-size: 15px;
+          font-weight: 600;
+          color: #FFB800;
+          margin-bottom: 3px;
+        }
+        
+        .experience-period {
+          font-size: 13px;
+          color: #444B54;
+          font-weight: 500;
+        }
+        
+        .experience-content {
+          line-height: 1.7;
+        }
+        
+        .experience-section {
+          margin-bottom: 15px;
+        }
+        
+        .experience-section h4 {
+          font-size: 14px;
+          font-weight: 700;
+          color: #2C4F7C;
+          margin-bottom: 8px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        
+        /* Education and Certifications */
+        .education-item, .cert-item {
+          margin-bottom: 12px;
+          padding: 12px 15px;
+          background: #f8f9fa;
+          border-radius: 6px;
+          border-left: 3px solid #FFB800;
+        }
+        
+        .education-item strong, .cert-item strong {
+          color: #2C4F7C;
+          font-weight: 700;
+        }
+        
+        /* Languages */
+        .languages-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+          margin: 15px 0;
+        }
+        
+        .language-item {
+          background: #f8f9fa;
+          padding: 12px 15px;
+          border-radius: 6px;
+          border-left: 3px solid #2C4F7C;
+          font-weight: 500;
+          color: #232629;
+        }
+        
+        /* Footer */
+        .footer {
+          position: fixed;
+          bottom: 20px;
+          left: 30px;
+          right: 30px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 15px 0;
+          border-top: 1px solid #e0e0e0;
+          font-size: 12px;
+          color: #444B54;
+        }
+        
+        .footer-left {
+          display: flex;
+          align-items: center;
+        }
+        
+        .footer-logo {
+          height: 25px;
+          width: auto;
+          margin-right: 10px;
+        }
+        
+        .footer-text {
+          font-weight: 500;
+        }
+        
+        .page-number {
+          font-weight: 600;
+          color: #2C4F7C;
+        }
+        
+        /* Print Optimization */
+        @media print {
+          .container {
+            padding: 20px;
+            margin: 0;
+            max-width: none;
+            width: 100%;
+            min-height: auto;
+          }
+          
+          .footer {
+            position: fixed;
+            bottom: 0;
+          }
+          
+          .section {
+            page-break-inside: avoid;
+          }
+          
+          .experience-block {
+            page-break-inside: avoid;
+          }
+        }
+        
+        @page {
+          margin: 20mm;
+          counter-increment: page;
+        }
+        
+        @page :first {
+          counter-reset: page 1;
+        }
+        
+        .page-number:after {
+          content: counter(page);
+        }
+        
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+          .container {
+            padding: 20px;
+          }
+          
+          .header {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          
+          .header-logo {
+            margin-left: 0;
+            margin-top: 20px;
+          }
+          
+          .contact-info {
+            flex-direction: column;
+            gap: 10px;
+          }
+          
+          .expertise-grid, .languages-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <!-- Header Section -->
+        <div class="header">
+          <div class="header-left">
+            <h1>${candidateData.fullName}</h1>
+            <div class="header-role">${candidateData.currentTitle}</div>
+            <div class="header-experience">${candidateData.yearsOfExperience}+ years of professional experience</div>
+            <div class="contact-info">
+              ${candidateData.email ? `<div class="contact-item"><span class="contact-label">Email:</span> ${candidateData.email}</div>` : ''}
+              ${candidateData.phone ? `<div class="contact-item"><span class="contact-label">Phone:</span> ${candidateData.phone}</div>` : ''}
+              ${candidateData.location ? `<div class="contact-item"><span class="contact-label">Location:</span> ${candidateData.location}</div>` : ''}
+            </div>
+          </div>
+          <div class="header-logo">
+            <img src="https://res.cloudinary.com/dtkn5djt5/image/upload/v1749926503/Antaes_logo.png" alt="Antaes Logo" class="logo-image" />
+          </div>
+        </div>
+        
+        <!-- Content Area -->
+        <div class="content">
+          ${sectionsContent}
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+          <div class="footer-left">
+            <img src="https://res.cloudinary.com/dtkn5djt5/image/upload/v1749926503/Antaes_logo.png" alt="Antaes Logo" class="footer-logo" />
+            <span class="footer-text">Partnership for Excellence</span>
+          </div>
+          <div class="page-number">Page </div>
+        </div>
+      </div>
+    </body>
+    </html>
+    `;
   }
   
   return `

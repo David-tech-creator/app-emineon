@@ -1699,7 +1699,7 @@ export function CreateCompetenceFileModal({
   
   // Save functionality (saves draft to database)
   const handleSave = useCallback(async () => {
-    if (!selectedCandidate) return;
+    if (!selectedCandidate || isAutoSaving) return;
     
     setIsAutoSaving(true);
     try {
@@ -1791,13 +1791,17 @@ export function CreateCompetenceFileModal({
     }
   }, [selectedCandidate, selectedTemplate, documentSections, getToken, onSuccess, onClose]);
   
-  // Auto-save effect
+  // Auto-save effect with debounce
   useEffect(() => {
-    if (currentStep === 4 && selectedCandidate) {
-      const interval = setInterval(handleSave, 30000); // Auto-save every 30 seconds
+    if (currentStep === 4 && selectedCandidate && !isAutoSaving) {
+      const interval = setInterval(() => {
+        if (!isAutoSaving) {
+          handleSave();
+        }
+      }, 30000); // Auto-save every 30 seconds
       return () => clearInterval(interval);
     }
-  }, [currentStep, selectedCandidate, handleSave]);
+  }, [currentStep, selectedCandidate, handleSave, isAutoSaving]);
   
   if (!isOpen) return null;
   
@@ -2513,13 +2517,14 @@ export function CreateCompetenceFileModal({
                       size="sm"
                       onClick={handleSave}
                       disabled={isAutoSaving}
+                      className={isAutoSaving ? "opacity-50" : ""}
                     >
                       {isAutoSaving ? (
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
                       ) : (
                         <Save className="h-4 w-4 mr-2" />
                       )}
-                      Save
+                      {isAutoSaving ? 'Saving...' : 'Save Draft'}
                     </Button>
                     <Button
                       size="sm"
