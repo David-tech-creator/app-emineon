@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { useAuth } from '@clerk/nextjs';
+import { useUser, useAuth } from '@clerk/nextjs';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { PipelineKanban } from '@/components/jobs/PipelineKanban';
 import { CandidateDrawer } from '@/components/jobs/CandidateDrawer';
-import { CreateCandidateModal } from '@/components/candidates/CreateCandidateModal';
 import { AddCandidateDropdown } from '@/components/jobs/AddCandidateDropdown';
 import { AddExistingCandidateModal } from '@/components/jobs/AddExistingCandidateModal';
+import { CreateCandidateModal } from '@/components/candidates/CreateCandidateModal';
 import {
   ArrowLeft,
   Edit,
@@ -20,67 +21,256 @@ import {
   Calendar,
   MapPin,
   Building2,
-  Clock,
-  Target,
   Star,
-  CheckCircle2,
-  AlertCircle,
-  Briefcase,
-  Settings,
   Eye,
-  UserPlus
+  UserPlus,
+  Settings,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 
+interface Job {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  contractType: string;
+  workMode: string;
+  status: string;
+  priority: string;
+  candidates: number;
+  applications: number;
+  daysToFill: number;
+  slaProgress: number;
+  skills: string[];
+  salary: string;
+  posted: string;
+  owner: string;
+  description: string;
+}
+
+interface Candidate {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  currentLocation: string;
+  stage: string;
+  rating: number;
+  avatar?: string;
+  lastInteraction: string;
+  availability: string;
+  source: string;
+  skills: string[];
+  experience: string;
+  currentRole: string;
+  notes: string;
+  resumeUrl?: string;
+  expectedSalary?: string;
+  noticePeriod?: string;
+  tags: string[];
+  timeline: Array<{
+    date: string;
+    action: string;
+    type: string;
+  }>;
+  // Additional fields for compatibility
+  name?: string;
+  title?: string;
+  location?: string;
+  matchScore?: number;
+  status?: string;
+}
+
 export default function JobDetailPage() {
-  const { getToken } = useAuth();
   const params = useParams();
-  const jobId = params.id as string;
+  const { user, isLoaded: userLoaded } = useUser();
+  const { getToken, isLoaded: authLoaded } = useAuth();
+  
+  const jobId = params?.id as string;
   const [activeTab, setActiveTab] = useState('pipeline');
-  const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
-  const [candidates, setCandidates] = useState<any[]>([]);
-  const [job, setJob] = useState<any>(null);
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [job, setJob] = useState<Job | null>(null);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showCreateCandidateModal, setShowCreateCandidateModal] = useState(false);
-  const [showExistingCandidateModal, setShowExistingCandidateModal] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  // Mock pipeline stages
+  // Candidate management modals
+  const [showAddExistingModal, setShowAddExistingModal] = useState(false);
+  const [showCreateCandidateModal, setShowCreateCandidateModal] = useState(false);
+
+  // Wait for Clerk to be fully loaded before making API calls
+  const isFullyLoaded = userLoaded && authLoaded;
+
+  // Mock pipeline stages - safe fallback data
   const pipelineStages = [
-    { id: 'sourced', name: 'Sourced', color: 'bg-gray-100', count: 8, description: 'Initial candidates identified' },
-    { id: 'screened', name: 'Screened', color: 'bg-blue-100', count: 5, description: 'Phone/video screening completed' },
-    { id: 'interviewing', name: 'Interviewing', color: 'bg-yellow-100', count: 3, description: 'Technical/panel interviews in progress' },
-    { id: 'submitted', name: 'Submitted', color: 'bg-purple-100', count: 2, description: 'Submitted to client for review' },
-    { id: 'offer', name: 'Offer', color: 'bg-orange-100', count: 1, description: 'Offer extended to candidate' },
-    { id: 'hired', name: 'Hired', color: 'bg-green-100', count: 0, description: 'Successfully placed' }
+    { id: 'sourced', name: 'Sourced', color: 'bg-gray-100', count: 0, description: 'Initial candidates identified' },
+    { id: 'screened', name: 'Screened', color: 'bg-blue-100', count: 0, description: 'Phone/video screening completed' },
+    { id: 'interviewing', name: 'Interviewing', color: 'bg-yellow-100', count: 0, description: 'Technical interviews in progress' },
+    { id: 'submitted', name: 'Submitted', color: 'bg-purple-100', count: 0, description: 'Submitted to client' },
+    { id: 'offer', name: 'Offer', color: 'bg-orange-100', count: 0, description: 'Offer extended' },
+    { id: 'hired', name: 'Hired', color: 'bg-green-100', count: 0, description: 'Successfully hired' }
   ];
 
-  // Fetch real candidates from the database
-  const fetchCandidates = async () => {
-    try {
-      const token = await getToken();
-      const response = await fetch(`/api/jobs/${jobId}/candidates`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (response.ok) {
-        const candidateData = await response.json();
-        setCandidates(candidateData);
-      } else {
-        const errorData = await response.json();
-        console.error('Failed to fetch candidates:', errorData);
-        setCandidates([]);
-      }
-    } catch (error) {
-      console.error('Error fetching candidates:', error);
-      setCandidates([]);
+  // Fetch real job data when authentication is ready
+  useEffect(() => {
+    if (!isFullyLoaded || !user || !jobId) {
+      return;
     }
-  };
 
-  // Pipeline handlers
-  const handleCandidateMove = (candidateId: string, newStage: string) => {
-    setCandidates((prev: any[]) => 
+    const fetchJobData = async (retryCount = 0) => {
+      const maxRetries = 3;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        setApiError(null);
+
+        // Get authentication token with retry
+        let token = await getToken();
+        
+        // If no token on first try, wait a bit and retry
+        if (!token && retryCount < maxRetries) {
+          console.log(`🔄 No token available, retrying... (${retryCount + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          token = await getToken();
+        }
+        
+        if (!token) {
+          console.error('❌ No authentication token available after retries');
+          setError('Authentication failed. Please refresh the page.');
+          return;
+        }
+
+        console.log('🔍 Fetching job data for:', jobId);
+
+        // Fetch job details with retry logic
+        const jobResponse = await fetch(`/api/jobs/${jobId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!jobResponse.ok) {
+          const errorData = await jobResponse.json().catch(() => ({}));
+          console.error('❌ Job API error:', errorData);
+          
+          // Retry on 401 errors (token might be stale)
+          if (jobResponse.status === 401 && retryCount < maxRetries) {
+            console.log(`🔄 Auth error, retrying... (${retryCount + 1}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return fetchJobData(retryCount + 1);
+          }
+          
+          if (jobResponse.status === 401) {
+            setError('Authentication failed. Please refresh the page.');
+          } else if (jobResponse.status === 404) {
+            setError('Job not found.');
+          } else {
+            setError(errorData.error || 'Failed to load job data.');
+          }
+          return;
+        }
+
+        const jobData = await jobResponse.json();
+        console.log('✅ Job data fetched:', jobData);
+
+        // Transform API data to match UI expectations
+        const transformedJob: Job = {
+          id: jobData.id || jobId,
+          title: jobData.title || 'Unknown Job',
+          company: jobData.company || 'Company Name',
+          location: jobData.location || 'Location Not Specified',
+          contractType: jobData.employmentType?.[0] || 'Permanent',
+          workMode: jobData.isRemote ? 'Remote' : 'Hybrid',
+          status: jobData.status === 'ACTIVE' ? 'Active' : (jobData.status || 'Draft'),
+          priority: 'Medium', // Default priority
+          candidates: jobData._count?.applications || 0,
+          applications: jobData._count?.applications || 0,
+          daysToFill: jobData.createdAt 
+            ? Math.floor((new Date().getTime() - new Date(jobData.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+            : 0,
+          slaProgress: 50, // Default progress
+          skills: jobData.requirements?.filter((req: string) => req?.startsWith?.('Skill:')).map((req: string) => req.replace('Skill: ', '')) || [],
+          salary: jobData.salaryMin && jobData.salaryMax 
+            ? `${jobData.salaryCurrency || 'CHF'} ${(jobData.salaryMin / 1000).toFixed(0)}k - ${(jobData.salaryMax / 1000).toFixed(0)}k`
+            : jobData.salaryMin 
+              ? `${jobData.salaryCurrency || 'CHF'} ${(jobData.salaryMin / 1000).toFixed(0)}k+`
+              : 'Salary not specified',
+          posted: jobData.createdAt ? new Date(jobData.createdAt).toLocaleDateString() : 'Unknown',
+          owner: 'David V', // Default owner
+          description: jobData.description || 'No description available.'
+        };
+
+        setJob(transformedJob);
+
+                 // Transform candidates from applications
+         const transformedCandidates: Candidate[] = (jobData.applications || []).map((app: any) => {
+           const candidate = app.candidate || {};
+           return {
+             id: candidate.id || `candidate-${Math.random()}`,
+             firstName: candidate.firstName || 'Unknown',
+             lastName: candidate.lastName || 'Candidate',
+             email: candidate.email || 'email@example.com',
+             phone: candidate.phone || 'Phone not provided',
+             currentLocation: candidate.currentLocation || 'Location not specified',
+             stage: app.stage || 'sourced',
+             rating: 4.0, // Default rating
+             avatar: `https://images.unsplash.com/photo-${Math.random() > 0.5 ? '1494790108755-2616b612b47c' : '1507003211169-0a1dd7228f2d'}?w=150&h=150&fit=crop&crop=face`,
+             lastInteraction: app.createdAt ? new Date(app.createdAt).toLocaleDateString() : 'Recently',
+             availability: 'Available',
+             source: 'Application',
+             skills: candidate.technicalSkills || [],
+             experience: candidate.experienceYears ? `${candidate.experienceYears} years` : '0 years',
+             currentRole: candidate.currentTitle || 'Professional',
+             notes: `Applied for ${transformedJob.title}`,
+             tags: candidate.technicalSkills?.slice(0, 3) || [],
+             timeline: [
+               { 
+                 date: app.createdAt ? new Date(app.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0], 
+                 action: 'Applied to position', 
+                 type: 'application' 
+               }
+             ],
+             // Additional fields for compatibility
+             name: `${candidate.firstName || 'Unknown'} ${candidate.lastName || 'Candidate'}`,
+             title: candidate.currentTitle || 'Professional',
+             location: candidate.currentLocation || 'Location not specified',
+             matchScore: 85, // Default match score
+             status: candidate.status || 'ACTIVE'
+           };
+         });
+
+        setCandidates(transformedCandidates);
+
+      } catch (fetchError) {
+        console.error('💥 Error fetching job data:', fetchError);
+        
+        // Retry on network errors
+        if (retryCount < maxRetries) {
+          console.log(`🔄 Network error, retrying... (${retryCount + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return fetchJobData(retryCount + 1);
+        }
+        
+        setError('Failed to load job data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchJobData();
+  }, [isFullyLoaded, user, jobId, getToken]);
+
+  // Pipeline handlers with safe checks
+  const handleCandidateMove = async (candidateId: string, newStage: string) => {
+    if (!candidateId || !newStage) return;
+    
+    // Optimistically update the UI
+    setCandidates((prev: Candidate[]) => 
       prev.map(candidate => 
         candidate.id === candidateId 
           ? { 
@@ -89,7 +279,7 @@ export default function JobDetailPage() {
               timeline: [
                 { 
                   date: new Date().toISOString().split('T')[0], 
-                  action: `Moved to ${pipelineStages.find(s => s.id === newStage)?.name}`, 
+                  action: `Moved to ${pipelineStages.find(s => s.id === newStage)?.name || newStage}`, 
                   type: 'stage_change' 
                 },
                 ...candidate.timeline
@@ -98,119 +288,69 @@ export default function JobDetailPage() {
           : candidate
       )
     );
+
+    // TODO: Update backend when candidate stage API is available
+    // try {
+    //   const token = await getToken();
+    //   await fetch(`/api/candidates/${candidateId}/stage`, {
+    //     method: 'PUT',
+    //     headers: {
+    //       'Authorization': `Bearer ${token}`,
+    //       'Content-Type': 'application/json',
+    //     },
+    //     body: JSON.stringify({ stage: newStage })
+    //   });
+    // } catch (error) {
+    //   console.error('Failed to update candidate stage:', error);
+    //   // Revert optimistic update on error
+    // }
   };
 
-  const handleCandidateSelect = (candidate: any) => {
-    setSelectedCandidate(candidate);
+  const handleCandidateSelect = (candidate: Candidate) => {
+    if (candidate) {
+      setSelectedCandidate(candidate);
+    }
   };
 
-  const handleAddExistingCandidate = () => {
-    setShowExistingCandidateModal(true);
-  };
-
-  const handleCreateNewCandidate = () => {
-    setShowCreateCandidateModal(true);
-  };
-
-  const handleCandidateAdded = (candidate: any) => {
-    // Refresh the candidates list
-    fetchCandidates();
-  };
-
-  // Fetch job data from API
-  useEffect(() => {
-    const fetchJob = async () => {
-      try {
-        setLoading(true);
-        const token = await getToken();
-        const response = await fetch(`/api/jobs/${jobId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        if (response.ok) {
-          const jobData = await response.json();
-          setJob({
-            id: jobData.id,
-            title: jobData.title,
-            company: 'Emineon ATS', // Default company
-            location: jobData.location,
-            contractType: jobData.employmentType?.[0] || 'Permanent',
-            workMode: jobData.isRemote ? 'Remote' : 'Hybrid',
-            status: jobData.status === 'ACTIVE' ? 'Active' : jobData.status === 'DRAFT' ? 'Draft' : jobData.status,
-            priority: 'High', // Default priority
-            candidates: jobData._count?.applications || 0,
-            applications: jobData._count?.applications || 0,
-            daysToFill: Math.floor((new Date().getTime() - new Date(jobData.createdAt).getTime()) / (1000 * 60 * 60 * 24)),
-            slaProgress: 75, // Default progress
-            skills: jobData.requirements?.filter((req: string) => req.startsWith('Skill:')).map((req: string) => req.replace('Skill: ', '')) || [],
-            salary: jobData.salaryMin && jobData.salaryMax 
-              ? `${jobData.salaryCurrency} ${(jobData.salaryMin / 1000).toFixed(0)}k - ${(jobData.salaryMax / 1000).toFixed(0)}k`
-              : jobData.salaryMin 
-                ? `${jobData.salaryCurrency} ${(jobData.salaryMin / 1000).toFixed(0)}k+`
-                : 'Salary not specified',
-            posted: new Date(jobData.createdAt).toLocaleDateString(),
-            owner: 'David V', // Default owner
-            description: jobData.description || 'No description available',
-          });
-        } else {
-          setError('Failed to fetch job details');
-        }
-      } catch (err) {
-        setError('Error fetching job details');
-        console.error('Error fetching job:', err);
-      } finally {
-        setLoading(false);
-      }
+  // Handle candidate addition callbacks
+  const handleCandidateAdded = (newCandidate: any) => {
+    // Refresh candidates list or add to local state
+    console.log('Candidate added to job:', newCandidate);
+    
+    // Convert to local candidate format and add to state
+    const candidateForState: Candidate = {
+      id: newCandidate.id,
+      firstName: newCandidate.firstName || '',
+      lastName: newCandidate.lastName || '',
+      email: newCandidate.email || '',
+      phone: newCandidate.phone || '',
+      currentLocation: newCandidate.currentLocation || '',
+      stage: 'sourced', // Default stage for newly added candidates
+      rating: 0,
+      lastInteraction: new Date().toISOString(),
+      availability: 'Available',
+      source: 'Manual',
+      skills: newCandidate.technicalSkills || [],
+      experience: `${newCandidate.experienceYears || 0} years`,
+      currentRole: newCandidate.currentTitle || '',
+      notes: '',
+      tags: [],
+      timeline: [{
+        date: new Date().toISOString(),
+        action: 'Added to job',
+        type: 'system'
+      }]
     };
 
-    if (jobId) {
-      fetchJob();
-      fetchCandidates();
-    }
-  }, [jobId]);
+    setCandidates(prev => [...prev, candidateForState]);
+    
+    // Update job candidate count
+    setJob(prev => prev ? { ...prev, candidates: prev.candidates + 1, applications: prev.applications + 1 } : null);
+  };
 
-  // Default job data for loading state
-  const defaultJob = {
-    id: jobId,
-    title: 'Senior Software Engineer',
-    company: 'Credit Suisse',
-    location: 'Zurich, Switzerland',
-    contractType: 'Permanent',
-    workMode: 'Hybrid',
-    status: 'Active',
-    priority: 'High',
-    candidates: 24,
-    applications: 156,
-    daysToFill: 12,
-    slaProgress: 75,
-    skills: ['React', 'TypeScript', 'Node.js', 'AWS', 'Docker', 'GraphQL'],
-    salary: 'CHF 120,000 - 150,000',
-    posted: '2 days ago',
-    owner: 'Sarah Chen',
-    description: `We are looking for a Senior Software Engineer to join our dynamic team at Credit Suisse. You will be responsible for developing and maintaining high-quality software solutions that support our financial services.
-
-Key Responsibilities:
-• Design and develop scalable web applications using React and TypeScript
-• Collaborate with cross-functional teams to deliver high-quality software
-• Participate in code reviews and maintain coding standards
-• Optimize applications for maximum speed and scalability
-• Stay up-to-date with emerging technologies and industry trends
-
-Requirements:
-• 5+ years of experience in software development
-• Strong proficiency in React, TypeScript, and Node.js
-• Experience with cloud platforms (AWS preferred)
-• Knowledge of containerization technologies (Docker, Kubernetes)
-• Excellent problem-solving and communication skills
-• Bachelor's degree in Computer Science or related field`,
-    pipeline: {
-      applied: 156,
-      screening: 24,
-      interview: 8,
-      offer: 2
-    }
+  const handleCandidateCreated = (newCandidate: any) => {
+    console.log('New candidate created:', newCandidate);
+    handleCandidateAdded(newCandidate);
   };
 
   const tabs = [
@@ -221,6 +361,8 @@ Requirements:
   ];
 
   const getStatusColor = (status: string) => {
+    if (!status) return 'bg-gray-100 text-gray-800';
+    
     switch (status.toLowerCase()) {
       case 'active': return 'bg-green-100 text-green-800';
       case 'draft': return 'bg-yellow-100 text-yellow-800';
@@ -231,6 +373,8 @@ Requirements:
   };
 
   const getPriorityColor = (priority: string) => {
+    if (!priority) return 'text-gray-600';
+    
     switch (priority.toLowerCase()) {
       case 'high': return 'text-red-600';
       case 'medium': return 'text-yellow-600';
@@ -240,22 +384,120 @@ Requirements:
   };
 
   const renderTabContent = () => {
+    if (!job) return null;
+
     switch (activeTab) {
       case 'pipeline':
         return (
-          <PipelineKanban 
-            candidates={candidates}
-            stages={pipelineStages}
-            onCandidateMove={handleCandidateMove}
-            onCandidateSelect={handleCandidateSelect}
-            onAddCandidate={handleCreateNewCandidate}
-            AddCandidateComponent={() => (
+          <div className="space-y-6">
+            {/* Add Candidate Section */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Candidate Pipeline</h3>
+                <p className="text-sm text-gray-600">Manage candidates through your hiring process</p>
+              </div>
               <AddCandidateDropdown
-                onAddExisting={handleAddExistingCandidate}
-                onCreateNew={handleCreateNewCandidate}
+                onAddExisting={() => setShowAddExistingModal(true)}
+                onCreateNew={() => setShowCreateCandidateModal(true)}
+                className="ml-4"
               />
-            )}
-          />
+            </div>
+
+            <PipelineKanban 
+              candidates={candidates}
+              stages={pipelineStages}
+              onCandidateMove={handleCandidateMove}
+              onCandidateSelect={handleCandidateSelect}
+              onAddCandidate={() => setShowAddExistingModal(true)}
+              AddCandidateComponent={() => (
+                <AddCandidateDropdown
+                  onAddExisting={() => setShowAddExistingModal(true)}
+                  onCreateNew={() => setShowCreateCandidateModal(true)}
+                />
+              )}
+            />
+          </div>
+        );
+      
+      case 'candidates':
+        return (
+          <div className="space-y-6">
+            {/* Candidates List Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">All Candidates</h3>
+                <p className="text-sm text-gray-600">{candidates.length} candidates in this job</p>
+              </div>
+              <AddCandidateDropdown
+                onAddExisting={() => setShowAddExistingModal(true)}
+                onCreateNew={() => setShowCreateCandidateModal(true)}
+              />
+            </div>
+
+            {/* Candidates Table/List */}
+            <Card>
+              <CardContent className="p-0">
+                {candidates.length === 0 ? (
+                  <div className="text-center py-12">
+                    <UserPlus className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No candidates yet</h3>
+                    <p className="text-gray-500 mb-4">Start building your candidate pipeline</p>
+                    <AddCandidateDropdown
+                      onAddExisting={() => setShowAddExistingModal(true)}
+                      onCreateNew={() => setShowCreateCandidateModal(true)}
+                    />
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-200">
+                    {candidates.map((candidate) => (
+                      <div
+                        key={candidate.id}
+                        className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                        onClick={() => setSelectedCandidate(candidate)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                              <span className="text-gray-600 font-medium">
+                                {candidate.firstName?.[0] || '?'}{candidate.lastName?.[0] || '?'}
+                              </span>
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-gray-900">
+                                {candidate.firstName} {candidate.lastName}
+                              </h4>
+                              <p className="text-sm text-gray-600">{candidate.currentRole}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-4">
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              candidate.stage === 'hired' ? 'bg-green-100 text-green-800' :
+                              candidate.stage === 'offer' ? 'bg-orange-100 text-orange-800' :
+                              candidate.stage === 'interviewing' ? 'bg-yellow-100 text-yellow-800' :
+                              candidate.stage === 'screened' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {candidate.stage.charAt(0).toUpperCase() + candidate.stage.slice(1)}
+                            </span>
+                            <div className="flex items-center">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`h-4 w-4 ${
+                                    i < candidate.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         );
       
       case 'overview':
@@ -275,18 +517,14 @@ Requirements:
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold mb-4">Job Description</h3>
-                  <div className="prose prose-sm text-gray-600 mb-6">
-                    <p>{displayJob.description}</p>
-                  </div>
                   <h3 className="text-lg font-semibold mb-4">Requirements</h3>
                   <div className="space-y-3">
                     <div className="flex flex-wrap gap-2">
-                      {displayJob?.skills?.map((skill: string, index: number) => (
+                      {job.skills?.map((skill: string, index: number) => (
                         <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
                           {skill}
                         </span>
-                      ))}
+                      )) || <span className="text-gray-500">No skills specified</span>}
                     </div>
                   </div>
                 </CardContent>
@@ -298,19 +536,19 @@ Requirements:
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600">Salary Range</span>
-                      <span className="font-medium">{displayJob.salary}</span>
+                      <span className="font-medium">{job.salary}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600">Contract Type</span>
-                      <span className="font-medium">{displayJob.contractType}</span>
+                      <span className="font-medium">{job.contractType}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600">Work Mode</span>
-                      <span className="font-medium">{displayJob.workMode}</span>
+                      <span className="font-medium">{job.workMode}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600">Posted</span>
-                      <span className="font-medium">{displayJob.posted}</span>
+                      <span className="font-medium">{job.posted}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -319,42 +557,24 @@ Requirements:
           </div>
         );
       
-      case 'candidates':
-        return (
-          <div className="text-center py-12">
-            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Candidate Management</h3>
-            <p className="text-gray-500 mb-6">
-              Detailed candidate list and management coming soon
-            </p>
-          </div>
-        );
-      
-      case 'settings':
-        return (
-          <div className="text-center py-12">
-            <Settings className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Job Settings</h3>
-            <p className="text-gray-500 mb-6">
-              Job configuration and settings coming soon
-            </p>
-          </div>
-        );
-      
       default:
-        return null;
+        return (
+          <div className="text-center py-12">
+            <div className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Coming Soon</h3>
+            <p className="text-gray-500">This feature is under development</p>
+          </div>
+        );
     }
   };
 
-  // Use job state or default job for display
-  const displayJob = job || defaultJob;
-
-  if (loading) {
+  // Loading state
+  if (!isFullyLoaded || loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center py-12">
+        <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
             <p className="text-gray-600">Loading job details...</p>
           </div>
         </div>
@@ -362,22 +582,67 @@ Requirements:
     );
   }
 
+  // Error state
   if (error) {
     return (
-      <Layout>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center space-x-2">
-            <AlertCircle className="h-5 w-5 text-red-600" />
-            <span className="text-red-800 font-medium">{error}</span>
-          </div>
+      <ErrorBoundary>
+        <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <Card className="max-w-md mx-auto">
+            <CardContent className="text-center py-8">
+              <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+              <h1 className="text-xl font-bold mb-2">Error Loading Job</h1>
+              <p className="text-gray-600 mb-6">{error}</p>
+              <div className="flex gap-3 justify-center">
+                <Button 
+                  onClick={() => {
+                    setError(null);
+                    setLoading(true);
+                    // Trigger refetch by updating a dependency
+                    window.location.reload();
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Try Again
+                </Button>
+                <Button onClick={() => window.history.back()} variant="outline">
+                  Go Back
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </Layout>
+      </ErrorBoundary>
+    );
+  }
+
+  // Safe guard - if no job data, show error
+  if (!job) {
+    return (
+      <ErrorBoundary>
+        <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <Card className="max-w-md mx-auto">
+            <CardContent className="text-center py-8">
+              <AlertCircle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
+              <h1 className="text-xl font-bold mb-2">Job Not Found</h1>
+              <p className="text-gray-600 mb-4">The requested job could not be found.</p>
+              <Button onClick={() => window.history.back()} variant="outline">
+                Go Back
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+      </ErrorBoundary>
     );
   }
 
   return (
-    <Layout>
-      {/* Header */}
+    <ErrorBoundary>
+      <Layout>
+        {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
@@ -406,24 +671,24 @@ Requirements:
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
               <div className="flex items-center space-x-3 mb-2">
-                <h1 className="text-2xl font-bold text-gray-900">{displayJob.title}</h1>
-                <Star className={`h-5 w-5 ${getPriorityColor(displayJob.priority)}`} />
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(displayJob.status)}`}>
-                  {displayJob.status}
+                <h1 className="text-2xl font-bold text-gray-900">{job!.title}</h1>
+                <Star className={`h-5 w-5 ${getPriorityColor(job!.priority)}`} />
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(job!.status)}`}>
+                  {job!.status}
                 </span>
               </div>
               <div className="flex items-center space-x-6 text-gray-600 mb-4">
                 <div className="flex items-center">
                   <Building2 className="h-4 w-4 mr-2" />
-                  <span>{displayJob.company}</span>
+                  <span>{job!.company}</span>
                 </div>
                 <div className="flex items-center">
                   <MapPin className="h-4 w-4 mr-2" />
-                  <span>{displayJob.location}</span>
+                  <span>{job!.location}</span>
                 </div>
                 <div className="flex items-center">
                   <Calendar className="h-4 w-4 mr-2" />
-                  <span>Posted {displayJob.posted}</span>
+                  <span>Posted {job!.posted}</span>
                 </div>
               </div>
             </div>
@@ -432,19 +697,19 @@ Requirements:
           {/* Quick Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{displayJob.applications}</div>
+              <div className="text-2xl font-bold text-gray-900">{job!.applications || 0}</div>
               <div className="text-sm text-gray-500">Applications</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{displayJob.candidates}</div>
+              <div className="text-2xl font-bold text-gray-900">{job!.candidates || 0}</div>
               <div className="text-sm text-gray-500">In Pipeline</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{displayJob.daysToFill}</div>
+              <div className="text-2xl font-bold text-gray-900">{job!.daysToFill || 0}</div>
               <div className="text-sm text-gray-500">Days Active</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{displayJob.slaProgress}%</div>
+              <div className="text-2xl font-bold text-gray-900">{job!.slaProgress || 0}%</div>
               <div className="text-sm text-gray-500">SLA Progress</div>
             </div>
           </div>
@@ -489,54 +754,47 @@ Requirements:
         onStageChange={(candidateId: string, newStage: string) => {
           handleCandidateMove(candidateId, newStage);
           if (selectedCandidate?.id === candidateId) {
-            setSelectedCandidate((prev: any) => ({ ...prev, stage: newStage }));
+            setSelectedCandidate((prev: Candidate | null) => 
+              prev ? { ...prev, stage: newStage } : null
+            );
           }
         }}
         onRatingChange={(candidateId: string, newRating: number) => {
-          setCandidates((prev: any[]) => 
+          setCandidates((prev: Candidate[]) => 
             prev.map(candidate => 
               candidate.id === candidateId 
                 ? { ...candidate, rating: newRating }
                 : candidate
             )
           );
-          if (selectedCandidate?.id === candidateId) {
-            setSelectedCandidate((prev: any) => ({ ...prev, rating: newRating }));
-          }
         }}
-        onNotesUpdate={(candidateId: string, notes: string) => {
-          setCandidates((prev: any[]) => 
+        onNotesUpdate={(candidateId: string, newNotes: string) => {
+          setCandidates((prev: Candidate[]) => 
             prev.map(candidate => 
               candidate.id === candidateId 
-                ? { ...candidate, notes }
+                ? { ...candidate, notes: newNotes }
                 : candidate
             )
           );
-          if (selectedCandidate?.id === candidateId) {
-            setSelectedCandidate((prev: any) => ({ ...prev, notes }));
-          }
-        }}
-      />
-
-      {/* Create Candidate Modal */}
-      <CreateCandidateModal
-        open={showCreateCandidateModal}
-        onClose={() => setShowCreateCandidateModal(false)}
-        jobId={jobId}
-        onCandidateCreated={(candidate) => {
-          // Refresh candidates list
-          fetchCandidates();
-          setShowCreateCandidateModal(false);
         }}
       />
 
       {/* Add Existing Candidate Modal */}
       <AddExistingCandidateModal
-        open={showExistingCandidateModal}
-        onClose={() => setShowExistingCandidateModal(false)}
+        open={showAddExistingModal}
+        onClose={() => setShowAddExistingModal(false)}
         jobId={jobId}
         onCandidateAdded={handleCandidateAdded}
       />
+
+      {/* Create New Candidate Modal */}
+      <CreateCandidateModal
+        open={showCreateCandidateModal}
+        onClose={() => setShowCreateCandidateModal(false)}
+        jobId={jobId}
+        onCandidateCreated={handleCandidateCreated}
+      />
     </Layout>
+    </ErrorBoundary>
   );
 } 

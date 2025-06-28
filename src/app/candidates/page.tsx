@@ -89,217 +89,208 @@ export default function CandidatesPage() {
     fetchToken();
   }, [getToken]);
 
-  // Mock candidates
+  // Mock candidates - SAME AS JOB PIPELINE
   const allCandidates: Candidate[] = [
     {
       id: 1,
-      name: 'Stefan Müller',
-      location: 'Zurich, Switzerland',
-      experience: 'Senior Software Engineer at Google Switzerland (2019 - 2024)',
-      currentRole: 'Senior Software Engineer',
+      name: 'Alexandra Schmidt',
+      location: 'Basel, Switzerland',
+      experience: 'Senior Data Engineer (7 years)',
+      currentRole: 'Senior Data Engineer',
       score: 'Very strong',
       status: 'Active',
-      avatar: 'SM',
-      skills: ['Java', 'Spring Boot', 'React', 'TypeScript', 'AWS', 'Kubernetes'],
-      rating: 4.8,
-      email: 'stefan.mueller@email.ch',
-      phone: '+41 79 123 4567',
-      company: 'Google Switzerland',
-      summary: 'Experienced software engineer with expertise in building scalable systems and leading cross-functional teams. Fluent in German, French, and English.',
-      education: 'Master of Computer Science, ETH Zurich (2019)',
-      languages: ['German (Native)', 'English (Fluent)', 'French (Fluent)'],
-      availability: 'Available in 3 months',
+      avatar: 'AS',
+      skills: ['Python', 'MongoDB', 'TypeScript', 'AWS', 'Docker'],
+      rating: 4.2,
+      email: 'alexandra.schmidt@email.com',
+      phone: '+41 76 123 4567',
+      company: 'DataFlow Innovations AG',
+      summary: 'Strong technical background with MongoDB experience. Based in Basel, open to hybrid work.',
+      education: 'Master of Computer Science, University of Basel (2017)',
+      languages: ['German (Native)', 'English (Fluent)', 'French (Conversational)'],
+      availability: 'Available',
       expectedSalary: 'CHF 120,000 - 140,000',
-      linkedinUrl: 'https://linkedin.com/in/stefanmueller',
-      lastInteraction: '2 days ago',
+      linkedinUrl: 'https://linkedin.com/in/alexandraschmidt',
+      lastInteraction: '2024-01-16',
       source: 'LinkedIn',
       workExperience: [
         {
-          company: 'Google Switzerland',
-          role: 'Senior Software Engineer',
-          duration: '2019 - 2024',
-          description: 'Led development of cloud infrastructure solutions, mentored junior developers, implemented microservices architecture'
+          company: 'Current Data Company',
+          role: 'Senior Data Engineer',
+          duration: '2021 - Present',
+          description: 'Lead data pipeline development using MongoDB and Python, architect cloud solutions with AWS'
         },
         {
-          company: 'Credit Suisse',
-          role: 'Software Developer',
-          duration: '2017 - 2019',
-          description: 'Developed trading platform components, worked with financial data processing systems'
+          company: 'Tech Solutions AG',
+          role: 'Data Engineer',
+          duration: '2019 - 2021',
+          description: 'Developed ETL processes, worked with various databases including MongoDB'
         }
       ],
       timeline: [
-        { date: '2024-01-15', action: 'Applied to Senior Backend Engineer position', type: 'application' },
-        { date: '2024-01-16', action: 'Phone screening completed', type: 'call', details: 'Strong technical background, good culture fit' },
-        { date: '2024-01-18', action: 'Technical interview scheduled', type: 'scheduling' }
+        { date: '2024-01-15', action: 'Added to pipeline', type: 'created' },
+        { date: '2024-01-16', action: 'CV reviewed', type: 'review' }
       ]
     },
     {
       id: 2,
-      name: 'Marie Dubois',
-      location: 'Geneva, Switzerland',
-      experience: 'Product Manager at Nestlé (2020 - 2024)',
-      currentRole: 'Senior Product Manager',
-      score: 'Very strong',
-      status: 'Interview Scheduled',
-      avatar: 'MD',
-      skills: ['Product Strategy', 'Agile', 'Data Analysis', 'UX Research', 'Stakeholder Management'],
-      rating: 4.9,
-      email: 'marie.dubois@email.ch',
-      phone: '+41 22 789 0123',
-      company: 'Nestlé',
-      summary: 'Strategic product manager with experience in FMCG and digital transformation. Strong background in international markets and consumer insights.',
-      education: 'MBA, IMD Business School (2020)',
-      languages: ['French (Native)', 'English (Fluent)', 'German (Conversational)'],
-      availability: 'Available immediately',
-      expectedSalary: 'CHF 130,000 - 150,000',
-      linkedinUrl: 'https://linkedin.com/in/mariedubois',
-      lastInteraction: '1 day ago',
-      source: 'Referral',
+      name: 'Marco Weber',
+      location: 'Bern, Switzerland',
+      experience: 'Data Platform Engineer (5 years)',
+      currentRole: 'Data Platform Engineer',
+      score: 'Strong',
+      status: 'Active',
+      avatar: 'MW',
+      skills: ['MongoDB', 'TypeScript', 'React', 'Node.js', 'Kubernetes'],
+      rating: 3.8,
+      email: 'marco.weber@email.com',
+      phone: '+41 76 234 5678',
+      company: 'Swiss Tech Solutions',
+      summary: 'Good experience with data platforms. Available immediately.',
+      education: 'Bachelor of Engineering, Bern University of Applied Sciences (2019)',
+      languages: ['German (Native)', 'English (Fluent)', 'Italian (Basic)'],
+      availability: 'Available',
+      expectedSalary: 'CHF 100,000 - 120,000',
+      linkedinUrl: 'https://linkedin.com/in/marcoweber',
+      lastInteraction: '2024-01-14',
+      source: 'LinkedIn',
       workExperience: [
         {
-          company: 'Nestlé',
-          role: 'Senior Product Manager',
-          duration: '2020 - 2024',
-          description: 'Led product strategy for digital health products, managed international product launches, coordinated with R&D teams'
+          company: 'Swiss Tech Solutions',
+          role: 'Data Platform Engineer',
+          duration: '2020 - Present',
+          description: 'Build and maintain data platforms using modern technologies including MongoDB and Kubernetes'
         },
         {
-          company: 'Procter & Gamble',
-          role: 'Product Manager',
-          duration: '2018 - 2020',
-          description: 'Managed consumer goods portfolio, conducted market research, developed go-to-market strategies'
+          company: 'StartupCo',
+          role: 'Full Stack Developer',
+          duration: '2019 - 2020',
+          description: 'Developed web applications using TypeScript and React'
         }
       ],
       timeline: [
-        { date: '2024-01-14', action: 'Referred by current employee', type: 'application' },
-        { date: '2024-01-15', action: 'Initial screening call', type: 'call' },
-        { date: '2024-01-17', action: 'Panel interview scheduled for tomorrow', type: 'scheduling', details: 'Meeting with PM team and engineering leads' }
+        { date: '2024-01-14', action: 'Added to pipeline', type: 'created' }
       ]
     },
     {
       id: 3,
-      name: 'Andreas Weber',
-      location: 'Basel, Switzerland',
-      experience: 'Data Scientist at Roche (2018 - 2024)',
-      currentRole: 'Senior Data Scientist',
+      name: 'Elena Rossi',
+      location: 'Geneva, Switzerland',
+      experience: 'Data Engineer (4 years)',
+      currentRole: 'Data Engineer',
       score: 'Strong',
       status: 'Under Review',
-      avatar: 'AW',
-      skills: ['Python', 'Machine Learning', 'R', 'SQL', 'TensorFlow', 'Clinical Data'],
-      rating: 4.6,
-      email: 'andreas.weber@email.ch',
-      phone: '+41 61 456 7890',
-      company: 'Roche',
-      summary: 'Data scientist specializing in pharmaceutical research and clinical trial analysis. Expert in machine learning applications for drug discovery.',
-      education: 'PhD in Biostatistics, University of Basel (2018)',
-      languages: ['German (Native)', 'English (Fluent)', 'Italian (Basic)'],
-      availability: 'Available in 2 months',
-      expectedSalary: 'CHF 110,000 - 130,000',
-      linkedinUrl: 'https://linkedin.com/in/andreasweber',
-      lastInteraction: '3 days ago',
-      source: 'Direct Application',
+      avatar: 'ER',
+      skills: ['Python', 'MongoDB', 'Apache Spark', 'AWS', 'Kafka'],
+      rating: 4.0,
+      email: 'elena.rossi@email.com',
+      phone: '+41 76 345 6789',
+      company: 'Geneva Analytics',
+      summary: 'Excellent MongoDB skills and data pipeline experience.',
+      education: 'Master of Data Science, University of Geneva (2020)',
+      languages: ['Italian (Native)', 'French (Fluent)', 'English (Fluent)', 'German (Basic)'],
+      availability: 'Available',
+      expectedSalary: 'CHF 95,000 - 115,000',
+      linkedinUrl: 'https://linkedin.com/in/elenarossi',
+      lastInteraction: '2024-01-13',
+      source: 'LinkedIn',
       workExperience: [
         {
-          company: 'Roche',
-          role: 'Senior Data Scientist',
-          duration: '2018 - 2024',
-          description: 'Developed ML models for drug discovery, analyzed clinical trial data, collaborated with research teams globally'
+          company: 'Geneva Analytics',
+          role: 'Data Engineer',
+          duration: '2021 - Present',
+          description: 'Design and implement data pipelines using MongoDB, Apache Spark, and Kafka'
         },
         {
-          company: 'Novartis',
-          role: 'Biostatistician',
-          duration: '2016 - 2018',
-          description: 'Statistical analysis of clinical trials, regulatory submission support, method development'
+          company: 'Data Solutions Ltd',
+          role: 'Junior Data Engineer',
+          duration: '2020 - 2021',
+          description: 'Built ETL processes and worked with various data storage solutions'
         }
       ],
       timeline: [
-        { date: '2024-01-12', action: 'Application submitted', type: 'application' },
-        { date: '2024-01-13', action: 'Resume reviewed by hiring manager', type: 'stage_change' },
-        { date: '2024-01-16', action: 'Additional references requested', type: 'email' }
+        { date: '2024-01-13', action: 'Added to pipeline', type: 'created' }
       ]
     },
     {
       id: 4,
-      name: 'Claudia Zimmermann',
-      location: 'Bern, Switzerland',
-      experience: 'UX Designer at SIX Group (2019 - 2024)',
-      currentRole: 'Senior UX Designer',
-      score: 'Strong',
-      status: 'Long List',
-      avatar: 'CZ',
-      skills: ['UI/UX Design', 'Figma', 'User Research', 'Design Systems', 'Prototyping'],
-      rating: 4.7,
-      email: 'claudia.zimmermann@email.ch',
-      phone: '+41 31 234 5678',
-      company: 'SIX Group',
-      summary: 'Creative UX designer with fintech expertise. Passionate about creating intuitive financial applications and improving user experiences.',
-      education: 'Bachelor of Design, Zurich University of the Arts (2019)',
-      languages: ['German (Native)', 'English (Fluent)', 'French (Conversational)'],
-      availability: 'Available in 6 weeks',
-      expectedSalary: 'CHF 95,000 - 115,000',
-      linkedinUrl: 'https://linkedin.com/in/claudiazimmermann',
-      portfolioUrl: 'https://claudiadesigns.ch',
-      lastInteraction: '5 days ago',
-      source: 'Job Board',
+      name: 'Thomas Andersen',
+      location: 'Oslo, Norway',
+      experience: 'Lead Data Engineer (8 years)',
+      currentRole: 'Lead Data Engineer',
+      score: 'Very strong',
+      status: 'Interview Scheduled',
+      avatar: 'TA',
+      skills: ['Python', 'MongoDB', 'Kubernetes', 'Apache Airflow', 'GCP'],
+      rating: 4.5,
+      email: 'thomas.andersen@email.com',
+      phone: '+47 98 765 432',
+      company: 'Nordic Data Systems',
+      summary: 'Experienced lead engineer with extensive MongoDB and cloud experience.',
+      education: 'Master of Computer Science, Norwegian University of Science and Technology (2016)',
+      languages: ['Norwegian (Native)', 'English (Fluent)', 'German (Conversational)'],
+      availability: 'Available in 2 months',
+      expectedSalary: 'CHF 130,000 - 150,000',
+      linkedinUrl: 'https://linkedin.com/in/thomasandersen',
+      lastInteraction: '2024-01-12',
+      source: 'Referral',
       workExperience: [
         {
-          company: 'SIX Group',
-          role: 'Senior UX Designer',
-          duration: '2019 - 2024',
-          description: 'Designed financial trading interfaces, conducted user research, maintained design system for banking applications'
+          company: 'Nordic Data Systems',
+          role: 'Lead Data Engineer',
+          duration: '2019 - Present',
+          description: 'Lead team of data engineers, architect large-scale data solutions using MongoDB and cloud platforms'
         },
         {
-          company: 'PostFinance',
-          role: 'UX Designer',
+          company: 'Telenor',
+          role: 'Senior Data Engineer',
           duration: '2017 - 2019',
-          description: 'Mobile banking app design, customer journey mapping, usability testing coordination'
+          description: 'Developed telecommunications data processing systems'
         }
       ],
       timeline: [
-        { date: '2024-01-10', action: 'Applied via company website', type: 'application' },
-        { date: '2024-01-11', action: 'Portfolio review completed', type: 'stage_change' },
-        { date: '2024-01-14', action: 'Added to talent pool', type: 'stage_change' }
+        { date: '2024-01-12', action: 'Referred by existing employee', type: 'application' },
+        { date: '2024-01-15', action: 'Interview scheduled', type: 'scheduling' }
       ]
     },
     {
       id: 5,
-      name: 'Luca Bianchi',
-      location: 'Lugano, Switzerland',
-      experience: 'DevOps Engineer at ABB (2020 - 2024)',
-      currentRole: 'DevOps Engineer',
+      name: 'Isabella Romano',
+      location: 'Milan, Italy',
+      experience: 'Senior Data Engineer (6 years)',
+      currentRole: 'Senior Data Engineer',
       score: 'Strong',
-      status: 'Active',
-      avatar: 'LB',
-      skills: ['Docker', 'Kubernetes', 'AWS', 'Terraform', 'Jenkins', 'Python'],
-      rating: 4.5,
-      email: 'luca.bianchi@email.ch',
-      phone: '+41 91 345 6789',
-      company: 'ABB',
-      summary: 'DevOps engineer with industrial automation background. Expertise in cloud infrastructure and CI/CD pipelines for manufacturing systems.',
-      education: 'Master of Engineering, University of Applied Sciences Southern Switzerland (2020)',
-      languages: ['Italian (Native)', 'German (Fluent)', 'English (Fluent)', 'French (Basic)'],
+      status: 'Long List',
+      avatar: 'IR',
+      skills: ['Python', 'MongoDB', 'Docker', 'Elasticsearch', 'Redis'],
+      rating: 4.1,
+      email: 'isabella.romano@email.com',
+      phone: '+39 335 123 4567',
+      company: 'Milano Tech Hub',
+      summary: 'Solid experience with MongoDB and distributed systems.',
+      education: 'Master of Computer Engineering, Politecnico di Milano (2018)',
+      languages: ['Italian (Native)', 'English (Fluent)', 'Spanish (Conversational)'],
       availability: 'Available in 1 month',
       expectedSalary: 'CHF 105,000 - 125,000',
-      linkedinUrl: 'https://linkedin.com/in/lucabianchi',
-      lastInteraction: '1 week ago',
-      source: 'Employee Referral',
+      linkedinUrl: 'https://linkedin.com/in/isabellaromano',
+      lastInteraction: '2024-01-11',
+      source: 'Job Board',
       workExperience: [
         {
-          company: 'ABB',
-          role: 'DevOps Engineer',
-          duration: '2020 - 2024',
-          description: 'Automated deployment pipelines for industrial IoT solutions, managed cloud infrastructure, implemented monitoring systems'
+          company: 'Milano Tech Hub',
+          role: 'Senior Data Engineer',
+          duration: '2020 - Present',
+          description: 'Develop high-performance data processing systems using MongoDB and microservices architecture'
         },
         {
-          company: 'CERN',
-          role: 'Systems Administrator',
+          company: 'Italian Fintech',
+          role: 'Data Engineer',
           duration: '2018 - 2020',
-          description: 'Maintained high-performance computing infrastructure, automated system deployments, supported research teams'
+          description: 'Built financial data processing pipelines'
         }
       ],
       timeline: [
-        { date: '2024-01-08', action: 'Referred by DevOps team lead', type: 'application' },
-        { date: '2024-01-09', action: 'Technical screening completed', type: 'call' },
-        { date: '2024-01-12', action: 'Moved to active candidates', type: 'stage_change' }
+        { date: '2024-01-11', action: 'Applied via job board', type: 'application' }
       ]
     }
   ];
@@ -400,11 +391,11 @@ export default function CandidatesPage() {
           </button>
         </div>
 
-        {/* Swiss Market Stats */}
+        {/* Data Engineer Pipeline Stats */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <Card variant="elevated" className="text-center p-4">
             <div className="text-2xl font-bold text-primary-600">{allCandidates.length}</div>
-            <div className="text-sm text-gray-600">Total Candidates</div>
+            <div className="text-sm text-gray-600">Pipeline Candidates</div>
           </Card>
           <Card variant="elevated" className="text-center p-4">
             <div className="text-2xl font-bold text-green-600">
@@ -422,7 +413,7 @@ export default function CandidatesPage() {
             <div className="text-2xl font-bold text-yellow-600">
               {allCandidates.filter((c: Candidate) => c.score === 'Very strong').length}
             </div>
-            <div className="text-sm text-gray-600">Top Matches</div>
+            <div className="text-sm text-gray-600">MongoDB Experts</div>
           </Card>
         </div>
 

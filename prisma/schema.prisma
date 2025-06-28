@@ -124,6 +124,10 @@ model Job {
   projectId          String?
   project            Project?             @relation(fields: [projectId], references: [id], onDelete: SetNull)
   
+  // Client relationship for portal access
+  clientId           String?
+  client             Client?              @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  
   ai_matches         ai_matches[]
   applications       Application[]
   interviews         interviews[]
@@ -142,6 +146,7 @@ model Job {
   @@index([status, location])
   @@index([status, publishedAt])
   @@index([projectId])
+  @@index([clientId])
   @@map("jobs")
 }
 
@@ -211,6 +216,10 @@ model Project {
   internalNotes         String[]
   tags                  String[]
   
+  // Client relationship for portal access
+  clientId              String?
+  client                Client?              @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  
   // Relationships
   jobs                  Job[]                 // Individual job positions within project
   activities            ProjectActivity[]     // Activity log
@@ -222,6 +231,7 @@ model Project {
   @@index([clientEmail])
   @@index([assignedRecruiter])
   @@index([endDate])
+  @@index([clientId])
   @@map("projects")
 }
 
@@ -1000,6 +1010,8 @@ model Client {
   updatedAt       DateTime @updatedAt
 
   // Relations
+  projects             Project[]
+  jobs                 Job[]
   portalInvitations    ClientPortalInvitation[]
   comments             ClientComment[]
   assessmentRequirements ClientAssessmentRequirement[]

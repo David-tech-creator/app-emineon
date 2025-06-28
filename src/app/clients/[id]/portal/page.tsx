@@ -93,6 +93,12 @@ export default function ClientPortalPage() {
   // Get client name based on client ID
   const getClientData = (clientId: string) => {
     const clientMapping: { [key: string]: { name: string; industry: string; primaryContact: string; email: string } } = {
+      'client-dataflow-innovations': {
+        name: 'DataFlow Innovations AG',
+        industry: 'Technology',
+        primaryContact: 'Emmanuel D.',
+        email: 'emmanuel.d@dataflow-innovations.com'
+      },
       'client-alpinebank': {
         name: 'Alpine Banking Solutions',
         industry: 'Financial Services',
@@ -153,118 +159,247 @@ export default function ClientPortalPage() {
 
   // Mock data for demo - replace with actual API call
   useEffect(() => {
-    const clientData = getClientData(clientId);
-    
-    const mockData: ClientPortalData = {
-      client: {
-        id: clientId,
-        name: clientData.name,
-        industry: clientData.industry,
-        primaryContact: clientData.primaryContact,
-        email: clientData.email,
-        logo: '/api/placeholder/120/120'
-      },
-      activeJobs: [
-        {
-          id: '1',
-          title: 'Senior Full Stack Developer',
-          department: 'Engineering',
-          location: 'Zurich, Switzerland',
-          status: 'active',
-          candidatesCount: 12,
-          stagesCount: {
-            sourcing: 3,
-            screening: 4,
-            interview: 3,
-            assessment: 1,
-            offer: 1
-          },
-          priority: 'high',
-          daysOpen: 15,
-          lastActivity: '2 hours ago',
-          targetHireDate: '2024-03-15'
-        },
-        {
-          id: '2',
-          title: 'Product Manager',
-          department: 'Product',
-          location: 'Remote',
-          status: 'active',
-          candidatesCount: 8,
-          stagesCount: {
-            sourcing: 2,
-            screening: 3,
-            interview: 2,
-            assessment: 1,
-            offer: 0
-          },
-          priority: 'medium',
-          daysOpen: 8,
-          lastActivity: '1 day ago',
-          targetHireDate: '2024-04-01'
-        },
-        {
-          id: '3',
-          title: 'UX Designer',
-          department: 'Design',
-          location: 'Basel, Switzerland',
-          status: 'active',
-          candidatesCount: 6,
-          stagesCount: {
-            sourcing: 4,
-            screening: 1,
-            interview: 1,
-            assessment: 0,
-            offer: 0
-          },
-          priority: 'low',
-          daysOpen: 22,
-          lastActivity: '3 days ago'
+    const fetchPortalData = async () => {
+      try {
+        // Try to fetch real data from API
+        const response = await fetch(`/api/clients/${clientId}/portal`);
+        if (response.ok) {
+          const data = await response.json();
+          setPortalData(data);
+          setLoading(false);
+          return;
         }
-      ],
-      recentActivity: [
-        {
-          id: '1',
-          type: 'candidate_added',
-          jobId: '1',
-          jobTitle: 'Senior Full Stack Developer',
-          candidateName: 'Alex Mueller',
-          message: 'New candidate added to pipeline',
-          timestamp: '2 hours ago'
-        },
-        {
-          id: '2',
-          type: 'stage_change',
-          jobId: '1',
-          jobTitle: 'Senior Full Stack Developer',
-          candidateName: 'Emma Schmidt',
-          message: 'Moved to Interview stage',
-          timestamp: '4 hours ago',
-          requiresAttention: true
-        },
-        {
-          id: '3',
-          type: 'assessment_completed',
-          jobId: '2',
-          jobTitle: 'Product Manager',
-          candidateName: 'David Chen',
-          message: 'Technical assessment completed - awaiting your review',
-          timestamp: '1 day ago',
-          requiresAttention: true
-        }
-      ],
-      metrics: {
-        totalCandidates: 26,
-        interviewsScheduled: 6,
-        pendingFeedback: 4,
-        offersExtended: 1
+      } catch (error) {
+        console.log('API not available, using mock data');
       }
+
+      // Fallback to mock data
+      const clientData = getClientData(clientId);
+      
+      const mockData: ClientPortalData = {
+        client: {
+          id: clientId,
+          name: clientData.name,
+          industry: clientData.industry,
+          primaryContact: clientData.primaryContact,
+          email: clientData.email,
+          logo: '/api/placeholder/120/120'
+        },
+        activeJobs: clientId === 'client-dataflow-innovations' ? [
+          {
+            id: '1',
+            title: 'Senior Data Engineer - MongoDB',
+            department: 'Engineering',
+            location: 'Zurich, Switzerland',
+            status: 'active',
+            candidatesCount: 15,
+            stagesCount: {
+              sourcing: 6,
+              screening: 4,
+              interview: 3,
+              assessment: 1,
+              offer: 1
+            },
+            priority: 'high',
+            daysOpen: 12,
+            lastActivity: '3 hours ago',
+            targetHireDate: '2024-03-15'
+          },
+          {
+            id: '2',
+            title: 'Data Engineer - TypeScript/SQL',
+            department: 'Engineering',
+            location: 'Zurich, Switzerland',
+            status: 'active',
+            candidatesCount: 12,
+            stagesCount: {
+              sourcing: 5,
+              screening: 3,
+              interview: 2,
+              assessment: 1,
+              offer: 1
+            },
+            priority: 'high',
+            daysOpen: 12,
+            lastActivity: '5 hours ago',
+            targetHireDate: '2024-03-15'
+          },
+          {
+            id: '3',
+            title: 'Full Stack Data Engineer',
+            department: 'Engineering',
+            location: 'Remote (Europe)',
+            status: 'active',
+            candidatesCount: 8,
+            stagesCount: {
+              sourcing: 4,
+              screening: 2,
+              interview: 1,
+              assessment: 1,
+              offer: 0
+            },
+            priority: 'high',
+            daysOpen: 12,
+            lastActivity: '1 day ago',
+            targetHireDate: '2024-03-15'
+          }
+        ] : [
+          {
+            id: '1',
+            title: 'Senior Full Stack Developer',
+            department: 'Engineering',
+            location: 'Zurich, Switzerland',
+            status: 'active',
+            candidatesCount: 12,
+            stagesCount: {
+              sourcing: 3,
+              screening: 4,
+              interview: 3,
+              assessment: 1,
+              offer: 1
+            },
+            priority: 'high',
+            daysOpen: 15,
+            lastActivity: '2 hours ago',
+            targetHireDate: '2024-03-15'
+          },
+          {
+            id: '2',
+            title: 'Product Manager',
+            department: 'Product',
+            location: 'Remote',
+            status: 'active',
+            candidatesCount: 8,
+            stagesCount: {
+              sourcing: 2,
+              screening: 3,
+              interview: 2,
+              assessment: 1,
+              offer: 0
+            },
+            priority: 'medium',
+            daysOpen: 8,
+            lastActivity: '1 day ago',
+            targetHireDate: '2024-04-01'
+          },
+          {
+            id: '3',
+            title: 'UX Designer',
+            department: 'Design',
+            location: 'Basel, Switzerland',
+            status: 'active',
+            candidatesCount: 6,
+            stagesCount: {
+              sourcing: 4,
+              screening: 1,
+              interview: 1,
+              assessment: 0,
+              offer: 0
+            },
+            priority: 'low',
+            daysOpen: 22,
+            lastActivity: '3 days ago'
+          }
+        ],
+        recentActivity: clientId === 'client-dataflow-innovations' ? [
+          {
+            id: '1',
+            type: 'candidate_added',
+            jobId: '1',
+            jobTitle: 'Senior Data Engineer - MongoDB',
+            candidateName: 'Marcus Weber',
+            message: 'Excellent MongoDB architect with 9 years experience added to pipeline',
+            timestamp: '3 hours ago'
+          },
+          {
+            id: '2',
+            type: 'stage_change',
+            jobId: '2',
+            jobTitle: 'Data Engineer - TypeScript/SQL',
+            candidateName: 'Elena Popovich',
+            message: 'Moved to Interview stage - technical skills verified',
+            timestamp: '5 hours ago',
+            requiresAttention: true
+          },
+          {
+            id: '3',
+            type: 'assessment_completed',
+            jobId: '1',
+            jobTitle: 'Senior Data Engineer - MongoDB',
+            candidateName: 'David Martinez',
+            message: 'MongoDB performance assessment completed - 95% score',
+            timestamp: '1 day ago',
+            requiresAttention: true
+          },
+          {
+            id: '4',
+            type: 'candidate_added',
+            jobId: '3',
+            jobTitle: 'Full Stack Data Engineer',
+            candidateName: 'Ana Kristoffersen',
+            message: 'ETL pipeline specialist with strong TypeScript background',
+            timestamp: '1 day ago'
+          },
+          {
+            id: '5',
+            type: 'interview_scheduled',
+            jobId: '2',
+            jobTitle: 'Data Engineer - TypeScript/SQL',
+            candidateName: 'Sarah Johnson',
+            message: 'Technical interview scheduled for tomorrow 2 PM',
+            timestamp: '2 days ago'
+          }
+        ] : [
+          {
+            id: '1',
+            type: 'candidate_added',
+            jobId: '1',
+            jobTitle: 'Senior Full Stack Developer',
+            candidateName: 'Alex Mueller',
+            message: 'New candidate added to pipeline',
+            timestamp: '2 hours ago'
+          },
+          {
+            id: '2',
+            type: 'stage_change',
+            jobId: '1',
+            jobTitle: 'Senior Full Stack Developer',
+            candidateName: 'Emma Schmidt',
+            message: 'Moved to Interview stage',
+            timestamp: '4 hours ago',
+            requiresAttention: true
+          },
+          {
+            id: '3',
+            type: 'assessment_completed',
+            jobId: '2',
+            jobTitle: 'Product Manager',
+            candidateName: 'David Chen',
+            message: 'Technical assessment completed - awaiting your review',
+            timestamp: '1 day ago',
+            requiresAttention: true
+          }
+        ],
+        metrics: clientId === 'client-dataflow-innovations' ? {
+          totalCandidates: 35,
+          interviewsScheduled: 8,
+          pendingFeedback: 3,
+          offersExtended: 2
+        } : {
+          totalCandidates: 26,
+          interviewsScheduled: 6,
+          pendingFeedback: 4,
+          offersExtended: 1
+        }
+      };
+
+      setTimeout(() => {
+        setPortalData(mockData);
+        setLoading(false);
+      }, 1000);
     };
 
-    setTimeout(() => {
-      setPortalData(mockData);
-      setLoading(false);
-    }, 1000);
+    fetchPortalData();
   }, [clientId]);
 
   const filteredJobs = portalData?.activeJobs.filter(job => 

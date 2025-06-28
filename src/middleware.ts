@@ -44,83 +44,15 @@ export default authMiddleware({
       console.log(`✅ User authenticated: ${userId} - FULL PLATFORM ACCESS GRANTED`);
 
       // ALL AUTHENTICATED USERS HAVE ACCESS TO EVERYTHING
-      // No role-based restrictions - any logged-in user can access any part of the platform
+      // Simplified: any authenticated user can access any route
       
-      // Admin routes - allow ALL authenticated users
-      if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
-        console.log(`✅ Admin access granted for authenticated user ${userId}`);
+      // For ALL API routes - grant access to authenticated users
+      if (pathname.startsWith('/api/')) {
+        console.log(`✅ API access granted for authenticated user ${userId} to ${pathname}`);
         return NextResponse.next();
       }
 
-      // Client portal routes - allow ALL authenticated users
-      if (pathname.match(/\/clients\/[^\/]+\/portal/) || pathname.match(/\/api\/clients\/[^\/]+\/portal/)) {
-        const clientIdMatch = pathname.match(/\/clients\/([^\/]+)\/portal/) || pathname.match(/\/api\/clients\/([^\/]+)\/portal/);
-        const clientId = clientIdMatch?.[1];
-        
-        if (clientId) {
-          console.log(`✅ Client portal access granted for authenticated user ${userId} to client ${clientId}`);
-          return NextResponse.next();
-        }
-      }
-
-      // API routes - allow ALL authenticated users access to ALL endpoints
-      if (pathname.startsWith('/api/')) {
-        // AI Copilot endpoints - allow all authenticated users
-        if (pathname.startsWith('/api/ai-copilot/')) {
-          console.log(`✅ AI Copilot access granted for authenticated user ${userId}`);
-          return NextResponse.next();
-        }
-        
-        // Competence files endpoints - allow all authenticated users
-        if (pathname.startsWith('/api/competence-files/')) {
-          console.log(`✅ Competence files access granted for authenticated user ${userId}`);
-          return NextResponse.next();
-        }
-        
-        // Jobs API - allow all authenticated users
-        if (pathname.startsWith('/api/jobs/')) {
-          console.log(`✅ Jobs API access granted for authenticated user ${userId}`);
-          return NextResponse.next();
-        }
-        
-        // Candidates API - allow all authenticated users
-        if (pathname.startsWith('/api/candidates/')) {
-          console.log(`✅ Candidates API access granted for authenticated user ${userId}`);
-          return NextResponse.next();
-        }
-        
-        // Applications API - allow all authenticated users
-        if (pathname.startsWith('/api/applications/')) {
-          console.log(`✅ Applications API access granted for authenticated user ${userId}`);
-          return NextResponse.next();
-        }
-        
-        // Upload API - allow all authenticated users
-        if (pathname.startsWith('/api/upload')) {
-          console.log(`✅ Upload API access granted for authenticated user ${userId}`);
-          return NextResponse.next();
-        }
-        
-        // Files API - allow all authenticated users
-        if (pathname.startsWith('/api/files/')) {
-          console.log(`✅ Files API access granted for authenticated user ${userId}`);
-          return NextResponse.next();
-        }
-        
-        // Admin API endpoints - allow ALL authenticated users (no role restrictions)
-        if (pathname.startsWith('/api/admin/')) {
-          console.log(`✅ Admin API access granted for authenticated user ${userId}`);
-          return NextResponse.next();
-        }
-        
-        // AI endpoints - allow all authenticated users
-        if (pathname.startsWith('/api/ai/')) {
-          console.log(`✅ AI API access granted for authenticated user ${userId}`);
-          return NextResponse.next();
-        }
-      }
-
-      // Allow ALL other authenticated routes for logged-in users
+      // For ALL page routes - grant access to authenticated users
       console.log(`✅ Full platform access granted for authenticated user ${userId}`);
       return NextResponse.next();
     }

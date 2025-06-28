@@ -586,8 +586,8 @@ export function CandidateProfileDrawer({
                     </div>
                   </div>
 
-                  {/* Communication Stats */}
-                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                  {/* Communication Stats - Clickable Tabs */}
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
                     {[
                       { type: 'email', count: mockCommunications.filter(c => c.type === 'email').length, color: 'bg-blue-500', icon: Mail },
                       { type: 'linkedin', count: mockCommunications.filter(c => c.type === 'linkedin').length, color: 'bg-blue-700', icon: LinkIcon },
@@ -597,13 +597,19 @@ export function CandidateProfileDrawer({
                     ].map((stat) => {
                       const IconComponent = stat.icon;
                       return (
-                        <div key={stat.type} className="text-center p-3 bg-gradient-to-br from-neutral-50 to-neutral-100 rounded-xl">
-                          <div className={`w-8 h-8 ${stat.color} rounded-lg flex items-center justify-center mx-auto mb-2`}>
-                            <IconComponent className="h-4 w-4 text-white" />
+                        <button
+                          key={stat.type}
+                          onClick={() => setCommunicationFilter(stat.type as any)}
+                          className={`text-center p-2 bg-gradient-to-br from-neutral-50 to-neutral-100 rounded-lg hover:shadow-md transition-all duration-200 ${
+                            communicationFilter === stat.type ? 'ring-2 ring-primary-500' : ''
+                          }`}
+                        >
+                          <div className={`w-6 h-6 ${stat.color} rounded-md flex items-center justify-center mx-auto mb-1`}>
+                            <IconComponent className="h-3 w-3 text-white" />
                           </div>
-                          <div className="text-lg font-bold text-gray-900">{stat.count}</div>
+                          <div className="text-sm font-bold text-gray-900">{stat.count}</div>
                           <div className="text-xs text-gray-600 capitalize">{stat.type}</div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -626,18 +632,18 @@ export function CandidateProfileDrawer({
                           const colorClass = getCommunicationColor(comm.type);
                           
                           return (
-                            <div key={comm.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-all duration-200">
-                              <div className="flex items-start space-x-4">
+                            <div key={comm.id} className="border border-gray-200 rounded-lg p-3 hover:shadow-md transition-all duration-200">
+                              <div className="flex items-start space-x-3">
                                 {/* Channel Icon */}
-                                <div className={`p-2 rounded-lg ${colorClass} shadow-soft flex-shrink-0`}>
-                                  <IconComponent className="h-4 w-4 text-white" />
+                                <div className={`p-1.5 rounded-md ${colorClass} shadow-soft flex-shrink-0`}>
+                                  <IconComponent className="h-3 w-3 text-white" />
                                 </div>
                                 
                                 {/* Message Content */}
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center space-x-3">
-                                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div className="flex items-center space-x-2">
+                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                                         comm.direction === 'inbound' 
                                           ? 'bg-green-100 text-green-800' 
                                           : 'bg-blue-100 text-blue-800'
@@ -646,20 +652,20 @@ export function CandidateProfileDrawer({
                                       </span>
                                       <span className="text-xs text-gray-500 capitalize">{comm.type}</span>
                                     </div>
-                                    <div className="flex items-center space-x-2">
-                                      <StatusIconComponent className="h-4 w-4 text-gray-400" />
+                                    <div className="flex items-center space-x-1">
+                                      <StatusIconComponent className="h-3 w-3 text-gray-400" />
                                       <span className="text-xs text-gray-500">
-                                        {new Date(comm.timestamp).toLocaleDateString()} {new Date(comm.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {new Date(comm.timestamp).toLocaleDateString()}
                                       </span>
                                     </div>
                                   </div>
                                   
                                   {comm.subject && (
-                                    <h4 className="font-medium text-gray-900 mb-2">{comm.subject}</h4>
+                                    <h4 className="font-medium text-gray-900 text-sm mb-1">{comm.subject}</h4>
                                   )}
                                   
-                                  <div className="text-sm text-gray-700 mb-3">
-                                    <p className="line-clamp-3">{comm.content}</p>
+                                  <div className="text-sm text-gray-700 mb-2">
+                                    <p className="line-clamp-2">{comm.content}</p>
                                   </div>
                                   
                                   <div className="flex items-center justify-between">
@@ -693,30 +699,30 @@ export function CandidateProfileDrawer({
                 </div>
 
                 {/* Quick Actions for Communication */}
-                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-soft">
-                  <h4 className="font-semibold text-gray-900 mb-4">Quick Actions</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-soft">
+                  <h4 className="font-semibold text-gray-900 mb-3 text-sm">Quick Actions</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <button 
                       onClick={() => setShowEmailModal(true)}
-                      className="flex items-center justify-center px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 text-sm font-medium shadow-soft hover:shadow-medium transform hover:-translate-y-0.5"
+                      className="flex items-center justify-center px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 text-sm font-medium shadow-soft hover:shadow-medium transform hover:-translate-y-0.5"
                     >
-                      <Mail className="h-4 w-4 mr-2" />
+                      <Mail className="h-3 w-3 mr-2" />
                       Send Email
                     </button>
                     
                     <button 
                       onClick={() => window.open(candidate.linkedinUrl, '_blank')}
-                      className="flex items-center justify-center px-4 py-3 bg-gradient-to-r from-blue-700 to-blue-800 text-white rounded-xl hover:from-blue-800 hover:to-blue-900 transition-all duration-200 text-sm font-medium shadow-soft hover:shadow-medium transform hover:-translate-y-0.5"
+                      className="flex items-center justify-center px-3 py-2 bg-gradient-to-r from-blue-700 to-blue-800 text-white rounded-lg hover:from-blue-800 hover:to-blue-900 transition-all duration-200 text-sm font-medium shadow-soft hover:shadow-medium transform hover:-translate-y-0.5"
                     >
-                      <LinkIcon className="h-4 w-4 mr-2" />
-                      LinkedIn Message
+                      <LinkIcon className="h-3 w-3 mr-2" />
+                      LinkedIn
                     </button>
                     
                     <button 
                       onClick={() => window.open(`https://wa.me/${candidate.phone.replace(/\D/g, '')}`, '_blank')}
-                      className="flex items-center justify-center px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 text-sm font-medium shadow-soft hover:shadow-medium transform hover:-translate-y-0.5"
+                      className="flex items-center justify-center px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 text-sm font-medium shadow-soft hover:shadow-medium transform hover:-translate-y-0.5"
                     >
-                      <MessageSquare className="h-4 w-4 mr-2" />
+                      <MessageSquare className="h-3 w-3 mr-2" />
                       WhatsApp
                     </button>
                   </div>

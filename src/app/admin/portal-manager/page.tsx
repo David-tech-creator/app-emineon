@@ -49,12 +49,12 @@ export default function PortalManagerPage() {
   // Mock data for demo
   useEffect(() => {
     const mockStats: PortalStats = {
-      totalPortals: 8,
-      activeUsers: 52,
-      totalJobs: 62,
-      totalCandidates: 1532,
-      monthlyInvitations: 28,
-      weeklyActivity: 189
+      totalPortals: 9,
+      activeUsers: 55,
+      totalJobs: 65,
+      totalCandidates: 1567,
+      monthlyInvitations: 31,
+      weeklyActivity: 210
     };
 
     setStats(mockStats);
@@ -86,6 +86,23 @@ export default function PortalManagerPage() {
   };
 
   const mockPortals = [
+    {
+      id: '0',
+      clientId: 'client-dataflow-innovations',
+      clientName: 'DataFlow Innovations AG',
+      clientIcon: <Building2 className="h-8 w-8 text-blue-600" />,
+      status: 'active' as const,
+      activeJobs: 3,
+      totalCandidates: 35,
+      lastActivity: '2024-06-24T12:30:00Z',
+      portalUrl: `${baseUrl}/clients/client-dataflow-innovations/portal`,
+      accessLevel: 'ADMIN' as const,
+      invitedUsers: [
+        { email: 'emmanuel.d@dataflow-innovations.com', role: 'ADMIN', status: 'accepted' as const, invitedAt: '2024-06-24T09:00:00Z' },
+        { email: 'hr.director@dataflow-innovations.com', role: 'COLLABORATOR', status: 'accepted' as const, invitedAt: '2024-06-24T10:30:00Z' },
+        { email: 'tech.lead@dataflow-innovations.com', role: 'COLLABORATOR', status: 'pending' as const, invitedAt: '2024-06-24T11:15:00Z' }
+      ]
+    },
     {
       id: '1',
       clientId: 'client-alpinebank',
