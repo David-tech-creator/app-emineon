@@ -37,7 +37,7 @@ interface CompetenceFile {
   templateName: string;
   client: string;
   job: string;
-  status: 'Generated' | 'Draft' | 'Archived';
+  status: 'GENERATED' | 'DRAFT' | 'ARCHIVED' | 'FAILED' | 'Generated' | 'Draft' | 'Archived' | 'Failed';
   createdAt: string;
   updatedAt: string;
   version: number;
@@ -51,9 +51,14 @@ interface CompetenceFile {
 }
 
 const statusColors = {
-  'Generated': 'bg-green-100 text-green-800',
-  'Draft': 'bg-yellow-100 text-yellow-800',
-  'Archived': 'bg-gray-100 text-gray-800'
+  'GENERATED': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+  'Generated': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+  'DRAFT': 'bg-amber-100 text-amber-800 border border-amber-200',
+  'Draft': 'bg-amber-100 text-amber-800 border border-amber-200',
+  'ARCHIVED': 'bg-slate-100 text-slate-800 border border-slate-200',
+  'Archived': 'bg-slate-100 text-slate-800 border border-slate-200',
+  'FAILED': 'bg-red-100 text-red-800 border border-red-200',
+  'Failed': 'bg-red-100 text-red-800 border border-red-200'
 };
 
 export default function CompetenceFilesPage() {
@@ -429,14 +434,30 @@ export default function CompetenceFilesPage() {
                         <div className="flex-1">
                           <div className="flex items-center space-x-3">
                             <h3 className="font-semibold text-gray-900">{file.candidateName}</h3>
-                            <Badge className={statusColors[file.status as keyof typeof statusColors]}>
-                              {file.status}
-                            </Badge>
-                            {file.isAnonymized && (
-                              <Badge variant="outline" className="text-xs">
-                                Anonymized
+                            <div className="flex items-center space-x-2">
+                              <Badge className={`${statusColors[file.status as keyof typeof statusColors]} font-medium text-xs px-3 py-1 rounded-full shadow-sm`}>
+                                <div className="flex items-center space-x-1">
+                                  {file.status === 'GENERATED' || file.status === 'Generated' ? (
+                                    <div className="w-1.5 h-1.5 bg-emerald-600 rounded-full"></div>
+                                  ) : file.status === 'DRAFT' || file.status === 'Draft' ? (
+                                    <div className="w-1.5 h-1.5 bg-amber-600 rounded-full"></div>
+                                  ) : file.status === 'FAILED' || file.status === 'Failed' ? (
+                                    <div className="w-1.5 h-1.5 bg-red-600 rounded-full"></div>
+                                  ) : (
+                                    <div className="w-1.5 h-1.5 bg-slate-600 rounded-full"></div>
+                                  )}
+                                  <span className="capitalize">{file.status.toLowerCase()}</span>
+                                </div>
                               </Badge>
-                            )}
+                              {file.isAnonymized && (
+                                <Badge variant="outline" className="text-xs border-blue-200 text-blue-700 bg-blue-50 px-2 py-1 rounded-full">
+                                  <div className="flex items-center space-x-1">
+                                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                                    <span>Anonymized</span>
+                                  </div>
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           
                           <p className="text-sm text-gray-600 mt-1">{file.candidateTitle}</p>
@@ -567,14 +588,22 @@ export default function CompetenceFilesPage() {
                         <div className="flex-1">
                           <div className="flex items-center space-x-3">
                             <h3 className="font-semibold text-gray-900">{template.name}</h3>
-                            <Badge className="bg-green-100 text-green-800">
-                              {template.status}
-                            </Badge>
-                            {template.isClientSpecific && (
-                              <Badge variant="outline" className="text-xs">
-                                Client-specific
+                            <div className="flex items-center space-x-2">
+                              <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-200 font-medium text-xs px-3 py-1 rounded-full shadow-sm">
+                                <div className="flex items-center space-x-1">
+                                  <div className="w-1.5 h-1.5 bg-emerald-600 rounded-full"></div>
+                                  <span>Active</span>
+                                </div>
                               </Badge>
-                            )}
+                              {template.isClientSpecific && (
+                                <Badge variant="outline" className="text-xs border-purple-200 text-purple-700 bg-purple-50 px-2 py-1 rounded-full">
+                                  <div className="flex items-center space-x-1">
+                                    <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
+                                    <span>Client-specific</span>
+                                  </div>
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           
                           {template.description && (
