@@ -200,6 +200,10 @@ function generateAntaesPreviewHTML(candidateData: any): string {
           display: flex;
           gap: 24px;
           font-size: 14px;
+          color: white;
+          flex-wrap: wrap;
+          gap: 24px;
+          font-size: 14px;
           color: #757575;
           flex-wrap: wrap;
         }
@@ -387,7 +391,7 @@ function generateAntaesPreviewHTML(candidateData: any): string {
         }
         
         .footer-logo {
-          height: 25px;
+          height: 40px;
           width: auto;
         }
         

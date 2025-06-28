@@ -414,7 +414,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           display: flex;
           gap: 24px;
           font-size: 14px;
-          color: #757575;
+          color: white;
           flex-wrap: wrap;
         }
         
@@ -594,7 +594,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         }
         
         .footer-logo {
-          height: 25px;
+          height: 40px;
           width: auto;
         }
         
@@ -615,6 +615,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
             max-width: none; 
             margin: 0; 
             padding: 0;
+            padding-bottom: 60px;
           }
           .header-banner {
             margin: 0 0 30px 0;
@@ -625,6 +626,28 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           }
           .experience-block { 
             page-break-inside: avoid; 
+          }
+          .footer {
+            position: fixed;
+            bottom: 0;
+          }
+        }
+        
+        /* Page counter for PDF generation */
+        @page {
+          margin: 20mm;
+          @bottom-right {
+            content: counter(page);
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: #073C51;
+          }
+          @bottom-left {
+            content: "Partnership for Excellence • ANTAES";
+            font-family: 'Inter', sans-serif;
+            font-size: 10px;
+            color: #4A5568;
           }
         }
       </style>
@@ -1484,16 +1507,14 @@ export async function POST(request: NextRequest) {
   try {
     const { userId } = auth();
     
-    // Allow test bypass for debugging PDF generation issues
-    const body = await request.json();
-    const isTestMode = body.candidateData?.fullName === 'Test User' || body.candidateData?.id === 'test-user';
-    
-    if (!userId && !isTestMode) {
+    if (!userId) {
       return NextResponse.json(
         { success: false, message: 'Unauthorized' },
         { status: 401 }
       );
     }
+
+    const body = await request.json();
     const { candidateData, template = 'professional', content, format = 'pdf', sections } = body;
 
     if (!candidateData) {
