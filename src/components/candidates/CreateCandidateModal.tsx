@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 import { X, Upload, FileText, Linkedin, User, Brain, CheckCircle, UserPlus, Loader2, Paperclip, Mic, MicOff, Eye, EyeOff, Plus, Trash2, Tag, Briefcase, Users, Star, Save, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -69,6 +70,7 @@ interface ParsedCandidate {
 
 export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated }: CreateCandidateModalProps) {
   const { getToken } = useAuth();
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>('intake');
   const [inputMethod, setInputMethod] = useState<'upload' | 'linkedin' | 'manual' | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -1661,9 +1663,12 @@ Bachelor's in Computer Science from ETH Zurich"
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button
                     onClick={() => {
-                      window.location.href = `/candidates/${createdCandidate.id}`;
+                      // Close modal and navigate to candidate profile
+                      onClose();
+                      // Use Next.js router for navigation
+                      router.push(`/candidates/${createdCandidate.id}`);
                     }}
-                    className="btn-primary flex items-center space-x-2"
+                    className="btn-primary flex items-center justify-center space-x-2"
                   >
                     <Eye className="h-4 w-4" />
                     <span>View Profile</span>
@@ -1672,12 +1677,68 @@ Bachelor's in Computer Science from ETH Zurich"
                   <Button
                     variant="outline"
                     onClick={() => {
-                      // Reset and create another
-                      handleClose();
+                      // Reset all form state and start over
+                      setCreatedCandidate(null);
+                      setCurrentStep('intake');
+                      setUploadedFile(null);
+                      setManualInput('');
+                      setParsedCandidate({
+                        firstName: '',
+                        lastName: '',
+                        email: '',
+                        phone: '',
+                        currentTitle: '',
+                        currentLocation: '',
+                        summary: '',
+                        experienceYears: 0,
+                        technicalSkills: [],
+                        softSkills: [],
+                        spokenLanguages: [],
+                        linkedinUrl: '',
+                        githubUrl: '',
+                        portfolioUrl: '',
+                        seniorityLevel: 'JUNIOR',
+                        primaryIndustry: '',
+                        availability: '',
+                        expectedSalary: '',
+                        remotePreference: 'HYBRID',
+                        professionalHeadline: '',
+                        nationality: '',
+                        timezone: '',
+                        workPermitType: 'CITIZEN',
+                        availableFrom: '',
+                        graduationYear: new Date().getFullYear(),
+                        educationLevel: 'BACHELOR',
+                        functionalDomain: '',
+                        preferredContractType: 'PERMANENT',
+                        relocationWillingness: false,
+                        freelancer: false,
+                        programmingLanguages: [],
+                        frameworks: [],
+                        toolsAndPlatforms: [],
+                        methodologies: [],
+                        certifications: [],
+                        degrees: [],
+                        universities: [],
+                        notableProjects: [],
+                        workExperience: [],
+                        education: []
+                      });
+                      setSelectedJobs(jobId ? [jobId] : []);
+                      setSelectedTalentPools([]);
+                      setCandidateTags([]);
+                      setTagInput('');
+                      setNotes('');
+                      setIsSubmitting(false);
+                      setIsParsing(false);
+                      // Reset other states
+                      setLinkedinUrl('');
+                      setInputMethod(null);
                     }}
+                    className="flex items-center justify-center space-x-2"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Another
+                    <Plus className="h-4 w-4" />
+                    <span>Add Another</span>
                   </Button>
                 </div>
               </div>
