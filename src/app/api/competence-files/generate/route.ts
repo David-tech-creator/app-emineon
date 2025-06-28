@@ -646,12 +646,13 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${candidateData.fullName} - Professional Profile</title>
+      <title>${candidateData.fullName} - Competence File</title>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
       <style>
-        @page {
+        * {
           margin: 0;
-          size: A4;
+          padding: 0;
+          box-sizing: border-box;
         }
         
         * {
@@ -663,7 +664,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         body {
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           line-height: 1.6;
-          color: #4A5568;
+          color: #232629;
           background: #ffffff;
           font-size: 14px;
         }
@@ -673,56 +674,70 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           margin: 0 auto;
           background: white;
           min-height: 297mm;
-          padding: 0 30px 80px 30px;
+          padding: 30px;
           position: relative;
+          padding-bottom: 80px;
         }
         
-        /* Header Banner */
-        .header-banner {
-          background: #073C51;
-          padding: 25px 35px;
-          margin: 0 -30px 40px -30px;
+        /* Header Styling - Clean layout with logo on right */
+        .header {
           display: flex;
           justify-content: space-between;
-          align-items: center;
-          min-height: 90px;
+          align-items: flex-start;
+          margin-bottom: 40px;
+          padding-bottom: 25px;
+          border-bottom: 2px solid #2C4F7C;
         }
         
         .header-left {
           flex: 1;
-          color: white;
         }
         
         .header h1 {
           font-size: 32px;
           font-weight: 700;
-          color: white;
+          color: #2C4F7C;
           margin-bottom: 8px;
-          letter-spacing: -0.8px;
+          letter-spacing: -0.5px;
         }
         
         .header-role {
           font-size: 18px;
-          font-weight: 500;
+          font-weight: 600;
           color: #FFB800;
-          margin-bottom: 12px;
-          letter-spacing: 0.2px;
+          margin-bottom: 5px;
+        }
+        
+        .header-experience {
+          font-size: 16px;
+          font-weight: 500;
+          color: #444B54;
+          margin-bottom: 15px;
         }
         
         .contact-info {
           display: flex;
-          gap: 24px;
-          font-size: 14px;
-          color: white;
           flex-wrap: wrap;
+          gap: 20px;
+          font-size: 14px;
+        }
+        
+        .contact-item {
+          color: #444B54;
+        }
+        
+        .contact-label {
+          font-weight: 700;
+          color: #232629;
         }
         
         .header-logo {
           flex-shrink: 0;
+          margin-left: 30px;
         }
         
         .logo-image {
-          height: 65px;
+          height: 80px;
           width: auto;
         }
         
@@ -733,19 +748,19 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         
         /* Section Styling */
         .section {
-          margin-bottom: 30px;
+          margin-bottom: 35px;
           page-break-inside: avoid;
         }
         
         .section-title {
-          font-size: 14px;
+          font-size: 16px;
           font-weight: 700;
-          color: #073C51;
+          color: #2C4F7C;
           text-transform: uppercase;
           letter-spacing: 1px;
           margin-bottom: 15px;
-          padding-bottom: 5px;
-          border-bottom: 1px solid #E8F4F7;
+          padding-bottom: 8px;
+          border-bottom: 2px solid #2C4F7C;
         }
         
         .section-content {
@@ -783,56 +798,34 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         
         .section-content strong {
           font-weight: 700;
-          color: #073C51;
+          color: #2C4F7C;
         }
         
         .section-content em {
           font-style: italic;
-          color: #4A5568;
+          color: #444B54;
         }
         
         /* Professional Summary */
         .summary-text {
           font-weight: 400;
           line-height: 1.8;
-          color: #4A5568;
-          padding: 20px;
-          background: #F8FAFC;
-          border-radius: 8px;
-          border-left: 4px solid #073C51;
-        }
-        
-        /* Areas of Expertise */
-        .expertise-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 12px;
-          margin-top: 15px;
-        }
-        
-        .expertise-item {
-          background: #F8FAFC;
-          padding: 12px 15px;
-          border-radius: 6px;
-          border-left: 3px solid #FFB800;
-          font-weight: 500;
-          color: #073C51;
-          font-size: 13px;
+          color: #444B54;
         }
         
         /* Functional Skills */
-        .functional-skill-category, .technical-skill-category {
+        .functional-skill-category {
           margin-bottom: 20px;
-          padding: 18px;
-          background: #F8FAFC;
+          padding: 15px;
+          background: #f8f9fa;
           border-radius: 8px;
-          border-left: 4px solid #073C51;
+          border-left: 4px solid #2C4F7C;
         }
         
         .skill-category-title {
-          font-size: 14px;
+          font-size: 15px;
           font-weight: 700;
-          color: #073C51;
+          color: #2C4F7C;
           margin-bottom: 10px;
         }
         
@@ -846,7 +839,7 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           position: relative;
           padding-left: 15px;
           margin-bottom: 5px;
-          color: #4A5568;
+          color: #444B54;
           font-weight: 500;
         }
         
@@ -859,111 +852,193 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
         }
         
         .skill-description {
-          font-size: 13px;
-          color: #757575;
           font-style: italic;
-          margin-top: 8px;
+          color: #666;
+          font-size: 13px;
           line-height: 1.5;
         }
         
+        /* Technical Skills */
+        .technical-skill-category {
+          margin-bottom: 20px;
+          padding: 15px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          border-left: 4px solid #FFB800;
+        }
+        
+        /* Areas of Expertise */
+        .expertise-areas {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 15px;
+          margin-top: 10px;
+        }
+        
+        .expertise-item {
+          text-align: center;
+          padding: 12px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          font-weight: 600;
+          color: #444B54;
+          border-left: 3px solid #FFB800;
+        }
+        
+
+        
         /* Experience Blocks */
         .experience-block {
-          margin-bottom: 25px;
-          padding: 20px;
-          background: #F8FAFC;
+          margin-bottom: 30px;
+          padding: 25px;
+          background: #f8f9fa;
           border-radius: 8px;
-          border-left: 4px solid #073C51;
+          border-left: 4px solid #2C4F7C;
           page-break-inside: avoid;
         }
         
         .exp-header {
-          margin-bottom: 15px;
-          padding-bottom: 10px;
-          border-bottom: 1px solid #E8F4F7;
+          margin-bottom: 20px;
+          padding-bottom: 15px;
+          border-bottom: 1px solid #e9ecef;
         }
         
         .exp-company {
-          font-size: 16px;
+          font-size: 18px;
           font-weight: 700;
-          color: #073C51;
-          margin-bottom: 3px;
+          color: #2C4F7C;
+          margin-bottom: 5px;
         }
         
         .exp-title {
-          font-size: 14px;
+          font-size: 16px;
           font-weight: 600;
-          color: #757575;
-          margin-bottom: 3px;
+          color: #FFB800;
+          margin-bottom: 5px;
         }
         
         .exp-dates {
-          font-size: 13px;
-          color: #4A5568;
+          font-size: 14px;
+          color: #444B54;
+          font-weight: 600;
+        }
+        
+        .exp-section {
+          margin-bottom: 15px;
+        }
+        
+        .exp-section-title {
+          font-size: 14px;
+          font-weight: 700;
+          color: #2C4F7C;
+          margin-bottom: 8px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        
+        .exp-description {
+          color: #444B54;
+          line-height: 1.6;
+          margin-bottom: 10px;
+          font-style: italic;
+        }
+        
+        .exp-responsibilities, .exp-achievements, .exp-technical {
+          list-style: none;
+          padding-left: 0;
+        }
+        
+        .exp-responsibilities li, .exp-achievements li, .exp-technical li {
+          position: relative;
+          padding-left: 15px;
+          margin-bottom: 8px;
+          color: #444B54;
+          line-height: 1.6;
           font-weight: 500;
+        }
+        
+        .exp-responsibilities li:before, .exp-achievements li:before, .exp-technical li:before {
+          content: "•";
+          color: #FFB800;
+          font-weight: bold;
+          position: absolute;
+          left: 0;
         }
         
         /* Education & Certifications */
         .education-item, .cert-item {
-          margin-bottom: 10px;
+          margin-bottom: 12px;
           padding-left: 15px;
           position: relative;
         }
         
         .education-item:before, .cert-item:before {
           content: "•";
-          color: #073C51;
+          color: #2C4F7C;
           font-weight: bold;
           position: absolute;
           left: 0;
         }
         
+        .education-degree, .cert-name {
+          font-weight: 600;
+          color: #232629;
+        }
+        
         /* Languages */
         .languages-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          grid-template-columns: repeat(2, 1fr);
           gap: 10px;
           margin-top: 10px;
         }
         
         .language-item {
           padding: 8px 12px;
-          background: #F9FBFC;
+          background: #f8f9fa;
           border-radius: 6px;
           text-align: center;
           font-weight: 600;
-          color: #073C51;
-          border: 1px solid #E8F4F7;
+          color: #444B54;
+          border-left: 3px solid #2C4F7C;
         }
         
-        /* Footer with Antaes branding */
+        /* Footer - appears on every page */
         .footer {
+          position: fixed;
+          bottom: 20px;
+          left: 0;
+          right: 0;
           display: flex;
-          justify-content: center;
+          justify-content: space-between;
           align-items: center;
-          padding: 20px 30px;
-          border-top: 1px solid #E8F4F7;
+          padding: 15px 30px;
+          border-top: 1px solid #e9ecef;
           background: white;
           font-size: 12px;
-          color: #4A5568;
-          margin-top: 40px;
+          color: #444B54;
         }
         
-        .footer-content {
+        .footer-left {
           display: flex;
-          flex-direction: column;
           align-items: center;
-          gap: 5px;
+          gap: 10px;
         }
         
         .footer-logo {
-          height: 40px;
+          height: 20px;
           width: auto;
+          opacity: 0.7;
         }
         
-        .footer-slogan {
+        .footer-text {
+          font-weight: 500;
+          color: #444B54;
+        }
+        
+        .page-number {
           font-weight: 600;
-          color: #073C51;
-          letter-spacing: 0.5px;
+          color: #2C4F7C;
         }
         
         /* Print Optimization */
@@ -976,12 +1051,8 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           .container { 
             max-width: none; 
             margin: 0; 
-            padding: 0;
+            padding: 20px;
             padding-bottom: 60px;
-          }
-          .header-banner {
-            margin: 0 0 30px 0;
-            border-radius: 0;
           }
           .section { 
             page-break-inside: avoid; 
@@ -1003,107 +1074,133 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
             font-family: 'Inter', sans-serif;
             font-size: 12px;
             font-weight: 600;
-            color: #073C51;
+            color: #2C4F7C;
           }
           @bottom-left {
             content: "Partnership for Excellence • ANTAES";
             font-family: 'Inter', sans-serif;
             font-size: 10px;
-            color: #4A5568;
+            color: #444B54;
+          }
+        }
+        
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+          .header { 
+            flex-direction: column; 
+            align-items: flex-start;
+          }
+          .header-logo { 
+            margin-left: 0; 
+            margin-top: 15px; 
+          }
+          .contact-info { 
+            flex-direction: column; 
+            gap: 10px;
+          }
+          .expertise-areas { 
+            grid-template-columns: 1fr; 
+          }
+          .languages-grid { 
+            grid-template-columns: 1fr; 
           }
         }
       </style>
     </head>
     <body>
       <div class="container">
-        <!-- Header Banner with Antaes branding -->
-        <div class="header-banner">
+        <!-- HEADER - Clean layout with logo on right -->
+        <div class="header">
           <div class="header-left">
             <h1>${candidateData.fullName}</h1>
             <div class="header-role">${candidateData.currentTitle}</div>
+            <div class="header-experience">${candidateData.yearsOfExperience} years of experience</div>
             <div class="contact-info">
-              <span>${candidateData.yearsOfExperience}+ Years of Experience</span>
+              ${candidateData.email ? `<div class="contact-item"><span class="contact-label">Email:</span> ${candidateData.email}</div>` : ''}
+              ${candidateData.phone ? `<div class="contact-item"><span class="contact-label">Phone:</span> ${candidateData.phone}</div>` : ''}
+              ${candidateData.location ? `<div class="contact-item"><span class="contact-label">Location:</span> ${candidateData.location}</div>` : ''}
             </div>
           </div>
           <div class="header-logo">
-            <img src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Antaes_logo_white.png" alt="ANTAES" class="logo-image" />
+            <img src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Antaes_logo.png" alt="ANTAES" class="logo-image" />
           </div>
         </div>
 
         <div class="content">
-          <!-- Professional Summary -->
+          <!-- PROFESSIONAL SUMMARY -->
           ${candidateData.summary ? `
           <div class="section">
-            <h2 class="section-title">Executive Summary</h2>
+            <h2 class="section-title">PROFESSIONAL SUMMARY</h2>
             <div class="section-content">
-              <p class="summary-text">${highlightRelevantContent(candidateData.summary, jobDescription, 'antaes')}</p>
+              <p class="summary-text">${candidateData.summary}</p>
             </div>
           </div>
           ` : ''}
 
-          <!-- Areas of Expertise -->
-          <div class="section">
-            <h2 class="section-title">Areas of Expertise</h2>
-            <div class="section-content">
-              <div class="expertise-grid">
-                ${areasOfExpertise.map(area => `
-                  <div class="expertise-item">${area}</div>
-                `).join('')}
-              </div>
-            </div>
-          </div>
-
-          <!-- Functional Skills -->
+          <!-- FUNCTIONAL SKILLS -->
           ${candidateData.skills && candidateData.skills.length > 0 ? `
           <div class="section">
-            <h2 class="section-title">Functional Skills</h2>
+            <h2 class="section-title">FUNCTIONAL SKILLS</h2>
             <div class="section-content">
               ${generateFunctionalSkills(candidateData.skills)}
             </div>
           </div>
           ` : ''}
 
-          <!-- Technical Skills -->
+          <!-- TECHNICAL SKILLS -->
           ${candidateData.skills && candidateData.skills.length > 0 ? `
           <div class="section">
-            <h2 class="section-title">Technical Skills</h2>
+            <h2 class="section-title">TECHNICAL SKILLS</h2>
             <div class="section-content">
               ${generateTechnicalSkills(candidateData.skills)}
             </div>
           </div>
           ` : ''}
 
-          <!-- Professional Experience -->
-          ${experienceHTML}
+          <!-- AREAS OF EXPERTISE -->
+          <div class="section">
+            <h2 class="section-title">AREAS OF EXPERTISE</h2>
+            <div class="section-content">
+              <div class="expertise-areas">
+                ${generateAreasOfExpertise(candidateData.currentTitle, candidateData.skills).map(area => `
+                  <div class="expertise-item"><strong>${area}</strong></div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
 
-          <!-- Education -->
+          <!-- EDUCATION -->
           ${candidateData.education && candidateData.education.length > 0 ? `
           <div class="section">
-            <h2 class="section-title">Education & Qualifications</h2>
+            <h2 class="section-title">EDUCATION</h2>
             <div class="section-content">
               ${candidateData.education.map(edu => `
-                <div class="education-item">${edu}</div>
+                <div class="education-item">
+                  <div class="education-degree"><strong>${edu}</strong></div>
+                </div>
               `).join('')}
             </div>
           </div>
           ` : ''}
 
-          <!-- Certifications -->
+          <!-- CERTIFICATIONS -->
           ${candidateData.certifications && candidateData.certifications.length > 0 ? `
           <div class="section">
-            <h2 class="section-title">Professional Certifications</h2>
+            <h2 class="section-title">CERTIFICATIONS</h2>
             <div class="section-content">
               ${candidateData.certifications.map(cert => `
-                <div class="cert-item">${cert}</div>
+                <div class="cert-item">
+                  <div class="cert-name"><strong>${cert}</strong></div>
+                </div>
               `).join('')}
             </div>
           </div>
           ` : ''}
 
-          <!-- Languages -->
+          <!-- LANGUAGES -->
           ${candidateData.languages && candidateData.languages.length > 0 ? `
           <div class="section">
-            <h2 class="section-title">Languages</h2>
+            <h2 class="section-title">LANGUAGES</h2>
             <div class="section-content">
               <div class="languages-grid">
                 ${candidateData.languages.map(lang => `
@@ -1113,14 +1210,18 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
             </div>
           </div>
           ` : ''}
+
+          <!-- PROFESSIONAL EXPERIENCE -->
+          ${experienceHTML}
         </div>
 
-        <!-- Footer with Antaes branding -->
+        <!-- Footer with logo and page numbers -->
         <div class="footer">
-          <div class="footer-content">
+          <div class="footer-left">
             <img src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Antaes_logo.png" alt="ANTAES" class="footer-logo" />
-            <span class="footer-slogan">Partnership for Excellence</span>
+            <span class="footer-text">Partnership for Excellence • ANTAES</span>
           </div>
+          <div class="page-number">Page <span id="pageNumber"></span></div>
         </div>
       </div>
     </body>
