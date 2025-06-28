@@ -48,6 +48,17 @@ export interface Job {
   updatedAt: Date;
   publishedAt?: Date;
   expiresAt?: Date;
+  
+  // Pipeline and SLA fields
+  pipelineStages?: string[];
+  slaDeadline?: Date;
+  slaDays?: number;
+  
+  // Additional computed fields
+  applications?: number;
+  candidates?: number;
+  daysToFill?: number;
+  slaProgress?: number;
 }
 
 // Application interface

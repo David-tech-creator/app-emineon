@@ -47,6 +47,11 @@ interface Job {
   posted: string;
   owner: string;
   description: string;
+  
+  // Pipeline and SLA fields
+  pipelineStages?: string[];
+  slaDeadline?: Date;
+  slaDays?: number;
 }
 
 interface Candidate {
@@ -104,8 +109,37 @@ export default function JobDetailPage() {
   // Wait for Clerk to be fully loaded before making API calls
   const isFullyLoaded = userLoaded && authLoaded;
 
-  // Mock pipeline stages - safe fallback data
-  const pipelineStages = [
+  // Pipeline stages from job data or fallback
+  const getStageColor = (stageName: string, index: number) => {
+    const stageColorMap: Record<string, string> = {
+      'sourced': 'bg-gray-100',
+      'screened': 'bg-blue-100',
+      'interviewing': 'bg-yellow-100',
+      'submitted': 'bg-purple-100',
+      'offer': 'bg-orange-100',
+      'hired': 'bg-green-100',
+      'phone': 'bg-blue-100',
+      'technical': 'bg-yellow-100',
+      'assessment': 'bg-purple-100',
+      'reference': 'bg-orange-100',
+      'final': 'bg-green-100'
+    };
+    
+    const key = stageName.toLowerCase();
+    if (stageColorMap[key]) return stageColorMap[key];
+    
+    // Default colors based on position
+    const defaultColors = ['bg-gray-100', 'bg-blue-100', 'bg-yellow-100', 'bg-purple-100', 'bg-orange-100', 'bg-green-100'];
+    return defaultColors[index % defaultColors.length];
+  };
+
+  const pipelineStages = job?.pipelineStages?.map((stageName: string, index: number) => ({
+    id: stageName.toLowerCase().replace(/\s+/g, '-'),
+    name: stageName,
+    color: getStageColor(stageName, index),
+    count: candidates.filter(c => c.stage === stageName.toLowerCase().replace(/\s+/g, '-')).length,
+    description: `${stageName} stage`
+  })) || [
     { id: 'sourced', name: 'Sourced', color: 'bg-gray-100', count: 0, description: 'Initial candidates identified' },
     { id: 'screened', name: 'Screened', color: 'bg-blue-100', count: 0, description: 'Phone/video screening completed' },
     { id: 'interviewing', name: 'Interviewing', color: 'bg-yellow-100', count: 0, description: 'Technical interviews in progress' },
@@ -178,6 +212,29 @@ export default function JobDetailPage() {
         const jobData = await jobResponse.json();
         console.log('✅ Job data fetched:', jobData);
 
+        // Calculate real statistics
+        const totalApplications = jobData._count?.applications || 0;
+        const daysActive = jobData.createdAt 
+          ? Math.floor((new Date().getTime() - new Date(jobData.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+          : 0;
+        
+        // Calculate SLA progress based on deadline
+        let slaProgress = 0;
+        if (jobData.slaDeadline && jobData.slaDays) {
+          const slaDeadlineDate = new Date(jobData.slaDeadline);
+          const now = new Date();
+          const totalSlaTime = jobData.slaDays * 24 * 60 * 60 * 1000; // Convert days to milliseconds
+          const timeElapsed = now.getTime() - (slaDeadlineDate.getTime() - totalSlaTime);
+          slaProgress = Math.min(100, Math.max(0, (timeElapsed / totalSlaTime) * 100));
+        } else {
+          // Fallback: use 10 days standard SLA
+          const createdAt = new Date(jobData.createdAt);
+          const standardSlaDays = 10;
+          const totalSlaTime = standardSlaDays * 24 * 60 * 60 * 1000;
+          const timeElapsed = new Date().getTime() - createdAt.getTime();
+          slaProgress = Math.min(100, Math.max(0, (timeElapsed / totalSlaTime) * 100));
+        }
+
         // Transform API data to match UI expectations
         const transformedJob: Job = {
           id: jobData.id || jobId,
@@ -188,12 +245,10 @@ export default function JobDetailPage() {
           workMode: jobData.isRemote ? 'Remote' : 'Hybrid',
           status: jobData.status === 'ACTIVE' ? 'Active' : (jobData.status || 'Draft'),
           priority: 'Medium', // Default priority
-          candidates: jobData._count?.applications || 0,
-          applications: jobData._count?.applications || 0,
-          daysToFill: jobData.createdAt 
-            ? Math.floor((new Date().getTime() - new Date(jobData.createdAt).getTime()) / (1000 * 60 * 60 * 24))
-            : 0,
-          slaProgress: 50, // Default progress
+          candidates: totalApplications,
+          applications: totalApplications,
+          daysToFill: daysActive,
+          slaProgress: Math.round(slaProgress),
           skills: jobData.requirements?.filter((req: string) => req?.startsWith?.('Skill:')).map((req: string) => req.replace('Skill: ', '')) || [],
           salary: jobData.salaryMin && jobData.salaryMax 
             ? `${jobData.salaryCurrency || 'CHF'} ${(jobData.salaryMin / 1000).toFixed(0)}k - ${(jobData.salaryMax / 1000).toFixed(0)}k`
@@ -202,7 +257,12 @@ export default function JobDetailPage() {
               : 'Salary not specified',
           posted: jobData.createdAt ? new Date(jobData.createdAt).toLocaleDateString() : 'Unknown',
           owner: 'David V', // Default owner
-          description: jobData.description || 'No description available.'
+          description: jobData.description || 'No description available.',
+          
+          // Pipeline and SLA fields
+          pipelineStages: jobData.pipelineStages || ['Sourced', 'Screened', 'Interviewing', 'Offer', 'Hired'],
+          slaDeadline: jobData.slaDeadline ? new Date(jobData.slaDeadline) : undefined,
+          slaDays: jobData.slaDays || 10
         };
 
         setJob(transformedJob);
@@ -279,7 +339,7 @@ export default function JobDetailPage() {
               timeline: [
                 { 
                   date: new Date().toISOString().split('T')[0], 
-                  action: `Moved to ${pipelineStages.find(s => s.id === newStage)?.name || newStage}`, 
+                  action: `Moved to ${pipelineStages.find((s: any) => s.id === newStage)?.name || newStage}`, 
                   type: 'stage_change' 
                 },
                 ...candidate.timeline

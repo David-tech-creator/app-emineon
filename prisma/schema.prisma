@@ -120,6 +120,11 @@ model Job {
   expiresAt          DateTime?
   employmentType     String[]
   
+  // Pipeline and SLA fields
+  pipelineStages     String[]             // Array of stage names from create job modal
+  slaDeadline        DateTime?            // SLA deadline for sending candidates to client
+  slaDays            Int?                 @default(10) // Standard SLA days (configurable)
+  
   // Project relationship
   projectId          String?
   project            Project?             @relation(fields: [projectId], references: [id], onDelete: SetNull)

@@ -98,6 +98,10 @@ const createJobSchema = z.object({
   benefits: z.array(z.string()).optional(),
   experienceLevel: z.string().optional(),
   projectId: z.string().optional(),
+  
+  // Pipeline and SLA fields
+  pipelineStages: z.array(z.string()).default(['Sourced', 'Screened', 'Interviewing', 'Offer', 'Hired']),
+  slaDays: z.number().optional().default(10),
 });
 
 // POST /api/jobs - Create a new job
@@ -141,6 +145,11 @@ export async function POST(request: NextRequest) {
     // Generate public token for job applications
     const publicToken = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+    // Calculate SLA deadline based on slaDays
+    const slaDeadline = validatedData.slaDays 
+      ? new Date(Date.now() + (validatedData.slaDays * 24 * 60 * 60 * 1000))
+      : new Date(Date.now() + (10 * 24 * 60 * 60 * 1000)); // Default 10 days
+
     // Create job data matching Prisma schema
     const jobData = {
       title: validatedData.title,
@@ -164,6 +173,11 @@ export async function POST(request: NextRequest) {
       employmentType: [employmentTypeMap[validatedData.contractType] || 'FULL_TIME'],
       projectId: validatedData.projectId || undefined,
       publishedAt: validatedData.status === 'active' ? new Date() : undefined,
+      
+      // Pipeline and SLA fields
+      pipelineStages: validatedData.pipelineStages,
+      slaDeadline,
+      slaDays: validatedData.slaDays,
     };
 
     console.log('Creating job with processed data:', jobData);
