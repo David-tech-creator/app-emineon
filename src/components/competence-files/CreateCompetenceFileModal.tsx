@@ -1208,20 +1208,26 @@ export function CreateCompetenceFileModal({
         { id: 'functional-skills', type: 'functional-skills', title: sectionTitles['functional-skills'], content: '', visible: true, order: 2, editable: true },
         { id: 'technical-skills', type: 'technical-skills', title: sectionTitles['technical-skills'], content: '', visible: true, order: 3, editable: true },
         { id: 'areas-of-expertise', type: 'areas-of-expertise', title: sectionTitles['areas-of-expertise'], content: '', visible: true, order: 4, editable: true },
-        { id: 'education', type: 'education', title: sectionTitles.education, content: '', visible: true, order: 5 + experienceSections.length, editable: true },
-        { id: 'certifications', type: 'certifications', title: sectionTitles.certifications, content: '', visible: true, order: 6 + experienceSections.length, editable: true },
-        { id: 'languages', type: 'languages', title: sectionTitles.languages, content: '', visible: true, order: 7 + experienceSections.length, editable: true },
-        { id: 'experiences-summary', type: 'experiences-summary', title: sectionTitles['experiences-summary'], content: '', visible: true, order: 8 + experienceSections.length, editable: true },
+        { id: 'education', type: 'education', title: sectionTitles.education, content: '', visible: true, order: 5, editable: true },
+        { id: 'certifications', type: 'certifications', title: sectionTitles.certifications, content: '', visible: true, order: 6, editable: true },
+        { id: 'languages', type: 'languages', title: sectionTitles.languages, content: '', visible: true, order: 7, editable: true },
+        { id: 'experiences-summary', type: 'experiences-summary', title: sectionTitles['experiences-summary'], content: '', visible: true, order: 8, editable: true },
       ].map(section => ({
         ...section,
         content: section.content || generateSectionContent(section.type, selectedCandidate, selectedTemplate)
       }));
       
-      // Combine base sections with experience sections
+      // Update experience sections to have orders starting after the base sections
+      const updatedExperienceSections = experienceSections.map((section, index) => ({
+        ...section,
+        order: 9 + index // Start after the 9 base sections (0-8)
+      }));
+      
+      // Combine base sections with experience sections - experiences come LAST
       const allSections = [
         ...updatedBaseSections.slice(0, 5), // header, summary, functional-skills, technical-skills, areas-of-expertise
-        ...experienceSections, // individual experience blocks (PROFESSIONAL EXPERIENCES)
-        ...updatedBaseSections.slice(5) // education, certifications, languages, experiences-summary
+        ...updatedBaseSections.slice(5), // education, certifications, languages, experiences-summary
+        ...updatedExperienceSections // individual experience blocks (PROFESSIONAL EXPERIENCES) - LAST
       ];
       
       setDocumentSections(allSections);
@@ -1691,38 +1697,49 @@ export function CreateCompetenceFileModal({
     setDocumentSections(prev => [...prev, newSection]);
   }, [documentSections.length]);
   
-  // Autosave functionality
-  const handleAutoSave = useCallback(async () => {
+  // Save functionality (saves draft to database)
+  const handleSave = useCallback(async () => {
     if (!selectedCandidate) return;
     
     setIsAutoSaving(true);
     try {
       const token = await getToken();
-      const documentData = {
-        candidateId: selectedCandidate.id,
-        template: selectedTemplate,
-        sections: documentSections,
-        lastModified: new Date().toISOString(),
-      };
-      
-      const response = await fetch('/api/competence-files/autosave', {
+      const response = await fetch('/api/competence-files/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(documentData),
+        body: JSON.stringify({
+          candidateData: selectedCandidate,
+          template: selectedTemplate,
+          sections: documentSections.filter(s => s.visible),
+          format: 'draft', // Special format for saving drafts
+          jobDescription: jobDescription.text ? jobDescription : undefined,
+          saveOnly: true, // Flag to indicate this is a save operation, not generation
+        }),
       });
       
       if (response.ok) {
+        const result = await response.json();
         setLastSaved(new Date());
+        
+        // Show success message
+        alert('Draft saved successfully!');
+        
+        // Call success callback to refresh the list but don't close modal
+        onSuccess('Draft saved successfully');
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || `Server error: ${response.status}`);
       }
     } catch (error) {
-      console.error('Autosave failed:', error);
+      console.error('Save failed:', error);
+      alert(`Failed to save draft: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsAutoSaving(false);
     }
-  }, [selectedCandidate, selectedTemplate, documentSections, getToken]);
+  }, [selectedCandidate, selectedTemplate, documentSections, jobDescription, getToken, onSuccess]);
   
   // Generate final document
   const handleGenerateDocument = useCallback(async (format: 'pdf' | 'docx') => {
@@ -1759,7 +1776,7 @@ export function CreateCompetenceFileModal({
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         
-        // Call success callback and close modal
+        // Call success callback and close modal for PDF generation
         onSuccess('File downloaded successfully');
         onClose();
       } else {
@@ -1777,10 +1794,10 @@ export function CreateCompetenceFileModal({
   // Auto-save effect
   useEffect(() => {
     if (currentStep === 4 && selectedCandidate) {
-      const interval = setInterval(handleAutoSave, 30000); // Auto-save every 30 seconds
+      const interval = setInterval(handleSave, 30000); // Auto-save every 30 seconds
       return () => clearInterval(interval);
     }
-  }, [currentStep, selectedCandidate, handleAutoSave]);
+  }, [currentStep, selectedCandidate, handleSave]);
   
   if (!isOpen) return null;
   
@@ -2494,7 +2511,7 @@ export function CreateCompetenceFileModal({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={handleAutoSave}
+                      onClick={handleSave}
                       disabled={isAutoSaving}
                     >
                       {isAutoSaving ? (

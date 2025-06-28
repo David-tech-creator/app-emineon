@@ -2036,7 +2036,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { candidateData, template = 'professional', content, format = 'pdf', sections, jobDescription } = body;
+    const { candidateData, template = 'professional', content, format = 'pdf', sections, jobDescription, saveOnly = false } = body;
 
     if (!candidateData) {
       return NextResponse.json(
@@ -2056,6 +2056,106 @@ export async function POST(request: NextRequest) {
       jobTitle,
       experienceCount: candidateData.experience?.length || 0
     });
+
+    // Handle draft saving (save only, no file generation)
+    if (saveOnly || format === 'draft') {
+      console.log('💾 Saving draft to database...');
+      
+      // Find or create candidate first
+      let candidate = await prisma.candidate.findFirst({
+        where: {
+          OR: [
+            { id: candidateData.id },
+            { email: candidateData.email || '' },
+            { 
+              AND: [
+                { firstName: candidateData.fullName.split(' ')[0] || '' },
+                { lastName: candidateData.fullName.split(' ').slice(1).join(' ') || '' }
+              ]
+            }
+          ]
+        }
+      });
+
+      if (!candidate && candidateData.email) {
+        // Create candidate if not found
+        candidate = await prisma.candidate.create({
+          data: {
+            firstName: candidateData.fullName.split(' ')[0] || 'Unknown',
+            lastName: candidateData.fullName.split(' ').slice(1).join(' ') || '',
+            email: candidateData.email,
+            currentTitle: candidateData.currentTitle,
+            phone: candidateData.phone || null,
+            currentLocation: candidateData.location || null,
+            experienceYears: candidateData.yearsOfExperience || null,
+            summary: candidateData.summary || null,
+            technicalSkills: candidateData.skills || [],
+            certifications: candidateData.certifications || [],
+            spokenLanguages: candidateData.languages || [],
+            lastUpdated: new Date(),
+            status: 'ACTIVE'
+          }
+        });
+        console.log('👤 Created new candidate:', candidate.id);
+      }
+
+      if (candidate) {
+        // Find template ID if it exists
+        let templateId = null;
+        if (template === 'antaes' || template === 'cf-antaes-consulting') {
+          const antaesTemplate = await prisma.competenceFileTemplate.findFirst({
+            where: { name: { contains: 'Antaes', mode: 'insensitive' } }
+          });
+          templateId = antaesTemplate?.id || null;
+        } else if (template === 'emineon') {
+          const emineonTemplate = await prisma.competenceFileTemplate.findFirst({
+            where: { name: { contains: 'Emineon', mode: 'insensitive' } }
+          });
+          templateId = emineonTemplate?.id || null;
+        }
+
+        const filename = `${candidateData.fullName.replace(/[^a-zA-Z0-9]/g, '_')}_${client.replace(/[^a-zA-Z0-9]/g, '_')}_Draft`;
+
+        // Save draft competence file record
+        const competenceFile = await prisma.competenceFile.create({
+          data: {
+            candidateId: candidate.id,
+            templateId,
+            fileName: filename,
+            filePath: '', // No file path for drafts
+            downloadUrl: '', // No download URL for drafts
+            format: 'draft',
+            fileSize: 0,
+            status: 'DRAFT',
+            version: 1,
+            downloadCount: 0,
+            isAnonymized: false,
+            metadata: {
+              client,
+              jobTitle,
+              template,
+              sectionsCount: sections?.length || 0,
+              hasJobDescription: !!jobDescription
+            },
+            sectionsConfig: sections || null,
+            generatedBy: userId
+          }
+        });
+
+        console.log('✅ Draft saved to database:', competenceFile.id);
+
+        return NextResponse.json({
+          success: true,
+          message: 'Draft saved successfully',
+          fileId: competenceFile.id
+        });
+      } else {
+        return NextResponse.json(
+          { success: false, message: 'Could not find or create candidate' },
+          { status: 400 }
+        );
+      }
+    }
 
     // Generate HTML content based on template
     let htmlContent: string;
