@@ -940,35 +940,134 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           letter-spacing: 0.5px;
         }
         
-        /* Education and Certifications */
+        /* Education & Certifications */
         .education-item, .cert-item {
           margin-bottom: 12px;
-          padding: 12px 15px;
-          background: #f8f9fa;
-          border-radius: 6px;
-          border-left: 3px solid #FFB800;
+          padding-left: 15px;
+          position: relative;
         }
         
-        .education-item strong, .cert-item strong {
+        .education-item:before, .cert-item:before {
+          content: "•";
           color: #2C4F7C;
-          font-weight: 700;
+          font-weight: bold;
+          position: absolute;
+          left: 0;
+        }
+        
+        .education-degree, .cert-name {
+          font-weight: 600;
+          color: #232629;
         }
         
         /* Languages */
         .languages-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 12px;
-          margin: 15px 0;
+          gap: 10px;
+          margin-top: 10px;
         }
         
         .language-item {
+          padding: 8px 12px;
           background: #f8f9fa;
-          padding: 12px 15px;
           border-radius: 6px;
+          text-align: center;
+          font-weight: 600;
+          color: #444B54;
           border-left: 3px solid #2C4F7C;
+        }
+        
+        /* Experience Summary */
+        .experiences-summary {
+          background: #f8f9fa;
+          padding: 20px;
+          border-radius: 8px;
+          border-left: 4px solid #2C4F7C;
+        }
+        
+        .experience-summary-item {
+          margin-bottom: 10px;
+          color: #444B54;
+          line-height: 1.6;
+        }
+        
+        /* Experience Blocks */
+        .experience-block {
+          margin-bottom: 30px;
+          padding: 25px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          border-left: 4px solid #2C4F7C;
+          page-break-inside: avoid;
+        }
+        
+        .exp-header {
+          margin-bottom: 20px;
+          padding-bottom: 15px;
+          border-bottom: 1px solid #e9ecef;
+        }
+        
+        .exp-company {
+          font-size: 18px;
+          font-weight: 700;
+          color: #2C4F7C;
+          margin-bottom: 5px;
+        }
+        
+        .exp-title {
+          font-size: 16px;
+          font-weight: 600;
+          color: #FFB800;
+          margin-bottom: 5px;
+        }
+        
+        .exp-dates {
+          font-size: 14px;
+          color: #444B54;
+          font-weight: 600;
+        }
+        
+        .exp-section {
+          margin-bottom: 15px;
+        }
+        
+        .exp-section-title {
+          font-size: 14px;
+          font-weight: 700;
+          color: #2C4F7C;
+          margin-bottom: 8px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        
+        .exp-description {
+          color: #444B54;
+          line-height: 1.6;
+          margin-bottom: 10px;
+          font-style: italic;
+        }
+        
+        .exp-responsibilities, .exp-achievements, .exp-technical {
+          list-style: none;
+          padding-left: 0;
+        }
+        
+        .exp-responsibilities li, .exp-achievements li, .exp-technical li {
+          position: relative;
+          padding-left: 15px;
+          margin-bottom: 8px;
+          color: #444B54;
+          line-height: 1.6;
           font-weight: 500;
-          color: #232629;
+        }
+        
+        .exp-responsibilities li:before, .exp-achievements li:before, .exp-technical li:before {
+          content: "•";
+          color: #FFB800;
+          font-weight: bold;
+          position: absolute;
+          left: 0;
         }
         
         /* Footer */
