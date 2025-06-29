@@ -721,6 +721,9 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           height: 70px;
           width: auto;
           max-width: 250px;
+          opacity: 1 !important;
+          visibility: visible !important;
+          display: block !important;
         }
         
         .header h1 {
@@ -1167,6 +1170,19 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
           .experience-block { 
             page-break-inside: avoid; 
           }
+          .logo-image {
+            opacity: 1 !important;
+            visibility: visible !important;
+            display: block !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            background: transparent !important;
+          }
+          .header-logo {
+            opacity: 1 !important;
+            visibility: visible !important;
+            display: block !important;
+          }
         }
         
         /* Mobile Responsiveness */
@@ -1207,7 +1223,12 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
             ` : ''}
           </div>
           <div class="header-logo">
-            <img src="https://res.cloudinary.com/emineon/image/upload/f_auto,q_auto,w_150,h_80,c_fit/v1735251690/Antaes_logo.png" alt="ANTAES" class="logo-image" style="width: 150px; height: 80px; object-fit: contain; display: block; -webkit-print-color-adjust: exact; print-color-adjust: exact;" />
+            <img src="https://res.cloudinary.com/emineon/image/upload/w_200,h_100,c_fit,q_100,f_png/Antaes_logo" 
+                 alt="ANTAES" 
+                 class="logo-image" 
+                 style="width: 150px; height: 80px; object-fit: contain; display: block !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; opacity: 1 !important; visibility: visible !important; background: transparent !important;" 
+                 onload="this.style.opacity='1';" 
+                 onerror="console.error('Antaes logo failed to load:', this.src);" />
           </div>
         </div>
         
