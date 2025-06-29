@@ -61,66 +61,68 @@ Example style:
       return `${baseInstructions}
 
 SECTION: FUNCTIONAL SKILLS (Comprehensive Professional Competencies)
-Generate categorized functional/soft skills with detailed explanations covering ALL functional areas:
+Generate a comprehensive list of functional skills organized by categories with detailed explanations:
 
 **Leadership & Team Management**
 • Cross-functional team leadership and mentoring
 • Agile coaching and team development
 • Stakeholder management and communication
 • Change management and organizational transformation
-• Conflict resolution and team motivation
+• Conflict resolution and team building
 
 Proven ability to lead diverse teams through complex transformations, fostering collaboration and driving high-performance cultures. Expert in agile methodologies and continuous improvement practices.
 
+**Strategic Planning & Business Analysis**
+• Business strategy development and implementation
+• Requirements gathering and business analysis
+• Market research and competitive analysis
+• Strategic roadmap development
+• Performance optimization and KPI management
+• Risk assessment and mitigation strategies
+
+Strategic thinker with expertise in translating business vision into executable roadmaps. Skilled in balancing competing priorities while ensuring alignment with organizational objectives.
+
 **Project & Program Management**
 • Project lifecycle management (initiation to closure)
-• Agile, Scrum, Kanban, and Waterfall methodologies
-• Resource allocation and budget management
-• Risk identification, assessment, and mitigation
+• Resource planning and allocation
+• Budget management and cost control
 • Timeline management and milestone tracking
+• Quality assurance and deliverable management
 • Vendor and contractor management
 
-Strategic project leader with expertise in delivering complex initiatives on time and within budget. Skilled in managing multiple concurrent projects while ensuring quality and stakeholder satisfaction.
+Experienced in managing complex, multi-million dollar projects across diverse industries. Expert in PMI methodologies, agile frameworks, and hybrid project management approaches.
 
-**Business Analysis & Strategy**
-• Requirements gathering and documentation
-• Business process analysis and optimization
-• Stakeholder analysis and management
-• Gap analysis and solution design
-• Strategic planning and roadmap development
-• Market research and competitive analysis
+**Process Improvement & Methodology**
+• Process analysis and optimization
+• Lean Six Sigma methodologies
+• Business process reengineering
+• Workflow automation and digitization
+• Standard operating procedure development
+• Continuous improvement initiatives
 
-Expert business analyst with proven ability to translate business needs into actionable solutions. Skilled in identifying opportunities for process improvement and operational efficiency.
+Champion of operational excellence with a track record of identifying inefficiencies and implementing scalable solutions that drive measurable business value.
 
-**Communication & Collaboration**
+**Communication & Stakeholder Management**
 • Executive presentation and reporting
-• Technical documentation and knowledge transfer
-• Cross-cultural communication and global team coordination
-• Client relationship management and consulting
-• Training and workshop facilitation
-• Public speaking and conference presentations
+• Technical documentation and writing
+• Cross-cultural communication
+• Negotiation and persuasion
+• Training and knowledge transfer
+• Public speaking and facilitation
 
-Exceptional communicator with ability to convey complex technical concepts to diverse audiences. Expert in building consensus and driving alignment across organizational levels.
+Exceptional communicator capable of translating complex technical concepts into business language for diverse audiences, from C-suite executives to technical teams.
 
-**Problem-Solving & Innovation**
-• Root cause analysis and systematic problem-solving
-• Design thinking and creative solution development
-• Process improvement and optimization
-• Innovation management and idea generation
-• Critical thinking and analytical reasoning
-• Decision-making under uncertainty
+**Analytical & Problem-Solving Skills**
+• Data analysis and interpretation
+• Root cause analysis
+• Critical thinking and decision-making
+• Financial analysis and modeling
+• Performance metrics and reporting
+• Trend analysis and forecasting
 
-Innovative problem-solver with track record of identifying creative solutions to complex business challenges. Expert in applying structured methodologies to drive continuous improvement.
+Strong analytical mindset with ability to synthesize complex information, identify patterns, and develop data-driven solutions to business challenges.
 
-**Quality Assurance & Compliance**
-• Quality management systems and processes
-• Regulatory compliance and audit preparation
-• Standard operating procedures development
-• Performance monitoring and KPI management
-• Continuous improvement and lean methodologies
-• Risk management and control frameworks
-
-Focus on management, leadership, analytical, and process skills. DO NOT include technical tools or programming languages.`;
+Focus on management, process, analytical, and soft skills. DO NOT include technical tools or programming languages here.`;
 
     case 'technical-skills':
       return `${baseInstructions}
@@ -293,7 +295,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    console.log('🤖 AI Suggestion Request:', {
+    // Generate unique request ID and session ID for complete isolation
+    const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const requestId = `${sectionType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    console.log(`🤖 [${requestId}] [SESSION: ${sessionId}] AI Suggestion Request:`, {
       type,
       sectionType,
       candidateFullName: candidateData.fullName,
@@ -304,132 +310,158 @@ export async function POST(request: NextRequest) {
     let prompt = '';
     let systemPrompt = `You are an expert HR professional and executive resume writer with 15+ years of experience. You specialize in creating compelling, ATS-optimized competence files that highlight candidates' unique value propositions and achievements.
 
-CRITICAL: You MUST generate content specific to the ${sectionType.toUpperCase()} section ONLY. Do not mix content from other sections.`;
+🚨 CRITICAL TRUTHFULNESS REQUIREMENT:
+- NEVER fabricate metrics, percentages, revenue figures, or specific achievements
+- NEVER make up company names, dollar amounts, or performance statistics  
+- NEVER create fake achievements like "reduced costs by X%" or "increased revenue by $X"
+- ONLY use information that can be verified from the actual CV data provided
+- When creating examples, use general professional language without specific false metrics
+- Focus on responsibilities and capabilities rather than fabricated achievements
+
+🚨 CRITICAL SECTION ISOLATION INSTRUCTIONS:
+1. SESSION ID: ${sessionId}
+2. REQUEST ID: ${requestId}
+3. TARGET SECTION: ${sectionType.toUpperCase()}
+4. You MUST generate content EXCLUSIVELY for the ${sectionType.toUpperCase()} section ONLY
+5. DO NOT include any content that belongs to other sections
+6. IGNORE any content that is not directly relevant to ${sectionType}
+7. Focus ONLY on the specific requirements for the ${sectionType} section
+8. Return content that is laser-focused on this section's purpose
+9. DO NOT generate generic text that could apply to multiple sections
+10. Each section must have UNIQUE, SPECIFIC content
+
+FORBIDDEN CONTENT:
+- Do not include generic phrases like "Comprehensive academic foundation"
+- Do not include content that could belong to other sections
+- Do not generate the same content for different sections
+- Do not include broad overviews that span multiple areas
+
+SECTION VALIDATION: The content you generate will be validated to ensure it's unique to ${sectionType.toUpperCase()} only.`;
     
-    // Enhanced context about the candidate and job
+    // Enhanced context with strict section filtering
     const candidateContext = `
-Candidate Profile:
+🎯 SECTION-SPECIFIC REQUEST
+SESSION: ${sessionId}
+REQUEST: ${requestId}
+TARGET: ${sectionType.toUpperCase()} SECTION ONLY
+
+Candidate Profile (filtered for ${sectionType} relevance):
 - Name: ${candidateData.fullName}
 - Current Title: ${candidateData.currentTitle}
 - Experience Level: ${candidateData.yearsOfExperience} years
-- Core Skills: ${candidateData.skills?.slice(0, 8).join(', ') || 'Not specified'}
+- Relevant Skills (top 6): ${candidateData.skills?.slice(0, 6).join(', ') || 'Not specified'}
 - Education: ${candidateData.education?.join(', ') || 'Not specified'}
 - Location: ${candidateData.location || 'Not specified'}
-- Summary: ${candidateData.summary || 'Not provided'}
-${candidateData.experience && candidateData.experience.length > 0 ? `
-- Recent Experience: ${candidateData.experience[0]?.company} - ${candidateData.experience[0]?.title}` : ''}
+${candidateData.experience && candidateData.experience.length > 0 ? `- Recent Role: ${candidateData.experience[0]?.title} at ${candidateData.experience[0]?.company}` : ''}
 ${jobDescription ? `
 
-Target Job Context:
-- Job Title: ${jobDescription.title || 'Not specified'}
+Target Job Alignment (for ${sectionType} section):
+- Position: ${jobDescription.title || 'Not specified'}
 - Company: ${jobDescription.company || 'Not specified'}
-- Key Requirements: ${jobDescription.requirements?.slice(0, 5).join(', ') || 'Not specified'}
-- Required Skills: ${jobDescription.skills?.slice(0, 8).join(', ') || 'Not specified'}
-- Main Responsibilities: ${jobDescription.responsibilities?.slice(0, 3).join(', ') || 'Not specified'}
+- Top Requirements: ${jobDescription.requirements?.slice(0, 3).join(', ') || 'Not specified'}
+- Key Skills: ${jobDescription.skills?.slice(0, 6).join(', ') || 'Not specified'}` : ''}
 
-IMPORTANT: Tailor the content to align with the job requirements while staying truthful to the candidate's actual experience. Emphasize relevant skills and experiences that match the job needs.` : ''}
+🚨 STRICT ISOLATION: Generate content ONLY for ${sectionType.toUpperCase()}. Do not include any content from other sections.
+CONTENT MUST BE UNIQUE TO ${sectionType.toUpperCase()} SECTION.
 `;
 
-    console.log('📋 Candidate Context for Section:', sectionType, {
-      candidateName: candidateData.fullName,
+    console.log(`📝 [${requestId}] Candidate Context for AI (${sectionType}):`, {
+      name: candidateData.fullName,
       title: candidateData.currentTitle,
       skillsCount: candidateData.skills?.length || 0,
       experienceCount: candidateData.experience?.length || 0,
-      hasJobDescription: !!jobDescription
+      hasJobContext: !!jobDescription,
+      targetSection: sectionType,
+      sessionId
     });
 
     switch (type) {
       case 'generate':
         prompt = generateStructuredContentPrompt(sectionType, candidateContext);
-        console.log('🎯 Generated Prompt for', sectionType, '(length:', prompt.length, ')');
-        console.log('📝 Prompt Preview:', prompt.substring(0, 200) + '...');
+        console.log(`🎯 [${requestId}] Generated prompt for section: ${sectionType}`);
+        console.log(`📋 [${requestId}] Prompt length: ${prompt.length} characters`);
         break;
         
       case 'improve':
         prompt = `${candidateContext}
 
-Section Type: ${sectionType.toUpperCase()}
+🎯 SECTION: ${sectionType.toUpperCase()} IMPROVEMENT TASK
 Current Content: ${currentContent}
 
-TASK: Enhance this ${sectionType} section to be more professional, impactful, and compelling. Focus on:
-
+ENHANCEMENT OBJECTIVES:
 1. **Clarity & Impact**: Use strong action verbs and quantifiable achievements
-2. **Professional Tone**: Maintain executive-level language appropriate for senior roles
-3. **Value Proposition**: Highlight unique strengths and competitive advantages
-4. **ATS Optimization**: Include relevant keywords naturally
-5. **Readability**: Ensure clear structure and flow
-6. **Specificity**: Add concrete examples and measurable results
+2. **Professional Tone**: Executive-level language for senior roles
+3. **Value Proposition**: Highlight unique strengths specific to ${sectionType}
+4. **ATS Optimization**: Include relevant keywords naturally for ${sectionType}
+5. **Readability**: Clear structure and flow for ${sectionType} content
+6. **Specificity**: Concrete examples relevant to ${sectionType} only
 
-GUIDELINES:
-- Keep the same factual information but enhance presentation
-- Use metrics and numbers where possible (even if estimated reasonably)
-- Eliminate weak language and filler words
-- Make every sentence add value
-- Maintain authenticity while maximizing impact
-- Stay focused on ${sectionType} content only
+STRICT GUIDELINES:
+- Enhance ONLY ${sectionType.toUpperCase()} content
+- Do not add content from other sections
+- Keep factual information accurate
+- Use metrics where applicable to ${sectionType}
+- Stay focused EXCLUSIVELY on ${sectionType} requirements
 
-Return ONLY the improved content with proper formatting. No explanations or meta-commentary.`;
+🚨 SECTION VALIDATION: Content must be uniquely relevant to ${sectionType.toUpperCase()} only.
+Return ONLY the improved ${sectionType} content with proper formatting.`;
         break;
         
       case 'expand':
         prompt = `${candidateContext}
 
-Section Type: ${sectionType.toUpperCase()}
+🎯 SECTION: ${sectionType.toUpperCase()} EXPANSION TASK
 Current Content: ${currentContent}
 
-TASK: Expand this ${sectionType} section with additional relevant detail and context. Focus on:
+EXPANSION OBJECTIVES FOR ${sectionType.toUpperCase()}:
+1. **Section-Specific Depth**: Add relevant detail for ${sectionType} only
+2. **Industry Context**: Include terminology specific to ${sectionType}
+3. **Professional Impact**: Highlight achievements relevant to ${sectionType}
+4. **Technical Depth**: Expand on aspects specific to ${sectionType}
+5. **Business Value**: Connect to outcomes relevant to ${sectionType}
+6. **Comprehensive Coverage**: Cover all aspects of ${sectionType} thoroughly
 
-1. **Depth & Detail**: Add specific examples, methodologies, and approaches
-2. **Industry Context**: Include relevant industry terminology and best practices
-3. **Leadership Impact**: Highlight team leadership, mentoring, and strategic contributions
-4. **Technical Depth**: Expand on technical skills with specific tools, frameworks, and applications
-5. **Business Value**: Connect activities to business outcomes and ROI
-6. **Comprehensive Coverage**: Ensure all relevant aspects are covered thoroughly
+EXPANSION STRATEGIES FOR ${sectionType}:
+- Add specific examples relevant to ${sectionType}
+- Include methodologies applicable to ${sectionType}
+- Describe approaches specific to ${sectionType}
+- Add context about ${sectionType} applications
+- Include frameworks relevant to ${sectionType}
 
-EXPANSION STRATEGIES:
-- Add specific examples of projects or achievements
-- Include relevant certifications or training
-- Mention collaboration with cross-functional teams
-- Describe problem-solving approaches and methodologies
-- Add context about scale, complexity, or business impact
-- Include industry-specific terminology and frameworks
-
-Return ONLY the expanded content with proper formatting. Maintain professional tone throughout.
-Focus exclusively on ${sectionType} content.`;
+🚨 CRITICAL: Expand ONLY ${sectionType.toUpperCase()} content. Do not add content from other sections.
+Return ONLY the expanded ${sectionType} content with proper formatting.`;
         break;
         
       case 'rewrite':
         prompt = `${candidateContext}
 
-Section Type: ${sectionType.toUpperCase()}
+🎯 SECTION: ${sectionType.toUpperCase()} REWRITE TASK
 Current Content: ${currentContent}
 
-TASK: Completely rewrite this ${sectionType} section with a fresh perspective and approach. Focus on:
+REWRITE OBJECTIVES FOR ${sectionType.toUpperCase()}:
+1. **Fresh Perspective**: New approach specific to ${sectionType}
+2. **Strategic Positioning**: Position for ${sectionType} excellence
+3. **Market Relevance**: Align with ${sectionType} industry trends
+4. **Competitive Edge**: Emphasize ${sectionType} differentiators
+5. **Future-Forward**: Include ${sectionType} innovation aspects
+6. **Compelling Narrative**: Create ${sectionType}-focused story
 
-1. **New Angle**: Present the same information from a different strategic perspective
-2. **Executive Positioning**: Position the candidate as a strategic leader and innovator
-3. **Market Relevance**: Align with current industry trends and demands
-4. **Competitive Edge**: Emphasize unique differentiators and competitive advantages
-5. **Future-Forward**: Include forward-thinking skills and adaptability
-6. **Compelling Narrative**: Create a story that showcases growth and impact
+REWRITE APPROACHES FOR ${sectionType}:
+- Lead with ${sectionType} achievements
+- Use ${sectionType}-specific terminology
+- Emphasize ${sectionType} leadership
+- Position for ${sectionType} advancement
+- Create ${sectionType}-oriented narrative
 
-REWRITE APPROACHES:
-- Lead with most impressive achievements
-- Use industry-specific terminology and frameworks
-- Emphasize leadership and strategic thinking
-- Include soft skills and emotional intelligence
-- Position for career advancement and growth
-- Create compelling, results-oriented narrative
-
-Return ONLY the rewritten content with proper formatting. Create a compelling narrative that positions the candidate as a top-tier professional.
-Focus exclusively on ${sectionType} content.`;
+🚨 CRITICAL: Rewrite ONLY ${sectionType.toUpperCase()} content. Do not include other sections.
+Return ONLY the rewritten ${sectionType} content with proper formatting.`;
         break;
         
       default:
         return NextResponse.json({ error: 'Invalid suggestion type' }, { status: 400 });
     }
 
-    console.log('🚀 Sending request to OpenAI for section:', sectionType, 'with prompt length:', prompt.length);
+    console.log(`🚀 [${requestId}] Sending isolated request to OpenAI for ${sectionType}...`);
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -443,33 +475,45 @@ Focus exclusively on ${sectionType} content.`;
           content: prompt
         }
       ],
-      max_tokens: 1000,
+      max_tokens: 1200,
       temperature: 0.7,
+      presence_penalty: 0.2, // Encourage more diverse content
+      frequency_penalty: 0.2, // Reduce repetition more aggressively
+      user: `${userId}-${sessionId}-${sectionType}`, // Unique user ID per section
     });
 
     const suggestion = completion.choices[0]?.message?.content;
 
     if (!suggestion) {
-      console.error('❌ No suggestion generated from OpenAI for section:', sectionType);
+      console.error(`❌ [${requestId}] No suggestion generated from OpenAI`);
       return NextResponse.json({ error: 'Failed to generate suggestion' }, { status: 500 });
     }
 
-    console.log('✅ AI suggestion generated successfully for section:', sectionType, {
-      type,
-      suggestionLength: suggestion.length,
-      preview: suggestion.substring(0, 150) + '...',
-      containsGenericText: suggestion.includes('Comprehensive academic foundation') || suggestion.includes('Professional excellence')
-    });
-
-    // Additional debugging to catch generic content
-    if (suggestion.includes('Comprehensive academic foundation') || 
-        suggestion.includes('Professional excellence') ||
-        suggestion.includes('theoretical knowledge and practical skills')) {
-      console.warn('⚠️ WARNING: Generic content detected in', sectionType, 'section!');
-      console.warn('🔍 Full suggestion:', suggestion);
+    // Content validation to ensure section-specific content
+    const isContentAppropriate = validateSectionContent(sectionType, suggestion);
+    
+    if (!isContentAppropriate) {
+      console.warn(`⚠️ [${requestId}] Generated content may not be specific to ${sectionType}`);
     }
 
-    return NextResponse.json({ suggestion });
+    console.log(`✅ [${requestId}] AI suggestion generated successfully for ${sectionType}:`, {
+      type,
+      sectionType,
+      suggestionLength: suggestion.length,
+      preview: suggestion.substring(0, 100) + '...',
+      sessionId,
+      isContentAppropriate
+    });
+
+    console.log(`🔍 [${requestId}] Full AI Response for ${sectionType}:`, suggestion);
+
+    return NextResponse.json({ 
+      suggestion,
+      requestId,
+      sectionType,
+      sessionId,
+      timestamp: Date.now()
+    });
 
   } catch (error) {
     console.error('❌ Error generating AI suggestion:', error);
@@ -478,4 +522,35 @@ Focus exclusively on ${sectionType} content.`;
       { status: 500 }
     );
   }
+}
+
+// Function to validate if content is appropriate for the section
+function validateSectionContent(sectionType: string, content: string): boolean {
+  const contentLower = content.toLowerCase();
+  
+  // Define section-specific keywords that should be present
+  const sectionKeywords: Record<string, string[]> = {
+    'summary': ['experienced', 'professional', 'expertise', 'background', 'proven'],
+    'functional-skills': ['leadership', 'management', 'strategic', 'planning', 'coordination'],
+    'technical-skills': ['programming', 'development', 'technology', 'software', 'systems'],
+    'areas-of-expertise': ['domain', 'industry', 'sector', 'specialization', 'expertise'],
+    'education': ['degree', 'university', 'education', 'academic', 'study'],
+    'certifications': ['certified', 'certification', 'credential', 'license', 'accredited'],
+    'languages': ['language', 'fluent', 'proficient', 'native', 'conversational'],
+    'experiences-summary': ['experience', 'role', 'position', 'company', 'employment']
+  };
+  
+  const keywords = sectionKeywords[sectionType] || [];
+  const hasRelevantKeywords = keywords.some(keyword => contentLower.includes(keyword));
+  
+  // Check for generic phrases that shouldn't be in specific sections
+  const genericPhrases = [
+    'comprehensive academic foundation',
+    'providing theoretical knowledge',
+    'all sections have the same content'
+  ];
+  
+  const hasGenericContent = genericPhrases.some(phrase => contentLower.includes(phrase));
+  
+  return hasRelevantKeywords && !hasGenericContent;
 } 

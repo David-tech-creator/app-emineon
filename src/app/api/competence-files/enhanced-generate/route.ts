@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { enrichmentPipeline, EnrichmentOptions } from '@/lib/ai/enrichment-pipeline';
 import { documentGenerator, GenerationOptions } from '@/lib/generation/document-generator';
-import { CandidateData } from '@/stores/competence-file-store';
+import { CandidateData } from '@/types';
 
 // Request schema validation
 const GenerateRequestSchema = z.object({

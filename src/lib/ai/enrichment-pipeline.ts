@@ -1,4 +1,4 @@
-import { CandidateData } from '@/stores/competence-file-store';
+import { CandidateData } from '@/types';
 import { promptModules, PromptContext, PromptModule } from '@/lib/prompts';
 import { z } from 'zod';
 

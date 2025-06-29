@@ -1,4 +1,4 @@
-import { CandidateData } from '@/stores/competence-file-store';
+import { CandidateData } from '@/types';
 import { generatePDF } from '@/lib/pdf-service';
 
 interface GenerationOptions {

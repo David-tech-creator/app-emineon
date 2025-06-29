@@ -1,5 +1,5 @@
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle } from 'docx';
-import { CandidateData } from '@/stores/competence-file-store';
+import { CandidateData } from '@/types';
 
 interface GenerationOptions {
   template: {

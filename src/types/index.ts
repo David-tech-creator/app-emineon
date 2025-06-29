@@ -230,4 +230,29 @@ export type AssessmentType = 'TECHNICAL' | 'PERSONALITY' | 'COGNITIVE' | 'SKILLS
 export type AssessmentStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'EXPIRED' | 'CANCELLED';
 export type SeniorityLevel = 'INTERN' | 'JUNIOR' | 'MID_LEVEL' | 'SENIOR' | 'LEAD' | 'PRINCIPAL' | 'ARCHITECT' | 'DIRECTOR' | 'VP' | 'C_LEVEL';
 export type RemotePreference = 'REMOTE' | 'HYBRID' | 'ONSITE' | 'FLEXIBLE';
-export type ConversionStatus = 'IN_PIPELINE' | 'PLACED' | 'REJECTED' | 'WITHDRAWN' | 'ON_HOLD'; 
+export type ConversionStatus = 'IN_PIPELINE' | 'PLACED' | 'REJECTED' | 'WITHDRAWN' | 'ON_HOLD';
+
+// Types for the application
+
+export interface CandidateData {
+  id: string;
+  fullName: string;
+  currentTitle: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  photo?: string;
+  yearsOfExperience?: number;
+  summary?: string;
+  skills: string[];
+  certifications: string[];
+  experience: Array<{
+    company: string;
+    title: string;
+    startDate: string;
+    endDate: string;
+    responsibilities: string;
+  }>;
+  education: string[];
+  languages: string[];
+} 

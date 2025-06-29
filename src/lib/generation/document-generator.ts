@@ -1,4 +1,4 @@
-import { CandidateData } from '@/stores/competence-file-store';
+import { CandidateData } from '@/types';
 import { uploadToCloudinary } from '@/lib/cloudinary-config';
 import { generatePDF } from '@/lib/pdf-service';
 

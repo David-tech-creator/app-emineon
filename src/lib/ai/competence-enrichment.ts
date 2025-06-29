@@ -273,9 +273,9 @@ export class CompetenceEnrichmentService {
 Job Title: ${jobTitle}
 Company: ${company}
 Job Description: ${jobText || 'Professional role with growth opportunities'}
-Requirements: ${requirements.join(', ') || 'Professional experience and skills'}
-Required Skills: ${skills.join(', ') || 'Professional and technical skills'}
-Responsibilities: ${responsibilities.join(', ') || 'Professional responsibilities and duties'}
+Requirements: ${Array.isArray(requirements) ? requirements.join(', ') : (requirements || 'Professional experience and skills')}
+Required Skills: ${Array.isArray(skills) ? skills.join(', ') : (skills || 'Professional and technical skills')}
+Responsibilities: ${Array.isArray(responsibilities) ? responsibilities.join(', ') : (responsibilities || 'Professional responsibilities and duties')}
 
 Return ONLY a valid JSON object with this exact structure:
 {
@@ -332,11 +332,11 @@ Return ONLY a valid JSON object with this exact structure:
     const jobContext = jobDescription ? `
 Target Role: ${jobDescription.title || 'Not specified'}
 Target Company: ${jobDescription.company || clientName || 'Client'}
-Key Requirements: ${jobDescription.requirements?.join(', ') || 'Professional qualifications'}
-Required Skills: ${jobDescription.skills?.join(', ') || 'Professional skills'}
+Key Requirements: ${Array.isArray(jobDescription.requirements) ? jobDescription.requirements.join(', ') : (jobDescription.requirements || 'Professional qualifications')}
+Required Skills: ${Array.isArray(jobDescription.skills) ? jobDescription.skills.join(', ') : (jobDescription.skills || 'Professional skills')}
 ` : '';
 
-    const prompt = `Create a compelling professional summary for this candidate that perfectly aligns with the target role:
+    const prompt = `Create a professional summary for this candidate that aligns with the target role using ONLY verifiable information:
 
 CANDIDATE PROFILE:
 Name: ${candidateData.fullName}
@@ -346,33 +346,45 @@ Core Skills: ${candidateData.skills.join(', ')}
 Education: ${candidateData.education.join(', ')}
 Current Summary: ${candidateData.summary || 'Not provided'}
 
-RECENT EXPERIENCE:
+ACTUAL WORK EXPERIENCE:
 ${candidateData.experience.map(exp => 
-  `${exp.title} at ${exp.company}: ${exp.responsibilities}`
+  `${exp.title} at ${exp.company} (${exp.startDate} - ${exp.endDate}): ${exp.responsibilities}`
 ).join('\n')}
 
 ${jobContext}
 
 Create a concise 3-4 sentence professional summary that:
-1. Positions the candidate perfectly for the target role using ONLY their actual experience
-2. Highlights their most relevant REAL experience and achievements from their CV
-3. Emphasizes skills that match the job requirements from their actual skill set
-4. Uses natural, conversational language that sounds genuinely human
-5. Includes quantifiable achievements based on their actual years of experience and roles
-6. NEVER invent or fabricate any information not present in the candidate's actual data
+1. Uses ONLY information directly from their actual CV and experience
+2. Highlights their relevant REAL job titles, companies, and years of experience
+3. Emphasizes skills that are explicitly listed in their skill set
+4. Focuses on the TYPES of work they've done, not fabricated results or metrics
+5. Uses natural, professional language without corporate buzzwords
+6. NEVER invents achievements, metrics, or accomplishments not stated in their CV
 
-CRITICAL: Avoid typical AI/corporate buzzwords like "spearheaded", "leveraged", "synergistic", "paradigm", "cutting-edge", "innovative solutions", "best practices", "stakeholders", "deliverables", "actionable insights", "seamless integration", "robust solutions", "scalable frameworks", "strategic initiatives", "cross-functional collaboration", "end-to-end solutions", "value-added", "game-changing", "next-generation", "world-class", "industry-leading", "state-of-the-art", "mission-critical", "transformational", "groundbreaking", "revolutionary".
+CRITICAL PROHIBITIONS:
+- NO fabricated metrics, percentages, or quantified achievements
+- NO invented accomplishments or results not in their CV
+- NO buzzwords like "spearheaded", "leveraged", "transformed", "optimized"
+- NO claims about impact or results unless explicitly stated in their experience
 
-Use simple, direct, human language. Write in third person, make it ATS-friendly with relevant keywords, and ensure every statement is grounded in the candidate's real background.`;
+ACCEPTABLE CONTENT:
+- Their actual job titles and companies
+- Their real years of experience
+- Skills explicitly listed in their profile
+- Types of work/responsibilities they actually performed
+- Industries they've worked in
+- Educational background they actually have
+
+Write in third person and make it sound professional but truthful and grounded in their actual background.`;
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        { role: 'system', content: 'You are an expert resume writer who creates compelling professional summaries that perfectly position candidates for their target roles.' },
+        { role: 'system', content: 'You are a professional CV writer who creates truthful summaries based strictly on actual candidate data. You NEVER fabricate achievements or metrics.' },
         { role: 'user', content: prompt }
       ],
-      temperature: 0.7,
-      max_tokens: 300
+      temperature: 0.3, // Reduced temperature for more conservative responses
+      max_tokens: 250
     });
 
     const result = response.choices[0]?.message?.content;
@@ -454,7 +466,7 @@ CRITICAL REQUIREMENTS:
     const enrichedExperience = [];
     
     for (const exp of candidateData.experience) { // Process ALL experience roles
-      const prompt = `Enhance this work experience entry with detailed achievements, technical environment, and quantified results:
+      const prompt = `Enhance this work experience entry ONLY using information that can be directly inferred from the provided data:
 
 ROLE: ${exp.title} at ${exp.company}
 PERIOD: ${exp.startDate} - ${exp.endDate}
@@ -473,31 +485,44 @@ Industry: ${jobAnalysis.industryContext || 'Professional'}
 
 Return a JSON object with:
 {
-  "enhancedDescription": "Concise 1-2 sentence role overview based on actual responsibilities",
-  "keyAchievements": ["Clear, readable achievements that are to the point and easy to understand - focus on real impact"],
-  "technicalEnvironment": ["technologies, tools, platforms that someone in this role would realistically use"],
-  "responsibilities": ["key responsibilities and duties performed in this role"]
+  "enhancedDescription": "Concise 1-2 sentence role overview based ONLY on actual responsibilities provided",
+  "keyAchievements": ["Achievements that can be directly inferred from their actual responsibilities - NO fabricated metrics, percentages, or specific numbers"],
+  "technicalEnvironment": ["technologies, tools, platforms explicitly mentioned in their skills OR commonly used in their specific role/company"],
+  "responsibilities": ["key responsibilities taken directly from their actual job description"]
 }
 
-CRITICAL REQUIREMENTS:
-1. Base ALL content on the candidate's ACTUAL responsibilities and role description
-2. Infer realistic achievements that someone in their position would accomplish
-3. Use quantified results appropriate to their seniority level and industry
-4. NEVER invent specific numbers, dates, or projects not mentioned in their CV
-5. Focus on realistic business impact someone in their role and company would deliver
-6. Write achievements in simple, direct language - avoid corporate jargon
-7. Make achievements readable and to the point - no fluff or buzzwords
+CRITICAL REQUIREMENTS - MUST FOLLOW:
+1. NEVER invent specific metrics (NO "reduced by 30%", "increased by 25%", "saved $X", etc.)
+2. NEVER add achievements not directly supported by their actual responsibilities
+3. Base ALL content strictly on what they actually did according to their CV
+4. If responsibilities are vague, keep achievements equally general but professional
+5. Only mention technologies that are in their skills list OR extremely common for their role
+6. Use professional language but avoid corporate buzzwords
+7. Focus on the TYPE of work they did, not imaginary RESULTS they achieved
 
-AVOID these AI/corporate buzzwords: "spearheaded", "leveraged", "synergistic", "paradigm", "cutting-edge", "innovative solutions", "best practices", "stakeholders", "deliverables", "actionable insights", "seamless integration", "robust solutions", "scalable frameworks", "strategic initiatives", "cross-functional collaboration", "end-to-end solutions", "value-added", "game-changing", "next-generation", "world-class", "industry-leading", "state-of-the-art", "mission-critical", "transformational", "groundbreaking", "revolutionary", "optimized", "streamlined", "enhanced", "facilitated", "coordinated", "collaborated", "interfaced".`;
+FORBIDDEN CONTENT:
+- Any specific percentages, dollar amounts, or time savings
+- Phrases like "reduced costs by X%", "improved efficiency by X%", "increased revenue by X%"
+- Achievements that aren't clearly supported by their actual job description
+- Technologies not mentioned in their skills unless absolutely standard for the role
+
+ACCEPTABLE ACHIEVEMENTS:
+- "Managed software development lifecycle for multiple projects"
+- "Led technical reviews and code quality initiatives" 
+- "Collaborated with cross-functional teams to deliver solutions"
+- "Mentored junior developers in best practices"
+- "Implemented technical solutions aligned with business requirements"
+
+Write achievements that reflect what someone in their exact role and company would realistically accomplish based on their actual responsibilities.`;
 
       const response = await openai.chat.completions.create({
         model: 'gpt-4o',
         messages: [
-          { role: 'system', content: 'You are an expert resume writer who transforms basic job descriptions into compelling achievement-focused narratives.' },
+          { role: 'system', content: 'You are a professional CV writer who enhances job descriptions while maintaining complete accuracy and truthfulness. You NEVER fabricate metrics or achievements not supported by the actual CV data.' },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.6,
-        max_tokens: 1200
+        temperature: 0.3, // Reduced temperature for more conservative responses
+        max_tokens: 1000
       });
 
       const content = response.choices[0]?.message?.content;
@@ -543,8 +568,8 @@ Companies: ${candidateData.experience.map(exp => exp.company).join(', ')}
 
 ${jobDescription ? `
 TARGET ROLE: ${jobDescription.title || 'Professional Role'}
-REQUIRED SKILLS: ${jobDescription.skills?.join(', ') || 'Professional skills'}
-KEY RESPONSIBILITIES: ${jobDescription.responsibilities?.slice(0, 3).join(', ') || 'Professional duties'}
+REQUIRED SKILLS: ${Array.isArray(jobDescription.skills) ? jobDescription.skills.join(', ') : (jobDescription.skills || 'Professional skills')}
+KEY RESPONSIBILITIES: ${Array.isArray(jobDescription.responsibilities) ? jobDescription.responsibilities.slice(0, 3).join(', ') : (jobDescription.responsibilities || 'Professional duties')}
 ` : ''}
 
 Return a JSON array of 8-12 concise expertise tags that:

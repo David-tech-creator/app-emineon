@@ -72,11 +72,8 @@ export default function UserPage() {
         
         if (response.ok) {
           const result = await response.json();
-          if (result.success && result.data) {
-            setStats(result.data);
-          } else {
-            console.error('Failed to fetch user stats:', result.error);
-          }
+          // Extract data from the nested structure
+          setStats(result.data || result);
         } else {
           console.error('Failed to fetch user stats');
         }
@@ -113,7 +110,7 @@ export default function UserPage() {
         return 'bg-yellow-100 text-yellow-800 border-yellow-300 font-semibold';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-300 font-semibold';
-    }
+  }
   };
 
   const userRole = user?.publicMetadata?.role as string || 'user';
@@ -134,7 +131,7 @@ export default function UserPage() {
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
-        ) : stats && (
+        ) : stats ? (
           <div>
             <div className="flex items-center space-x-2 mb-6">
               <BarChart3 className="h-5 w-5 text-blue-600" />
@@ -148,7 +145,7 @@ export default function UserPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-blue-700">Jobs Available</p>
-                      <p className="text-2xl font-bold text-blue-900">{stats.overview.jobsCreated}</p>
+                      <p className="text-2xl font-bold text-blue-900">{stats.overview?.jobsCreated || 0}</p>
                     </div>
                     <Briefcase className="h-8 w-8 text-blue-600" />
                   </div>
@@ -160,7 +157,7 @@ export default function UserPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-green-700">Candidates</p>
-                      <p className="text-2xl font-bold text-green-900">{stats.overview.candidatesCreated}</p>
+                      <p className="text-2xl font-bold text-green-900">{stats.overview?.candidatesCreated || 0}</p>
                     </div>
                     <Users className="h-8 w-8 text-green-600" />
                   </div>
@@ -172,7 +169,7 @@ export default function UserPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-purple-700">Competence Files</p>
-                      <p className="text-2xl font-bold text-purple-900">{stats.overview.competenceFilesGenerated}</p>
+                      <p className="text-2xl font-bold text-purple-900">{stats.overview?.competenceFilesGenerated || 0}</p>
                     </div>
                     <FileText className="h-8 w-8 text-purple-600" />
                   </div>
@@ -184,7 +181,7 @@ export default function UserPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-orange-700">Projects</p>
-                      <p className="text-2xl font-bold text-orange-900">{stats.overview.projectsCreated}</p>
+                      <p className="text-2xl font-bold text-orange-900">{stats.overview?.projectsCreated || 0}</p>
                     </div>
                     <FolderOpen className="h-8 w-8 text-orange-600" />
                   </div>
@@ -196,7 +193,7 @@ export default function UserPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-indigo-700">Downloads</p>
-                      <p className="text-2xl font-bold text-indigo-900">{stats.overview.totalDownloads}</p>
+                      <p className="text-2xl font-bold text-indigo-900">{stats.overview?.totalDownloads || 0}</p>
                     </div>
                     <Download className="h-8 w-8 text-indigo-600" />
                   </div>
@@ -216,15 +213,15 @@ export default function UserPage() {
                 <CardContent className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">New Jobs:</span>
-                    <span className="text-sm font-medium text-blue-600">{stats.thisMonth.jobsCreated}</span>
+                    <span className="text-sm font-medium text-blue-600">{stats.thisMonth?.jobsCreated || 0}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">New Candidates:</span>
-                    <span className="text-sm font-medium text-green-600">{stats.thisMonth.candidatesCreated}</span>
+                    <span className="text-sm font-medium text-green-600">{stats.thisMonth?.candidatesCreated || 0}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Files Generated:</span>
-                    <span className="text-sm font-medium text-purple-600">{stats.thisMonth.competenceFilesGenerated}</span>
+                    <span className="text-sm font-medium text-purple-600">{stats.thisMonth?.competenceFilesGenerated || 0}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -238,7 +235,7 @@ export default function UserPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {stats.recentActivity.length > 0 ? (
+                  {stats.recentActivity && stats.recentActivity.length > 0 ? (
                     <div className="space-y-2">
                       {stats.recentActivity.slice(0, 3).map((activity) => (
                         <div key={activity.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
@@ -261,6 +258,10 @@ export default function UserPage() {
                 </CardContent>
               </Card>
             </div>
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-gray-500">Unable to load statistics at this time.</p>
           </div>
         )}
 

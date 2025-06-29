@@ -1,4 +1,4 @@
-import { CandidateData } from '@/stores/competence-file-store';
+import { CandidateData } from '@/types';
 
 export interface PromptContext {
   candidate: CandidateData;
