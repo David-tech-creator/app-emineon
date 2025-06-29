@@ -1412,22 +1412,60 @@ export function CreateCompetenceFileModal({
     const file = event.target.files?.[0];
     if (!file) return;
     
+    console.log('🔧 DEBUG: File selected:', {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: file.lastModified
+    });
+    
     setIsParsing(true);
     try {
+      console.log('🔧 DEBUG: Getting authentication token...');
       const token = await getToken();
       
       if (!token) {
-        throw new Error('Authentication token not available');
+        console.error('🔧 DEBUG: No authentication token available');
+        throw new Error('Authentication token not available. Please refresh the page and try again.');
       }
       
+      console.log('🔧 DEBUG: Token obtained successfully, length:', token.length);
       console.log('📁 Starting file upload...', { 
         fileName: file.name, 
         fileSize: file.size, 
         fileType: file.type 
       });
       
+      // Validate file before upload
+      const maxSize = 25 * 1024 * 1024; // 25MB
+      if (file.size > maxSize) {
+        throw new Error('File is too large. Maximum file size is 25MB.');
+      }
+      
+      const supportedTypes = [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/msword',
+        'text/plain',
+        'text/markdown',
+        'text/html'
+      ];
+      
+      const supportedExtensions = ['pdf', 'docx', 'doc', 'txt', 'md', 'html'];
+      const fileExtension = file.name.toLowerCase().split('.').pop();
+      
+      if (!supportedTypes.includes(file.type) && !supportedExtensions.includes(fileExtension || '')) {
+        throw new Error('Unsupported file type. Please use PDF, DOCX, DOC, TXT, MD, or HTML files.');
+      }
+      
+      console.log('🔧 DEBUG: File validation passed');
+      
       const formData = new FormData();
       formData.append('file', file);
+      
+      console.log('🔧 DEBUG: FormData created, making API request...');
+      console.log('🔧 DEBUG: API endpoint: /api/competence-files/parse-resume');
+      console.log('🔧 DEBUG: Request headers will include Authorization');
       
       const response = await fetch('/api/competence-files/parse-resume', {
         method: 'POST',
@@ -1437,49 +1475,70 @@ export function CreateCompetenceFileModal({
         body: formData,
       });
       
-      console.log('📡 File upload response:', { 
+      console.log('🔧 DEBUG: Response received:', { 
         status: response.status, 
-        statusText: response.statusText 
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
       });
       
       if (!response.ok) {
+        console.error('🔧 DEBUG: Response not OK');
         const errorText = await response.text();
-        console.error('❌ File upload failed:', { 
-          status: response.status, 
-          statusText: response.statusText,
-          errorText 
-        });
+        console.error('🔧 DEBUG: Error response body:', errorText);
         
         let errorMessage = 'Failed to parse file';
         try {
           const errorData = JSON.parse(errorText);
           errorMessage = errorData.message || errorMessage;
-        } catch {
+          console.error('🔧 DEBUG: Parsed error data:', errorData);
+        } catch (parseError) {
+          console.error('🔧 DEBUG: Could not parse error response as JSON:', parseError);
           errorMessage = errorText || errorMessage;
+        }
+        
+        // Provide specific error messages based on status codes
+        if (response.status === 401) {
+          errorMessage = 'Authentication failed. Please refresh the page and sign in again.';
+        } else if (response.status === 413) {
+          errorMessage = 'File is too large. Please use a file smaller than 25MB.';
+        } else if (response.status === 415) {
+          errorMessage = 'Unsupported file format. Please use PDF, DOCX, TXT, MD, or HTML files.';
+        } else if (response.status === 500) {
+          errorMessage = 'Server error occurred. Please try again in a few moments.';
         }
         
         throw new Error(errorMessage);
       }
       
+      console.log('🔧 DEBUG: Response OK, parsing JSON...');
       const result = await response.json();
-      console.log('✅ File parse result:', result);
+      console.log('🔧 DEBUG: Parsed response:', result);
       
       if (!result.success || !result.data) {
-        throw new Error(result.message || 'Invalid response format');
+        console.error('🔧 DEBUG: Invalid response format:', result);
+        throw new Error(result.message || 'Invalid response format from server');
       }
       
       const newCandidate = result.data;
+      console.log('🔧 DEBUG: Extracted candidate data:', newCandidate);
       
       if (!newCandidate.fullName) {
-        throw new Error('Could not extract candidate name from file');
+        console.error('🔧 DEBUG: No candidate name found in extracted data');
+        throw new Error('Could not extract candidate name from file. Please ensure the file contains clear candidate information.');
       }
       
+      console.log('🔧 DEBUG: Setting candidate and moving to step 2');
       setSelectedCandidate(newCandidate);
       setCurrentStep(2);
-      console.log('✅ File parsing completed successfully');
+      console.log('✅ File parsing completed successfully for:', newCandidate.fullName);
       
     } catch (error) {
       console.error('💥 File parsing error:', error);
+      console.error('🔧 DEBUG: Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       
       let userMessage = 'Failed to parse file. Please try again.';
       
@@ -1487,27 +1546,64 @@ export function CreateCompetenceFileModal({
         if (error.message.includes('Authentication')) {
           userMessage = 'Authentication failed. Please refresh the page and try again.';
         } else if (error.message.includes('Could not extract')) {
-          userMessage = 'Could not extract candidate information. Please ensure the file contains clear candidate details.';
+          userMessage = 'Could not extract candidate information. Please ensure the file contains clear candidate details with name, experience, and skills.';
         } else if (error.message.includes('Invalid response')) {
           userMessage = 'Server response was invalid. Please try again.';
-        } else if (error.message.includes('file format')) {
+        } else if (error.message.includes('file format') || error.message.includes('Unsupported')) {
           userMessage = 'Unsupported file format. Please use PDF, DOCX, TXT, MD, or HTML files.';
         } else if (error.message.includes('too large')) {
           userMessage = 'File is too large. Please use a file smaller than 25MB.';
+        } else if (error.message.includes('Network') || error.message.includes('fetch')) {
+          userMessage = 'Network error occurred. Please check your connection and try again.';
         } else if (error.message !== 'Failed to parse file') {
           userMessage = error.message;
         }
       }
       
-      alert(userMessage);
+      // Show detailed error to user
+      alert(`Upload failed: ${userMessage}\n\nTechnical details: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsParsing(false);
       // Reset the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+      console.log('🔧 DEBUG: File upload process completed');
     }
   }, [getToken]);
+  
+  // Dropzone configuration for file upload
+  const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
+    onDrop: useCallback(async (acceptedFiles: File[]) => {
+      if (acceptedFiles.length > 0) {
+        const file = acceptedFiles[0];
+        // Create a proper file input event
+        const fileInput = fileInputRef.current;
+        if (fileInput) {
+          // Create a new FileList-like object
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          fileInput.files = dt.files;
+          
+          // Create a proper event
+          const event = new Event('change', { bubbles: true });
+          Object.defineProperty(event, 'target', { value: fileInput, enumerable: true });
+          await handleFileSelect(event as unknown as React.ChangeEvent<HTMLInputElement>);
+        }
+      }
+    }, [handleFileSelect]),
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/msword': ['.doc'],
+      'text/plain': ['.txt'],
+      'text/markdown': ['.md'],
+      'text/html': ['.html']
+    },
+    maxSize: 25 * 1024 * 1024, // 25MB
+    multiple: false,
+    disabled: isParsing
+  });
   
   // Text parsing
   const handleTextParse = useCallback(async () => {
@@ -1956,20 +2052,53 @@ export function CreateCompetenceFileModal({
                   </div>
                   
                   {inputMethod === 'file' && (
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                    <div 
+                      {...getRootProps()} 
+                      className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                        isDragActive 
+                          ? 'border-blue-500 bg-blue-50' 
+                          : isDragReject 
+                            ? 'border-red-500 bg-red-50'
+                            : 'border-gray-300 hover:border-gray-400'
+                      } ${isParsing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
                       <input
+                        {...getInputProps()}
                         type="file"
                         ref={fileInputRef}
                         onChange={handleFileSelect}
                         accept=".pdf,.doc,.docx,.txt,.html,.md"
                         className="hidden"
+                        disabled={isParsing}
                       />
-                      <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-lg font-medium text-gray-900 mb-2">Upload Resume/CV</p>
-                      <p className="text-gray-600 mb-4">Supports PDF, DOC, DOCX, TXT, HTML, MD files</p>
-                      <Button onClick={() => fileInputRef.current?.click()}>
-                        Choose File
-                      </Button>
+                      <Upload className={`h-12 w-12 mx-auto mb-4 ${
+                        isDragActive ? 'text-blue-500' : isDragReject ? 'text-red-500' : 'text-gray-400'
+                      }`} />
+                      <p className={`text-lg font-medium mb-2 ${
+                        isDragActive ? 'text-blue-900' : isDragReject ? 'text-red-900' : 'text-gray-900'
+                      }`}>
+                        {isDragActive ? 'Drop your resume here!' : 'Upload Resume/CV'}
+                      </p>
+                      <p className={`mb-4 ${
+                        isDragActive ? 'text-blue-700' : isDragReject ? 'text-red-700' : 'text-gray-600'
+                      }`}>
+                        {isDragReject 
+                          ? 'File type not supported' 
+                          : 'Drag & drop or click to browse • PDF, DOC, DOCX, TXT, HTML, MD files • Max 25MB'
+                        }
+                      </p>
+                      {!isDragActive && !isParsing && (
+                        <Button onClick={() => fileInputRef.current?.click()} disabled={isParsing}>
+                          {isParsing ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              Processing...
+                            </>
+                          ) : (
+                            'Choose File'
+                          )}
+                        </Button>
+                      )}
                     </div>
                   )}
                   
