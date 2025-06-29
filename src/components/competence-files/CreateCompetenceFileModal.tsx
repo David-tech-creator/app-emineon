@@ -1,10 +1,43 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { useDropzone } from 'react-dropzone';
-import { useAuth } from '@clerk/nextjs';
-
-// DND Kit imports
+import { useCallback, useState, useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { 
+  X, 
+  Search, 
+  Upload, 
+  Link2, 
+  User, 
+  FileText, 
+  Brain, 
+  Eye, 
+  Download, 
+  Share2,
+  ChevronRight,
+  ChevronLeft,
+  Check,
+  Paperclip,
+  Building2,
+  Briefcase,
+  GraduationCap,
+  Award,
+  Edit3,
+  Loader2,
+  Users,
+  Palette,
+  Settings,
+  Image,
+  CheckCircle,
+  FileDown,
+  GripVertical,
+  Plus,
+  Trash2,
+  ArrowUp,
+  ArrowDown
+} from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -20,204 +53,100 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import {
-  useSortable,
-} from '@dnd-kit/sortable';
+import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-
-// Lexical imports
-import { LexicalComposer } from '@lexical/react/LexicalComposer';
-import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
-import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
-import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
-import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
-import { ListPlugin } from '@lexical/react/LexicalListPlugin';
-import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { $generateHtmlFromNodes } from '@lexical/html';
-import { $getRoot, $createParagraphNode, $createTextNode, EditorState } from 'lexical';
-import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
-import { TRANSFORMERS } from '@lexical/markdown';
-
-// Lexical nodes
-import { HeadingNode, QuoteNode } from '@lexical/rich-text';
-import { ListItemNode, ListNode, $createListItemNode, $createListNode, $isListNode } from '@lexical/list';
-import { CodeHighlightNode, CodeNode } from '@lexical/code';
-import { AutoLinkNode, LinkNode } from '@lexical/link';
-
-// UI Components
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Textarea } from '@/components/ui/Textarea';
-import { 
-  Upload, 
-  FileText, 
-  Link, 
-  ArrowLeft, 
-  ArrowRight, 
-  Save,
-  Download,
-  Plus,
-  GripVertical,
-  Eye,
-  EyeOff,
-  Trash2,
-  Wand2,
-  Loader2,
-  X,
-  Edit3,
-  Move,
-  Sparkles,
-  RefreshCw,
-  ZoomOut,
-  ZoomIn,
-  Mic,
-  MicOff,
-  Briefcase,
-  ChevronUp,
-  ChevronDown,
-} from 'lucide-react';
-
-// Types
-interface CandidateData {
-  id: string;
-  fullName: string;
-  currentTitle: string;
-  email: string;
-  phone: string;
-  location: string;
-  yearsOfExperience: number;
-  skills: string[];
-  certifications: string[];
-  experience: Array<{
-    company: string;
-    title: string;
-    startDate: string;
-    endDate: string;
-    responsibilities: string;
-  }>;
-  education: string[];
-  languages: string[];
-  summary: string;
-}
-
-interface DocumentSection {
-  id: string;
-  type: string;
-  title: string;
-  content: string;
-  visible: boolean;
-  order: number;
-  editable: boolean;
-}
+import { useDropzone } from 'react-dropzone';
+import { useCompetenceFileStore, type CandidateData } from '@/stores/competence-file-store';
+import { predefinedTemplates, fontOptions, colorPresets } from '@/data/templates';
 
 interface CreateCompetenceFileModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (fileUrl: string) => void;
+  onSuccess: (fileData: any) => void;
   preselectedCandidate?: CandidateData | null;
 }
 
-interface JobDescription {
-  text: string;
-  requirements: string[];
-  skills: string[];
-  responsibilities: string[];
-  title?: string;
-  company?: string;
-}
+// Mock candidates for demo
+const mockCandidates: CandidateData[] = [
+  {
+    id: '1',
+    fullName: 'Sarah Johnson',
+    currentTitle: 'Senior Frontend Engineer',
+    email: 'sarah.johnson@email.com',
+    phone: '+41 79 123 4567',
+    location: 'Zurich, Switzerland',
+    yearsOfExperience: 8,
+    skills: ['React', 'TypeScript', 'Node.js', 'GraphQL', 'AWS'],
+    certifications: ['AWS Certified Developer', 'React Professional'],
+    experience: [
+      {
+        company: 'Tech Corp',
+        title: 'Senior Frontend Engineer',
+        startDate: '2021-01',
+        endDate: 'Present',
+        responsibilities: 'Led frontend development team, implemented modern React architecture'
+      }
+    ],
+    education: ['MSc Computer Science, ETH Zurich'],
+    languages: ['English (Native)', 'German (Professional)', 'French (Basic)'],
+    summary: 'Experienced frontend engineer with expertise in React and modern web technologies'
+  },
+  {
+    id: '2',
+    fullName: 'David Chen',
+    currentTitle: 'Backend Engineer',
+    email: 'david.chen@email.com',
+    phone: '+41 79 234 5678',
+    location: 'Basel, Switzerland',
+    yearsOfExperience: 6,
+    skills: ['Python', 'Django', 'PostgreSQL', 'Docker', 'Kubernetes'],
+    certifications: ['Google Cloud Professional', 'Python Institute Certified'],
+    experience: [
+      {
+        company: 'Data Solutions AG',
+        title: 'Backend Engineer',
+        startDate: '2020-03',
+        endDate: 'Present',
+        responsibilities: 'Designed scalable backend systems, optimized database performance'
+      }
+    ],
+    education: ['BSc Software Engineering, University of Basel'],
+    languages: ['English (Professional)', 'German (Native)', 'Mandarin (Native)'],
+    summary: 'Backend specialist with strong experience in Python and cloud technologies'
+  }
+];
 
-// Sortable Section Item Component for Step 2
-function SortableSectionItem({ 
-  section, 
-  onToggleVisibility, 
-  onDelete 
-}: { 
-  section: DocumentSection;
-  onToggleVisibility: (id: string) => void;
-  onDelete?: (id: string) => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: section.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
+// Sortable Section Item Component
+interface SortableSectionItemProps {
+  section: {
+    key: string;
+    label: string;
+    show: boolean;
+    order: number;
   };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`flex items-center space-x-3 p-3 border rounded-lg bg-white ${
-        isDragging ? 'shadow-lg border-blue-300' : 'border-gray-200'
-      }`}
-    >
-      <div
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing flex-shrink-0"
-      >
-        <GripVertical className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-      </div>
-      <button
-        onClick={() => onToggleVisibility(section.id)}
-        className="flex-shrink-0"
-      >
-        {section.visible ? (
-          <Eye className="h-4 w-4 text-green-600" />
-        ) : (
-          <EyeOff className="h-4 w-4 text-gray-400" />
-        )}
-      </button>
-      <div className="flex-1">
-        <span className={`font-medium ${section.visible ? 'text-gray-900' : 'text-gray-400'}`}>
-          {section.title}
-        </span>
-      </div>
-      {section.type === 'custom' && onDelete && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onDelete(section.id)}
-        >
-          <Trash2 className="h-4 w-4 text-red-500" />
-        </Button>
-      )}
-    </div>
-  );
+  isEditing: boolean;
+  editingLabel: string;
+  onToggle: () => void;
+  onStartEdit: () => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
+  onLabelChange: (value: string) => void;
+  onRemove: () => void;
+  canRemove: boolean;
 }
 
-// Sortable Section Editor Component for Step 3
-function SortableSectionEditor({ 
-  section, 
-  onUpdate, 
-  onTitleUpdate,
-  getToken, 
-  candidateData,
-  jobDescription
-}: {
-  section: DocumentSection;
-  onUpdate: (content: string) => void;
-  onTitleUpdate: (title: string) => void;
-  getToken: () => Promise<string | null>;
-  candidateData: CandidateData | null;
-  jobDescription?: JobDescription;
-}) {
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [tempTitle, setTempTitle] = useState(section.title);
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
-  
+function SortableSectionItem({
+  section,
+  isEditing,
+  editingLabel,
+  onToggle,
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onLabelChange,
+  onRemove,
+  canRemove
+}: SortableSectionItemProps) {
   const {
     attributes,
     listeners,
@@ -225,2645 +154,1524 @@ function SortableSectionEditor({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: section.id });
+  } = useSortable({ id: section.key });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.8 : 1,
+    zIndex: isDragging ? 1000 : 'auto',
   };
-
-  const handleTitleSave = () => {
-    onTitleUpdate(tempTitle);
-    setIsEditingTitle(false);
-  };
-
-  const handleTitleCancel = () => {
-    setTempTitle(section.title);
-    setIsEditingTitle(false);
-  };
-
-  const generateAIContent = async (type: 'improve' | 'expand' | 'rewrite') => {
-    if (!candidateData) {
-      console.error('❌ No candidate data available for AI generation');
-      alert('No candidate data available. Please select a candidate first.');
-      return;
-    }
-    
-    console.log('🤖 Starting AI content generation:', { type, sectionType: section.type, sectionId: section.id });
-    
-    setIsGeneratingAI(true);
-    try {
-      const token = await getToken();
-      
-      if (!token) {
-        console.error('❌ No authentication token available');
-        alert('Authentication required. Please sign in to use AI features.');
-        return;
-      }
-
-      console.log('🚀 Sending AI request to API...');
-      
-      const response = await fetch('/api/ai/generate-suggestion', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          type,
-          sectionType: section.type,
-          currentContent: section.content,
-          candidateData,
-            jobDescription: jobDescription?.text ? jobDescription : undefined,
-        }),
-      });
-      
-      console.log('📡 API Response status:', response.status);
-      
-      if (response.ok) {
-        const { suggestion } = await response.json();
-        console.log('✅ AI suggestion received:', { 
-          type, 
-          suggestionLength: suggestion?.length || 0,
-          preview: suggestion?.substring(0, 100) + '...' 
-        });
-        
-        if (suggestion) {
-          // Update the section content - this will trigger the editor to update
-          onUpdate(suggestion);
-          console.log('✅ Content updated successfully');
-        } else {
-          console.error('❌ Empty suggestion received');
-          alert('No content was generated. Please try again.');
-        }
-      } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('❌ API Error:', response.status, errorData);
-        
-        // Handle specific error cases
-        if (response.status === 401) {
-          alert('Authentication failed. Please sign in again.');
-        } else if (response.status === 400) {
-          alert(`Invalid request: ${errorData.error || 'Please check your input'}`);
-        } else if (response.status === 500) {
-          alert('Server error. Please try again in a moment.');
-        } else {
-          alert(`Failed to generate AI content: ${errorData.error || 'Unknown error'}`);
-        }
-      }
-    } catch (error) {
-      console.error('❌ AI generation error:', error);
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        alert('Network error. Please check your connection and try again.');
-      } else {
-        alert('Failed to generate AI content. Please try again.');
-      }
-    } finally {
-      setIsGeneratingAI(false);
-      console.log('🏁 AI generation completed');
-    }
-  };
-
-  // Simple content initialization without infinite loops
-  const initialContent = React.useMemo(() => {
-    if (section.content) {
-      return section.content;
-    }
-    return candidateData ? generateInitialContent(candidateData) : '';
-  }, [section.id]); // Only depend on section.id to prevent re-initialization
-
-  // Simplified editor config for this specific section
-  const sectionEditorConfig = React.useMemo(() => ({
-    namespace: `CompetenceFileEditor-${section.id}`,
-    nodes: [
-      HeadingNode,
-      QuoteNode,
-      ListNode,
-      ListItemNode,
-      CodeHighlightNode,
-      CodeNode,
-      AutoLinkNode,
-      LinkNode
-    ],
-    onError: (error: Error) => {
-      console.error('Lexical error:', error);
-    }
-  }), [section.id]);
-
-  // Content initialization plugin
-  const ContentInitializationPlugin = React.useMemo(() => {
-    return function ContentInitializationPluginComponent() {
-      const [editor] = useLexicalComposerContext();
-      
-      React.useEffect(() => {
-        if (initialContent && initialContent.trim()) {
-          editor.update(() => {
-            const root = $getRoot();
-            root.clear();
-            
-            // Split content into lines and create appropriate nodes
-            const lines = initialContent.split('\n');
-            
-            lines.forEach((line: string, index: number) => {
-              const trimmedLine = line.trim();
-              
-              if (trimmedLine) {
-                // Check if line starts with bullet point
-                if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('*')) {
-                  // Create list item
-                  const listItem = $createListItemNode();
-                  const text = $createTextNode(trimmedLine.substring(1).trim());
-                  listItem.append(text);
-                  
-                  // Check if we need to create a new list or add to existing
-                  const lastChild = root.getLastChild();
-                  if (lastChild && $isListNode(lastChild)) {
-                    lastChild.append(listItem);
-                  } else {
-                    const list = $createListNode('bullet');
-                    list.append(listItem);
-                    root.append(list);
-                  }
-                } else if (trimmedLine === '---') {
-                  // Create separator
-                  const separator = $createParagraphNode();
-                  const text = $createTextNode('───────────────────────────────────');
-                  separator.append(text);
-                  root.append(separator);
-                } else {
-                  // Create regular paragraph
-                  const paragraph = $createParagraphNode();
-                  const text = $createTextNode(trimmedLine);
-                  paragraph.append(text);
-                  root.append(paragraph);
-                }
-              } else if (index < lines.length - 1) {
-                // Add empty paragraph for spacing
-                const emptyParagraph = $createParagraphNode();
-                root.append(emptyParagraph);
-              }
-            });
-          });
-        }
-      }, [editor, initialContent]);
-      
-      return null;
-    };
-  }, [initialContent]);
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`border rounded-lg bg-white ${
-        isDragging ? 'shadow-lg border-blue-300' : 'border-gray-200'
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className={`bg-white border border-gray-200 rounded-lg p-4 transition-all duration-200 ${
+        isDragging 
+          ? 'shadow-xl border-blue-300 bg-blue-50 scale-105' 
+          : 'hover:shadow-md hover:border-gray-300'
       }`}
     >
-      <div className="bg-gray-50 px-4 py-3 border-b flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div 
+            className="cursor-move text-gray-400 hover:text-gray-600 transition-colors p-1 rounded hover:bg-gray-100"
             {...attributes}
             {...listeners}
-            className="cursor-grab active:cursor-grabbing"
+            title="Drag to reorder"
           >
-            <Move className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+            <GripVertical className="h-5 w-5" />
           </div>
-          {isEditingTitle ? (
-            <div className="flex items-center space-x-2">
-              <input
-                type="text"
-                value={tempTitle}
-                onChange={(e) => setTempTitle(e.target.value)}
-                className="px-2 py-1 border border-gray-300 rounded text-sm font-medium"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleTitleSave();
-                  if (e.key === 'Escape') handleTitleCancel();
-                }}
-                autoFocus
-              />
-              <Button size="sm" variant="ghost" onClick={handleTitleSave}>
-                <Save className="h-3 w-3" />
-              </Button>
-              <Button size="sm" variant="ghost" onClick={handleTitleCancel}>
-                <X className="h-3 w-3" />
-              </Button>
+          
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={onToggle}
+              className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${
+                section.show 
+                  ? 'bg-primary-600 border-primary-600 text-white' 
+                  : 'border-gray-300 hover:border-gray-400'
+              }`}
+            >
+              {section.show && <Check className="h-3 w-3" />}
+            </button>
+            
+            <div className="flex-1">
+              {isEditing ? (
+                <div className="flex items-center space-x-2">
+                  <Input
+                    value={editingLabel}
+                    onChange={(e) => onLabelChange(e.target.value)}
+                    className="text-sm"
+                    placeholder="Section name"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') onSaveEdit();
+                      if (e.key === 'Escape') onCancelEdit();
+                    }}
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    onClick={onSaveEdit}
+                    disabled={!editingLabel.trim()}
+                  >
+                    <Check className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={onCancelEdit}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <h4 className={`font-medium ${
+                    section.show ? 'text-gray-900' : 'text-gray-500'
+                  }`}>
+                    {section.label}
+                  </h4>
+                  <button
+                    onClick={onStartEdit}
+                    className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded hover:bg-gray-100"
+                    title="Edit section name"
+                  >
+                    <Edit3 className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+              <p className="text-sm text-gray-500">
+                Order: {section.order}
+              </p>
             </div>
-          ) : (
-            <div className="flex items-center space-x-2">
-              <h3 className="font-medium">{section.title}</h3>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setIsEditingTitle(true)}
-              >
-                <Edit3 className="h-3 w-3" />
-              </Button>
-            </div>
-          )}
+          </div>
         </div>
         
-        {/* AI Enhancement Buttons */}
         <div className="flex items-center space-x-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              console.log('🔥 Improve button clicked!');
-              generateAIContent('improve');
-            }}
-            disabled={isGeneratingAI}
-            className="text-xs bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:from-green-100 hover:to-emerald-100"
+          <Badge 
+            variant={section.show ? 'default' : 'outline'}
+            className={section.show ? 'bg-primary-600 text-white hover:bg-primary-700' : 'text-gray-600 border-gray-300'}
           >
-            {isGeneratingAI ? (
-              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-            ) : (
-              <Sparkles className="h-3 w-3 mr-1 text-green-600" />
-            )}
-            Improve
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              console.log('🔥 Expand button clicked!');
-              generateAIContent('expand');
-            }}
-            disabled={isGeneratingAI}
-            className="text-xs bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200 hover:from-blue-100 hover:to-cyan-100"
-          >
-            <Plus className="h-3 w-3 mr-1 text-blue-600" />
-            Expand
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              console.log('🔥 Rewrite button clicked!');
-              generateAIContent('rewrite');
-            }}
-            disabled={isGeneratingAI}
-            className="text-xs bg-gradient-to-r from-purple-50 to-violet-50 border-purple-200 hover:from-purple-100 hover:to-violet-100"
-          >
-            <RefreshCw className="h-3 w-3 mr-1 text-purple-600" />
-            Rewrite
-          </Button>
+            {section.show ? 'Included' : 'Hidden'}
+          </Badge>
+          
+          {canRemove && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onRemove}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
         </div>
-      </div>
-      
-      <div className="p-4">
-        <LexicalComposer initialConfig={sectionEditorConfig}>
-          <RichTextPlugin
-            contentEditable={
-              <ContentEditable className="min-h-[150px] focus:outline-none prose prose-sm max-w-none p-4 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors bg-white" />
-            }
-            placeholder={
-              <div className="absolute top-4 left-4 text-gray-400 pointer-events-none prose prose-sm">
-                <p>Start typing or use AI to enhance this {section.type} section...</p>
-                <div className="text-xs mt-1 text-gray-300">
-                  💡 Tip: Use the AI buttons above to improve, expand, or rewrite content
-                </div>
-              </div>
-            }
-            ErrorBoundary={LexicalErrorBoundary}
-          />
-          <ContentInitializationPlugin />
-          <OnChangePlugin 
-            onChange={(editorState) => {
-              // Debounced update to prevent infinite loops
-              const timeoutId = setTimeout(() => {
-                editorState.read(() => {
-                  try {
-                    const root = $getRoot();
-                    const textContent = root.getTextContent();
-                    onUpdate(textContent);
-                  } catch (error) {
-                    console.error('Error getting content:', error);
-                  }
-                });
-              }, 500); // 500ms debounce
-              
-              return () => clearTimeout(timeoutId);
-            }}
-          />
-          <HistoryPlugin />
-          <LinkPlugin />
-          <ListPlugin />
-          <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
-        </LexicalComposer>
       </div>
     </div>
   );
 }
 
-// Helper function to generate initial content with separate experience blocks
-function generateExperienceBlocks(candidateData: CandidateData): string {
-  if (!candidateData.experience || candidateData.experience.length === 0) {
-    return 'No work experience provided.';
-  }
-
-  return candidateData.experience.map((exp, index) => {
-    const duration = `${exp.startDate} - ${exp.endDate}`;
-    return `
-EXPERIENCE ${index + 1}
-═══════════════════════════════════════
-
-🏢 Company: ${exp.company}
-💼 Position: ${exp.title}
-📅 Duration: ${duration}
-
-📋 Key Responsibilities & Achievements:
-${exp.responsibilities}
-
-${index < candidateData.experience.length - 1 ? '─────────────────────────────────────────\n' : ''}`;
-  }).join('\n');
-}
-
-function generateHeaderContent(candidateData: CandidateData): string {
-  return `${candidateData.fullName}
-${candidateData.currentTitle}
-${candidateData.yearsOfExperience ? `${candidateData.yearsOfExperience}+ years of experience` : ''}
-${candidateData.location || ''}`;
-}
-
-function generateFunctionalSkillsContent(candidateData: CandidateData, template?: string): string {
-  if (!candidateData.skills || candidateData.skills.length === 0) {
-    return 'No functional skills provided';
-  }
+export function CreateCompetenceFileModal({ isOpen, onClose, onSuccess, preselectedCandidate }: CreateCompetenceFileModalProps) {
+  const store = useCompetenceFileStore();
   
-  // Antaes template now uses same categorization as Emineon
-  if (template === 'antaes') {
-  return `**Delivery & Project Management**
-• Project planning and execution
-• Stakeholder management and communication
-• Risk assessment and mitigation strategies
-Proven ability to deliver complex projects on time and within budget while maintaining high quality standards.
-
-**Service & Release Management**
-• Service lifecycle management
-• Release planning and coordination
-• Change management processes
-Expertise in managing service delivery and coordinating releases across multiple environments.
-
-**Product Management/Owner**
-• Product roadmap development
-• User story creation and prioritization
-• Cross-functional team collaboration
-Strong background in product strategy and working with development teams to deliver user-focused solutions.`;
-}
-
-  // Default Emineon template structure
-  return `**Delivery & Project Management**
-• Project planning and execution
-• Stakeholder management and communication
-• Risk assessment and mitigation strategies
-Proven ability to deliver complex projects on time and within budget while maintaining high quality standards.
-
-**Service & Release Management**
-• Service lifecycle management
-• Release planning and coordination
-• Change management processes
-Expertise in managing service delivery and coordinating releases across multiple environments.
-
-**Product Management/Owner**
-• Product roadmap development
-• User story creation and prioritization
-• Cross-functional team collaboration
-Strong background in product strategy and working with development teams to deliver user-focused solutions.`;
-}
-
-function generateTechnicalSkillsContent(candidateData: CandidateData, template?: string): string {
-  if (!candidateData.skills || candidateData.skills.length === 0) {
-    return 'No technical skills provided';
-  }
+  // Local state for section management
+  const [editingSectionKey, setEditingSectionKey] = useState<string | null>(null);
+  const [editingLabel, setEditingLabel] = useState('');
+  const [newSectionLabel, setNewSectionLabel] = useState('');
+  const [showAddSection, setShowAddSection] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   
-  // Categorize technical skills with explanatory text
-  const skills = candidateData.skills;
-  return `**Programming & Development**
-• ${skills.filter(skill => 
-    skill.toLowerCase().includes('javascript') || 
-    skill.toLowerCase().includes('python') || 
-    skill.toLowerCase().includes('java') ||
-    skill.toLowerCase().includes('react') ||
-    skill.toLowerCase().includes('node')
-  ).join('\n• ') || 'Modern programming languages and frameworks'}
-Extensive experience in full-stack development with focus on scalable, maintainable code.
+  // File input ref for logo upload
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
 
-**Cloud & Infrastructure**
-• ${skills.filter(skill => 
-    skill.toLowerCase().includes('aws') || 
-    skill.toLowerCase().includes('azure') || 
-    skill.toLowerCase().includes('docker') ||
-    skill.toLowerCase().includes('kubernetes')
-  ).join('\n• ') || 'Cloud platforms and containerization technologies'}
-Proficient in designing and implementing cloud-native solutions with high availability.
-
-**Data & Analytics**
-• ${skills.filter(skill => 
-    skill.toLowerCase().includes('sql') || 
-    skill.toLowerCase().includes('database') || 
-    skill.toLowerCase().includes('analytics')
-  ).join('\n• ') || 'Database management and data analysis tools'}
-Strong background in data modeling, analysis, and business intelligence solutions.`;
-}
-
-function generateAreasOfExpertiseContent(candidateData: CandidateData, template?: string): string {
-  // Generate based on candidate's experience and skills
-  const industries = [];
-  
-  if (candidateData.experience?.some(exp => 
-    exp.company.toLowerCase().includes('bank') || 
-    exp.company.toLowerCase().includes('financial')
-  )) {
-    industries.push('Banking & Financial Services');
-  }
-  
-  if (candidateData.experience?.some(exp => 
-    exp.company.toLowerCase().includes('health') || 
-    exp.company.toLowerCase().includes('medical')
-  )) {
-    industries.push('Healthcare & Life Sciences');
-  }
-  
-  if (candidateData.skills?.some(skill => 
-    skill.toLowerCase().includes('cloud') || 
-    skill.toLowerCase().includes('aws') || 
-    skill.toLowerCase().includes('azure')
-  )) {
-    industries.push('Cloud Computing & Digital Transformation');
-  }
-  
-  // Default industries if none detected
-  if (industries.length === 0) {
-    industries.push('Information Technology', 'Digital Innovation', 'Enterprise Solutions');
-  }
-  
-  return industries.join('\n');
-}
-
-function generateSummaryContent(candidateData: CandidateData): string {
-  const experience = candidateData.yearsOfExperience || 5;
-  const title = candidateData.currentTitle || 'Professional';
-  const skills = candidateData.skills?.slice(0, 3).join(', ') || 'various technologies';
-  
-  return `Experienced ${title} with ${experience}+ years of progressive experience in delivering innovative solutions and driving organizational growth. Proven track record in ${skills} with strong leadership capabilities and strategic thinking. Demonstrated ability to manage complex projects, lead cross-functional teams, and deliver results in fast-paced environments. Passionate about leveraging technology to solve business challenges and create value for stakeholders.`;
-}
-
-function generateExperienceContent(candidateData: CandidateData): string {
-  return generateExperienceBlocks(candidateData);
-}
-
-function generateExperiencesSummaryContent(candidateData: CandidateData): string {
-  if (!candidateData.experience || candidateData.experience.length === 0) {
-    return 'No professional experience provided';
-  }
-  
-  return candidateData.experience.map(exp => {
-    const duration = `${exp.startDate} - ${exp.endDate}`;
-    return `${exp.title} – ${exp.company} (${duration})`;
-  }).join('\n');
-}
-
-function generateEducationContent(candidateData: CandidateData): string {
-  if (!candidateData.education || candidateData.education.length === 0) {
-    return 'No education provided';
-  }
-  
-  return candidateData.education.map(edu => `• ${edu}`).join('\n');
-}
-
-function generateCertificationsContent(candidateData: CandidateData): string {
-  if (!candidateData.certifications || candidateData.certifications.length === 0) {
-    return 'No certifications provided';
-  }
-  
-  return candidateData.certifications.map(cert => `• ${cert}`).join('\n');
-}
-
-function generateLanguagesContent(candidateData: CandidateData): string {
-  if (!candidateData.languages || candidateData.languages.length === 0) {
-    return 'English (Native)';
-  }
-  
-  return candidateData.languages.join(' | ');
-}
-
-function generateTechnicalEnvironment(skills: string[]): string {
-  if (!skills || skills.length === 0) {
-    return '• Modern development tools and methodologies\n• Agile/Scrum frameworks\n• Collaborative development environments';
-  }
-  
-  return skills.slice(0, 6).map(skill => `• ${skill}`).join('\n');
-}
-
-function generateInitialContent(candidateData: CandidateData): string {
-  const experienceBlocks = generateExperienceBlocks(candidateData);
-  
-  return `
-COMPETENCE FILE
-═══════════════════════════════════════
-
-👤 PERSONAL INFORMATION
-═══════════════════════════════════════
-Name: ${candidateData.fullName}
-Title: ${candidateData.currentTitle}
-Email: ${candidateData.email || 'Not provided'}
-Phone: ${candidateData.phone || 'Not provided'}
-Location: ${candidateData.location || 'Not provided'}
-Experience: ${candidateData.yearsOfExperience}+ years
-
-📝 PROFESSIONAL SUMMARY
-═══════════════════════════════════════
-${candidateData.summary || `Experienced ${candidateData.currentTitle} with ${candidateData.yearsOfExperience}+ years of progressive experience in delivering innovative solutions and driving organizational growth.`}
-
-💼 WORK EXPERIENCE
-═══════════════════════════════════════
-${experienceBlocks}
-
-🎯 TECHNICAL SKILLS
-═══════════════════════════════════════
-${candidateData.skills && candidateData.skills.length > 0 
-  ? candidateData.skills.map(skill => `• ${skill}`).join('\n')
-  : 'No skills provided'
-}
-
-🎓 EDUCATION
-═══════════════════════════════════════
-${candidateData.education && candidateData.education.length > 0
-  ? candidateData.education.map(edu => `• ${edu}`).join('\n')
-  : 'No education provided'
-}
-
-🏆 CERTIFICATIONS
-═══════════════════════════════════════
-${candidateData.certifications && candidateData.certifications.length > 0
-  ? candidateData.certifications.map(cert => `• ${cert}`).join('\n')
-  : 'No certifications provided'
-}
-
-🌐 LANGUAGES
-═══════════════════════════════════════
-${candidateData.languages && candidateData.languages.length > 0
-  ? candidateData.languages.map(lang => `• ${lang}`).join('\n')
-  : 'No languages provided'
-}
-`;
-}
-
-// Function to generate content for a specific section with AI enrichment
-async function generateSectionContentWithAI(sectionType: string, candidateData: CandidateData, template?: string, jobDescription?: JobDescription, getToken?: () => Promise<string | null>): Promise<string> {
-  // Always try AI enrichment - no fallbacks to basic content
-  if (!getToken) {
-    throw new Error('AI content generation requires authentication');
-  }
-  
-  try {
-    const token = await getToken();
-    if (!token) {
-      throw new Error('Authentication token not available for AI content generation');
+  // Effect to handle preselected candidate
+  useEffect(() => {
+    if (preselectedCandidate && isOpen) {
+      store.setCandidateData(preselectedCandidate);
+      store.nextStep(); // Skip to next step since we have candidate data
     }
-    
-    console.log(`🤖 Generating AI content for section: ${sectionType}`);
+  }, [preselectedCandidate, isOpen, store]);
 
-    const response = await fetch('/api/ai/generate-suggestion', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        type: 'generate',
-        sectionType,
-        currentContent: '',
-        candidateData,
-        jobDescription: jobDescription?.text ? jobDescription : undefined,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`AI service returned ${response.status}: ${response.statusText}`);
-    }
-    
-      const { suggestion } = await response.json();
-    if (!suggestion || !suggestion.trim()) {
-      throw new Error('AI service returned empty content');
-    }
-    
-    console.log(`✅ AI content generated for ${sectionType}`);
-    return suggestion;
-  } catch (error) {
-    console.error(`💥 AI generation failed for ${sectionType}:`, error);
-    // Return error message instead of fallback content
-    return `⚠️ AI content generation failed for this section. Please try refreshing or contact support if the issue persists.\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`;
-  }
-}
-
-// Function to generate content for a specific section (fallback/basic version)
-function generateSectionContent(sectionType: string, candidateData: CandidateData, template?: string): string {
-  switch (sectionType) {
-    case 'header':
-      return generateHeaderContent(candidateData);
-    case 'summary':
-      return generateSummaryContent(candidateData);
-    case 'functional-skills':
-      return generateFunctionalSkillsContent(candidateData, template);
-    case 'technical-skills':
-      return generateTechnicalSkillsContent(candidateData, template);
-    case 'areas-of-expertise':
-      return generateAreasOfExpertiseContent(candidateData, template);
-    case 'experience':
-      return generateExperienceContent(candidateData);
-    case 'experiences-summary':
-      return generateExperiencesSummaryContent(candidateData);
-    case 'education':
-      return generateEducationContent(candidateData);
-    case 'certifications':
-      return generateCertificationsContent(candidateData);
-    case 'languages':
-      return generateLanguagesContent(candidateData);
-    default:
-      return '';
-  }
-}
-
-// Function to create separate experience sections with detailed structure
-function createExperienceSections(candidateData: CandidateData): DocumentSection[] {
-  if (!candidateData.experience || candidateData.experience.length === 0) {
-    return [{
-      id: 'experience-1',
-      type: 'experience',
-      title: 'PROFESSIONAL EXPERIENCES',
-      content: 'No work experience provided.',
-      visible: true,
-      order: 5,
-      editable: true
-    }];
-  }
-
-  return candidateData.experience.map((exp, index) => {
-    const duration = `${exp.startDate} - ${exp.endDate}`;
-    
-    // Enhanced experience block structure according to specifications
-    const content = `**${exp.company}**
-${exp.title}
-${duration}
-
-**Company Description/Context**
-${generateCompanyDescription(exp.company, candidateData)}
-
-**Responsibilities**
-${formatResponsibilities(exp.responsibilities)}
-
-**Major Achievements**
-${generateAchievements(exp, candidateData)}
-
-**Technical Environment**
-${generateTechnicalEnvironment(candidateData.skills || [])}`;
-
-    return {
-      id: `experience-${index + 1}`,
-      type: 'experience',
-      title: `PROFESSIONAL EXPERIENCES`,
-      content,
-      visible: true,
-      order: 5 + index,
-      editable: true
-    };
-  });
-}
-
-// Helper functions for experience sections
-function generateCompanyDescription(company: string, candidateData: CandidateData): string {
-  // Generate contextual company description
-  if (company.toLowerCase().includes('bank') || company.toLowerCase().includes('financial')) {
-    return 'Leading financial services organization focused on digital transformation and customer-centric solutions.';
-  } else if (company.toLowerCase().includes('tech') || company.toLowerCase().includes('software')) {
-    return 'Innovative technology company specializing in cutting-edge software solutions and digital products.';
-  } else if (company.toLowerCase().includes('consulting')) {
-    return 'Premier consulting firm providing strategic advisory services and technology implementation solutions.';
-  } else {
-    return 'Dynamic organization focused on innovation, growth, and delivering exceptional value to clients and stakeholders.';
-  }
-}
-
-function formatResponsibilities(responsibilities: string): string {
-  // Split responsibilities into bullet points
-  const respArray = responsibilities.split(/[.!]/).filter(r => r.trim().length > 10);
-  return respArray.map(resp => `• ${resp.trim()}`).join('\n');
-}
-
-function generateAchievements(experience: any, candidateData: CandidateData): string {
-  // Generate relevant achievements based on role and skills
-  const achievements = [
-    'Successfully delivered key projects ahead of schedule and under budget',
-    'Improved team productivity and efficiency through process optimization',
-    'Led cross-functional initiatives resulting in measurable business impact'
+  // Predefined section suggestions
+  const sectionSuggestions = [
+    'Projects',
+    'Awards & Honors',
+    'Publications',
+    'Volunteer Experience',
+    'Professional Memberships',
+    'References',
+    'Portfolio',
+    'Achievements',
+    'Research',
+    'Patents',
+    'Speaking Engagements',
+    'Additional Information'
   ];
-  
-  if (candidateData.skills?.some(skill => skill.toLowerCase().includes('lead'))) {
-    achievements.push('Mentored and developed team members, contributing to their professional growth');
-  }
-  
-  return achievements.map(achievement => `• ${achievement}`).join('\n');
-}
 
-// Simple Error Boundary Component
-function LexicalErrorBoundary({ children }: { children: React.ReactNode }) {
-  return <div>{children}</div>;
-}
-
-export function CreateCompetenceFileModal({ 
-  isOpen, 
-  onClose, 
-  onSuccess, 
-  preselectedCandidate 
-}: CreateCompetenceFileModalProps) {
-  const { getToken } = useAuth();
-  
-  // DND Kit sensors
+  // Drag and drop sensors
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-  
-  // State
-  const [currentStep, setCurrentStep] = useState(1);
-  const [inputMethod, setInputMethod] = useState<'file' | 'text' | 'url'>('file');
-  const [textInput, setTextInput] = useState('');
-  const [urlInput, setUrlInput] = useState('');
-  const [isParsing, setIsParsing] = useState(false);
-  const [selectedCandidate, setSelectedCandidate] = useState<CandidateData | null>(preselectedCandidate || null);
-  const [selectedTemplate, setSelectedTemplate] = useState<'professional' | 'modern' | 'minimal' | 'emineon' | 'antaes'>('emineon');
-  
-  // Job Description state
-  const [jobDescription, setJobDescription] = useState<JobDescription>({
-    text: '',
-    requirements: [],
-    skills: [],
-    responsibilities: [],
-    title: '',
-    company: ''
-  });
-  const [jobInputMethod, setJobInputMethod] = useState<'text' | 'file' | 'voice'>('text');
-  const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [jobDescriptionFiles, setJobDescriptionFiles] = useState<File[]>([]);
-  const [documentSections, setDocumentSections] = useState<DocumentSection[]>([
-    { id: 'header', type: 'header', title: 'HEADER', content: '', visible: true, order: 0, editable: true },
-    { id: 'summary', type: 'summary', title: 'PROFESSIONAL SUMMARY', content: '', visible: true, order: 1, editable: true },
-    { id: 'functional-skills', type: 'functional-skills', title: 'FUNCTIONAL SKILLS', content: '', visible: true, order: 2, editable: true },
-    { id: 'technical-skills', type: 'technical-skills', title: 'TECHNICAL SKILLS', content: '', visible: true, order: 3, editable: true },
-    { id: 'areas-of-expertise', type: 'areas-of-expertise', title: 'AREAS OF EXPERTISE', content: '', visible: true, order: 4, editable: true },
-    { id: 'education', type: 'education', title: 'EDUCATION', content: '', visible: true, order: 5, editable: true },
-    { id: 'certifications', type: 'certifications', title: 'CERTIFICATIONS', content: '', visible: true, order: 6, editable: true },
-    { id: 'languages', type: 'languages', title: 'LANGUAGES', content: '', visible: true, order: 7, editable: true },
-    { id: 'experiences-summary', type: 'experiences-summary', title: 'PROFESSIONAL EXPERIENCES SUMMARY', content: '', visible: true, order: 8, editable: true },
-  ]);
-  const [isAutoSaving, setIsAutoSaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState(100); // Zoom functionality
-  const [isJobDescriptionExpanded, setIsJobDescriptionExpanded] = useState(false);
-  const [customElements, setCustomElements] = useState<string[]>([]);
-  const [newElementInput, setNewElementInput] = useState('');
-  
-  // Manager contact details
-  const [managerName, setManagerName] = useState('');
-  const [managerEmail, setManagerEmail] = useState('');
-  const [managerPhone, setManagerPhone] = useState('');
-  
-  // Refs
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const jobFileInputRef = useRef<HTMLInputElement>(null);
-  
-  // Get template-specific section titles
-  const getSectionTitles = (template: string) => {
-    if (template === 'antaes') {
-      return {
-        header: 'CANDIDATE PROFILE',
-        summary: 'EXECUTIVE SUMMARY', 
-        'functional-skills': 'CORE COMPETENCIES',
-        'technical-skills': 'TECHNICAL EXPERTISE',
-        'areas-of-expertise': 'AREAS OF EXPERTISE',
-        education: 'ACADEMIC BACKGROUND',
-        certifications: 'PROFESSIONAL CERTIFICATIONS',
-        languages: 'LANGUAGES',
-        'experiences-summary': 'PROFESSIONAL EXPERIENCE OVERVIEW'
-      };
-    }
-    // Default titles for other templates
-    return {
-      header: 'HEADER',
-      summary: 'PROFESSIONAL SUMMARY',
-      'functional-skills': 'FUNCTIONAL SKILLS',
-      'technical-skills': 'TECHNICAL SKILLS', 
-      'areas-of-expertise': 'AREAS OF EXPERTISE',
-      education: 'EDUCATION',
-      certifications: 'CERTIFICATIONS',
-      languages: 'LANGUAGES',
-      'experiences-summary': 'PROFESSIONAL EXPERIENCES SUMMARY'
-    };
-  };
 
-  // Job Description Handlers
-  const handleJobFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
-    
-    setJobDescriptionFiles(files);
-    setIsParsing(true);
-    
-    try {
-      const token = await getToken();
-      const formData = new FormData();
-      files.forEach(file => formData.append('files', file));
-      
-      const response = await fetch('/api/files/extract-text', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-      
-      if (response.ok) {
-        const { texts } = await response.json();
-        const combinedText = texts.join('\n\n');
-        await parseJobDescription(combinedText);
-      } else {
-        throw new Error('Failed to extract text from files');
-      }
-    } catch (error) {
-      console.error('Error processing job description files:', error);
-      alert('Failed to process job description files. Please try again.');
-    } finally {
-      setIsParsing(false);
-    }
-  };
-
-  const parseJobDescription = async (text: string) => {
-    try {
-      const token = await getToken();
-      const response = await fetch('/api/ai/job-description/parse', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ text }),
-      });
-      
-      if (response.ok) {
-        const parsed = await response.json();
-        setJobDescription({
-          text,
-          requirements: parsed.requirements || [],
-          skills: parsed.skills || [],
-          responsibilities: parsed.responsibilities || [],
-          title: parsed.title || '',
-          company: parsed.company || ''
-        });
-      } else {
-        // Fallback: just set the text
-        setJobDescription(prev => ({ ...prev, text }));
-      }
-    } catch (error) {
-      console.error('Error parsing job description:', error);
-      // Fallback: just set the text
-      setJobDescription(prev => ({ ...prev, text }));
-    }
-  };
-
-  const startVoiceRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks: BlobPart[] = [];
-      
-      recorder.ondataavailable = (event) => {
-        chunks.push(event.data);
-      };
-      
-      recorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: 'audio/wav' });
-        await transcribeAudio(blob);
-        stream.getTracks().forEach(track => track.stop());
-      };
-      
-      recorder.start();
-      setMediaRecorder(recorder);
-      setIsRecording(true);
-    } catch (error) {
-      console.error('Error starting voice recording:', error);
-      alert('Failed to start voice recording. Please check microphone permissions.');
-    }
-  };
-
-  const stopVoiceRecording = () => {
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.stop();
-      setIsRecording(false);
-      setMediaRecorder(null);
-    }
-  };
-
-  const transcribeAudio = async (audioBlob: Blob) => {
-    setIsParsing(true);
-    try {
-      const token = await getToken();
-      const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.wav');
-      
-      const response = await fetch('/api/ai/transcribe', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-      
-      if (response.ok) {
-        const { text } = await response.json();
-        await parseJobDescription(text);
-      } else {
-        throw new Error('Failed to transcribe audio');
-      }
-    } catch (error) {
-      console.error('Error transcribing audio:', error);
-      alert('Failed to transcribe audio. Please try typing the job description instead.');
-    } finally {
-      setIsParsing(false);
-    }
-  };
-  
-  // Pre-populate sections when candidate data changes
-  useEffect(() => {
-    if (selectedCandidate && currentStep >= 3) {
-      console.log('🔄 Pre-populating sections with candidate data:', selectedCandidate);
-      
-      // Get template-specific section titles
-      const sectionTitles = getSectionTitles(selectedTemplate);
-      
-      // Create separate experience sections
-      const experienceSections = createExperienceSections(selectedCandidate);
-      
-      // Update existing sections with AI-enhanced content - NO FALLBACKS
-      const populateSectionsWithAI = async () => {
-        try {
-          const updatedBaseSections = await Promise.all([
-            { id: 'header', type: 'header', title: sectionTitles.header, content: '', visible: true, order: 0, editable: true },
-            { id: 'summary', type: 'summary', title: sectionTitles.summary, content: '', visible: true, order: 1, editable: true },
-            { id: 'functional-skills', type: 'functional-skills', title: sectionTitles['functional-skills'], content: '', visible: true, order: 2, editable: true },
-            { id: 'technical-skills', type: 'technical-skills', title: sectionTitles['technical-skills'], content: '', visible: true, order: 3, editable: true },
-            { id: 'areas-of-expertise', type: 'areas-of-expertise', title: sectionTitles['areas-of-expertise'], content: '', visible: true, order: 4, editable: true },
-            { id: 'education', type: 'education', title: sectionTitles.education, content: '', visible: true, order: 5, editable: true },
-            { id: 'certifications', type: 'certifications', title: sectionTitles.certifications, content: '', visible: true, order: 6, editable: true },
-            { id: 'languages', type: 'languages', title: sectionTitles.languages, content: '', visible: true, order: 7, editable: true },
-            { id: 'experiences-summary', type: 'experiences-summary', title: sectionTitles['experiences-summary'], content: '', visible: true, order: 8, editable: true },
-          ].map(async (section) => ({
-        ...section,
-            content: await generateSectionContentWithAI(
-              section.type, 
-              selectedCandidate, 
-              selectedTemplate, 
-              jobDescription.text ? jobDescription : undefined,
-              getToken
-            )
-          })));
-          
-          // Update experience sections to have orders starting after the base sections
-          const updatedExperienceSections = experienceSections.map((section, index) => ({
-            ...section,
-            order: 9 + index // Start after the 9 base sections (0-8)
-      }));
-      
-          // Combine base sections with experience sections - experiences come LAST
-      const allSections = [
-        ...updatedBaseSections.slice(0, 5), // header, summary, functional-skills, technical-skills, areas-of-expertise
-            ...updatedBaseSections.slice(5), // education, certifications, languages, experiences-summary
-            ...updatedExperienceSections // individual experience blocks (PROFESSIONAL EXPERIENCES) - LAST
-      ];
-      
-      setDocumentSections(allSections);
-          console.log('✅ Sections populated with AI-enhanced content:', allSections.length, 'total sections');
-        } catch (error) {
-          console.error('💥 Critical error: AI content generation failed completely:', error);
-          // Show error to user instead of falling back
-          alert(`AI content generation failed. Please check your internet connection and try again.\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-      };
-      
-      // Start AI content generation - no fallbacks
-      populateSectionsWithAI();
-    }
-  }, [selectedCandidate, currentStep, selectedTemplate, jobDescription, getToken]);
-  
-  // Zoom controls
-  const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 10, 200));
-  };
-  
-  const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 10, 50));
-  };
-  
-  const handleZoomReset = () => {
-    setZoomLevel(100);
-  };
-  
-  // Custom elements handlers
-  const addCustomElement = () => {
-    if (newElementInput.trim() && !customElements.includes(newElementInput.trim())) {
-      setCustomElements(prev => [...prev, newElementInput.trim()]);
-      setNewElementInput('');
-    }
-  };
-
-  const removeCustomElement = (element: string) => {
-    setCustomElements(prev => prev.filter(el => el !== element));
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addCustomElement();
-    }
-  };
-  
-  // Generic AI processing function for all sections
-  const handleAIProcessAllSections = useCallback(async (type: 'improve' | 'expand' | 'rewrite') => {
-    if (!selectedCandidate) return;
-    
-    setIsGenerating(true);
-    try {
-      const token = await getToken();
-      if (!token) {
-        throw new Error('Authentication token not available');
-      }
-      
-      console.log(`🤖 Starting AI ${type} for all sections...`);
-      
-      // Get all visible sections that have content
-      const sectionsToProcess = documentSections.filter(section => 
-        section.visible && section.content && section.content.trim().length > 0
-      );
-      
-      // Process sections in parallel for better performance
-      const processingPromises = sectionsToProcess.map(async (section) => {
-        try {
-          const response = await fetch('/api/ai/generate-suggestion', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              type,
-              sectionType: section.type,
-              currentContent: section.content,
-              candidateData: selectedCandidate,
-              jobDescription: jobDescription.text ? jobDescription : undefined,
-            }),
-          });
-          
-          if (response.ok) {
-            const { suggestion } = await response.json();
-            return { sectionId: section.id, suggestion };
-          } else {
-            console.error(`Failed to ${type} section ${section.type}`);
-            return null;
-          }
-        } catch (error) {
-          console.error(`Error ${type}ing section ${section.type}:`, error);
-          return null;
-        }
-      });
-      
-      const results = await Promise.all(processingPromises);
-      
-      // Update sections with processed content
-      const successfulUpdates = results.filter(result => result !== null);
-      
-      if (successfulUpdates.length > 0) {
-        setDocumentSections(prev => 
-          prev.map(section => {
-            const update = successfulUpdates.find(upd => upd.sectionId === section.id);
-            return update 
-              ? { ...section, content: update.suggestion }
-              : section;
-          })
-        );
-        
-        console.log(`✅ Successfully ${type}d ${successfulUpdates.length} sections`);
-        
-        // Show success feedback
-        setLastSaved(new Date());
-      } else {
-        console.warn(`⚠️ No sections were ${type}d`);
-      }
-      
-    } catch (error) {
-      console.error(`💥 AI ${type} error:`, error);
-      alert(`Failed to ${type} sections. Please try again.`);
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [selectedCandidate, documentSections, getToken]);
-
-  // AI Improve All functionality
-  const handleImproveAll = useCallback(async () => {
-    await handleAIProcessAllSections('improve');
-  }, [handleAIProcessAllSections]);
-
-  // AI Expand All functionality
-  const handleExpandAll = useCallback(async () => {
-    await handleAIProcessAllSections('expand');
-  }, [handleAIProcessAllSections]);
-
-  // AI Rewrite All functionality
-  const handleRewriteAll = useCallback(async () => {
-    await handleAIProcessAllSections('rewrite');
-  }, [handleAIProcessAllSections]);
-  
-  // Drag and drop handlers
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
+  // Section management handlers
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (over && active.id !== over.id) {
-      setDocumentSections((sections) => {
-        const oldIndex = sections.findIndex(section => section.id === active.id);
-        const newIndex = sections.findIndex(section => section.id === over.id);
-        
-        const newSections = arrayMove(sections, oldIndex, newIndex);
-        
-        // Update order property
-        return newSections.map((section, index) => ({
-          ...section,
-          order: index
-        }));
-      });
+    if (active.id !== over?.id) {
+      const oldIndex = store.sections.findIndex((section) => section.key === active.id);
+      const newIndex = store.sections.findIndex((section) => section.key === over?.id);
+
+      store.reorderSections(oldIndex, newIndex);
     }
-  }, []);
-  
-  // File upload handling
-  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  };
+
+  const handleStartEdit = (sectionKey: string, currentLabel: string) => {
+    setEditingSectionKey(sectionKey);
+    setEditingLabel(currentLabel);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingSectionKey && editingLabel.trim()) {
+      store.updateSectionLabel(editingSectionKey, editingLabel.trim());
+      setEditingSectionKey(null);
+      setEditingLabel('');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingSectionKey(null);
+    setEditingLabel('');
+  };
+
+  const handleAddSection = () => {
+    if (newSectionLabel.trim()) {
+      store.addCustomSection(newSectionLabel.trim());
+      setNewSectionLabel('');
+      setShowAddSection(false);
+    }
+  };
+
+  const handleRemoveSection = (sectionKey: string) => {
+    store.removeSection(sectionKey);
+  };
+
+  const canRemoveSection = (sectionKey: string) => {
+    return sectionKey.startsWith('custom_');
+  };
+
+  // File upload handler
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
     if (!file) return;
-    
-    console.log('🔧 DEBUG: File selected:', {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      lastModified: file.lastModified
-    });
-    
-    setIsParsing(true);
+
+    store.setUploadedFile(file);
+    store.setProcessingCandidate(true);
+
     try {
-      console.log('🔧 DEBUG: Getting authentication token...');
-      const token = await getToken();
+      console.log('📄 Processing uploaded file:', file.name);
       
-      if (!token) {
-        console.error('🔧 DEBUG: No authentication token available');
-        throw new Error('Authentication token not available. Please refresh the page and try again.');
-      }
-      
-      console.log('🔧 DEBUG: Token obtained successfully, length:', token.length);
-      console.log('📁 Starting file upload...', { 
-        fileName: file.name, 
-        fileSize: file.size, 
-        fileType: file.type 
-      });
-      
-      // Validate file before upload
-      const maxSize = 25 * 1024 * 1024; // 25MB
-      if (file.size > maxSize) {
-        throw new Error('File is too large. Maximum file size is 25MB.');
-      }
-      
-      const supportedTypes = [
-        'application/pdf',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/msword',
-        'text/plain',
-        'text/markdown',
-        'text/html'
-      ];
-      
-      const supportedExtensions = ['pdf', 'docx', 'doc', 'txt', 'md', 'html'];
-      const fileExtension = file.name.toLowerCase().split('.').pop();
-      
-      if (!supportedTypes.includes(file.type) && !supportedExtensions.includes(fileExtension || '')) {
-        throw new Error('Unsupported file type. Please use PDF, DOCX, DOC, TXT, MD, or HTML files.');
-      }
-      
-      console.log('🔧 DEBUG: File validation passed');
-      
+      // Create FormData for file upload
       const formData = new FormData();
       formData.append('file', file);
-      
-      console.log('🔧 DEBUG: FormData created, making API request...');
-      console.log('🔧 DEBUG: API endpoint: /api/competence-files/parse-resume');
-      console.log('🔧 DEBUG: Request headers will include Authorization');
-      
+
+      // Call the new parse-resume API endpoint
       const response = await fetch('/api/competence-files/parse-resume', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
         body: formData,
       });
-      
-      console.log('🔧 DEBUG: Response received:', { 
-        status: response.status, 
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-      
-      if (!response.ok) {
-        console.error('🔧 DEBUG: Response not OK');
-        const errorText = await response.text();
-        console.error('🔧 DEBUG: Error response body:', errorText);
-        
-        let errorMessage = 'Failed to parse file';
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.message || errorMessage;
-          console.error('🔧 DEBUG: Parsed error data:', errorData);
-        } catch (parseError) {
-          console.error('🔧 DEBUG: Could not parse error response as JSON:', parseError);
-          errorMessage = errorText || errorMessage;
-        }
-        
-        // Provide specific error messages based on status codes
-        if (response.status === 401) {
-          errorMessage = 'Authentication failed. Please refresh the page and sign in again.';
-        } else if (response.status === 413) {
-          errorMessage = 'File is too large. Please use a file smaller than 25MB.';
-        } else if (response.status === 415) {
-          errorMessage = 'Unsupported file format. Please use PDF, DOCX, TXT, MD, or HTML files.';
-        } else if (response.status === 500) {
-          errorMessage = 'Server error occurred. Please try again in a few moments.';
-        }
-        
-        throw new Error(errorMessage);
-      }
-      
-      console.log('🔧 DEBUG: Response OK, parsing JSON...');
+
       const result = await response.json();
-      console.log('🔧 DEBUG: Parsed response:', result);
-      
-      if (!result.success || !result.data) {
-        console.error('🔧 DEBUG: Invalid response format:', result);
-        throw new Error(result.message || 'Invalid response format from server');
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || 'Failed to process resume');
       }
-      
-      const newCandidate = result.data;
-      console.log('🔧 DEBUG: Extracted candidate data:', newCandidate);
-      
-      if (!newCandidate.fullName) {
-        console.error('🔧 DEBUG: No candidate name found in extracted data');
-        throw new Error('Could not extract candidate name from file. Please ensure the file contains clear candidate information.');
+
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to parse resume');
       }
+
+      console.log('✅ Resume parsed successfully:', result.data);
       
-      console.log('🔧 DEBUG: Setting candidate and moving to step 2');
-      setSelectedCandidate(newCandidate);
-      setCurrentStep(2);
-      console.log('✅ File parsing completed successfully for:', newCandidate.fullName);
+      // Set the parsed candidate data
+      store.setCandidateData(result.data);
+      store.setProcessingCandidate(false);
+      store.nextStep();
       
     } catch (error) {
-      console.error('💥 File parsing error:', error);
-      console.error('🔧 DEBUG: Error details:', {
-        name: error instanceof Error ? error.name : 'Unknown',
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
-      });
+      console.error('💥 CV processing error:', error);
+      store.setProcessingCandidate(false);
       
-      let userMessage = 'Failed to parse file. Please try again.';
-      
-      if (error instanceof Error) {
-        if (error.message.includes('Authentication')) {
-          userMessage = 'Authentication failed. Please refresh the page and try again.';
-        } else if (error.message.includes('Could not extract')) {
-          userMessage = 'Could not extract candidate information. Please ensure the file contains clear candidate details with name, experience, and skills.';
-        } else if (error.message.includes('Invalid response')) {
-          userMessage = 'Server response was invalid. Please try again.';
-        } else if (error.message.includes('file format') || error.message.includes('Unsupported')) {
-          userMessage = 'Unsupported file format. Please use PDF, DOCX, TXT, MD, or HTML files.';
-        } else if (error.message.includes('too large')) {
-          userMessage = 'File is too large. Please use a file smaller than 25MB.';
-        } else if (error.message.includes('Network') || error.message.includes('fetch')) {
-          userMessage = 'Network error occurred. Please check your connection and try again.';
-        } else if (error.message !== 'Failed to parse file') {
-          userMessage = error.message;
-        }
-      }
-      
-      // Show detailed error to user
-      alert(`Upload failed: ${userMessage}\n\nTechnical details: ${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setIsParsing(false);
-      // Reset the file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      console.log('🔧 DEBUG: File upload process completed');
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to process resume: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
     }
-  }, [getToken]);
-  
-  // Dropzone configuration for file upload
-  const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
-    onDrop: useCallback(async (acceptedFiles: File[]) => {
-      if (acceptedFiles.length > 0) {
-        const file = acceptedFiles[0];
-        // Create a proper file input event
-        const fileInput = fileInputRef.current;
-        if (fileInput) {
-          // Create a new FileList-like object
-          const dt = new DataTransfer();
-          dt.items.add(file);
-          fileInput.files = dt.files;
-          
-          // Create a proper event
-          const event = new Event('change', { bubbles: true });
-          Object.defineProperty(event, 'target', { value: fileInput, enumerable: true });
-          await handleFileSelect(event as unknown as React.ChangeEvent<HTMLInputElement>);
-        }
-      }
-    }, [handleFileSelect]),
+  }, [store]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
     accept: {
       'application/pdf': ['.pdf'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'application/msword': ['.doc'],
-      'text/plain': ['.txt'],
-      'text/markdown': ['.md'],
-      'text/html': ['.html']
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
     },
-    maxSize: 25 * 1024 * 1024, // 25MB
-    multiple: false,
-    disabled: isParsing
+    multiple: false
   });
-  
-  // Text parsing
-  const handleTextParse = useCallback(async () => {
-    if (!textInput.trim()) return;
+
+  const handleLinkedInImport = async () => {
+    if (!store.linkedinText) return;
     
-    setIsParsing(true);
-    try {
-      const token = await getToken();
-      
-      if (!token) {
-        throw new Error('Authentication token not available');
-      }
-      
-      console.log('🔄 Starting text parsing...', { textLength: textInput.length });
-      
-      const response = await fetch('/api/competence-files/parse-resume', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ text: textInput }),
-      });
-      
-      console.log('📡 Response received:', { 
-        status: response.status, 
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Response not OK:', { 
-          status: response.status, 
-          statusText: response.statusText,
-          errorText 
-        });
-        
-        let errorMessage = 'Failed to parse text';
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-          // If not JSON, use the raw text
-          errorMessage = errorText || errorMessage;
-        }
-        
-        throw new Error(errorMessage);
-      }
-      
-      const result = await response.json();
-      console.log('✅ Parse result:', result);
-      
-      if (!result.success || !result.data) {
-        throw new Error(result.message || 'Invalid response format');
-      }
-      
-      const newCandidate = result.data;
-      
-      if (!newCandidate.fullName) {
-        throw new Error('Could not extract candidate name from text');
-      }
-      
-      setSelectedCandidate(newCandidate);
-      setCurrentStep(2);
-      console.log('✅ Text parsing completed successfully');
-      
-    } catch (error) {
-      console.error('💥 Text parsing error:', error);
-      
-      // Provide more specific error messages
-      let userMessage = 'Failed to parse text. Please try again.';
-      
-      if (error instanceof Error) {
-        if (error.message.includes('Authentication')) {
-          userMessage = 'Authentication failed. Please refresh the page and try again.';
-        } else if (error.message.includes('Could not extract')) {
-          userMessage = 'Could not extract candidate information. Please ensure the text contains clear candidate details.';
-        } else if (error.message.includes('Invalid response')) {
-          userMessage = 'Server response was invalid. Please try again.';
-        } else if (error.message !== 'Failed to parse text') {
-          userMessage = error.message;
-        }
-      }
-      
-      alert(userMessage);
-    } finally {
-      setIsParsing(false);
-    }
-  }, [textInput, getToken]);
-  
-  // URL parsing
-  const handleUrlParse = useCallback(async () => {
-    if (!urlInput.trim()) return;
+    store.setProcessingCandidate(true);
     
-    setIsParsing(true);
     try {
-      const token = await getToken();
+      console.log('🔗 Processing LinkedIn text...');
       
-      if (!token) {
-        throw new Error('Authentication token not available');
-      }
-      
-      console.log('🔗 Starting URL parsing...', { url: urlInput });
-      
+      // Call the new parse-linkedin API endpoint
       const response = await fetch('/api/competence-files/parse-linkedin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ url: urlInput }),
-      });
-      
-      console.log('📡 URL parse response:', { 
-        status: response.status, 
-        statusText: response.statusText 
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ URL parsing failed:', { 
-          status: response.status, 
-          statusText: response.statusText,
-          errorText 
-        });
-        
-        let errorMessage = 'Failed to parse LinkedIn URL';
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-          errorMessage = errorText || errorMessage;
-        }
-        
-        throw new Error(errorMessage);
-      }
-      
-      const result = await response.json();
-      console.log('✅ URL parse result:', result);
-      
-      if (!result.success || !result.data) {
-        throw new Error(result.message || 'Invalid response format');
-      }
-      
-      const newCandidate = result.data;
-      
-      if (!newCandidate.fullName) {
-        throw new Error('Could not extract candidate name from LinkedIn profile');
-      }
-      
-      setSelectedCandidate(newCandidate);
-      setCurrentStep(2);
-      console.log('✅ URL parsing completed successfully');
-      
-    } catch (error) {
-      console.error('💥 URL parsing error:', error);
-      
-      let userMessage = 'Failed to parse LinkedIn URL. Please try again.';
-      
-      if (error instanceof Error) {
-        if (error.message.includes('Authentication')) {
-          userMessage = 'Authentication failed. Please refresh the page and try again.';
-        } else if (error.message.includes('Could not extract')) {
-          userMessage = 'Could not extract candidate information. Please ensure the LinkedIn URL is valid and accessible.';
-        } else if (error.message.includes('Invalid response')) {
-          userMessage = 'Server response was invalid. Please try again.';
-        } else if (error.message.includes('Invalid URL')) {
-          userMessage = 'Please enter a valid LinkedIn profile URL.';
-        } else if (error.message !== 'Failed to parse LinkedIn URL') {
-          userMessage = error.message;
-        }
-      }
-      
-      alert(userMessage);
-    } finally {
-      setIsParsing(false);
-    }
-  }, [urlInput, getToken]);
-  
-  // Section management
-  const toggleSectionVisibility = useCallback((sectionId: string) => {
-    setDocumentSections(prev => 
-      prev.map(section => 
-        section.id === sectionId 
-          ? { ...section, visible: !section.visible }
-          : section
-      )
-    );
-  }, []);
-  
-  const updateSectionContent = useCallback((sectionId: string, content: string) => {
-    setDocumentSections(prev => 
-      prev.map(section => 
-        section.id === sectionId 
-          ? { ...section, content }
-          : section
-      )
-    );
-  }, []);
-  
-  const addCustomSection = useCallback(() => {
-    const newSection: DocumentSection = {
-      id: `custom-${Date.now()}`,
-      type: 'custom',
-      title: 'Custom Section',
-      content: '',
-      visible: true,
-      order: documentSections.length,
-      editable: true,
-    };
-    setDocumentSections(prev => [...prev, newSection]);
-  }, [documentSections.length]);
-  
-  // Save functionality (saves draft to database)
-  const handleSave = useCallback(async () => {
-    if (!selectedCandidate || isAutoSaving) return;
-    
-    setIsAutoSaving(true);
-    try {
-      const token = await getToken();
-      const response = await fetch('/api/competence-files/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          candidateData: selectedCandidate,
-        template: selectedTemplate,
-          sections: documentSections.filter(s => s.visible),
-          format: 'draft', // Special format for saving drafts
-          jobDescription: jobDescription.text ? jobDescription : undefined,
-          saveOnly: true, // Flag to indicate this is a save operation, not generation
-          managerContact: {
-            name: managerName,
-            email: managerEmail,
-            phone: managerPhone,
-          },
+          linkedinText: store.linkedinText
         }),
       });
-      
-      if (response.ok) {
-        const result = await response.json();
-        setLastSaved(new Date());
-        
-        // Don't show alert or call onSuccess for auto-saves to prevent loop
-        // Only show success for manual saves
-        console.log('Draft auto-saved successfully');
-      } else {
-        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-        throw new Error(errorData.message || `Server error: ${response.status}`);
-      }
-    } catch (error) {
-      console.error('Save failed:', error);
-      // Don't show error alerts for auto-saves to prevent loops
-      // Only log the error for debugging
-    } finally {
-      setIsAutoSaving(false);
-    }
-  }, [selectedCandidate, selectedTemplate, documentSections, jobDescription, getToken, managerName, managerEmail, managerPhone]);
 
-  // Manual save function that shows user feedback
-  const handleManualSave = useCallback(async () => {
-    if (!selectedCandidate || isAutoSaving) return;
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || 'Failed to process LinkedIn profile');
+      }
+
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to parse LinkedIn profile');
+      }
+
+      console.log('✅ LinkedIn profile parsed successfully:', result.data);
+      
+      // Set the parsed candidate data
+      store.setCandidateData(result.data);
+      store.setProcessingCandidate(false);
+      store.nextStep();
+      
+    } catch (error) {
+      console.error('💥 LinkedIn parsing error:', error);
+      store.setProcessingCandidate(false);
+      
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to process LinkedIn profile: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!store.candidateData || !store.selectedTemplate) return;
     
-    setIsAutoSaving(true);
+    store.setGenerating(true);
+    
     try {
-      const token = await getToken();
-      const response = await fetch('/api/competence-files/generate', {
+      console.log('🚀 Starting generation with test endpoint...');
+      
+      // Use the test endpoint for simplified generation
+      const response = await fetch('/api/competence-files/test-generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          candidateData: selectedCandidate,
-          template: selectedTemplate,
-          sections: documentSections.filter(s => s.visible),
-          format: 'draft',
-          jobDescription: jobDescription.text ? jobDescription : undefined,
-          saveOnly: true,
-          managerContact: {
-            name: managerName,
-            email: managerEmail,
-            phone: managerPhone,
-          },
+          candidateData: store.candidateData,
+          format: store.outputFormat
         }),
       });
-      
-      if (response.ok) {
-        const result = await response.json();
-        setLastSaved(new Date());
-        alert('Draft saved successfully!');
-        onSuccess('Draft saved successfully');
-      } else {
-        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-        throw new Error(errorData.message || `Server error: ${response.status}`);
+
+      console.log('📡 Response status:', response.status);
+      const responseText = await response.text();
+      console.log('📡 Response text:', responseText);
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('❌ Failed to parse response as JSON:', parseError);
+        throw new Error(`Invalid response format: ${responseText.substring(0, 100)}...`);
       }
+
+      if (!response.ok) {
+        console.error('❌ API error:', result);
+        throw new Error(result.error || `API error: ${response.status}`);
+      }
+
+      if (!result.success) {
+        console.error('❌ Generation failed:', result);
+        throw new Error(result.error || 'Generation failed');
+      }
+
+      console.log('✅ Generation successful:', result);
+
+      // Set the file URL and show success
+      store.setGeneratedFileUrl(result.data.fileUrl);
+      store.setGenerating(false);
+      
+      // Call success callback
+      onSuccess({
+        candidateId: store.candidateData?.id,
+        candidateName: store.candidateData?.fullName || 'Unknown Candidate',
+        candidateTitle: store.candidateData?.currentTitle || 'Unknown Title',
+        templateId: store.templateId,
+        templateName: store.selectedTemplate?.name || 'Unknown Template',
+        client: 'Unknown Client', // TODO: Add client selection to the modal
+        job: 'Unknown Job', // TODO: Add job selection to the modal
+        fileName: result.data.fileName,
+        format: result.data.format,
+        fileUrl: result.data.fileUrl,
+        fileSize: result.data.fileSize
+      });
+
+      // Show success message if there's a warning
+      if (result.warning) {
+        console.warn('⚠️ Generation warning:', result.warning);
+      }
+
     } catch (error) {
-      console.error('Save failed:', error);
-      alert(`Failed to save draft: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsAutoSaving(false);
+      console.error('💥 Generation error:', error);
+      store.setGenerating(false);
+      
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to generate competence file: ${errorMessage}\n\nPlease check the console for more details.`);
     }
-  }, [selectedCandidate, selectedTemplate, documentSections, jobDescription, getToken, onSuccess, managerName, managerEmail, managerPhone]);
-  
-  // Generate final document
-  const handleGenerateDocument = useCallback(async (format: 'pdf' | 'docx') => {
-    if (!selectedCandidate) return;
-    
-    setIsGenerating(true);
+  };
+
+  const handleClose = () => {
+    store.resetWizard();
+    onClose();
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      alert('Please upload a PNG, JPG, SVG, or WebP image');
+      return;
+    }
+
+    // Validate file size (2MB limit)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Logo file size must be less than 2MB');
+      return;
+    }
+
+    setIsUploadingLogo(true);
+
     try {
-      const token = await getToken();
-      const response = await fetch('/api/competence-files/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          candidateData: selectedCandidate,
-          template: selectedTemplate,
-          sections: documentSections.filter(s => s.visible),
-          format,
-          jobDescription: jobDescription.text ? jobDescription : undefined,
-          managerContact: {
-            name: managerName,
-            email: managerEmail,
-            phone: managerPhone,
-          },
-        }),
-      });
-      
-      if (response.ok) {
-        // Handle direct file download
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = `${selectedCandidate.fullName.replace(/[^a-zA-Z0-9]/g, '_')}_Competence_File.${format}`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        // Call success callback and close modal for PDF generation
-        onSuccess('File downloaded successfully');
-        onClose();
-      } else {
-        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-        throw new Error(errorData.message || `Server error: ${response.status}`);
-      }
+      // Convert to base64 for preview
+      const reader = new FileReader();
+      reader.onload = () => {
+        const logoUrl = reader.result as string;
+        store.updateStyleCustomization({ logoUrl });
+        setIsUploadingLogo(false);
+      };
+      reader.readAsDataURL(file);
     } catch (error) {
-      console.error('Error generating document:', error);
-      alert(`Failed to generate document: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsGenerating(false);
+      console.error('Logo upload error:', error);
+      setIsUploadingLogo(false);
+      alert('Failed to upload logo');
     }
-  }, [selectedCandidate, selectedTemplate, documentSections, getToken, onSuccess, onClose, managerName, managerEmail, managerPhone]);
-  
-  // Auto-save effect with debounce - DISABLED to prevent loops
-  // useEffect(() => {
-  //   if (currentStep === 4 && selectedCandidate && !isAutoSaving) {
-  //     const interval = setInterval(() => {
-  //       if (!isAutoSaving) {
-  //         handleSave();
-  //       }
-  //     }, 30000); // Auto-save every 30 seconds
-  //     return () => clearInterval(interval);
-  //   }
-  // }, [currentStep, selectedCandidate, handleSave, isAutoSaving]);
-  
+  };
+
   if (!isOpen) return null;
-  
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className={`bg-white rounded-lg flex flex-col ${ 
-        currentStep === 4 
-          ? 'w-full h-full m-0 rounded-none' // Full screen for editor
-          : 'w-full max-w-6xl h-[90vh] m-4' // Fixed height for steps 1-3
-      }`}>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+        
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b flex-shrink-0">
-          <div>
-            <h2 className="text-xl font-semibold">Create Competence File</h2>
-            <div className="flex items-center space-x-4 mt-2">
-              <div className={`flex items-center space-x-2 ${currentStep >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${currentStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>1</div>
-                <span className="text-sm">Upload</span>
-              </div>
-              <div className={`flex items-center space-x-2 ${currentStep >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${currentStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>2</div>
-                <span className="text-sm">Template</span>
-              </div>
-              <div className={`flex items-center space-x-2 ${currentStep >= 3 ? 'text-blue-600' : 'text-gray-400'}`}>
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${currentStep >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>3</div>
-                <span className="text-sm">Job</span>
-              </div>
-              <div className={`flex items-center space-x-2 ${currentStep >= 4 ? 'text-blue-600' : 'text-gray-400'}`}>
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${currentStep >= 4 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>4</div>
-                <span className="text-sm">Edit</span>
-              </div>
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-primary-50 to-blue-50">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-primary-100 rounded-lg">
+              <FileText className="h-6 w-6 text-primary-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Create Competence File</h2>
+              <p className="text-gray-600">
+                {store.currentStep === 1 && 'Select or import candidate data'}
+                {store.currentStep === 2 && 'Choose a professional template'}
+                {store.currentStep === 3 && 'Customize styling and branding'}
+                {store.currentStep === 4 && 'Configure document sections'}
+                {store.currentStep === 5 && 'Generate and download file'}
+              </p>
             </div>
           </div>
-          <Button variant="ghost" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
+          <button
+            onClick={handleClose}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="h-6 w-6" />
+          </button>
         </div>
-        
-        {/* Content */}
-        <div className="flex-1 overflow-hidden">
-          {/* Step 1: Upload/Input */}
-          {currentStep === 1 && (
-            <div className="h-full overflow-y-auto">
-              <div className="p-8">
-                <div className="max-w-2xl mx-auto space-y-6">
-                  <div className="text-center">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Upload Candidate Information</h3>
-                    <p className="text-gray-600">Choose how you'd like to add candidate information</p>
+
+        {/* Progress Steps */}
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            {[
+              { step: 1, label: 'Candidate', icon: User },
+              { step: 2, label: 'Template', icon: FileText },
+              { step: 3, label: 'Style', icon: Palette },
+              { step: 4, label: 'Sections', icon: Settings },
+              { step: 5, label: 'Generate', icon: Download }
+            ].map((item, index) => {
+              const IconComponent = item.icon;
+              const isActive = store.currentStep === item.step;
+              const isCompleted = store.currentStep > item.step;
+              
+              return (
+                <div key={item.step} className="flex items-center">
+                  <div className={`flex items-center space-x-2 ${
+                    isActive ? 'text-primary-600' : 
+                    isCompleted ? 'text-green-600' : 
+                    'text-gray-400'
+                  }`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                      isActive ? 'bg-primary-100 text-primary-600' : 
+                      isCompleted ? 'bg-green-100 text-green-600' : 
+                      'bg-gray-100 text-gray-400'
+                    }`}>
+                      {isCompleted ? <CheckCircle className="h-4 w-4" /> : item.step}
+                    </div>
+                    <span className="font-medium hidden sm:block">{item.label}</span>
                   </div>
-                  
-                  <div className="flex gap-4 justify-center">
-                    <Button
-                      onClick={() => setInputMethod('file')}
-                      variant={inputMethod === 'file' ? 'primary' : 'outline'}
-                      className="flex-1 max-w-xs"
-                    >
-                      Upload File
-                    </Button>
-                    <Button
-                      onClick={() => setInputMethod('text')}
-                      variant={inputMethod === 'text' ? 'primary' : 'outline'}
-                      className="flex-1 max-w-xs"
-                    >
-                      Paste Text
-                    </Button>
-                    <Button
-                      onClick={() => setInputMethod('url')}
-                      variant={inputMethod === 'url' ? 'primary' : 'outline'}
-                      className="flex-1 max-w-xs"
-                    >
-                      LinkedIn URL
-                    </Button>
-                  </div>
-                  
-                  {inputMethod === 'file' && (
-                    <div 
-                      {...getRootProps()} 
-                      className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                        isDragActive 
-                          ? 'border-blue-500 bg-blue-50' 
-                          : isDragReject 
-                            ? 'border-red-500 bg-red-50'
-                            : 'border-gray-300 hover:border-gray-400'
-                      } ${isParsing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      <input
-                        {...getInputProps()}
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileSelect}
-                        accept=".pdf,.doc,.docx,.txt,.html,.md"
-                        className="hidden"
-                        disabled={isParsing}
-                      />
-                      <Upload className={`h-12 w-12 mx-auto mb-4 ${
-                        isDragActive ? 'text-blue-500' : isDragReject ? 'text-red-500' : 'text-gray-400'
-                      }`} />
-                      <p className={`text-lg font-medium mb-2 ${
-                        isDragActive ? 'text-blue-900' : isDragReject ? 'text-red-900' : 'text-gray-900'
-                      }`}>
-                        {isDragActive ? 'Drop your resume here!' : 'Upload Resume/CV'}
-                      </p>
-                      <p className={`mb-4 ${
-                        isDragActive ? 'text-blue-700' : isDragReject ? 'text-red-700' : 'text-gray-600'
-                      }`}>
-                        {isDragReject 
-                          ? 'File type not supported' 
-                          : 'Drag & drop or click to browse • PDF, DOC, DOCX, TXT, HTML, MD files • Max 25MB'
-                        }
-                      </p>
-                      {!isDragActive && !isParsing && (
-                        <Button onClick={() => fileInputRef.current?.click()} disabled={isParsing}>
-                          {isParsing ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              Processing...
-                            </>
-                          ) : (
-                            'Choose File'
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                  
-                  {inputMethod === 'text' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Paste Resume/CV Text
-                      </label>
-                      <textarea
-                        value={textInput}
-                        onChange={(e) => setTextInput(e.target.value)}
-                        placeholder="Paste the candidate's resume or CV text here..."
-                        className="w-full h-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <Button 
-                        onClick={handleTextParse}
-                        disabled={!textInput.trim() || isParsing}
-                        className="w-full mt-4"
-                      >
-                        {isParsing ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Parsing...
-                          </>
-                        ) : (
-                          'Parse Text'
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                  
-                  {inputMethod === 'url' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        LinkedIn Profile URL
-                      </label>
-                      <input
-                        type="url"
-                        placeholder="https://linkedin.com/in/username"
-                        value={urlInput}
-                        onChange={(e) => setUrlInput(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <Button 
-                        onClick={handleUrlParse}
-                        disabled={!urlInput.trim() || isParsing}
-                        className="w-full mt-4"
-                      >
-                        {isParsing ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Parsing...
-                          </>
-                        ) : (
-                          'Parse LinkedIn Profile'
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                  
-                  {isParsing && (
-                    <div className="text-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-                      <p className="text-gray-600">Processing candidate information...</p>
-                    </div>
-                  )}
+                  {index < 4 && <ChevronRight className="h-4 w-4 text-gray-400 mx-2" />}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 p-6 overflow-y-auto">
+          
+          {/* Step 1: Candidate Selection */}
+          {store.currentStep === 1 && (
+            <div className="space-y-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center space-x-2">
+                  <User className="h-5 w-5 text-blue-600" />
+                  <span className="text-blue-800 font-medium">Select candidate or import CV/LinkedIn data</span>
                 </div>
               </div>
-            </div>
-          )}
-          
-          {/* Step 2: Template & Section Selection */}
-          {currentStep === 2 && selectedCandidate && (
-            <div className="h-full flex flex-col">
-              <div className="flex-1 overflow-y-auto">
-                <div className="p-8">
-                  <div className="max-w-4xl mx-auto space-y-6">
-                    <div className="text-center">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Customize Your Competence File</h3>
-                      <p className="text-gray-600">Choose a template and select which sections to include</p>
+
+              {/* Source Selection */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <Card 
+                  className={`cursor-pointer transition-all hover:shadow-lg ${
+                    store.candidateSource === 'db' ? 'ring-2 ring-primary-500 bg-primary-50' : 'hover:shadow-md'
+                  }`}
+                  onClick={() => store.setCandidateSource('db')}
+                >
+                  <CardContent className="p-6 text-center">
+                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Users className="h-8 w-8 text-blue-500" />
                     </div>
-                    
-                    {/* Candidate Info */}
-                    <Card className="p-4">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 font-semibold text-lg">
-                            {selectedCandidate.fullName.charAt(0)}
-                          </span>
-                        </div>
-                        <div>
-                          <h4 className="font-medium">{selectedCandidate.fullName}</h4>
-                          <p className="text-gray-600">{selectedCandidate.currentTitle}</p>
-                          <p className="text-sm text-gray-500">{selectedCandidate.location}</p>
-                        </div>
-                      </div>
-                    </Card>
-                    
-                    {/* Template Selection */}
-                    <Card className="p-6">
-                      <h4 className="text-lg font-medium text-gray-900 mb-4">Choose Template</h4>
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        {(['emineon', 'antaes', 'professional', 'modern', 'minimal'] as const).map((template) => (
-                          <button
-                            key={template}
-                            onClick={() => setSelectedTemplate(template)}
-                            className={`p-4 border-2 rounded-lg text-left transition-colors h-32 flex flex-col ${
-                              selectedTemplate === template
-                                ? 'border-blue-500 bg-blue-50'
-                                : 'border-gray-200 hover:border-gray-300'
-                            }`}
-                          >
-                            <div className="font-medium capitalize mb-2 flex items-center gap-1 flex-wrap">
-                              {template === 'emineon' && (
-                                <Sparkles className="h-4 w-4 text-blue-600" />
-                              )}
-                              {template === 'antaes' && (
-                                <div className="h-4 w-4 bg-blue-900 rounded-sm flex items-center justify-center">
-                                  <div className="h-2 w-2 bg-white rounded-sm"></div>
-                                </div>
-                              )}
-                              <span className="truncate">{template === 'antaes' ? 'Antaes' : template}</span>
-                              {template === 'emineon' && (
-                                <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full font-medium">
-                                  BRANDED
-                                </span>
-                              )}
-                              {template === 'antaes' && (
-                                <span className="text-xs bg-blue-900 text-white px-1.5 py-0.5 rounded-full font-medium">
-                                  CONSULTING
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs text-gray-600 flex-1 overflow-hidden" style={{ 
-                              display: '-webkit-box',
-                              WebkitLineClamp: 3,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden'
-                            }}>
-                              {template === 'emineon' && 'Premium Emineon-branded template with strategic logo placement and professional styling'}
-                              {template === 'antaes' && 'Antaes consulting template with minimalist design, blue accents, and partnership excellence branding'}
-                              {template === 'professional' && 'Classic layout with traditional formatting'}
-                              {template === 'modern' && 'Contemporary design with clean lines'}
-                              {template === 'minimal' && 'Simple and focused presentation'}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </Card>
-                    
-                    {/* Navigation */}
-                    <div className="flex justify-between pt-4">
-                      <Button
-                        variant="outline"
-                        onClick={() => setCurrentStep(1)}
-                      >
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        Back
-                      </Button>
-                      <Button
-                        onClick={() => setCurrentStep(3)}
-                      >
-                        Continue to Job Description
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Select from Database</h3>
+                    <p className="text-sm text-gray-600">Choose an existing candidate from your database</p>
+                  </CardContent>
+                </Card>
+
+                <Card 
+                  className={`cursor-pointer transition-all hover:shadow-lg ${
+                    store.candidateSource === 'upload' ? 'ring-2 ring-primary-500 bg-primary-50' : 'hover:shadow-md'
+                  }`}
+                  onClick={() => store.setCandidateSource('upload')}
+                >
+                  <CardContent className="p-6 text-center">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Upload className="h-8 w-8 text-green-500" />
                     </div>
-                  </div>
-                </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Upload CV</h3>
+                    <p className="text-sm text-gray-600">Upload PDF or Word document for AI parsing</p>
+                  </CardContent>
+                </Card>
+
+                <Card 
+                  className={`cursor-pointer transition-all hover:shadow-lg ${
+                    store.candidateSource === 'linkedin' ? 'ring-2 ring-primary-500 bg-primary-50' : 'hover:shadow-md'
+                  }`}
+                  onClick={() => store.setCandidateSource('linkedin')}
+                >
+                  <CardContent className="p-6 text-center">
+                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Link2 className="h-8 w-8 text-purple-500" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">LinkedIn Import</h3>
+                    <p className="text-sm text-gray-600">Paste LinkedIn profile or URL for parsing</p>
+                  </CardContent>
+                </Card>
               </div>
-            </div>
-          )}
-          
-          {/* Step 3: Job Description Input */}
-          {currentStep === 3 && selectedCandidate && (
-            <div className="h-full flex flex-col">
-              <div className="flex-1 overflow-y-auto">
-                <div className="p-8">
-                  <div className="max-w-4xl mx-auto space-y-6">
-                    <div className="text-center">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Add Job Description</h3>
-                      <p className="text-gray-600">Provide the job description to create a targeted competence file</p>
-                    </div>
-                    
-                    {/* Candidate Info */}
-                    <Card className="p-4">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 font-semibold text-lg">
-                            {selectedCandidate.fullName.charAt(0)}
-                          </span>
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-medium">{selectedCandidate.fullName}</h4>
-                          <p className="text-gray-600">{selectedCandidate.currentTitle}</p>
-                          <p className="text-sm text-gray-500">{selectedTemplate} template selected</p>
-                        </div>
-                        <div className="text-right">
-                          <Briefcase className="h-6 w-6 text-blue-600 mx-auto mb-1" />
-                          <p className="text-xs text-gray-500">Job Targeting</p>
-                        </div>
-                      </div>
-                    </Card>
-                    
-                    {/* Job Description Input Method Selection */}
-                    <Card className="p-6">
-                      <h4 className="text-lg font-medium text-gray-900 mb-4">How would you like to add the job description?</h4>
-                      <div className="flex gap-4 justify-center mb-6">
-                        <Button
-                          onClick={() => setJobInputMethod('text')}
-                          variant={jobInputMethod === 'text' ? 'primary' : 'outline'}
-                          className="flex-1 max-w-xs"
-                        >
-                          Type/Paste Text
-                        </Button>
-                        <Button
-                          onClick={() => setJobInputMethod('file')}
-                          variant={jobInputMethod === 'file' ? 'primary' : 'outline'}
-                          className="flex-1 max-w-xs"
-                        >
-                          Upload File
-                        </Button>
-                        <Button
-                          onClick={() => setJobInputMethod('voice')}
-                          variant={jobInputMethod === 'voice' ? 'primary' : 'outline'}
-                          className="flex-1 max-w-xs"
-                        >
-                          Voice Dictation
-                        </Button>
-                      </div>
-                      
-                      {/* Text Input Method */}
-                      {jobInputMethod === 'text' && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Job Description
-                          </label>
-                          <textarea
-                            value={jobDescription.text}
-                            onChange={(e) => setJobDescription(prev => ({ ...prev, text: e.target.value }))}
-                            placeholder="Paste the job description here, or start typing to describe the role you're hiring for..."
-                            className="w-full h-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                          />
-                          {jobDescription.text.trim() && (
-                            <Button 
-                              onClick={() => parseJobDescription(jobDescription.text)}
-                              disabled={isParsing}
-                              className="w-full mt-4"
-                            >
-                              {isParsing ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                  Analyzing Job Description...
-                                </>
-                              ) : (
-                                'Analyze Job Requirements'
-                              )}
-                            </Button>
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* File Upload Method */}
-                      {jobInputMethod === 'file' && (
-                        <div>
-                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                            <input
-                              type="file"
-                              ref={jobFileInputRef}
-                              onChange={handleJobFileSelect}
-                              accept=".pdf,.doc,.docx,.txt"
-                              multiple
-                              className="hidden"
-                            />
-                            <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                            <p className="text-lg font-medium text-gray-900 mb-2">Upload Job Description</p>
-                            <p className="text-gray-600 mb-4">Supports PDF, DOC, DOCX, TXT files</p>
-                            <Button onClick={() => jobFileInputRef.current?.click()}>
-                              Choose Files
-                            </Button>
-                          </div>
-                          {jobDescriptionFiles.length > 0 && (
-                            <div className="mt-4">
-                              <p className="text-sm font-medium text-gray-700 mb-2">Selected files:</p>
-                              <ul className="space-y-1">
-                                {jobDescriptionFiles.map((file, index) => (
-                                  <li key={index} className="text-sm text-gray-600 flex items-center">
-                                    <FileText className="h-4 w-4 mr-2" />
-                                    {file.name}
-                                  </li>
+
+              {/* Database Selection */}
+              {store.candidateSource === 'db' && (
+                <div className="space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search candidates by name, title, or skills..."
+                      className="pl-10"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {mockCandidates.map((candidate) => (
+                      <Card 
+                        key={candidate.id}
+                        className={`cursor-pointer transition-all hover:shadow-lg ${
+                          store.candidateData?.id === candidate.id ? 'ring-2 ring-primary-500 bg-primary-50' : 'hover:shadow-md'
+                        }`}
+                        onClick={() => store.setCandidateData(candidate)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                              <User className="h-6 w-6 text-gray-600" />
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-gray-900">{candidate.fullName}</h4>
+                              <p className="text-sm text-gray-600">{candidate.currentTitle}</p>
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {candidate.skills.slice(0, 3).map(skill => (
+                                  <Badge key={skill} variant="outline" className="text-xs">
+                                    {skill}
+                                  </Badge>
                                 ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* Voice Input Method */}
-                      {jobInputMethod === 'voice' && (
-                        <div className="text-center">
-                          <div className="mb-6">
-                            <div className={`w-24 h-24 rounded-full mx-auto mb-4 flex items-center justify-center ${
-                              isRecording ? 'bg-red-100 animate-pulse' : 'bg-gray-100'
-                            }`}>
-                              {isRecording ? (
-                                <MicOff className="h-12 w-12 text-red-600" />
-                              ) : (
-                                <Mic className="h-12 w-12 text-gray-600" />
-                              )}
-                            </div>
-                            <p className="text-lg font-medium text-gray-900 mb-2">
-                              {isRecording ? 'Recording...' : 'Voice Dictation'}
-                            </p>
-                            <p className="text-gray-600 mb-4">
-                              {isRecording ? 'Speak clearly and describe the job requirements' : 'Click to start recording your job description'}
-                            </p>
-                          </div>
-                          
-                          <div className="flex gap-4 justify-center">
-                            {!isRecording ? (
-                              <Button
-                                onClick={startVoiceRecording}
-                                disabled={isParsing}
-                                className="bg-red-600 hover:bg-red-700"
-                              >
-                                <Mic className="h-4 w-4 mr-2" />
-                                Start Recording
-                              </Button>
-                            ) : (
-                              <Button
-                                onClick={stopVoiceRecording}
-                                variant="outline"
-                                className="border-red-600 text-red-600 hover:bg-red-50"
-                              >
-                                <MicOff className="h-4 w-4 mr-2" />
-                                Stop Recording
-                              </Button>
-                            )}
-                          </div>
-                          
-                          {isParsing && (
-                            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                              <div className="flex items-center justify-center">
-                                <Loader2 className="h-4 w-4 animate-spin mr-2 text-blue-600" />
-                                <span className="text-blue-600">Transcribing and analyzing...</span>
+                                {candidate.skills.length > 3 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{candidate.skills.length - 3}
+                                  </Badge>
+                                )}
                               </div>
                             </div>
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* Job Description Preview - Enhanced & Expandable */}
-                      {jobDescription.text && (
-                        <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                          <div className="flex items-center justify-between mb-3">
-                            <h5 className="font-medium text-gray-900">Job Description Preview</h5>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setIsJobDescriptionExpanded(!isJobDescriptionExpanded)}
-                              className="text-xs"
-                            >
-                              {isJobDescriptionExpanded ? (
-                                <>
-                                  <ChevronUp className="h-3 w-3 mr-1" />
-                                  Collapse
-                                </>
-                              ) : (
-                                <>
-                                  <ChevronDown className="h-3 w-3 mr-1" />
-                                  Expand Full Preview
-                                </>
-                              )}
-                            </Button>
                           </div>
-                          
-                          <div className={`text-sm text-gray-700 ${
-                            isJobDescriptionExpanded 
-                              ? 'max-h-96 overflow-y-auto' 
-                              : 'max-h-32 overflow-hidden'
-                          } transition-all duration-200`}>
-                            <div className="whitespace-pre-wrap">
-                              {isJobDescriptionExpanded 
-                                ? jobDescription.text 
-                                : `${jobDescription.text.substring(0, 500)}${jobDescription.text.length > 500 ? '...' : ''}`
-                              }
-                            </div>
-                          </div>
-                          
-                          {/* Enhanced AI Identified Elements */}
-                          {(jobDescription.requirements.length > 0 || jobDescription.skills.length > 0 || jobDescription.responsibilities.length > 0) && (
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                              <div className="flex items-center justify-between mb-3">
-                                <p className="text-sm font-medium text-gray-800">AI Identified Key Elements</p>
-                                <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded">
-                                  {jobDescription.requirements.length + jobDescription.skills.length + jobDescription.responsibilities.length} elements found
-                                </span>
-                              </div>
-                              
-                              <div className="space-y-3">
-                                {/* Requirements */}
-                                {jobDescription.requirements.length > 0 && (
-                                  <div>
-                                    <p className="text-xs font-medium text-gray-600 mb-2 flex items-center">
-                                      <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                                      Requirements ({jobDescription.requirements.length})
-                                    </p>
-                                    <div className="flex flex-wrap gap-1">
-                                      {jobDescription.requirements.map((req, idx) => (
-                                        <span key={idx} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-md border border-blue-200">
-                                          {req}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {/* Skills */}
-                                {jobDescription.skills.length > 0 && (
-                                  <div>
-                                    <p className="text-xs font-medium text-gray-600 mb-2 flex items-center">
-                                      <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                                      Skills ({jobDescription.skills.length})
-                                    </p>
-                                    <div className="flex flex-wrap gap-1">
-                                      {jobDescription.skills.map((skill, idx) => (
-                                        <span key={idx} className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-md border border-green-200">
-                                          {skill}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {/* Responsibilities */}
-                                {jobDescription.responsibilities.length > 0 && (
-                                  <div>
-                                    <p className="text-xs font-medium text-gray-600 mb-2 flex items-center">
-                                      <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
-                                      Responsibilities ({jobDescription.responsibilities.length})
-                                    </p>
-                                    <div className="flex flex-wrap gap-1">
-                                      {jobDescription.responsibilities.map((resp, idx) => (
-                                        <span key={idx} className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-md border border-purple-200">
-                                          {resp}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {/* Custom Elements Section */}
-                                <div>
-                                  <p className="text-xs font-medium text-gray-600 mb-2 flex items-center">
-                                    <span className="w-2 h-2 bg-orange-500 rounded-full mr-2"></span>
-                                    Custom Elements ({customElements.length})
-                                  </p>
-                                  <div className="space-y-2">
-                                    <div className="flex flex-wrap gap-1 mb-2">
-                                      {customElements.map((element, idx) => (
-                                        <span key={idx} className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-md border border-orange-200 flex items-center">
-                                          {element}
-                                          <button
-                                            onClick={() => removeCustomElement(element)}
-                                            className="ml-1 text-orange-600 hover:text-orange-800"
-                                          >
-                                            <X className="h-3 w-3" />
-                                          </button>
-                                        </span>
-                                      ))}
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                      <input
-                                        type="text"
-                                        value={newElementInput}
-                                        onChange={(e) => setNewElementInput(e.target.value)}
-                                        onKeyPress={handleKeyPress}
-                                        placeholder="Add custom element..."
-                                        className="flex-1 text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                      />
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={addCustomElement}
-                                        disabled={!newElementInput.trim()}
-                                        className="text-xs"
-                                      >
-                                        <Plus className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </Card>
-                    
-                    {/* Manager Contact Details */}
-                    <Card className="p-6">
-                      <h4 className="text-lg font-medium text-gray-900 mb-4">Manager Contact Details</h4>
-                      <p className="text-sm text-gray-600 mb-4">
-                        Add your contact information so clients can reach out to you directly instead of the candidate.
-                      </p>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Manager Name
-                          </label>
-                          <input
-                            type="text"
-                            value={managerName}
-                            onChange={(e) => setManagerName(e.target.value)}
-                            placeholder="Your full name"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Email Address
-                          </label>
-                          <input
-                            type="email"
-                            value={managerEmail}
-                            onChange={(e) => setManagerEmail(e.target.value)}
-                            placeholder="your.email@company.com"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Phone Number
-                          </label>
-                          <input
-                            type="tel"
-                            value={managerPhone}
-                            onChange={(e) => setManagerPhone(e.target.value)}
-                            placeholder="+1 (555) 123-4567"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                      </div>
-                      
-                      {managerName && managerEmail && (
-                        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                          <p className="text-sm text-green-800">
-                            ✓ Manager contact details will be included in the competence file
-                          </p>
-                        </div>
-                      )}
-                    </Card>
-                    
-                    {/* Navigation */}
-                    <div className="flex justify-between pt-4">
-                      <Button
-                        variant="outline"
-                        onClick={() => setCurrentStep(2)}
-                      >
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        Back to Template
-                      </Button>
-                      <Button
-                        onClick={() => setCurrentStep(4)}
-                        disabled={!jobDescription.text.trim()}
-                      >
-                        Continue to Editor
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
-          
-          {/* Step 4: Lexical Editor */}
-          {currentStep === 4 && selectedCandidate && (
-            <div className="flex-1 flex flex-col h-full">
-              {/* Editor Header */}
-              <div className="flex items-center justify-between p-4 border-b bg-gray-50 flex-shrink-0">
-                <div className="flex items-center space-x-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentStep(3)}
+              )}
+
+              {/* File Upload */}
+              {store.candidateSource === 'upload' && (
+                <div className="space-y-4">
+                  <div
+                    {...getRootProps()}
+                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                      isDragActive 
+                        ? 'border-primary-500 bg-primary-50' 
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}
                   >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back
-                  </Button>
-                  <div>
-                    <h4 className="font-medium">{selectedCandidate.fullName}</h4>
-                    <p className="text-sm text-gray-600">{selectedTemplate} template</p>
+                    <input {...getInputProps()} />
+                    <div className="space-y-4">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
+                        <Upload className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <div>
+                        <p className="text-lg font-medium text-gray-900">
+                          {isDragActive ? 'Drop CV here' : 'Upload CV'}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Drag & drop or click to select PDF, DOC, or DOCX files
+                        </p>
+                      </div>
+                    </div>
                   </div>
+                  
+                  {store.isProcessingCandidate && (
+                    <div className="flex items-center justify-center p-4 bg-blue-50 rounded-lg">
+                      <Loader2 className="h-5 w-5 animate-spin text-blue-600 mr-3" />
+                      <span className="text-blue-800">Processing CV with AI...</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* LinkedIn Import */}
+              {store.candidateSource === 'linkedin' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      LinkedIn Profile Text or URL
+                    </label>
+                    <textarea
+                      rows={6}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Paste the LinkedIn profile text or URL here..."
+                      value={store.linkedinText || ''}
+                      onChange={(e) => store.setLinkedInText(e.target.value)}
+                    />
+                  </div>
+                  
+                  <Button 
+                    onClick={handleLinkedInImport}
+                    disabled={!store.linkedinText || store.isProcessingCandidate}
+                    className="w-full"
+                  >
+                    {store.isProcessingCandidate ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Processing with AI...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="h-4 w-4 mr-2" />
+                        Parse with AI
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+                         </div>
+           )}
+
+          {/* Step 2: Template Selection */}
+          {store.currentStep === 2 && (
+            <div className="space-y-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center space-x-2">
+                  <FileText className="h-5 w-5 text-blue-600" />
+                  <span className="text-blue-800 font-medium">Choose a professional template for {store.candidateData?.fullName}</span>
+                </div>
+              </div>
+
+              {/* Search and Filter */}
+              <div className="space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search templates by name, category, or client..."
+                    value={store.templateSearch || ''}
+                    onChange={(e) => store.setTemplateSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
                 </div>
                 
-                {/* AI and Zoom Controls */}
-                <div className="flex items-center space-x-4">
-                  {/* AI Action Buttons */}
-                  <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleImproveAll}
-                    disabled={isGenerating}
-                      className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:from-green-100 hover:to-emerald-100"
+                {/* Category Filter */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => store.setTemplateCategory('')}
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                      !store.templateCategory 
+                        ? 'bg-primary-100 text-primary-700 border border-primary-300' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
                   >
-                    {isGenerating ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                        <Sparkles className="h-4 w-4 mr-2 text-green-600" />
-                    )}
-                    Improve All
-                  </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleExpandAll}
-                      disabled={isGenerating}
-                      className="bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200 hover:from-blue-100 hover:to-cyan-100"
+                    All Categories
+                  </button>
+                  {Array.from(new Set(predefinedTemplates.map(t => t.category))).map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => store.setTemplateCategory(category)}
+                      className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                        store.templateCategory === category 
+                          ? 'bg-primary-100 text-primary-700 border border-primary-300' 
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
                     >
-                      {isGenerating ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Plus className="h-4 w-4 mr-2 text-blue-600" />
-                      )}
-                      Expand All
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleRewriteAll}
-                      disabled={isGenerating}
-                      className="bg-gradient-to-r from-purple-50 to-violet-50 border-purple-200 hover:from-purple-100 hover:to-violet-100"
-                    >
-                      {isGenerating ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4 mr-2 text-purple-600" />
-                      )}
-                      Rewrite All
-                    </Button>
-                  </div>
-                  
-                  {/* Zoom Controls */}
-                  <div className="flex items-center space-x-2 bg-white rounded-lg border px-3 py-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleZoomOut}
-                      disabled={zoomLevel <= 50}
-                    >
-                      <ZoomOut className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm font-medium min-w-[3rem] text-center">
-                      {zoomLevel}%
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleZoomIn}
-                      disabled={zoomLevel >= 200}
-                    >
-                      <ZoomIn className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleZoomReset}
-                      className="text-xs"
-                    >
-                      Reset
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleManualSave}
-                      disabled={isAutoSaving}
-                      className={isAutoSaving ? "opacity-50" : ""}
-                    >
-                      {isAutoSaving ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Save className="h-4 w-4 mr-2" />
-                      )}
-                      {isAutoSaving ? 'Saving...' : 'Save Draft'}
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => handleGenerateDocument('pdf')}
-                      disabled={isGenerating}
-                    >
-                      {isGenerating ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Download className="h-4 w-4 mr-2" />
-                      )}
-                      Generate PDF
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleGenerateDocument('docx')}
-                      disabled={isGenerating}
-                    >
-                      Generate DOCX
-                    </Button>
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Templates Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {predefinedTemplates.slice(0, 6).map((template) => (
+                  <Card 
+                    key={template.id}
+                    className={`cursor-pointer transition-all hover:shadow-lg ${
+                      store.selectedTemplate?.id === template.id ? 'ring-2 ring-primary-500 bg-primary-50' : 'hover:shadow-md'
+                    }`}
+                    onClick={() => store.setSelectedTemplate(template)}
+                  >
+                    <CardContent className="p-6">
+                      {/* Template Preview */}
+                      <div className="w-full h-32 bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                        <div className="text-center">
+                          <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                          <p className="text-xs text-gray-500">Template Preview</p>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-gray-900 truncate">{template.name}</h3>
+                          <div 
+                            className="w-3 h-3 rounded-full border border-gray-300"
+                            style={{ backgroundColor: template.colorHex }}
+                          />
+                        </div>
+                        
+                        <p className="text-sm text-gray-600 line-clamp-2">{template.description}</p>
+                        
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline" className="text-xs">
+                            {template.category}
+                          </Badge>
+                          <span className="text-xs text-gray-500 font-medium">{template.font}</span>
+                        </div>
+                        
+                        {template.client && (
+                          <div className="flex items-center space-x-2">
+                            <Building2 className="h-3 w-3 text-gray-400" />
+                            <span className="text-xs text-gray-600 truncate">{template.client}</span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {store.selectedTemplate && (
+                <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                  <CheckCircle className="h-5 w-5 text-green-600 mx-auto mb-2" />
+                  <p className="text-sm text-green-700">
+                    Template selected: <span className="font-medium">{store.selectedTemplate.name}</span>
+                  </p>
+                </div>
+              )}
+                         </div>
+           )}
+
+          {/* Step 3: Styling & Branding */}
+          {store.currentStep === 3 && (
+            <div className="space-y-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start space-x-3">
+                  <Palette className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <h3 className="text-blue-800 font-medium mb-1">Customize Styling & Branding</h3>
+                    <p className="text-blue-700 text-sm">
+                      Design your document with professional styling options and branding elements.
+                    </p>
                   </div>
                 </div>
               </div>
-              
-              {/* Editor Content - Full Screen with Zoom */}
-              <div className="flex-1 overflow-y-auto bg-gray-50">
-                <div className="min-h-full p-8">
-                  <div 
-                    className="max-w-5xl mx-auto bg-white shadow-lg rounded-lg p-8 transition-transform duration-200"
-                    style={{ 
-                      transform: `scale(${zoomLevel / 100})`,
-                      transformOrigin: 'top center',
-                      marginBottom: zoomLevel !== 100 ? `${(zoomLevel - 100) * 2}px` : '0'
-                    }}
-                  >
-                    <DndContext
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Style Controls */}
+                <div className="space-y-6">
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <Palette className="h-5 w-5 mr-2 text-primary-600" />
+                      Typography & Colors
+                    </h4>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Font Family</label>
+                        <select
+                          value={store.styleCustomization.font}
+                          onChange={(e) => store.updateStyleCustomization({ font: e.target.value })}
+                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                        >
+                          {fontOptions.map((font) => (
+                            <option key={font.value} value={font.value}>
+                              {font.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Font Size</label>
+                          <select
+                            value={store.styleCustomization.fontSize || '11pt'}
+                            onChange={(e) => store.updateStyleCustomization({ fontSize: e.target.value })}
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 text-sm"
+                          >
+                            <option value="9pt">9pt</option>
+                            <option value="10pt">10pt</option>
+                            <option value="11pt">11pt (Default)</option>
+                            <option value="12pt">12pt</option>
+                            <option value="14pt">14pt</option>
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Line Spacing</label>
+                          <select
+                            value={store.styleCustomization.lineSpacing || '1.2'}
+                            onChange={(e) => store.updateStyleCustomization({ lineSpacing: e.target.value })}
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 text-sm"
+                          >
+                            <option value="1.0">Single</option>
+                            <option value="1.15">1.15</option>
+                            <option value="1.2">1.2 (Default)</option>
+                            <option value="1.5">1.5</option>
+                            <option value="2.0">Double</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Color Selection */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-3">Brand Color</label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {colorPresets.map((preset) => (
+                            <button
+                              key={preset.value}
+                              onClick={() => store.updateStyleCustomization({ colorHex: preset.value })}
+                              className={`w-full h-8 rounded border-2 transition-all ${
+                                store.styleCustomization.colorHex === preset.value
+                                  ? 'border-gray-900 scale-105'
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                              style={{ backgroundColor: preset.color }}
+                              title={preset.label}
+                            />
+                          ))}
+                        </div>
+                        
+                        <div className="mt-2">
+                          <Input
+                            type="text"
+                            placeholder="#1e40af"
+                            value={store.styleCustomization.colorHex}
+                            onChange={(e) => store.updateStyleCustomization({ colorHex: e.target.value })}
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Logo Upload */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-3">Company Logo</label>
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                          {store.styleCustomization.logoUrl ? (
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <img 
+                                  src={store.styleCustomization.logoUrl} 
+                                  alt="Company logo" 
+                                  className="w-12 h-12 object-contain rounded border"
+                                />
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">Logo uploaded</p>
+                                  <p className="text-xs text-gray-500">Click to change</p>
+                                </div>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => store.updateStyleCustomization({ logoUrl: '' })}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="text-center">
+                              <Image className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                              <p className="text-sm text-gray-600 mb-2">Upload company logo</p>
+                              <p className="text-xs text-gray-500">PNG, JPG, SVG up to 2MB</p>
+                            </div>
+                          )}
+                          
+                          <input
+                            ref={logoFileInputRef}
+                            type="file"
+                            accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+                            onChange={handleLogoUpload}
+                            className="hidden"
+                          />
+                          
+                          <Button
+                            onClick={() => logoFileInputRef.current?.click()}
+                            variant="outline"
+                            size="sm"
+                            disabled={isUploadingLogo}
+                            className="w-full mt-3"
+                          >
+                            {isUploadingLogo ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-4 w-4 mr-2" />
+                                {store.styleCustomization.logoUrl ? 'Change Logo' : 'Upload Logo'}
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Footer Text */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Footer Text</label>
+                        <Input
+                          placeholder="© 2024 Your Company Name - Confidential"
+                          value={store.styleCustomization.footerText || ''}
+                          onChange={(e) => store.updateStyleCustomization({ footerText: e.target.value })}
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live Preview */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold text-gray-900">Live Preview</h4>
+                  <Card>
+                    <CardContent className="p-6">
+                      <div 
+                        className="w-full h-80 bg-white border-2 border-gray-200 rounded-lg p-4 overflow-hidden relative"
+                        style={{ 
+                          fontFamily: store.styleCustomization.font,
+                          fontSize: store.styleCustomization.fontSize || '11pt',
+                          lineHeight: store.styleCustomization.lineSpacing || '1.2'
+                        }}
+                      >
+                        {/* Header */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <div 
+                              className="h-2 w-full mb-2"
+                              style={{ backgroundColor: store.styleCustomization.colorHex }}
+                            />
+                            <h1 
+                              className="text-lg font-bold mb-1"
+                              style={{ color: store.styleCustomization.colorHex }}
+                            >
+                              COMPETENCE FILE
+                            </h1>
+                            <p className="text-xs text-gray-600">Professional Skills Assessment</p>
+                          </div>
+                          <div className="w-12 h-12 bg-gray-100 rounded border flex items-center justify-center ml-4">
+                            {store.styleCustomization.logoUrl ? (
+                              <img 
+                                src={store.styleCustomization.logoUrl} 
+                                alt="Company logo" 
+                                className="w-full h-full object-contain rounded"
+                              />
+                            ) : (
+                              <Image className="h-6 w-6 text-gray-400" />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Sample Content */}
+                        <div className="space-y-3">
+                          <div>
+                            <h2 
+                              className="text-sm font-semibold mb-1 pb-1 border-b"
+                              style={{ color: store.styleCustomization.colorHex, borderColor: store.styleCustomization.colorHex }}
+                            >
+                              {store.candidateData?.fullName || 'Candidate Name'}
+                            </h2>
+                            <div className="text-xs text-gray-700 space-y-1">
+                              <p><strong>Position:</strong> {store.candidateData?.currentTitle || 'Job Title'}</p>
+                              <p><strong>Experience:</strong> {store.candidateData?.yearsOfExperience || 'X'} years</p>
+                            </div>
+                          </div>
+
+                          <div>
+                            <h3 
+                              className="text-xs font-semibold mb-1 pb-1 border-b"
+                              style={{ color: store.styleCustomization.colorHex, borderColor: store.styleCustomization.colorHex }}
+                            >
+                              Key Skills
+                            </h3>
+                            <div className="flex flex-wrap gap-1">
+                              {(store.candidateData?.skills || ['Skill 1', 'Skill 2', 'Skill 3']).slice(0, 4).map((skill, i) => (
+                                <span key={i} className="px-1 py-0.5 bg-gray-100 rounded text-xs">
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Footer */}
+                        {store.styleCustomization.footerText && (
+                          <div className="absolute bottom-2 left-4 right-4">
+                            <div 
+                              className="text-xs text-center pt-1 border-t"
+                              style={{ borderColor: store.styleCustomization.colorHex }}
+                            >
+                              {store.styleCustomization.footerText}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+                         </div>
+           )}
+
+          {/* Step 4: Document Sections */}
+          {store.currentStep === 4 && (
+            <div className="space-y-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start space-x-3">
+                  <Settings className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <h3 className="text-blue-800 font-medium mb-1">Configure Document Sections</h3>
+                    <p className="text-blue-700 text-sm">
+                      Customize which sections appear in your document and their order. Watch the preview update in real-time.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Sections Configuration */}
+                <div className="space-y-6">
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <Settings className="h-5 w-5 mr-2 text-primary-600" />
+                      Document Sections
+                    </h4>
+                    
+                    <DndContext 
                       sensors={sensors}
                       collisionDetection={closestCenter}
                       onDragEnd={handleDragEnd}
                     >
-                      <SortableContext
-                        items={documentSections.filter(s => s.visible).map(s => s.id)}
+                      <SortableContext 
+                        items={store.sections.map(s => s.key)}
                         strategy={verticalListSortingStrategy}
                       >
-                        <div className="space-y-8">
-                          {documentSections
-                            .filter(section => section.visible)
+                        <div className="space-y-3">
+                          {store.sections
                             .sort((a, b) => a.order - b.order)
                             .map((section) => (
-                              <SortableSectionEditor
-                                key={section.id}
+                              <SortableSectionItem
+                                key={section.key}
                                 section={section}
-                                onUpdate={(content) => updateSectionContent(section.id, content)}
-                                onTitleUpdate={(title) => {
-                                  setDocumentSections(prev =>
-                                    prev.map(s =>
-                                      s.id === section.id ? { ...s, title } : s
-                                    )
-                                  );
-                                }}
-                                getToken={getToken}
-                                candidateData={selectedCandidate}
-                                jobDescription={jobDescription}
+                                isEditing={editingSectionKey === section.key}
+                                editingLabel={editingLabel}
+                                onToggle={() => store.toggleSection(section.key)}
+                                onStartEdit={() => handleStartEdit(section.key, section.label)}
+                                onSaveEdit={handleSaveEdit}
+                                onCancelEdit={handleCancelEdit}
+                                onLabelChange={setEditingLabel}
+                                onRemove={() => handleRemoveSection(section.key)}
+                                canRemove={canRemoveSection(section.key)}
                               />
                             ))}
                         </div>
                       </SortableContext>
                     </DndContext>
+
+                    {/* Add Custom Section */}
+                    <div className="border-t pt-4 mt-4">
+                      {showAddSection ? (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
+                          <div className="flex items-center space-x-3">
+                            <Input
+                              value={newSectionLabel}
+                              onChange={(e) => setNewSectionLabel(e.target.value)}
+                              placeholder="Enter section name or select from suggestions below"
+                              className="flex-1"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleAddSection();
+                                if (e.key === 'Escape') setShowAddSection(false);
+                              }}
+                              autoFocus
+                            />
+                            <Button
+                              onClick={handleAddSection}
+                              disabled={!newSectionLabel.trim()}
+                              size="sm"
+                            >
+                              <Check className="h-4 w-4 mr-1" />
+                              Add
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                setShowAddSection(false);
+                                setNewSectionLabel('');
+                              }}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          
+                          {/* Section Suggestions */}
+                          <div>
+                            <p className="text-sm text-gray-600 mb-2">Quick suggestions:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {sectionSuggestions
+                                .filter(suggestion => 
+                                  !store.sections.some(section => 
+                                    section.label.toLowerCase() === suggestion.toLowerCase()
+                                  )
+                                )
+                                .slice(0, 8)
+                                .map((suggestion) => (
+                                  <button
+                                    key={suggestion}
+                                    onClick={() => setNewSectionLabel(suggestion)}
+                                    className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-full hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                                  >
+                                    {suggestion}
+                                  </button>
+                                ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={() => setShowAddSection(true)}
+                          variant="outline"
+                          className="w-full border-dashed border-2 border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-700"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Custom Section
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Summary */}
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
+                      <div className="flex items-start space-x-3">
+                        <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-green-800 font-medium">
+                              {store.sections.filter(s => s.show).length} of {store.sections.length} sections will be included
+                            </span>
+                            <Badge variant="outline" className="bg-primary-100 text-primary-700 border-primary-300">
+                              {store.sections.filter(s => s.key.startsWith('custom_')).length} custom
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-green-700">
+                            <strong>Tips:</strong> Drag sections by the grip handle to reorder • Click checkboxes to toggle visibility • Click edit icon to rename custom sections
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live Preview */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                    <Eye className="h-5 w-5 mr-2 text-primary-600" />
+                    Live Preview
+                  </h4>
+                  
+                  <div className="border border-gray-300 rounded-lg overflow-hidden bg-white shadow-sm">
+                    <div 
+                      className="w-full h-[600px] bg-white p-8 overflow-y-auto text-black"
+                      style={{ 
+                        fontFamily: store.styleCustomization.font || 'Times New Roman',
+                        fontSize: store.styleCustomization.fontSize || '11pt',
+                        lineHeight: store.styleCustomization.lineSpacing || '1.2'
+                      }}
+                    >
+                      {/* Header with company branding */}
+                      <div className="flex items-start justify-between mb-6">
+                        <div className="flex-1">
+                          <div 
+                            className="h-1 w-full mb-3"
+                            style={{ backgroundColor: store.styleCustomization.colorHex }}
+                          />
+                          <h1 
+                            className="text-2xl font-bold mb-1"
+                            style={{ color: store.styleCustomization.colorHex }}
+                          >
+                            COMPETENCE FILE
+                          </h1>
+                          <p className="text-sm text-gray-600 mb-4">Professional Skills Assessment</p>
+                        </div>
+                        <div className="w-16 h-16 bg-gray-100 rounded border flex items-center justify-center">
+                          {store.styleCustomization.logoUrl ? (
+                            <img 
+                              src={store.styleCustomization.logoUrl} 
+                              alt="Company logo" 
+                              className="w-full h-full object-contain rounded"
+                            />
+                          ) : (
+                            <Image className="h-8 w-8 text-gray-400" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Candidate Information */}
+                      {store.candidateData && (
+                        <div className="mb-6">
+                          <h2 
+                            className="text-lg font-semibold mb-3 pb-1 border-b"
+                            style={{ color: store.styleCustomization.colorHex, borderColor: store.styleCustomization.colorHex }}
+                          >
+                            {store.candidateData.fullName}
+                          </h2>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <strong>Position:</strong> {store.candidateData.currentTitle}
+                            </div>
+                            <div>
+                              <strong>Location:</strong> {store.candidateData.location}
+                            </div>
+                            <div>
+                              <strong>Email:</strong> {store.candidateData.email}
+                            </div>
+                            <div>
+                              <strong>Experience:</strong> {store.candidateData.yearsOfExperience} years
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Dynamic Sections Preview */}
+                      {store.sections
+                        .filter(section => section.show)
+                        .sort((a, b) => a.order - b.order)
+                        .map((section, index) => (
+                          <div key={section.key} className="mb-4">
+                            <h3 
+                              className="text-base font-semibold mb-2 pb-1 border-b"
+                              style={{ color: store.styleCustomization.colorHex, borderColor: store.styleCustomization.colorHex }}
+                            >
+                              {section.label}
+                            </h3>
+                            <div className="text-sm text-gray-700">
+                              {section.key === 'skills' && store.candidateData?.skills && (
+                                <div className="flex flex-wrap gap-1">
+                                  {store.candidateData.skills.slice(0, 6).map(skill => (
+                                    <span key={skill} className="px-2 py-1 bg-gray-100 rounded text-xs">
+                                      {skill}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              {section.key === 'experience' && store.candidateData?.experience && (
+                                <div>
+                                  {store.candidateData.experience.slice(0, 2).map((exp, i) => (
+                                    <div key={i} className="mb-2">
+                                      <div className="font-medium">{exp.title} - {exp.company}</div>
+                                      <div className="text-xs text-gray-600">{exp.startDate} - {exp.endDate}</div>
+                                      <div className="text-xs">{exp.responsibilities}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {section.key === 'education' && store.candidateData?.education && (
+                                <div>
+                                  {store.candidateData.education.slice(0, 2).map((edu, i) => (
+                                    <div key={i} className="text-sm">{edu}</div>
+                                  ))}
+                                </div>
+                              )}
+                              {section.key === 'summary' && store.candidateData?.summary && (
+                                <p className="text-sm">{store.candidateData.summary}</p>
+                              )}
+                              {section.key === 'certifications' && store.candidateData?.certifications && (
+                                <div className="space-y-1">
+                                  {store.candidateData.certifications.map((cert, i) => (
+                                    <div key={i} className="text-sm flex items-center">
+                                      <Award className="h-3 w-3 mr-2 text-yellow-600" />
+                                      {cert}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {section.key === 'languages' && store.candidateData?.languages && (
+                                <div className="space-y-1">
+                                  {store.candidateData.languages.map((lang, i) => (
+                                    <div key={i} className="text-sm">{lang}</div>
+                                  ))}
+                                </div>
+                              )}
+                              {!['skills', 'experience', 'education', 'summary', 'certifications', 'languages'].includes(section.key) && (
+                                <div className="text-xs text-gray-500 italic">
+                                  {section.label} content will be populated here...
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+
+                      {/* Footer */}
+                      {store.styleCustomization.footerText && (
+                        <div className="mt-8 pt-4 border-t" style={{ borderColor: store.styleCustomization.colorHex }}>
+                          <div className="text-xs text-center text-gray-600">
+                            {store.styleCustomization.footerText}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
+                         </div>
+           )}
+
+          {/* Step 5: Generate & Download */}
+          {store.currentStep === 5 && (
+            <div className="space-y-6">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center space-x-2">
+                  <Download className="h-5 w-5 text-green-600" />
+                  <span className="text-green-800 font-medium">Ready to generate your competence file</span>
+                </div>
+              </div>
+
+              {/* Output Format Selection */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold text-gray-900">Choose Output Format</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card 
+                    className={`cursor-pointer transition-all hover:shadow-lg ${
+                      store.outputFormat === 'pdf' ? 'ring-2 ring-primary-500 bg-primary-50' : 'hover:shadow-md'
+                    }`}
+                    onClick={() => store.setOutputFormat('pdf')}
+                  >
+                    <CardContent className="p-6 text-center">
+                      <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <FileDown className="h-8 w-8 text-red-500" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">PDF Document</h3>
+                      <p className="text-sm text-gray-600">Professional, print-ready format ideal for sharing</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card 
+                    className={`cursor-pointer transition-all hover:shadow-lg ${
+                      store.outputFormat === 'docx' ? 'ring-2 ring-primary-500 bg-primary-50' : 'hover:shadow-md'
+                    }`}
+                    onClick={() => store.setOutputFormat('docx')}
+                  >
+                    <CardContent className="p-6 text-center">
+                      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <FileText className="h-8 w-8 text-blue-500" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Word Document</h3>
+                      <p className="text-sm text-gray-600">Editable format for further customization</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Summary */}
+              <Card>
+                <CardContent className="p-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Generation Summary</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-600">Candidate:</span>
+                      <p className="text-gray-900">{store.candidateData?.fullName}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-600">Template:</span>
+                      <p className="text-gray-900">{store.selectedTemplate?.name}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-600">Format:</span>
+                      <p className="text-gray-900">{store.outputFormat.toUpperCase()}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-600">Sections:</span>
+                      <p className="text-gray-900">{store.sections.filter(s => s.show).length} included</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Generate Button */}
+              <div className="text-center">
+                <Button 
+                  onClick={handleGenerate}
+                  disabled={store.isGenerating}
+                  className="px-8 py-3 text-lg"
+                  size="lg"
+                >
+                  {store.isGenerating ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin mr-3" />
+                      Generating File...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-5 w-5 mr-3" />
+                      Generate Competence File
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {store.generatedFileUrl && (
+                <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                  <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-3" />
+                  <p className="text-green-800 font-medium mb-3">File generated successfully!</p>
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      // Create download link and trigger download
+                      const link = document.createElement('a');
+                      link.href = store.generatedFileUrl!;
+                      link.download = `${store.candidateData?.fullName || 'Candidate'}_Competence_File.${store.outputFormat}`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download File
+                  </Button>
+                </div>
+              )}
             </div>
           )}
+
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-between items-center p-6 border-t border-gray-200 bg-gray-50">
+          <div className="flex items-center space-x-4">
+            {store.currentStep > 1 && (
+              <Button variant="outline" onClick={store.prevStep}>
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            )}
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <Button variant="outline" onClick={handleClose}>
+              Cancel
+            </Button>
+            
+            {store.currentStep < 5 && (
+              <Button 
+                onClick={store.nextStep}
+                disabled={
+                  (store.currentStep === 1 && !store.candidateData) ||
+                  (store.currentStep === 2 && !store.selectedTemplate)
+                }
+                className="bg-primary-600 hover:bg-primary-700 text-white"
+              >
+                Continue
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

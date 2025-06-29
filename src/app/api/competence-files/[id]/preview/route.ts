@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs';
 import { prisma } from '@/lib/prisma';
 
-// Import generation functions and AI enrichment service
+// Import generation functions (we'll reuse the existing logic)
 import { generateAntaesCompetenceFileHTML, generateCompetenceFileHTML } from '../../generate/route';
-import { competenceEnrichmentService } from '@/lib/ai/competence-enrichment';
 
-// GET - Generate HTML preview of competence file with AI enrichment
+
+
+// GET - Generate HTML preview of competence file
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -40,9 +41,7 @@ export async function GET(
             technicalSkills: true,
             certifications: true,
             spokenLanguages: true,
-            summary: true,
-            degrees: true,
-            softSkills: true
+            summary: true
           }
         },
         template: {
@@ -61,7 +60,7 @@ export async function GET(
       );
     }
 
-    // Format candidate data for AI enrichment
+    // Format candidate data for the generation functions
     const candidateData = {
       id: competenceFile.candidate?.id || '',
       fullName: `${competenceFile.candidate?.firstName} ${competenceFile.candidate?.lastName}`,
@@ -70,46 +69,26 @@ export async function GET(
       phone: competenceFile.candidate?.phone || '',
       location: competenceFile.candidate?.currentLocation || '',
       yearsOfExperience: competenceFile.candidate?.experienceYears || 0,
-      skills: [
-        ...(competenceFile.candidate?.technicalSkills || []),
-        ...(competenceFile.candidate?.softSkills || [])
-      ],
+      skills: competenceFile.candidate?.technicalSkills || [],
       certifications: competenceFile.candidate?.certifications || [],
-      experience: [], // Experience data not available in current schema
-      education: competenceFile.candidate?.degrees || [],
+      experience: [], // Experience will be handled through sections
+      education: [], // Education will be handled through sections
       languages: competenceFile.candidate?.spokenLanguages || [],
       summary: competenceFile.candidate?.summary || ''
     };
 
     const templateName = competenceFile.template?.name || 'Unknown';
     const candidateName = candidateData.fullName;
-    
-    // Parse job description from metadata if available
-    const jobDescription = (competenceFile.metadata as any)?.jobDescription;
+    const sections = (competenceFile.sectionsConfig as any[]) || [];
 
-    console.log('🔍 Generating AI-enhanced preview for competence file:', {
+    console.log('🔍 Generating preview for competence file:', {
       id,
       candidate: candidateName,
       template: templateName,
-      hasJobDescription: !!jobDescription
+      sectionsCount: sections.length
     });
 
-    // Generate AI-enhanced content
-    let enrichedContent;
-    try {
-      console.log('🤖 Starting AI enrichment for preview...');
-      enrichedContent = await competenceEnrichmentService.enrichCandidateForJob(
-        candidateData,
-        jobDescription,
-        templateName.toLowerCase().includes('antaes') ? 'Antaes' : undefined
-      );
-      console.log('✅ AI enrichment completed for preview');
-    } catch (error) {
-      console.warn('⚠️ AI enrichment failed for preview, showing basic content:', error);
-      enrichedContent = null;
-    }
-
-    // Generate HTML using the same logic as PDF generation with AI enrichment
+    // Generate HTML using the same logic as PDF generation but with preview indicator
     let htmlContent: string;
     
     // Determine template type based on template name or metadata
@@ -117,9 +96,9 @@ export async function GET(
                             (competenceFile.metadata as any)?.template === 'antaes';
     
     if (isAntaesTemplate) {
-      htmlContent = generateAntaesCompetenceFileHTML(candidateData, [], jobDescription, undefined, enrichedContent || undefined);
+      htmlContent = generateAntaesCompetenceFileHTML(candidateData, sections);
     } else {
-      htmlContent = generateCompetenceFileHTML(candidateData, [], jobDescription, undefined, enrichedContent || undefined);
+      htmlContent = generateCompetenceFileHTML(candidateData, sections);
     }
 
     // Add preview-specific styling and indicators
@@ -141,7 +120,7 @@ export async function GET(
           z-index: 1000;
           box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         ">
-          📄 PREVIEW MODE - ${candidateName} • ${templateName} • ${enrichedContent ? 'AI-Enhanced' : 'Basic'} • Version ${competenceFile.version}
+          📄 PREVIEW MODE - ${candidateName} • ${templateName} • Version ${competenceFile.version}
         </div>
         <div style="margin-top: 40px;">`
     ).replace(

@@ -4,7 +4,6 @@ import { generatePDF } from '@/lib/pdf-service';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { put } from '@vercel/blob';
-import { competenceEnrichmentService, type EnrichedContent } from '@/lib/ai/competence-enrichment';
 
 // Function to extract client information from job description
 function extractClientInfo(jobDescription?: JobDescription): { client: string; jobTitle: string } {
@@ -113,11 +112,6 @@ const GenerateRequestSchema = z.object({
     title: z.string().optional(),
     company: z.string().optional(),
   }).optional(),
-  managerContact: z.object({
-    name: z.string().optional(),
-    email: z.string().optional(),
-    phone: z.string().optional(),
-  }).optional(),
 });
 
 interface ExperienceItem {
@@ -151,12 +145,6 @@ interface JobDescription {
   responsibilities: string[];
   title?: string;
   company?: string;
-}
-
-interface ManagerContact {
-  name?: string;
-  email?: string;
-  phone?: string;
 }
 
 // Function to highlight text based on job requirements
@@ -209,93 +197,6 @@ function highlightRelevantContent(text: string, jobDescription?: JobDescription,
   return highlightedText;
 }
 
-// AI-Enhanced Experience Generation
-function generateEnrichedExperienceHTML(enrichedExperience: any[]): string {
-  if (!enrichedExperience || enrichedExperience.length === 0) {
-    return `
-      <div class="section">
-        <h2 class="section-title">PROFESSIONAL EXPERIENCES</h2>
-        <div class="section-content">
-          <p>No professional experience provided.</p>
-        </div>
-      </div>
-    `;
-  }
-
-  // Generate Professional Experiences Summary first
-  const experiencesSummary = enrichedExperience.map(exp => {
-    return `
-      <div class="experience-summary-item">
-        <strong>${exp.title}</strong> at <strong>${exp.company}</strong> (${exp.period})
-      </div>
-    `;
-  }).join('');
-
-  // Generate detailed experience blocks with AI-enriched content
-  const detailedExperiences = enrichedExperience.map(exp => {
-    return `
-      <div class="experience-block">
-        <div class="exp-header">
-          <div class="exp-company">${exp.company}</div>
-          <div class="exp-title">${exp.title}</div>
-          <div class="exp-dates">${exp.period}</div>
-        </div>
-        
-        <div class="exp-section">
-          <div class="exp-section-title">Role Overview</div>
-          <p class="exp-description">${exp.enhancedDescription}</p>
-        </div>
-        
-        ${exp.responsibilities.length > 0 ? `
-        <div class="exp-section">
-          <div class="exp-section-title">Key Responsibilities</div>
-          <ul class="exp-responsibilities">
-            ${exp.responsibilities.map((responsibility: string) => `<li>${responsibility}</li>`).join('')}
-          </ul>
-        </div>
-        ` : ''}
-        
-        <div class="exp-section">
-          <div class="exp-section-title">Key Achievements</div>
-          <ul class="exp-achievements">
-            ${exp.keyAchievements.map((achievement: string) => `<li>${achievement}</li>`).join('')}
-          </ul>
-        </div>
-        
-        ${exp.technicalEnvironment.length > 0 ? `
-        <div class="exp-section">
-          <div class="exp-section-title">Technical Environment</div>
-          <div class="technical-environment-grid">
-            ${exp.technicalEnvironment.map((tech: string) => `<span class="tech-item">${tech}</span>`).join('')}
-          </div>
-        </div>
-        ` : ''}
-      </div>
-    `;
-  }).join('');
-
-  return `
-    <!-- PROFESSIONAL EXPERIENCES SUMMARY -->
-    <div class="section">
-      <h2 class="section-title">PROFESSIONAL EXPERIENCES SUMMARY</h2>
-      <div class="section-content">
-        <div class="experiences-summary">
-          ${experiencesSummary}
-        </div>
-      </div>
-    </div>
-
-    <!-- PROFESSIONAL EXPERIENCES -->
-    <div class="section">
-      <h2 class="section-title">PROFESSIONAL EXPERIENCES</h2>
-      <div class="section-content">
-        ${detailedExperiences}
-      </div>
-    </div>
-  `;
-}
-
-// Fallback function for when AI enrichment is not available
 function generateExperienceHTML(experience: ExperienceItem[]): string {
   if (!experience || experience.length === 0) {
     return `
@@ -339,6 +240,90 @@ function generateExperienceHTML(experience: ExperienceItem[]): string {
       return items.map(item => `<li>${item}</li>`).join('');
     };
 
+    // Generate company description based on company name
+    const generateCompanyDescription = (company: string) => {
+      const descriptions = {
+        'Google': 'Leading global technology company specializing in internet-related services and products',
+        'Microsoft': 'Multinational technology corporation developing computer software, consumer electronics, and personal computers',
+        'Amazon': 'Multinational technology company focusing on e-commerce, cloud computing, and artificial intelligence',
+        'Apple': 'Multinational technology company designing and manufacturing consumer electronics and software',
+        'Meta': 'Social technology company connecting people through innovative platforms and virtual reality',
+        'Netflix': 'Global streaming entertainment service with over 200 million paid memberships',
+        'Tesla': 'Electric vehicle and clean energy company accelerating sustainable transport',
+        'Spotify': 'Audio streaming and media services provider with millions of songs and podcasts'
+      };
+      
+      // Check if company matches known companies
+      for (const [key, desc] of Object.entries(descriptions)) {
+        if (company.toLowerCase().includes(key.toLowerCase())) {
+          return desc;
+        }
+      }
+      
+      // Generate generic description based on company name patterns
+      if (company.toLowerCase().includes('tech') || company.toLowerCase().includes('software')) {
+        return 'Technology company focused on innovative software solutions and digital transformation';
+      } else if (company.toLowerCase().includes('consulting')) {
+        return 'Professional services firm providing strategic consulting and business solutions';
+      } else if (company.toLowerCase().includes('bank') || company.toLowerCase().includes('financial')) {
+        return 'Financial services institution providing banking and investment solutions';
+      } else if (company.toLowerCase().includes('startup')) {
+        return 'Dynamic startup company driving innovation in emerging technology markets';
+      } else {
+        return 'Established organization committed to excellence and innovation in their industry sector';
+      }
+    };
+
+    // Generate major achievements based on role and responsibilities
+    const generateAchievements = (title: string, responsibilities: string) => {
+      const achievements = [
+        'Successfully delivered projects on time and within budget constraints',
+        'Improved system performance and operational efficiency through strategic implementations',
+        'Collaborated effectively with cross-functional teams to achieve organizational objectives',
+        'Contributed to process improvements and best practice development initiatives'
+      ];
+      
+      // Add role-specific achievements
+      if (title.toLowerCase().includes('senior') || title.toLowerCase().includes('lead')) {
+        achievements.unshift('Led and mentored team members, fostering professional development and knowledge sharing');
+      }
+      
+      if (title.toLowerCase().includes('engineer') || title.toLowerCase().includes('developer')) {
+        achievements.push('Implemented robust technical solutions following industry standards and best practices');
+      }
+      
+      if (title.toLowerCase().includes('manager') || title.toLowerCase().includes('director')) {
+        achievements.push('Drove strategic initiatives and managed stakeholder relationships effectively');
+      }
+      
+      return achievements.slice(0, 3).map(achievement => `<li>${achievement}</li>`).join('');
+    };
+
+    // Generate technical environment based on common technologies
+    const generateTechnicalEnvironment = (title: string, responsibilities: string) => {
+      const environments = [];
+      
+      // Add based on role type
+      if (title.toLowerCase().includes('frontend') || title.toLowerCase().includes('ui')) {
+        environments.push('React, Vue.js, Angular, HTML5, CSS3, JavaScript/TypeScript');
+      } else if (title.toLowerCase().includes('backend') || title.toLowerCase().includes('api')) {
+        environments.push('Node.js, Python, Java, REST APIs, GraphQL, Microservices');
+      } else if (title.toLowerCase().includes('fullstack') || title.toLowerCase().includes('full-stack')) {
+        environments.push('React, Node.js, Python, PostgreSQL, MongoDB, AWS/Azure');
+      } else if (title.toLowerCase().includes('devops') || title.toLowerCase().includes('infrastructure')) {
+        environments.push('Docker, Kubernetes, AWS/Azure, Jenkins, Terraform, CI/CD');
+      } else if (title.toLowerCase().includes('data') || title.toLowerCase().includes('analytics')) {
+        environments.push('Python, SQL, Tableau, Power BI, Apache Spark, Machine Learning');
+      } else {
+        environments.push('Modern development tools, Agile methodologies, Version control systems');
+      }
+      
+      // Add common tools
+      environments.push('Git, JIRA, Confluence, Agile/Scrum methodologies');
+      
+      return environments.map(env => `<li>${env}</li>`).join('');
+    };
+
     return `
       <div class="experience-block">
         <div class="exp-header">
@@ -348,9 +333,28 @@ function generateExperienceHTML(experience: ExperienceItem[]): string {
         </div>
         
         <div class="exp-section">
+          <div class="exp-section-title">Company Description</div>
+          <p class="exp-description">${generateCompanyDescription(exp.company)}</p>
+        </div>
+        
+        <div class="exp-section">
           <div class="exp-section-title">Key Responsibilities</div>
           <ul class="exp-responsibilities">
             ${formatResponsibilities(exp.responsibilities)}
+          </ul>
+        </div>
+        
+        <div class="exp-section">
+          <div class="exp-section-title">Major Achievements</div>
+          <ul class="exp-achievements">
+            ${generateAchievements(exp.title, exp.responsibilities)}
+          </ul>
+        </div>
+        
+        <div class="exp-section">
+          <div class="exp-section-title">Technical Environment</div>
+          <ul class="exp-technical">
+            ${generateTechnicalEnvironment(exp.title, exp.responsibilities)}
           </ul>
         </div>
       </div>
@@ -378,7 +382,7 @@ function generateExperienceHTML(experience: ExperienceItem[]): string {
   `;
 }
 
-export function generateSectionsHTML(sections: any[], candidateData: CandidateData, generateFunctionalSkills: Function, experienceHTML: string, jobDescription?: JobDescription, template?: string, enrichedContent?: EnrichedContent): string {
+export function generateSectionsHTML(sections: any[], candidateData: CandidateData, generateFunctionalSkills: Function, experienceHTML: string, jobDescription?: JobDescription, template?: string): string {
   // Generate the sections content
   const sectionsContent = sections
     .sort((a, b) => a.order - b.order)
@@ -401,14 +405,10 @@ export function generateSectionsHTML(sections: any[], candidateData: CandidateDa
           case 'professional-experience':
             return experienceHTML;
           case 'education':
-            // Use AI-optimized education if available
-            const educationData = enrichedContent?.optimizedEducation || candidateData.education;
-            sectionContent = educationData?.map(edu => `<div class="education-item">${edu}</div>`).join('') || 'Education details to be provided.';
+            sectionContent = candidateData.education?.map(edu => `<div class="education-item">${edu}</div>`).join('') || 'Education details to be provided.';
             break;
           case 'certifications':
-            // Use AI-optimized certifications if available
-            const certificationsData = enrichedContent?.optimizedCertifications || candidateData.certifications;
-            sectionContent = certificationsData?.map(cert => `<div class="cert-item">${cert}</div>`).join('') || 'Professional certifications to be provided.';
+            sectionContent = candidateData.certifications?.map(cert => `<div class="cert-item">${cert}</div>`).join('') || 'Professional certifications to be provided.';
             break;
           case 'languages':
             sectionContent = candidateData.languages?.map(lang => `<div class="language-item">${lang}</div>`).join('') || 'Language skills to be provided.';
@@ -439,948 +439,8 @@ export function generateSectionsHTML(sections: any[], candidateData: CandidateDa
   return sectionsContent;
 }
 
-export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, sections?: any[], jobDescription?: JobDescription, managerContact?: ManagerContact, enrichedContent?: EnrichedContent): string {
-  // Use AI-enriched experience if available, otherwise fallback to original
-  const experienceHTML = enrichedContent?.enrichedExperience ? 
-    generateEnrichedExperienceHTML(enrichedContent.enrichedExperience) : 
-    generateExperienceHTML(candidateData.experience);
-  
-  // Generate functional skills with explanatory text - use AI-optimized skills if available
-  const generateFunctionalSkills = (skills: string[]) => {
-    // Use AI-optimized functional skills if available
-    const functionalSkills = enrichedContent?.optimizedSkills?.functional || skills;
-    if (!functionalSkills || functionalSkills.length === 0) return '';
-    
-    const skillCategories: Record<string, { skills: string[]; description: string }> = {
-      'Leadership & Management': {
-        skills: skills.filter(skill => 
-          skill.toLowerCase().includes('lead') || 
-          skill.toLowerCase().includes('manage') || 
-          skill.toLowerCase().includes('team') ||
-          skill.toLowerCase().includes('project')
-        ),
-        description: 'Proven ability to guide teams and manage complex projects with strategic oversight and operational excellence.'
-      },
-      'Communication & Collaboration': {
-        skills: skills.filter(skill => 
-          skill.toLowerCase().includes('communication') || 
-          skill.toLowerCase().includes('presentation') || 
-          skill.toLowerCase().includes('stakeholder')
-        ),
-        description: 'Strong interpersonal skills enabling effective collaboration across diverse teams and stakeholder groups.'
-      },
-      'Problem Solving & Analysis': {
-        skills: skills.filter(skill => 
-          skill.toLowerCase().includes('analysis') || 
-          skill.toLowerCase().includes('problem') || 
-          skill.toLowerCase().includes('research')
-        ),
-        description: 'Analytical mindset with systematic approach to identifying solutions and optimizing processes.'
-      },
-      'Innovation & Strategy': {
-        skills: skills.filter(skill => 
-          skill.toLowerCase().includes('innovation') || 
-          skill.toLowerCase().includes('strategy') || 
-          skill.toLowerCase().includes('planning')
-        ),
-        description: 'Forward-thinking approach to business challenges with focus on sustainable growth and competitive advantage.'
-      }
-    };
-    
-    // If no categorized skills found, create a general category
-    const categorizedSkills = Object.values(skillCategories).some(cat => cat.skills.length > 0);
-    if (!categorizedSkills) {
-      skillCategories['Core Competencies'] = {
-        skills: skills.slice(0, 6),
-        description: 'Comprehensive skill set developed through professional experience and continuous learning initiatives.'
-      };
-    }
-    
-    return Object.entries(skillCategories)
-      .filter(([_, category]) => category.skills.length > 0)
-      .map(([categoryName, category]) => {
-        // Determine column class based on number of skills
-        let columnClass = '';
-        if (category.skills.length >= 15) {
-          columnClass = ' multi-column-large';
-        } else if (category.skills.length >= 8) {
-          columnClass = ' multi-column';
-        }
-        
-        return `
-        <div class="functional-skill-category">
-          <div class="skill-category-title">${categoryName}</div>
-          <ul class="skill-list${columnClass}">
-            ${category.skills.map(skill => `<li>${skill}</li>`).join('')}
-          </ul>
-          <p class="skill-description">${category.description}</p>
-        </div>
-      `;
-      }).join('');
-  };
-
-  // Generate technical skills with explanatory text
-  const generateTechnicalSkills = (skills: string[]) => {
-    if (!skills || skills.length === 0) return '';
-    
-    const techCategories: Record<string, { skills: string[]; description: string }> = {
-      'Programming Languages': {
-        skills: skills.filter(skill => 
-          ['javascript', 'python', 'java', 'typescript', 'c#', 'php', 'ruby', 'go', 'rust', 'swift', 'kotlin'].some(lang => 
-            skill.toLowerCase().includes(lang)
-          )
-        ),
-        description: 'Proficient in multiple programming languages with deep understanding of software development principles.'
-      },
-      'Frameworks & Libraries': {
-        skills: skills.filter(skill => 
-          ['react', 'angular', 'vue', 'node', 'express', 'django', 'spring', 'laravel', '.net'].some(framework => 
-            skill.toLowerCase().includes(framework)
-          )
-        ),
-        description: 'Extensive experience with modern frameworks enabling rapid development and scalable solutions.'
-      },
-      'Databases & Storage': {
-        skills: skills.filter(skill => 
-          ['sql', 'mysql', 'postgresql', 'mongodb', 'redis', 'elasticsearch', 'oracle', 'sqlite'].some(db => 
-            skill.toLowerCase().includes(db)
-          )
-        ),
-        description: 'Comprehensive database management skills across relational and NoSQL technologies.'
-      },
-      'Cloud & DevOps': {
-        skills: skills.filter(skill => 
-          ['aws', 'azure', 'gcp', 'docker', 'kubernetes', 'jenkins', 'terraform', 'ansible'].some(cloud => 
-            skill.toLowerCase().includes(cloud)
-          )
-        ),
-        description: 'Advanced cloud computing and DevOps expertise for scalable infrastructure management.'
-      },
-      'Tools & Technologies': {
-        skills: skills.filter(skill => 
-          !['javascript', 'python', 'java', 'typescript', 'c#', 'php', 'ruby', 'go', 'rust', 'swift', 'kotlin',
-            'react', 'angular', 'vue', 'node', 'express', 'django', 'spring', 'laravel', '.net',
-            'sql', 'mysql', 'postgresql', 'mongodb', 'redis', 'elasticsearch', 'oracle', 'sqlite',
-            'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'jenkins', 'terraform', 'ansible'].some(tech => 
-            skill.toLowerCase().includes(tech)
-          )
-        ),
-        description: 'Diverse technical toolkit supporting efficient development workflows and project delivery.'
-      }
-    };
-    
-    // If no categorized skills found, create a general category
-    const categorizedSkills = Object.values(techCategories).some(cat => cat.skills.length > 0);
-    if (!categorizedSkills) {
-      techCategories['Technical Competencies'] = {
-        skills: skills,
-        description: 'Comprehensive technical skill set acquired through hands-on experience and professional development.'
-      };
-    }
-    
-    return Object.entries(techCategories)
-      .filter(([_, category]) => category.skills.length > 0)
-      .map(([categoryName, category]) => {
-        // Determine column class based on number of skills
-        let columnClass = '';
-        if (category.skills.length >= 15) {
-          columnClass = ' multi-column-large';
-        } else if (category.skills.length >= 8) {
-          columnClass = ' multi-column';
-        }
-        
-        return `
-        <div class="technical-skill-category">
-          <div class="skill-category-title">${categoryName}</div>
-          <ul class="skill-list${columnClass}">
-            ${category.skills.map(skill => `<li>${skill}</li>`).join('')}
-          </ul>
-          <p class="skill-description">${category.description}</p>
-        </div>
-      `;
-      }).join('');
-  };
-
-  // Generate areas of expertise based on role and skills
-  const generateAreasOfExpertise = (currentTitle: string, skills: string[]): string[] => {
-    const expertiseAreas: string[] = [];
-    
-    // Add based on current title
-    if (currentTitle.toLowerCase().includes('software') || currentTitle.toLowerCase().includes('developer')) {
-      expertiseAreas.push('Software Development & Engineering');
-    }
-    if (currentTitle.toLowerCase().includes('senior') || currentTitle.toLowerCase().includes('lead')) {
-      expertiseAreas.push('Technical Leadership & Mentoring');
-    }
-    if (currentTitle.toLowerCase().includes('full') || currentTitle.toLowerCase().includes('stack')) {
-      expertiseAreas.push('Full-Stack Development');
-    }
-    if (currentTitle.toLowerCase().includes('frontend') || currentTitle.toLowerCase().includes('ui')) {
-      expertiseAreas.push('User Interface Development');
-    }
-    if (currentTitle.toLowerCase().includes('backend') || currentTitle.toLowerCase().includes('api')) {
-      expertiseAreas.push('Backend Systems & APIs');
-    }
-    if (currentTitle.toLowerCase().includes('devops') || currentTitle.toLowerCase().includes('infrastructure')) {
-      expertiseAreas.push('DevOps & Infrastructure');
-    }
-    if (currentTitle.toLowerCase().includes('data') || currentTitle.toLowerCase().includes('analytics')) {
-      expertiseAreas.push('Data Analysis & Business Intelligence');
-    }
-    if (currentTitle.toLowerCase().includes('architect')) {
-      expertiseAreas.push('System Architecture & Design');
-    }
-    if (currentTitle.toLowerCase().includes('manager') || currentTitle.toLowerCase().includes('director')) {
-      expertiseAreas.push('Project Management & Strategy');
-    }
-    
-    // Add based on skills
-    if (skills.some(skill => skill.toLowerCase().includes('cloud') || skill.toLowerCase().includes('aws') || skill.toLowerCase().includes('azure'))) {
-      expertiseAreas.push('Cloud Computing & Scalability');
-    }
-    if (skills.some(skill => skill.toLowerCase().includes('agile') || skill.toLowerCase().includes('scrum'))) {
-      expertiseAreas.push('Agile Methodologies & Process Optimization');
-    }
-    
-    // Ensure we have at least 6 areas
-    const defaultAreas = [
-      'Digital Transformation',
-      'Technology Innovation',
-      'Process Optimization',
-      'Quality Assurance',
-      'Cross-functional Collaboration',
-      'Continuous Learning & Development'
-    ];
-    
-    while (expertiseAreas.length < 6) {
-      const nextArea = defaultAreas.find(area => !expertiseAreas.includes(area));
-      if (nextArea) {
-        expertiseAreas.push(nextArea);
-      } else {
-        break;
-      }
-    }
-    
-    return expertiseAreas.slice(0, 6);
-    };
-
-    return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${candidateData.fullName} - Competence File</title>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-      <style>
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        
-        body {
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          line-height: 1.6;
-          color: #232629;
-          background: #ffffff;
-          font-size: 14px;
-        }
-        
-        .container {
-          max-width: 210mm;
-          margin: 0 auto;
-          background: white;
-          min-height: 297mm;
-          padding: 30px;
-          position: relative;
-          padding-bottom: 80px;
-        }
-        
-        /* Header Styling - Logo on right, content on left */
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 25px;
-          padding-bottom: 20px;
-          border-bottom: 2px solid #073C51;
-        }
-        
-        .header-content {
-          flex: 1;
-          text-align: left;
-        }
-        
-        .header-logo {
-          flex-shrink: 0;
-          margin-left: 20px;
-        }
-        
-        .logo-image {
-          height: 70px;
-          width: auto;
-          max-width: 250px;
-          opacity: 1 !important;
-          visibility: visible !important;
-          display: block !important;
-        }
-        
-        .header h1 {
-          font-size: 28px;
-          font-weight: 700;
-          color: #073C51;
-          margin-bottom: 6px;
-          letter-spacing: -0.5px;
-        }
-        
-        .header-role {
-          font-size: 16px;
-          font-weight: 600;
-          color: #FFB800;
-          margin-bottom: 4px;
-        }
-        
-        .header-experience {
-          font-size: 14px;
-          font-weight: 500;
-          color: #444B54;
-          margin-bottom: 12px;
-        }
-        
-        .location-info {
-          font-size: 14px;
-          color: #444B54;
-          margin-bottom: 12px;
-          font-weight: 500;
-        }
-        
-        .manager-contact {
-          margin-top: 12px;
-          padding-top: 12px;
-          border-top: 1px solid #e9ecef;
-        }
-        
-        .manager-label {
-          font-size: 12px;
-          font-weight: 600;
-          color: #073C51;
-          margin-bottom: 6px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        
-        .contact-item {
-          color: #444B54;
-          font-size: 13px;
-          margin-bottom: 3px;
-        }
-        
-        .contact-label {
-          font-weight: 700;
-          color: #232629;
-        }
-        
-        /* Content Area */
-        .content {
-          margin-bottom: 60px;
-        }
-        
-        /* Section Styling */
-        .section {
-          margin-bottom: 20px;
-          page-break-inside: avoid;
-        }
-        
-        .section-title {
-          font-size: 15px;
-          font-weight: 700;
-          color: #073C51;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          margin-bottom: 12px;
-          padding-bottom: 6px;
-          border-bottom: 2px solid #073C51;
-        }
-        
-        .section-content {
-          font-size: 14px;
-          line-height: 1.7;
-        }
-        
-        /* Content Formatting */
-        .section-content p {
-          margin-bottom: 12px;
-          line-height: 1.7;
-        }
-        
-        .section-content ul {
-          margin: 12px 0;
-          padding-left: 0;
-          list-style: none;
-        }
-        
-        .section-content li {
-          position: relative;
-          padding-left: 20px;
-          margin-bottom: 8px;
-          line-height: 1.6;
-        }
-        
-        .section-content li:before {
-          content: "•";
-          color: #FFB800;
-          font-weight: bold;
-          position: absolute;
-          left: 0;
-          top: 0;
-        }
-        
-        .section-content strong {
-          font-weight: 700;
-          color: #073C51;
-        }
-        
-        .section-content em {
-          font-style: italic;
-          color: #444B54;
-        }
-        
-        /* Professional Summary */
-        .summary-text {
-          font-weight: 400;
-          line-height: 1.8;
-          color: #444B54;
-          text-align: justify;
-        }
-        
-        /* Functional Skills */
-        .functional-skill-category {
-          margin-bottom: 18px;
-          padding: 12px;
-          background: #f8f9fa;
-          border-radius: 6px;
-          border-left: 4px solid #073C51;
-        }
-        
-        .skill-category-title {
-          font-size: 14px;
-          font-weight: 700;
-          color: #073C51;
-          margin-bottom: 8px;
-        }
-        
-        .skill-list {
-          list-style: none;
-          padding-left: 0;
-          margin-bottom: 8px;
-        }
-        
-        .skill-list.multi-column {
-          column-count: 2;
-          column-gap: 20px;
-          column-fill: balance;
-        }
-        
-        .skill-list.multi-column-large {
-          column-count: 3;
-          column-gap: 15px;
-          column-fill: balance;
-        }
-        
-        .skill-list li {
-          position: relative;
-          padding-left: 15px;
-          margin-bottom: 4px;
-          color: #444B54;
-          font-weight: 500;
-          break-inside: avoid;
-        }
-        
-        .skill-list li:before {
-          content: "•";
-          color: #FFB800;
-          font-weight: bold;
-          position: absolute;
-          left: 0;
-        }
-        
-        .skill-description {
-          font-style: italic;
-          color: #666;
-          font-size: 12px;
-          line-height: 1.5;
-        }
-        
-        /* Technical Skills */
-        .technical-skill-category {
-          margin-bottom: 18px;
-          padding: 12px;
-          background: #f8f9fa;
-          border-radius: 6px;
-          border-left: 4px solid #FFB800;
-        }
-        
-        /* Areas of Expertise */
-        .expertise-areas {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-          margin-top: 8px;
-        }
-        
-        .expertise-item {
-          display: inline-flex;
-          align-items: center;
-          padding: 6px 12px;
-          background: #f8f9fa;
-          border-radius: 20px;
-          font-weight: 500;
-          color: #073C51;
-          font-size: 12px;
-          border: 1px solid #e9ecef;
-          position: relative;
-          padding-left: 20px;
-        }
-        
-        .expertise-item:before {
-          content: "";
-          position: absolute;
-          left: 8px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 6px;
-          height: 6px;
-          background: #FFB800;
-          border-radius: 50%;
-        }
-        
-        /* Education & Certifications */
-        .education-item, .cert-item {
-          margin-bottom: 16px;
-          padding: 12px;
-          background: #f8f9fa;
-          border-radius: 6px;
-          border-left: 3px solid #FFB800;
-        }
-        
-        .education-degree, .cert-name {
-          font-weight: 600;
-          color: #232629;
-        }
-        
-        .education-year, .cert-year {
-          color: #FFB800;
-          font-weight: 600;
-          font-size: 13px;
-        }
-        
-        .education-description, .cert-description {
-          color: #444B54;
-          font-size: 12px;
-          line-height: 1.5;
-          margin-top: 6px;
-          font-style: italic;
-        }
-        
-        /* Languages */
-        .languages-grid {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-          margin-top: 8px;
-        }
-        
-        .language-item {
-          display: inline-flex;
-          align-items: center;
-          padding: 6px 12px;
-          background: #f8f9fa;
-          border-radius: 20px;
-          font-weight: 500;
-          color: #073C51;
-          font-size: 12px;
-          border: 1px solid #e9ecef;
-          position: relative;
-          padding-left: 20px;
-        }
-        
-        .language-item:before {
-          content: "";
-          position: absolute;
-          left: 8px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 6px;
-          height: 6px;
-          background: #073C51;
-          border-radius: 50%;
-        }
-        
-        /* Experience Summary */
-        .experiences-summary {
-          background: #f8f9fa;
-          padding: 15px;
-          border-radius: 6px;
-          border-left: 4px solid #073C51;
-        }
-        
-        .experience-summary-item {
-          margin-bottom: 8px;
-          color: #444B54;
-          line-height: 1.6;
-          font-size: 13px;
-        }
-        
-        /* Experience Blocks */
-        .experience-block {
-          margin-bottom: 25px;
-          padding: 20px;
-          background: #f8f9fa;
-          border-radius: 6px;
-          border-left: 4px solid #073C51;
-          page-break-inside: avoid;
-        }
-        
-        .exp-header {
-          margin-bottom: 15px;
-          padding-bottom: 12px;
-          border-bottom: 1px solid #e9ecef;
-        }
-        
-        .exp-company {
-          font-size: 16px;
-          font-weight: 700;
-          color: #073C51;
-          margin-bottom: 4px;
-        }
-        
-        .exp-title {
-          font-size: 15px;
-          font-weight: 600;
-          color: #FFB800;
-          margin-bottom: 4px;
-        }
-        
-        .exp-dates {
-          font-size: 13px;
-          color: #444B54;
-          font-weight: 600;
-        }
-        
-        .exp-section {
-          margin-bottom: 12px;
-        }
-        
-        .exp-section-title {
-          font-size: 13px;
-          font-weight: 700;
-          color: #073C51;
-          margin-bottom: 6px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        
-        .exp-description {
-          color: #444B54;
-          line-height: 1.6;
-          margin-bottom: 8px;
-          font-style: italic;
-          font-size: 13px;
-        }
-        
-        .exp-responsibilities, .exp-achievements, .exp-technical {
-          list-style: none;
-          padding-left: 0;
-        }
-        
-        .exp-responsibilities li, .exp-achievements li, .exp-technical li {
-          position: relative;
-          padding-left: 15px;
-          margin-bottom: 6px;
-          color: #444B54;
-          line-height: 1.6;
-          font-weight: 500;
-          font-size: 13px;
-        }
-        
-        .exp-responsibilities li:before, .exp-achievements li:before, .exp-technical li:before {
-          content: "•";
-          color: #FFB800;
-          font-weight: bold;
-          position: absolute;
-          left: 0;
-        }
-        
-        /* Technical Environment Grid */
-        .technical-environment-grid {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-          margin-top: 6px;
-        }
-        
-        .tech-item {
-          display: inline-flex;
-          align-items: center;
-          padding: 4px 10px;
-          background: #f0f4f8;
-          border-radius: 15px;
-          font-weight: 500;
-          color: #073C51;
-          font-size: 11px;
-          border: 1px solid #d1d9e0;
-          white-space: nowrap;
-        }
-        
-        /* Page counter for PDF generation */
-        @page {
-          margin: 20mm;
-          @bottom-left {
-            content: counter(page);
-            font-family: 'Inter', sans-serif;
-            font-size: 12px;
-            font-weight: 600;
-            color: #073C51;
-          }
-          @bottom-center {
-            content: "Partnership for Excellence";
-            font-family: 'Inter', sans-serif;
-            font-size: 10px;
-            color: #444B54;
-          }
-        }
-        
-        /* Print Optimization */
-        @media print {
-          body { 
-            font-size: 12px; 
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          .container { 
-            max-width: none; 
-            margin: 0; 
-            padding: 20px;
-            padding-bottom: 60px;
-          }
-          .section { 
-            page-break-inside: avoid; 
-          }
-          .experience-block { 
-            page-break-inside: avoid; 
-          }
-          .logo-image {
-            opacity: 1 !important;
-            visibility: visible !important;
-            display: block !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-            background: transparent !important;
-          }
-          .header-logo {
-            opacity: 1 !important;
-            visibility: visible !important;
-            display: block !important;
-          }
-        }
-        
-        /* Mobile Responsiveness */
-        @media (max-width: 768px) {
-          .header { 
-            text-align: left;
-          }
-          .contact-info { 
-            justify-content: flex-start;
-            flex-direction: column; 
-            gap: 10px;
-          }
-          .expertise-areas { 
-            grid-template-columns: 1fr; 
-          }
-          .languages-grid { 
-            grid-template-columns: 1fr; 
-          }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <!-- HEADER - Content on left, logo on right -->
-        <div class="header">
-          <div class="header-content">
-            <h1>${candidateData.fullName}</h1>
-            <div class="header-role">${candidateData.currentTitle}</div>
-            <div class="header-experience">${candidateData.yearsOfExperience || 'Multiple'} years of experience</div>
-            ${candidateData.location ? `<div class="location-info">${candidateData.location}</div>` : ''}
-            ${managerContact && (managerContact.name || managerContact.email || managerContact.phone) ? `
-              <div class="manager-contact">
-                <div class="manager-label">For inquiries, contact:</div>
-                ${managerContact.name ? `<div class="contact-item"><span class="contact-label">Manager:</span> ${managerContact.name}</div>` : ''}
-                ${managerContact.email ? `<div class="contact-item"><span class="contact-label">Email:</span> ${managerContact.email}</div>` : ''}
-                ${managerContact.phone ? `<div class="contact-item"><span class="contact-label">Phone:</span> ${managerContact.phone}</div>` : ''}
-              </div>
-            ` : ''}
-          </div>
-          <div class="header-logo">
-            <img src="https://res.cloudinary.com/emineon/image/upload/w_200,h_100,c_fit,q_100,f_png/Antaes_logo" 
-                 alt="ANTAES" 
-                 class="logo-image" 
-                 style="width: 150px; height: 80px; object-fit: contain; display: block !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; opacity: 1 !important; visibility: visible !important; background: transparent !important;" 
-                 onload="this.style.opacity='1';" 
-                 onerror="console.error('Antaes logo failed to load:', this.src);" />
-          </div>
-        </div>
-        
-        <div class="content">
-          <!-- EXECUTIVE SUMMARY -->
-          ${candidateData.summary ? `
-          <div class="section">
-            <h2 class="section-title">EXECUTIVE SUMMARY</h2>
-            <div class="section-content">
-              <p class="summary-text">${candidateData.summary}</p>
-        </div>
-          </div>
-          ` : ''}
-
-          <!-- CORE COMPETENCIES -->
-          ${candidateData.skills && candidateData.skills.length > 0 ? `
-          <div class="section">
-            <h2 class="section-title">CORE COMPETENCIES</h2>
-            <div class="section-content">
-              ${generateFunctionalSkills(enrichedContent?.optimizedCoreCompetencies || enrichedContent?.optimizedSkills?.functional || candidateData.skills)}
-        </div>
-          </div>
-          ` : ''}
-
-          <!-- TECHNICAL EXPERTISE -->
-          ${candidateData.skills && candidateData.skills.length > 0 ? `
-          <div class="section">
-            <h2 class="section-title">TECHNICAL EXPERTISE</h2>
-            <div class="section-content">
-              ${generateTechnicalSkills(enrichedContent?.optimizedTechnicalExpertise || enrichedContent?.optimizedSkills?.technical || candidateData.skills)}
-        </div>
-          </div>
-          ` : ''}
-
-          <!-- AREAS OF EXPERTISE -->
-          <div class="section">
-            <h2 class="section-title">AREAS OF EXPERTISE</h2>
-            <div class="section-content">
-              <div class="expertise-areas">
-                ${(enrichedContent?.areasOfExpertise || generateAreasOfExpertise(candidateData.currentTitle, candidateData.skills)).map(area => `
-                  <div class="expertise-item"><strong>${area}</strong></div>
-                `).join('')}
-        </div>
-      </div>
-          </div>
-
-          <!-- ACADEMIC BACKGROUND -->
-          ${(enrichedContent?.optimizedEducation || candidateData.education) && (enrichedContent?.optimizedEducation || candidateData.education).length > 0 ? `
-          <div class="section">
-            <h2 class="section-title">ACADEMIC BACKGROUND</h2>
-            <div class="section-content">
-              ${(enrichedContent?.optimizedEducation || candidateData.education).map(edu => {
-                // Enhanced year extraction - look for various patterns
-                const yearMatch = edu.match(/(\d{4})|(\d{2}\/\d{2}\/\d{4})|(\d{4}-\d{4})|(\d{4}\s*-\s*\d{4})/);
-                let year = '';
-                let cleanEdu = edu;
-                
-                if (yearMatch) {
-                  year = yearMatch[1] || yearMatch[0];
-                  // Remove the year from the education string
-                  cleanEdu = edu.replace(/\(\d{4}\)|\d{4}|\d{2}\/\d{2}\/\d{4}|\d{4}-\d{4}|\d{4}\s*-\s*\d{4}/g, '').trim();
-                  cleanEdu = cleanEdu.replace(/,\s*$|^\s*,/, '').trim(); // Remove trailing/leading commas
-                }
-                
-                // If no year found, try to infer from common patterns
-                if (!year && edu.toLowerCase().includes('recent')) {
-                  year = new Date().getFullYear().toString();
-                }
-
-  return `
-                  <div class="education-item">
-                    <div class="education-degree"><strong>${cleanEdu || edu}</strong></div>
-                    ${year ? `<div class="education-year">Graduated: ${year}</div>` : ''}
-                    <div class="education-description">
-                      Comprehensive academic foundation providing theoretical knowledge and practical skills essential for professional excellence.
-                    </div>
-                  </div>
-                `;
-              }).join('')}
-            </div>
-          </div>
-          ` : ''}
-
-          <!-- PROFESSIONAL CERTIFICATIONS -->
-          ${(enrichedContent?.optimizedCertifications || candidateData.certifications) && (enrichedContent?.optimizedCertifications || candidateData.certifications).length > 0 ? `
-    <div class="section">
-            <h2 class="section-title">PROFESSIONAL CERTIFICATIONS</h2>
-      <div class="section-content">
-              ${(enrichedContent?.optimizedCertifications || candidateData.certifications).map(cert => {
-                // Enhanced year extraction for certifications
-                const yearMatch = cert.match(/(\d{4})|(\d{2}\/\d{2}\/\d{4})|(\d{4}-\d{4})|(\d{4}\s*-\s*\d{4})/);
-                let year = '';
-                let cleanCert = cert;
-                
-                if (yearMatch) {
-                  year = yearMatch[1] || yearMatch[0];
-                  cleanCert = cert.replace(/\(\d{4}\)|\d{4}|\d{2}\/\d{2}\/\d{4}|\d{4}-\d{4}|\d{4}\s*-\s*\d{4}/g, '').trim();
-                  cleanCert = cleanCert.replace(/,\s*$|^\s*,/, '').trim();
-                }
-                
-                // Generate description based on certification type
-                let description = 'Professional certification demonstrating specialized expertise and commitment to continuous learning.';
-                if (cert.toLowerCase().includes('aws') || cert.toLowerCase().includes('azure') || cert.toLowerCase().includes('cloud')) {
-                  description = 'Cloud computing certification validating expertise in modern infrastructure and scalable solutions.';
-                } else if (cert.toLowerCase().includes('project') || cert.toLowerCase().includes('pmp') || cert.toLowerCase().includes('agile')) {
-                  description = 'Project management certification demonstrating proficiency in leading complex initiatives and delivering results.';
-                } else if (cert.toLowerCase().includes('security') || cert.toLowerCase().includes('cissp')) {
-                  description = 'Security certification validating expertise in protecting organizational assets and managing risk.';
-                }
-                
-                return `
-                  <div class="cert-item">
-                    <div class="cert-name"><strong>${cleanCert || cert}</strong></div>
-                    ${year ? `<div class="cert-year">Obtained: ${year}</div>` : ''}
-                    <div class="cert-description">${description}</div>
-        </div>
-                `;
-              }).join('')}
-      </div>
-    </div>
-          ` : ''}
-
-          <!-- LANGUAGES -->
-          ${candidateData.languages && candidateData.languages.length > 0 ? `
-    <div class="section">
-            <h2 class="section-title">LANGUAGES</h2>
-      <div class="section-content">
-              <div class="languages-grid">
-                ${candidateData.languages.map(lang => `
-                  <div class="language-item">${lang}</div>
-                `).join('')}
-      </div>
-    </div>
-          </div>
-          ` : ''}
-
-
-
-          <!-- DETAILED PROFESSIONAL EXPERIENCES -->
-          ${experienceHTML}
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-}
-
-export function generateCompetenceFileHTML(candidateData: CandidateData, sections?: any[], jobDescription?: JobDescription, managerContact?: ManagerContact, enrichedContent?: EnrichedContent): string {
-  // Use AI-enriched experience if available, otherwise fallback to original
-  const experienceHTML = enrichedContent?.enrichedExperience ? 
-    generateEnrichedExperienceHTML(enrichedContent.enrichedExperience) : 
-    generateExperienceHTML(candidateData.experience);
+export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, sections?: any[], jobDescription?: JobDescription): string {
+  const experienceHTML = generateExperienceHTML(candidateData.experience);
   
   // Generate functional skills with explanatory text
   const generateFunctionalSkills = (skills: string[]) => {
@@ -1505,25 +565,15 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
     
     return Object.entries(techCategories)
       .filter(([_, category]) => category.skills.length > 0)
-      .map(([categoryName, category]) => {
-        // Determine column class based on number of skills
-        let columnClass = '';
-        if (category.skills.length >= 15) {
-          columnClass = ' multi-column-large';
-        } else if (category.skills.length >= 8) {
-          columnClass = ' multi-column';
-        }
-        
-        return `
+      .map(([categoryName, category]) => `
         <div class="technical-skill-category">
           <div class="skill-category-title">${categoryName}</div>
-          <ul class="skill-list${columnClass}">
+          <ul class="skill-list">
             ${category.skills.map(skill => `<li>${skill}</li>`).join('')}
           </ul>
           <p class="skill-description">${category.description}</p>
         </div>
-      `;
-      }).join('');
+      `).join('');
   };
 
   // Generate areas of expertise based on role and skills
@@ -1629,7 +679,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
           align-items: flex-start;
           margin-bottom: 40px;
           padding-bottom: 25px;
-          border-bottom: 2px solid #073C51;
+          border-bottom: 2px solid #0A2F5A;
         }
         
         .header-left {
@@ -1639,7 +689,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         .header h1 {
           font-size: 32px;
           font-weight: 700;
-          color: #073C51;
+          color: #0A2F5A;
           margin-bottom: 8px;
           letter-spacing: -0.5px;
         }
@@ -1647,7 +697,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         .header-role {
           font-size: 18px;
           font-weight: 600;
-          color: #FFB800;
+          color: #D97732;
           margin-bottom: 5px;
         }
         
@@ -1658,32 +708,15 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
           margin-bottom: 15px;
         }
         
-        .location-info {
+        .contact-info {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 20px;
           font-size: 14px;
-          color: #444B54;
-          margin-bottom: 12px;
-          font-weight: 500;
-        }
-        
-        .manager-contact {
-          margin-top: 12px;
-          padding-top: 12px;
-          border-top: 1px solid #e9ecef;
-        }
-        
-        .manager-label {
-          font-size: 12px;
-          font-weight: 600;
-          color: #073C51;
-          margin-bottom: 6px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
         }
         
         .contact-item {
           color: #444B54;
-          font-size: 13px;
-          margin-bottom: 3px;
         }
         
         .contact-label {
@@ -1708,19 +741,19 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         
         /* Section Styling */
         .section {
-          margin-bottom: 20px;
+          margin-bottom: 35px;
           page-break-inside: avoid;
         }
         
         .section-title {
           font-size: 16px;
           font-weight: 700;
-          color: #073C51;
+          color: #0A2F5A;
           text-transform: uppercase;
           letter-spacing: 1px;
           margin-bottom: 15px;
           padding-bottom: 8px;
-          border-bottom: 2px solid #073C51;
+          border-bottom: 2px solid #0A2F5A;
         }
         
         .section-content {
@@ -1749,7 +782,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         
         .section-content li:before {
           content: "•";
-          color: #FFB800;
+          color: #FF8C00;
           font-weight: bold;
           position: absolute;
           left: 0;
@@ -1758,7 +791,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         
         .section-content strong {
           font-weight: 700;
-          color: #073C51;
+          color: #0A2F5A;
         }
         
         .section-content em {
@@ -1771,55 +804,41 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
           font-weight: 400;
           line-height: 1.8;
           color: #444B54;
-          text-align: justify;
         }
         
         /* Functional Skills */
         .functional-skill-category {
-          margin-bottom: 18px;
-          padding: 12px;
+          margin-bottom: 20px;
+          padding: 15px;
           background: #f8f9fa;
-          border-radius: 6px;
-          border-left: 4px solid #073C51;
+          border-radius: 8px;
+          border-left: 4px solid #0A2F5A;
         }
         
         .skill-category-title {
-          font-size: 14px;
+          font-size: 15px;
           font-weight: 700;
-          color: #073C51;
-          margin-bottom: 8px;
+          color: #0A2F5A;
+          margin-bottom: 10px;
         }
         
         .skill-list {
           list-style: none;
           padding-left: 0;
-          margin-bottom: 8px;
-        }
-        
-        .skill-list.multi-column {
-          column-count: 2;
-          column-gap: 20px;
-          column-fill: balance;
-        }
-        
-        .skill-list.multi-column-large {
-          column-count: 3;
-          column-gap: 15px;
-          column-fill: balance;
+          margin-bottom: 10px;
         }
         
         .skill-list li {
           position: relative;
           padding-left: 15px;
-          margin-bottom: 4px;
+          margin-bottom: 5px;
           color: #444B54;
           font-weight: 500;
-          break-inside: avoid;
         }
         
         .skill-list li:before {
           content: "•";
-          color: #FFB800;
+          color: #D97732;
           font-weight: bold;
           position: absolute;
           left: 0;
@@ -1828,60 +847,50 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         .skill-description {
           font-style: italic;
           color: #666;
-          font-size: 12px;
+          font-size: 13px;
           line-height: 1.5;
         }
         
         /* Technical Skills */
         .technical-skill-category {
-          margin-bottom: 18px;
-          padding: 12px;
+          margin-bottom: 20px;
+          padding: 15px;
           background: #f8f9fa;
-          border-radius: 6px;
-          border-left: 4px solid #FFB800;
+          border-radius: 8px;
+          border-left: 4px solid #D97732;
         }
         
         /* Areas of Expertise */
         .expertise-areas {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-          margin-top: 8px;
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 15px;
+          margin-top: 10px;
         }
         
         .expertise-item {
-          display: inline-flex;
-          align-items: center;
-          padding: 6px 12px;
+          text-align: center;
+          padding: 12px;
           background: #f8f9fa;
-          border-radius: 20px;
-          font-weight: 500;
-          color: #073C51;
-          font-size: 12px;
-          border: 1px solid #e9ecef;
-          position: relative;
-          padding-left: 20px;
-        }
-        
-        .expertise-item:before {
-          content: "";
-          position: absolute;
-          left: 8px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 6px;
-          height: 6px;
-          background: #FFB800;
-          border-radius: 50%;
+          border-radius: 8px;
+          font-weight: 600;
+          color: #444B54;
+          border-left: 3px solid #D97732;
         }
         
         /* Education & Certifications */
         .education-item, .cert-item {
-          margin-bottom: 16px;
-          padding: 12px;
-          background: #f8f9fa;
-          border-radius: 6px;
-          border-left: 3px solid #FFB800;
+          margin-bottom: 12px;
+          padding-left: 15px;
+          position: relative;
+        }
+        
+        .education-item:before, .cert-item:before {
+          content: "•";
+          color: #0A2F5A;
+          font-weight: bold;
+          position: absolute;
+          left: 0;
         }
         
         .education-degree, .cert-name {
@@ -1889,60 +898,30 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
           color: #232629;
         }
         
-        .education-year, .cert-year {
-          color: #FFB800;
-          font-weight: 600;
-          font-size: 13px;
-        }
-        
-        .education-description, .cert-description {
-          color: #444B54;
-          font-size: 12px;
-          line-height: 1.5;
-          margin-top: 6px;
-          font-style: italic;
-        }
-        
         /* Languages */
         .languages-grid {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-          margin-top: 8px;
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+          margin-top: 10px;
         }
         
         .language-item {
-          display: inline-flex;
-          align-items: center;
-          padding: 6px 12px;
+          padding: 8px 12px;
           background: #f8f9fa;
-          border-radius: 20px;
-          font-weight: 500;
-          color: #073C51;
-          font-size: 12px;
-          border: 1px solid #e9ecef;
-          position: relative;
-          padding-left: 20px;
-        }
-        
-        .language-item:before {
-          content: "";
-          position: absolute;
-          left: 8px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 6px;
-          height: 6px;
-          background: #073C51;
-          border-radius: 50%;
+          border-radius: 6px;
+          text-align: center;
+          font-weight: 600;
+          color: #444B54;
+          border-left: 3px solid #0A2F5A;
         }
         
         /* Experience Summary */
         .experiences-summary {
           background: #f8f9fa;
-          padding: 15px;
-          border-radius: 6px;
-          border-left: 4px solid #073C51;
+          padding: 20px;
+          border-radius: 8px;
+          border-left: 4px solid #0A2F5A;
         }
         
         .experience-summary-item {
@@ -1957,7 +936,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
           padding: 25px;
           background: #f8f9fa;
           border-radius: 8px;
-          border-left: 4px solid #073C51;
+          border-left: 4px solid #0A2F5A;
           page-break-inside: avoid;
         }
         
@@ -1970,14 +949,14 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         .exp-company {
           font-size: 18px;
           font-weight: 700;
-          color: #073C51;
+          color: #0A2F5A;
           margin-bottom: 5px;
         }
         
         .exp-title {
           font-size: 16px;
           font-weight: 600;
-          color: #FFB800;
+          color: #D97732;
           margin-bottom: 5px;
         }
         
@@ -1994,7 +973,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         .exp-section-title {
           font-size: 14px;
           font-weight: 700;
-          color: #073C51;
+          color: #0A2F5A;
           margin-bottom: 8px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
@@ -2023,31 +1002,10 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         
         .exp-responsibilities li:before, .exp-achievements li:before, .exp-technical li:before {
           content: "•";
-          color: #FFB800;
+          color: #D97732;
           font-weight: bold;
           position: absolute;
           left: 0;
-        }
-        
-        /* Technical Environment Grid */
-        .technical-environment-grid {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-          margin-top: 6px;
-        }
-        
-        .tech-item {
-          display: inline-flex;
-          align-items: center;
-          padding: 4px 10px;
-          background: #f0f4f8;
-          border-radius: 15px;
-          font-weight: 500;
-          color: #073C51;
-          font-size: 11px;
-          border: 1px solid #d1d9e0;
-          white-space: nowrap;
         }
         
         /* Footer - appears on every page */
@@ -2085,7 +1043,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         
         .page-number {
           font-weight: 600;
-          color: #073C51;
+          color: #0A2F5A;
         }
         
         /* Print Optimization */
@@ -2116,14 +1074,14 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         /* Page counter for PDF generation */
         @page {
           margin: 20mm;
-          @bottom-left {
+          @bottom-right {
             content: counter(page);
             font-family: 'Inter', sans-serif;
             font-size: 12px;
             font-weight: 600;
-            color: #073C51;
+            color: #0A2F5A;
           }
-          @bottom-center {
+          @bottom-left {
             content: "Powered by EMINEON • forge your edge";
             font-family: 'Inter', sans-serif;
             font-size: 10px;
@@ -2161,16 +1119,12 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
           <div class="header-left">
             <h1>${candidateData.fullName}</h1>
             <div class="header-role">${candidateData.currentTitle}</div>
-            <div class="header-experience">${candidateData.yearsOfExperience || 'Multiple'} years of experience</div>
-            ${candidateData.location ? `<div class="location-info">${candidateData.location}</div>` : ''}
-            ${managerContact && (managerContact.name || managerContact.email || managerContact.phone) ? `
-              <div class="manager-contact">
-                <div class="manager-label">For inquiries, contact:</div>
-                ${managerContact.name ? `<div class="contact-item"><span class="contact-label">Manager:</span> ${managerContact.name}</div>` : ''}
-                ${managerContact.email ? `<div class="contact-item"><span class="contact-label">Email:</span> ${managerContact.email}</div>` : ''}
-                ${managerContact.phone ? `<div class="contact-item"><span class="contact-label">Phone:</span> ${managerContact.phone}</div>` : ''}
+            <div class="header-experience">${candidateData.yearsOfExperience} years of experience</div>
+            <div class="contact-info">
+              ${candidateData.email ? `<div class="contact-item"><span class="contact-label">Email:</span> ${candidateData.email}</div>` : ''}
+              ${candidateData.phone ? `<div class="contact-item"><span class="contact-label">Phone:</span> ${candidateData.phone}</div>` : ''}
+              ${candidateData.location ? `<div class="contact-item"><span class="contact-label">Location:</span> ${candidateData.location}</div>` : ''}
             </div>
-            ` : ''}
           </div>
           <div class="header-logo">
             <img src="https://res.cloudinary.com/emineon/image/upload/Emineon_logo_no_background_yjmchn" alt="EMINEON" class="logo-image" />
@@ -2184,12 +1138,6 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
             <h2 class="section-title">PROFESSIONAL SUMMARY</h2>
             <div class="section-content">
               <p class="summary-text">${candidateData.summary}</p>
-              ${enrichedContent?.valueProposition ? `
-              <div style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-left: 4px solid #FFB800; border-radius: 4px;">
-                <p style="font-weight: 600; color: #073C51; margin-bottom: 8px;">Value Proposition:</p>
-                <p style="font-style: italic; color: #444B54;">${enrichedContent.valueProposition}</p>
-              </div>
-              ` : ''}
             </div>
           </div>
           ` : ''}
@@ -2199,7 +1147,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
           <div class="section">
             <h2 class="section-title">FUNCTIONAL SKILLS</h2>
             <div class="section-content">
-              ${generateFunctionalSkills(enrichedContent?.optimizedSkills?.functional || candidateData.skills)}
+              ${generateFunctionalSkills(candidateData.skills)}
             </div>
           </div>
           ` : ''}
@@ -2209,7 +1157,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
           <div class="section">
             <h2 class="section-title">TECHNICAL SKILLS</h2>
             <div class="section-content">
-              ${generateTechnicalSkills(enrichedContent?.optimizedSkills?.technical || candidateData.skills)}
+              ${generateTechnicalSkills(candidateData.skills)}
             </div>
           </div>
           ` : ''}
@@ -2219,7 +1167,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
             <h2 class="section-title">AREAS OF EXPERTISE</h2>
             <div class="section-content">
               <div class="expertise-areas">
-                ${(enrichedContent?.areasOfExpertise || generateAreasOfExpertise(candidateData.currentTitle, candidateData.skills)).map(area => `
+                ${generateAreasOfExpertise(candidateData.currentTitle, candidateData.skills).map(area => `
                   <div class="expertise-item"><strong>${area}</strong></div>
                 `).join('')}
               </div>
@@ -2227,11 +1175,11 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
           </div>
 
           <!-- EDUCATION -->
-          ${(enrichedContent?.optimizedEducation || candidateData.education) && (enrichedContent?.optimizedEducation || candidateData.education).length > 0 ? `
+          ${candidateData.education && candidateData.education.length > 0 ? `
           <div class="section">
             <h2 class="section-title">EDUCATION</h2>
             <div class="section-content">
-              ${(enrichedContent?.optimizedEducation || candidateData.education).map(edu => `
+              ${candidateData.education.map(edu => `
                 <div class="education-item">
                   <div class="education-degree"><strong>${edu}</strong></div>
                 </div>
@@ -2241,11 +1189,11 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
           ` : ''}
 
           <!-- CERTIFICATIONS -->
-          ${(enrichedContent?.optimizedCertifications || candidateData.certifications) && (enrichedContent?.optimizedCertifications || candidateData.certifications).length > 0 ? `
+          ${candidateData.certifications && candidateData.certifications.length > 0 ? `
           <div class="section">
             <h2 class="section-title">CERTIFICATIONS</h2>
             <div class="section-content">
-              ${(enrichedContent?.optimizedCertifications || candidateData.certifications).map(cert => `
+              ${candidateData.certifications.map(cert => `
                 <div class="cert-item">
                   <div class="cert-name"><strong>${cert}</strong></div>
                 </div>
@@ -2271,6 +1219,810 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
           <!-- PROFESSIONAL EXPERIENCE -->
           ${experienceHTML}
         </div>
+
+        <!-- Footer with logo and page numbers -->
+        <div class="footer">
+          <div class="footer-left">
+            <img src="https://res.cloudinary.com/emineon/image/upload/Emineon_logo_no_background_yjmchn" alt="EMINEON" class="footer-logo" />
+            <span class="footer-text">Powered by EMINEON • forge your edge</span>
+          </div>
+          <div class="page-number">Page <span id="pageNumber"></span></div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+export function generateCompetenceFileHTML(candidateData: CandidateData, sections?: any[], jobDescription?: JobDescription): string {
+  const experienceHTML = generateExperienceHTML(candidateData.experience);
+  
+  // Generate functional skills with explanatory text
+  const generateFunctionalSkills = (skills: string[]) => {
+    if (!skills || skills.length === 0) return '';
+    
+    const skillCategories: Record<string, { skills: string[]; description: string }> = {
+      'Leadership & Management': {
+        skills: skills.filter(skill => 
+          skill.toLowerCase().includes('lead') || 
+          skill.toLowerCase().includes('manage') || 
+          skill.toLowerCase().includes('team') ||
+          skill.toLowerCase().includes('project')
+        ),
+        description: 'Proven ability to guide teams and manage complex projects with strategic oversight and operational excellence.'
+      },
+      'Communication & Collaboration': {
+        skills: skills.filter(skill => 
+          skill.toLowerCase().includes('communication') || 
+          skill.toLowerCase().includes('presentation') || 
+          skill.toLowerCase().includes('stakeholder')
+        ),
+        description: 'Strong interpersonal skills enabling effective collaboration across diverse teams and stakeholder groups.'
+      },
+      'Problem Solving & Analysis': {
+        skills: skills.filter(skill => 
+          skill.toLowerCase().includes('analysis') || 
+          skill.toLowerCase().includes('problem') || 
+          skill.toLowerCase().includes('research')
+        ),
+        description: 'Analytical mindset with systematic approach to identifying solutions and optimizing processes.'
+      },
+      'Innovation & Strategy': {
+        skills: skills.filter(skill => 
+          skill.toLowerCase().includes('innovation') || 
+          skill.toLowerCase().includes('strategy') || 
+          skill.toLowerCase().includes('planning')
+        ),
+        description: 'Forward-thinking approach to business challenges with focus on sustainable growth and competitive advantage.'
+      }
+    };
+    
+    // If no categorized skills found, create a general category
+    const categorizedSkills = Object.values(skillCategories).some(cat => cat.skills.length > 0);
+    if (!categorizedSkills) {
+      skillCategories['Core Competencies'] = {
+        skills: skills.slice(0, 6),
+        description: 'Comprehensive skill set developed through professional experience and continuous learning initiatives.'
+      };
+    }
+    
+    return Object.entries(skillCategories)
+      .filter(([_, category]) => category.skills.length > 0)
+      .map(([categoryName, category]) => `
+        <div class="functional-skill-category">
+          <div class="skill-category-title">${categoryName}</div>
+          <ul class="skill-list">
+            ${category.skills.map(skill => `<li>${skill}</li>`).join('')}
+          </ul>
+          <p class="skill-description">${category.description}</p>
+        </div>
+      `).join('');
+  };
+
+  // Generate technical skills with explanatory text
+  const generateTechnicalSkills = (skills: string[]) => {
+    if (!skills || skills.length === 0) return '';
+    
+    const techCategories: Record<string, { skills: string[]; description: string }> = {
+      'Programming Languages': {
+        skills: skills.filter(skill => 
+          ['javascript', 'python', 'java', 'typescript', 'c#', 'php', 'ruby', 'go', 'rust', 'swift', 'kotlin'].some(lang => 
+            skill.toLowerCase().includes(lang)
+          )
+        ),
+        description: 'Proficient in multiple programming languages with deep understanding of software development principles.'
+      },
+      'Frameworks & Libraries': {
+        skills: skills.filter(skill => 
+          ['react', 'angular', 'vue', 'node', 'express', 'django', 'spring', 'laravel', '.net'].some(framework => 
+            skill.toLowerCase().includes(framework)
+          )
+        ),
+        description: 'Extensive experience with modern frameworks enabling rapid development and scalable solutions.'
+      },
+      'Databases & Storage': {
+        skills: skills.filter(skill => 
+          ['sql', 'mysql', 'postgresql', 'mongodb', 'redis', 'elasticsearch', 'oracle', 'sqlite'].some(db => 
+            skill.toLowerCase().includes(db)
+          )
+        ),
+        description: 'Comprehensive database management skills across relational and NoSQL technologies.'
+      },
+      'Cloud & DevOps': {
+        skills: skills.filter(skill => 
+          ['aws', 'azure', 'gcp', 'docker', 'kubernetes', 'jenkins', 'terraform', 'ansible'].some(cloud => 
+            skill.toLowerCase().includes(cloud)
+          )
+        ),
+        description: 'Advanced cloud computing and DevOps expertise for scalable infrastructure management.'
+      },
+      'Tools & Technologies': {
+        skills: skills.filter(skill => 
+          !['javascript', 'python', 'java', 'typescript', 'c#', 'php', 'ruby', 'go', 'rust', 'swift', 'kotlin',
+            'react', 'angular', 'vue', 'node', 'express', 'django', 'spring', 'laravel', '.net',
+            'sql', 'mysql', 'postgresql', 'mongodb', 'redis', 'elasticsearch', 'oracle', 'sqlite',
+            'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'jenkins', 'terraform', 'ansible'].some(tech => 
+            skill.toLowerCase().includes(tech)
+          )
+        ),
+        description: 'Diverse technical toolkit supporting efficient development workflows and project delivery.'
+      }
+    };
+    
+    // If no categorized skills found, create a general category
+    const categorizedSkills = Object.values(techCategories).some(cat => cat.skills.length > 0);
+    if (!categorizedSkills) {
+      techCategories['Technical Competencies'] = {
+        skills: skills,
+        description: 'Comprehensive technical skill set acquired through hands-on experience and professional development.'
+      };
+    }
+    
+    return Object.entries(techCategories)
+      .filter(([_, category]) => category.skills.length > 0)
+      .map(([categoryName, category]) => `
+        <div class="technical-skill-category">
+          <div class="skill-category-title">${categoryName}</div>
+          <ul class="skill-list">
+            ${category.skills.map(skill => `<li>${skill}</li>`).join('')}
+          </ul>
+          <p class="skill-description">${category.description}</p>
+        </div>
+      `).join('');
+  };
+
+  // Generate areas of expertise based on role and skills
+  const generateAreasOfExpertise = (currentTitle: string, skills: string[]): string[] => {
+    const expertiseAreas: string[] = [];
+    
+    // Add based on current title
+    if (currentTitle.toLowerCase().includes('software') || currentTitle.toLowerCase().includes('developer')) {
+      expertiseAreas.push('Software Development & Engineering');
+    }
+    if (currentTitle.toLowerCase().includes('senior') || currentTitle.toLowerCase().includes('lead')) {
+      expertiseAreas.push('Technical Leadership & Mentoring');
+    }
+    if (currentTitle.toLowerCase().includes('full') || currentTitle.toLowerCase().includes('stack')) {
+      expertiseAreas.push('Full-Stack Development');
+    }
+    if (currentTitle.toLowerCase().includes('frontend') || currentTitle.toLowerCase().includes('ui')) {
+      expertiseAreas.push('User Interface Development');
+    }
+    if (currentTitle.toLowerCase().includes('backend') || currentTitle.toLowerCase().includes('api')) {
+      expertiseAreas.push('Backend Systems & APIs');
+    }
+    if (currentTitle.toLowerCase().includes('devops') || currentTitle.toLowerCase().includes('infrastructure')) {
+      expertiseAreas.push('DevOps & Infrastructure');
+    }
+    if (currentTitle.toLowerCase().includes('data') || currentTitle.toLowerCase().includes('analytics')) {
+      expertiseAreas.push('Data Analysis & Business Intelligence');
+    }
+    if (currentTitle.toLowerCase().includes('architect')) {
+      expertiseAreas.push('System Architecture & Design');
+    }
+    if (currentTitle.toLowerCase().includes('manager') || currentTitle.toLowerCase().includes('director')) {
+      expertiseAreas.push('Project Management & Strategy');
+    }
+    
+    // Add based on skills
+    if (skills.some(skill => skill.toLowerCase().includes('cloud') || skill.toLowerCase().includes('aws') || skill.toLowerCase().includes('azure'))) {
+      expertiseAreas.push('Cloud Computing & Scalability');
+    }
+    if (skills.some(skill => skill.toLowerCase().includes('agile') || skill.toLowerCase().includes('scrum'))) {
+      expertiseAreas.push('Agile Methodologies & Process Optimization');
+    }
+    
+    // Ensure we have at least 6 areas
+    const defaultAreas = [
+      'Digital Transformation',
+      'Technology Innovation',
+      'Process Optimization',
+      'Quality Assurance',
+      'Cross-functional Collaboration',
+      'Continuous Learning & Development'
+    ];
+    
+    while (expertiseAreas.length < 6) {
+      const nextArea = defaultAreas.find(area => !expertiseAreas.includes(area));
+      if (nextArea) {
+        expertiseAreas.push(nextArea);
+      } else {
+        break;
+      }
+    }
+    
+    return expertiseAreas.slice(0, 6);
+  };
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${candidateData.fullName} - Competence File</title>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          line-height: 1.6;
+          color: #232629;
+          background: #ffffff;
+          font-size: 14px;
+        }
+        
+        .container {
+          max-width: 210mm;
+          margin: 0 auto;
+          background: white;
+          min-height: 297mm;
+          padding: 30px;
+          position: relative;
+          padding-bottom: 80px;
+        }
+        
+        /* Header Styling - Clean layout with logo on right */
+        .header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 40px;
+          padding-bottom: 25px;
+          border-bottom: 2px solid #0A2F5A;
+        }
+        
+        .header-left {
+          flex: 1;
+        }
+        
+        .header h1 {
+          font-size: 32px;
+          font-weight: 700;
+          color: #0A2F5A;
+          margin-bottom: 8px;
+          letter-spacing: -0.5px;
+        }
+        
+        .header-role {
+          font-size: 18px;
+          font-weight: 600;
+          color: #D97732;
+          margin-bottom: 5px;
+        }
+        
+        .header-experience {
+          font-size: 16px;
+          font-weight: 500;
+          color: #444B54;
+          margin-bottom: 15px;
+        }
+        
+        .contact-info {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 20px;
+          font-size: 14px;
+        }
+        
+        .contact-item {
+          color: #444B54;
+        }
+        
+        .contact-label {
+          font-weight: 700;
+          color: #232629;
+        }
+        
+        .header-logo {
+          flex-shrink: 0;
+          margin-left: 30px;
+        }
+        
+        .logo-image {
+          height: 80px;
+          width: auto;
+        }
+        
+        /* Content Area */
+        .content {
+          margin-bottom: 60px;
+        }
+        
+        /* Section Styling */
+        .section {
+          margin-bottom: 35px;
+          page-break-inside: avoid;
+        }
+        
+        .section-title {
+          font-size: 16px;
+          font-weight: 700;
+          color: #0A2F5A;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          margin-bottom: 15px;
+          padding-bottom: 8px;
+          border-bottom: 2px solid #0A2F5A;
+        }
+        
+        .section-content {
+          font-size: 14px;
+          line-height: 1.7;
+        }
+        
+        /* Content Formatting */
+        .section-content p {
+          margin-bottom: 12px;
+          line-height: 1.7;
+        }
+        
+        .section-content ul {
+          margin: 12px 0;
+          padding-left: 0;
+          list-style: none;
+        }
+        
+        .section-content li {
+          position: relative;
+          padding-left: 20px;
+          margin-bottom: 8px;
+          line-height: 1.6;
+        }
+        
+        .section-content li:before {
+          content: "•";
+          color: #FF8C00;
+          font-weight: bold;
+          position: absolute;
+          left: 0;
+          top: 0;
+        }
+        
+        .section-content strong {
+          font-weight: 700;
+          color: #0A2F5A;
+        }
+        
+        .section-content em {
+          font-style: italic;
+          color: #444B54;
+        }
+        
+        /* Professional Summary */
+        .summary-text {
+          font-weight: 400;
+          line-height: 1.8;
+          color: #444B54;
+        }
+        
+        /* Functional Skills */
+        .functional-skill-category {
+          margin-bottom: 20px;
+          padding: 15px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          border-left: 4px solid #0A2F5A;
+        }
+        
+        .skill-category-title {
+          font-size: 15px;
+          font-weight: 700;
+          color: #0A2F5A;
+          margin-bottom: 10px;
+        }
+        
+        .skill-list {
+          list-style: none;
+          padding-left: 0;
+          margin-bottom: 10px;
+        }
+        
+        .skill-list li {
+          position: relative;
+          padding-left: 15px;
+          margin-bottom: 5px;
+          color: #444B54;
+          font-weight: 500;
+        }
+        
+        .skill-list li:before {
+          content: "•";
+          color: #D97732;
+          font-weight: bold;
+          position: absolute;
+          left: 0;
+        }
+        
+        .skill-description {
+          font-style: italic;
+          color: #666;
+          font-size: 13px;
+          line-height: 1.5;
+        }
+        
+        /* Technical Skills */
+        .technical-skill-category {
+          margin-bottom: 20px;
+          padding: 15px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          border-left: 4px solid #D97732;
+        }
+        
+        /* Areas of Expertise */
+        .expertise-areas {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 15px;
+          margin-top: 10px;
+        }
+        
+        .expertise-item {
+          text-align: center;
+          padding: 12px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          font-weight: 600;
+          color: #444B54;
+          border-left: 3px solid #D97732;
+        }
+        
+        /* Education & Certifications */
+        .education-item, .cert-item {
+          margin-bottom: 12px;
+          padding-left: 15px;
+          position: relative;
+        }
+        
+        .education-item:before, .cert-item:before {
+          content: "•";
+          color: #0A2F5A;
+          font-weight: bold;
+          position: absolute;
+          left: 0;
+        }
+        
+        .education-degree, .cert-name {
+          font-weight: 600;
+          color: #232629;
+        }
+        
+        /* Languages */
+        .languages-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+          margin-top: 10px;
+        }
+        
+        .language-item {
+          padding: 8px 12px;
+          background: #f8f9fa;
+          border-radius: 6px;
+          text-align: center;
+          font-weight: 600;
+          color: #444B54;
+          border-left: 3px solid #0A2F5A;
+        }
+        
+        /* Experience Summary */
+        .experiences-summary {
+          background: #f8f9fa;
+          padding: 20px;
+          border-radius: 8px;
+          border-left: 4px solid #0A2F5A;
+        }
+        
+        .experience-summary-item {
+          margin-bottom: 10px;
+          color: #444B54;
+          line-height: 1.6;
+        }
+        
+        /* Experience Blocks */
+        .experience-block {
+          margin-bottom: 30px;
+          padding: 25px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          border-left: 4px solid #0A2F5A;
+          page-break-inside: avoid;
+        }
+        
+        .exp-header {
+          margin-bottom: 20px;
+          padding-bottom: 15px;
+          border-bottom: 1px solid #e9ecef;
+        }
+        
+        .exp-company {
+          font-size: 18px;
+          font-weight: 700;
+          color: #0A2F5A;
+          margin-bottom: 5px;
+        }
+        
+        .exp-title {
+          font-size: 16px;
+          font-weight: 600;
+          color: #D97732;
+          margin-bottom: 5px;
+        }
+        
+        .exp-dates {
+          font-size: 14px;
+          color: #444B54;
+          font-weight: 600;
+        }
+        
+        .exp-section {
+          margin-bottom: 15px;
+        }
+        
+        .exp-section-title {
+          font-size: 14px;
+          font-weight: 700;
+          color: #0A2F5A;
+          margin-bottom: 8px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        
+        .exp-description {
+          color: #444B54;
+          line-height: 1.6;
+          margin-bottom: 10px;
+          font-style: italic;
+        }
+        
+        .exp-responsibilities, .exp-achievements, .exp-technical {
+          list-style: none;
+          padding-left: 0;
+        }
+        
+        .exp-responsibilities li, .exp-achievements li, .exp-technical li {
+          position: relative;
+          padding-left: 15px;
+          margin-bottom: 8px;
+          color: #444B54;
+          line-height: 1.6;
+          font-weight: 500;
+        }
+        
+        .exp-responsibilities li:before, .exp-achievements li:before, .exp-technical li:before {
+          content: "•";
+          color: #D97732;
+          font-weight: bold;
+          position: absolute;
+          left: 0;
+        }
+        
+        /* Footer - appears on every page */
+        .footer {
+          position: fixed;
+          bottom: 20px;
+          left: 0;
+          right: 0;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 15px 30px;
+          border-top: 1px solid #e9ecef;
+          background: white;
+          font-size: 12px;
+          color: #444B54;
+        }
+        
+        .footer-left {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        
+        .footer-logo {
+          height: 20px;
+          width: auto;
+          opacity: 0.7;
+        }
+        
+        .footer-text {
+          font-weight: 500;
+          color: #444B54;
+        }
+        
+        .page-number {
+          font-weight: 600;
+          color: #0A2F5A;
+        }
+        
+        /* Print Optimization */
+        @media print {
+          body { 
+            font-size: 12px; 
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .container { 
+            max-width: none; 
+            margin: 0; 
+            padding: 20px;
+            padding-bottom: 60px;
+          }
+          .section { 
+            page-break-inside: avoid; 
+          }
+          .experience-block { 
+            page-break-inside: avoid; 
+          }
+          .footer {
+            position: fixed;
+            bottom: 0;
+          }
+        }
+        
+        /* Page counter for PDF generation */
+        @page {
+          margin: 20mm;
+          @bottom-right {
+            content: counter(page);
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: #0A2F5A;
+          }
+          @bottom-left {
+            content: "Powered by EMINEON • forge your edge";
+            font-family: 'Inter', sans-serif;
+            font-size: 10px;
+            color: #444B54;
+          }
+        }
+        
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+          .header { 
+            flex-direction: column; 
+            align-items: flex-start;
+          }
+          .header-logo { 
+            margin-left: 0; 
+            margin-top: 15px; 
+          }
+          .contact-info { 
+            flex-direction: column; 
+            gap: 10px;
+          }
+          .expertise-areas { 
+            grid-template-columns: 1fr; 
+          }
+          .languages-grid { 
+            grid-template-columns: 1fr; 
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <!-- HEADER - Clean layout with logo on right -->
+        <div class="header">
+          <div class="header-left">
+            <h1>${candidateData.fullName}</h1>
+            <div class="header-role">${candidateData.currentTitle}</div>
+            <div class="header-experience">${candidateData.yearsOfExperience} years of experience</div>
+            <div class="contact-info">
+              ${candidateData.email ? `<div class="contact-item"><span class="contact-label">Email:</span> ${candidateData.email}</div>` : ''}
+              ${candidateData.phone ? `<div class="contact-item"><span class="contact-label">Phone:</span> ${candidateData.phone}</div>` : ''}
+              ${candidateData.location ? `<div class="contact-item"><span class="contact-label">Location:</span> ${candidateData.location}</div>` : ''}
+            </div>
+          </div>
+          <div class="header-logo">
+            <img src="https://res.cloudinary.com/emineon/image/upload/Emineon_logo_no_background_yjmchn" alt="EMINEON" class="logo-image" />
+          </div>
+        </div>
+
+        <div class="content">
+          <!-- PROFESSIONAL SUMMARY -->
+          ${candidateData.summary ? `
+          <div class="section">
+            <h2 class="section-title">PROFESSIONAL SUMMARY</h2>
+            <div class="section-content">
+              <p class="summary-text">${candidateData.summary}</p>
+            </div>
+          </div>
+          ` : ''}
+
+          <!-- FUNCTIONAL SKILLS -->
+          ${candidateData.skills && candidateData.skills.length > 0 ? `
+          <div class="section">
+            <h2 class="section-title">FUNCTIONAL SKILLS</h2>
+            <div class="section-content">
+              ${generateFunctionalSkills(candidateData.skills)}
+            </div>
+          </div>
+          ` : ''}
+
+          <!-- TECHNICAL SKILLS -->
+          ${candidateData.skills && candidateData.skills.length > 0 ? `
+          <div class="section">
+            <h2 class="section-title">TECHNICAL SKILLS</h2>
+            <div class="section-content">
+              ${generateTechnicalSkills(candidateData.skills)}
+            </div>
+          </div>
+          ` : ''}
+
+          <!-- AREAS OF EXPERTISE -->
+          <div class="section">
+            <h2 class="section-title">AREAS OF EXPERTISE</h2>
+            <div class="section-content">
+              <div class="expertise-areas">
+                ${generateAreasOfExpertise(candidateData.currentTitle, candidateData.skills).map(area => `
+                  <div class="expertise-item"><strong>${area}</strong></div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+
+          <!-- EDUCATION -->
+          ${candidateData.education && candidateData.education.length > 0 ? `
+          <div class="section">
+            <h2 class="section-title">EDUCATION</h2>
+            <div class="section-content">
+              ${candidateData.education.map(edu => `
+                <div class="education-item">
+                  <div class="education-degree"><strong>${edu}</strong></div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          ` : ''}
+
+          <!-- CERTIFICATIONS -->
+          ${candidateData.certifications && candidateData.certifications.length > 0 ? `
+          <div class="section">
+            <h2 class="section-title">CERTIFICATIONS</h2>
+            <div class="section-content">
+              ${candidateData.certifications.map(cert => `
+                <div class="cert-item">
+                  <div class="cert-name"><strong>${cert}</strong></div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          ` : ''}
+
+          <!-- LANGUAGES -->
+          ${candidateData.languages && candidateData.languages.length > 0 ? `
+          <div class="section">
+            <h2 class="section-title">LANGUAGES</h2>
+            <div class="section-content">
+              <div class="languages-grid">
+                ${candidateData.languages.map(lang => `
+                  <div class="language-item">${lang}</div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+          ` : ''}
+
+          <!-- PROFESSIONAL EXPERIENCE -->
+          ${experienceHTML}
+        </div>
+
+        <!-- Footer with logo and page numbers -->
+        <div class="footer">
+          <div class="footer-left">
+            <img src="https://res.cloudinary.com/emineon/image/upload/Emineon_logo_no_background_yjmchn" alt="EMINEON" class="footer-logo" />
+            <span class="footer-text">Powered by EMINEON • forge your edge</span>
+          </div>
+          <div class="page-number">Page <span id="pageNumber"></span></div>
+        </div>
       </div>
     </body>
     </html>
@@ -2289,7 +2041,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { candidateData, template = 'professional', content, format = 'pdf', sections, jobDescription, saveOnly = false, managerContact } = body;
+    const { candidateData, template = 'professional', content, format = 'pdf', sections, jobDescription, saveOnly = false } = body;
 
     if (!candidateData) {
       return NextResponse.json(
@@ -2309,46 +2061,6 @@ export async function POST(request: NextRequest) {
       jobTitle,
       experienceCount: candidateData.experience?.length || 0
     });
-
-    // 🤖 AI ENRICHMENT: ALWAYS enhance candidate data with job-specific content
-    let enrichedContent: EnrichedContent | undefined;
-    
-    // ALWAYS run AI enrichment for ALL documents (including drafts)
-    if (!saveOnly) {
-      if (!process.env.OPENAI_API_KEY) {
-        console.error('❌ CRITICAL: OpenAI API key is required for AI enrichment!');
-        return NextResponse.json(
-          { success: false, message: 'AI enrichment is required but OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.' },
-          { status: 500 }
-        );
-      }
-
-      try {
-        console.log('🤖 Starting MANDATORY AI enrichment for competence file...');
-        
-        enrichedContent = await competenceEnrichmentService.enrichCandidateForJob(
-          candidateData,
-          jobDescription,
-          client
-        );
-        
-        console.log('✅ AI enrichment completed successfully');
-        
-        // Update candidate data with AI-enhanced summary if available
-        if (enrichedContent.enhancedSummary) {
-          candidateData.summary = enrichedContent.enhancedSummary;
-        }
-        
-      } catch (enrichmentError) {
-        console.error('❌ CRITICAL: AI enrichment failed:', enrichmentError);
-        return NextResponse.json(
-          { success: false, message: `AI enrichment failed: ${enrichmentError instanceof Error ? enrichmentError.message : String(enrichmentError)}. Cannot generate competence file without AI enhancement.` },
-          { status: 500 }
-        );
-      }
-          } else {
-        console.log('ℹ️ Skipping AI enrichment (save only mode)');
-      }
 
     // Handle draft saving (save only, no file generation)
     if (saveOnly || format === 'draft') {
@@ -2370,15 +2082,13 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      if (!candidate) {
-        // Create candidate if not found - use email or generate a unique identifier
-        const email = candidateData.email || `${candidateData.fullName.replace(/\s+/g, '').toLowerCase()}@temp.generated`;
-        
+      if (!candidate && candidateData.email) {
+        // Create candidate if not found
         candidate = await prisma.candidate.create({
           data: {
             firstName: candidateData.fullName.split(' ')[0] || 'Unknown',
             lastName: candidateData.fullName.split(' ').slice(1).join(' ') || '',
-            email: email,
+            email: candidateData.email,
             currentTitle: candidateData.currentTitle,
             phone: candidateData.phone || null,
             currentLocation: candidateData.location || null,
@@ -2452,12 +2162,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate HTML content based on template with AI enrichment
+    // Generate HTML content based on template
     let htmlContent: string;
     if (template === 'antaes' || template === 'cf-antaes-consulting') {
-      htmlContent = generateAntaesCompetenceFileHTML(candidateData, sections, jobDescription, managerContact, enrichedContent);
+      htmlContent = generateAntaesCompetenceFileHTML(candidateData, sections, jobDescription);
     } else {
-      htmlContent = generateCompetenceFileHTML(candidateData, sections, jobDescription, managerContact, enrichedContent);
+      htmlContent = generateCompetenceFileHTML(candidateData, sections, jobDescription);
     }
 
     let fileBuffer: Buffer;
@@ -2521,15 +2231,13 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      if (!candidate) {
-        // Create candidate if not found - use email or generate a unique identifier
-        const email = candidateData.email || `${candidateData.fullName.replace(/\s+/g, '').toLowerCase()}@temp.generated`;
-        
+      if (!candidate && candidateData.email) {
+        // Create candidate if not found
         candidate = await prisma.candidate.create({
           data: {
             firstName: candidateData.fullName.split(' ')[0] || 'Unknown',
             lastName: candidateData.fullName.split(' ').slice(1).join(' ') || '',
-            email: email,
+            email: candidateData.email,
             currentTitle: candidateData.currentTitle,
             phone: candidateData.phone || null,
             currentLocation: candidateData.location || null,

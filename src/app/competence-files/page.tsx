@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@clerk/nextjs';
+import { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -19,106 +18,82 @@ import {
   User,
   Building2,
   Share2,
-  Settings,
-  Edit,
-  Trash2,
-  ExternalLink
+  Settings
 } from 'lucide-react';
 import { CreateCompetenceFileModal } from '@/components/competence-files/CreateCompetenceFileModal';
 import { CreateTemplateModal } from '@/components/competence-files/CreateTemplateModal';
 
-// Interface for competence file data
-interface CompetenceFile {
-  id: string;
-  candidateId: string;
-  candidateName: string;
-  candidateTitle: string;
-  template: string;
-  templateName: string;
-  client: string;
-  job: string;
-  status: 'GENERATED' | 'DRAFT' | 'ARCHIVED' | 'FAILED' | 'Generated' | 'Draft' | 'Archived' | 'Failed';
-  createdAt: string;
-  updatedAt: string;
-  version: number;
-  downloadCount: number;
-  isAnonymized: boolean;
-  fileName: string;
-  fileUrl: string | null;
-  format: string;
-  sections?: any[];
-  candidateData?: any;
-}
+// Mock data for competence files
+const mockCompetenceFiles = [
+  {
+    id: '1',
+    candidateName: 'Sarah Johnson',
+    candidateTitle: 'Senior Frontend Engineer',
+    template: 'UBS Tech Template',
+    client: 'UBS Investment Bank',
+    job: 'Senior React Developer',
+    status: 'Generated',
+    createdAt: '2024-01-15',
+    updatedAt: '2024-01-15',
+    version: 1,
+    downloadCount: 3,
+    isAnonymized: false,
+    fileName: 'Sarah_Johnson_UBS_Competence_File.pdf',
+    fileUrl: 'https://res.cloudinary.com/emineon/raw/upload/v1749930214/emineon-ats/competence-files/Test_Download_Fix_1749930214191',
+    format: 'pdf'
+  },
+  {
+    id: '2',
+    candidateName: 'David Chen',
+    candidateTitle: 'Backend Engineer',
+    template: 'Credit Suisse Template',
+    client: 'Credit Suisse',
+    job: 'Python Developer',
+    status: 'Draft',
+    createdAt: '2024-01-14',
+    updatedAt: '2024-01-15',
+    version: 2,
+    downloadCount: 0,
+    isAnonymized: true,
+    fileName: 'David_Chen_CS_Competence_File.pdf',
+    fileUrl: null, // Draft files don't have URLs yet
+    format: 'pdf'
+  },
+  {
+    id: '3',
+    candidateName: 'Mike Rodriguez',
+    candidateTitle: 'Senior Engineer',
+    template: 'Standard CV Template',
+    client: 'Zurich Insurance',
+    job: 'Java Developer',
+    status: 'Generated',
+    createdAt: '2024-01-13',
+    updatedAt: '2024-01-13',
+    version: 1,
+    downloadCount: 7,
+    isAnonymized: false,
+    fileName: 'Mike_Rodriguez_Zurich_Competence_File.pdf',
+    fileUrl: 'https://res.cloudinary.com/emineon/raw/upload/v1749930214/emineon-ats/competence-files/Test_Download_Fix_1749930214191',
+    format: 'pdf'
+  }
+];
 
 const statusColors = {
-  'GENERATED': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
-  'Generated': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
-  'DRAFT': 'bg-amber-100 text-amber-800 border border-amber-200',
-  'Draft': 'bg-amber-100 text-amber-800 border border-amber-200',
-  'ARCHIVED': 'bg-slate-100 text-slate-800 border border-slate-200',
-  'Archived': 'bg-slate-100 text-slate-800 border border-slate-200',
-  'FAILED': 'bg-red-100 text-red-800 border border-red-200',
-  'Failed': 'bg-red-100 text-red-800 border border-red-200'
+  'Generated': 'bg-green-100 text-green-800',
+  'Draft': 'bg-yellow-100 text-yellow-800',
+  'Archived': 'bg-gray-100 text-gray-800'
 };
 
 export default function CompetenceFilesPage() {
-  const { getToken } = useAuth();
   const [activeTab, setActiveTab] = useState('files');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreateTemplateModalOpen, setIsCreateTemplateModalOpen] = useState(false);
-  const [competenceFiles, setCompetenceFiles] = useState<CompetenceFile[]>([]);
+  const [competenceFiles, setCompetenceFiles] = useState(mockCompetenceFiles);
   const [templates, setTemplates] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedFile, setSelectedFile] = useState<CompetenceFile | null>(null);
-  const [showActions, setShowActions] = useState<string | null>(null);
 
-  // Fetch competence files on component mount
-  useEffect(() => {
-    fetchCompetenceFiles();
-  }, [searchQuery, selectedFilter]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = () => {
-      setShowActions(null);
-    };
-    
-    if (showActions) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [showActions]);
-
-  const fetchCompetenceFiles = async () => {
-    try {
-      setLoading(true);
-      const token = await getToken();
-      const params = new URLSearchParams();
-      if (searchQuery) params.append('search', searchQuery);
-      if (selectedFilter !== 'all') params.append('status', selectedFilter);
-      
-      const response = await fetch(`/api/competence-files?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        setCompetenceFiles(result.data || []);
-      } else {
-        console.error('Failed to fetch competence files');
-      }
-    } catch (error) {
-      console.error('Error fetching competence files:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredFiles = competenceFiles.filter((file: CompetenceFile) => {
+  const filteredFiles = competenceFiles.filter(file => {
     const matchesSearch = (file.candidateName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
                          (file.client?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
                          (file.job?.toLowerCase() || '').includes(searchQuery.toLowerCase());
@@ -129,26 +104,23 @@ export default function CompetenceFilesPage() {
   });
 
   const handleCreateFile = (fileData: any) => {
-    const newFile: CompetenceFile = {
+    const newFile = {
       id: Date.now().toString(),
-      candidateId: fileData.candidateId || 'unknown',
       candidateName: fileData.candidateName || 'Unknown Candidate',
       candidateTitle: fileData.candidateTitle || 'Unknown Title',
-      template: fileData.template || 'professional',
-      templateName: fileData.templateName || 'Professional Template',
+      template: fileData.templateName || 'Unknown Template',
       client: fileData.client || 'Unknown Client',
       job: fileData.job || 'Unknown Job',
       status: 'Generated',
-      fileName: fileData.fileName || 'competence_file.pdf',
-      fileUrl: fileData.fileUrl || null,
-      format: fileData.format || 'pdf',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      fileName: fileData.fileName,
+      fileUrl: fileData.fileUrl,
+      fileSize: fileData.fileSize,
+      format: fileData.format,
+      createdAt: new Date().toISOString().split('T')[0],
+      updatedAt: new Date().toISOString().split('T')[0],
       version: 1,
       downloadCount: 0,
-      isAnonymized: false,
-      sections: fileData.sections || [],
-      candidateData: fileData.candidateData || null
+      isAnonymized: false
     };
     setCompetenceFiles([newFile, ...competenceFiles]);
   };
@@ -161,7 +133,7 @@ export default function CompetenceFilesPage() {
     setTemplates([newTemplate, ...templates]);
   };
 
-  const handleDownload = (file: CompetenceFile) => {
+  const handleDownload = (file: any) => {
     if (!file.fileUrl) {
       if (file.status === 'Draft') {
         alert('Cannot download draft files. Please generate the file first.');
@@ -172,20 +144,19 @@ export default function CompetenceFilesPage() {
     }
 
     try {
-      // Use download proxy to ensure proper file delivery
-      const downloadUrl = `/api/competence-files/download?url=${encodeURIComponent(file.fileUrl)}&filename=${encodeURIComponent(file.fileName || `${file.candidateName}_competence_file.${file.format || 'pdf'}`)}`;
-      
       // Create a temporary link element to trigger download
       const link = document.createElement('a');
-      link.href = downloadUrl;
+      link.href = file.fileUrl;
       link.download = file.fileName || `${file.candidateName}_competence_file.${file.format || 'pdf'}`;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
       // Update download count
-      setCompetenceFiles((files: CompetenceFile[]) => 
-        files.map((f: CompetenceFile) => 
+      setCompetenceFiles(files => 
+        files.map(f => 
           f.id === file.id 
             ? { ...f, downloadCount: (f.downloadCount || 0) + 1 }
             : f
@@ -194,65 +165,6 @@ export default function CompetenceFilesPage() {
     } catch (error) {
       console.error('Download failed:', error);
       alert('Download failed. Please try again or contact support.');
-    }
-  };
-
-  const handlePreview = (file: CompetenceFile) => {
-    // Open preview in a new tab
-    const previewUrl = `/api/competence-files/${file.id}/preview`;
-    window.open(previewUrl, '_blank');
-  };
-
-  const handleModify = async (file: CompetenceFile) => {
-    try {
-      const token = await getToken();
-      const response = await fetch(`/api/competence-files/${file.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        const fileData = result.data;
-        
-        // Set the file data and reopen the modal in edit mode
-        setSelectedFile(fileData);
-        setIsCreateModalOpen(true);
-      } else {
-        alert('Failed to load file for editing');
-      }
-    } catch (error) {
-      console.error('Error loading file:', error);
-      alert('Failed to load file for editing');
-    }
-  };
-
-  const handleDelete = async (file: CompetenceFile) => {
-    if (!confirm(`Are you sure you want to delete the competence file for ${file.candidateName}? This action cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      const token = await getToken();
-      const response = await fetch(`/api/competence-files/${file.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      
-      if (response.ok) {
-        setCompetenceFiles((files: CompetenceFile[]) => 
-          files.filter((f: CompetenceFile) => f.id !== file.id)
-        );
-        alert('Competence file deleted successfully');
-      } else {
-        alert('Failed to delete competence file');
-      }
-    } catch (error) {
-      console.error('Error deleting file:', error);
-      alert('Failed to delete competence file');
     }
   };
 
@@ -279,7 +191,6 @@ export default function CompetenceFilesPage() {
             <button 
               onClick={() => setIsCreateModalOpen(true)}
               className="btn-primary flex items-center space-x-2"
-              data-testid="create-competence-file-btn"
             >
               <Plus className="h-4 w-4" />
               <span>Create Competence File</span>
@@ -434,30 +345,14 @@ export default function CompetenceFilesPage() {
                         <div className="flex-1">
                           <div className="flex items-center space-x-3">
                             <h3 className="font-semibold text-gray-900">{file.candidateName}</h3>
-                            <div className="flex items-center space-x-2">
-                              <Badge className={`${statusColors[file.status as keyof typeof statusColors]} font-medium text-xs px-3 py-1 rounded-full shadow-sm`}>
-                                <div className="flex items-center space-x-1">
-                                  {file.status === 'GENERATED' || file.status === 'Generated' ? (
-                                    <div className="w-1.5 h-1.5 bg-emerald-600 rounded-full"></div>
-                                  ) : file.status === 'DRAFT' || file.status === 'Draft' ? (
-                                    <div className="w-1.5 h-1.5 bg-amber-600 rounded-full"></div>
-                                  ) : file.status === 'FAILED' || file.status === 'Failed' ? (
-                                    <div className="w-1.5 h-1.5 bg-red-600 rounded-full"></div>
-                                  ) : (
-                                    <div className="w-1.5 h-1.5 bg-slate-600 rounded-full"></div>
-                                  )}
-                                  <span className="capitalize">{file.status.toLowerCase()}</span>
-                                </div>
+                            <Badge className={statusColors[file.status as keyof typeof statusColors]}>
+                              {file.status}
                             </Badge>
                             {file.isAnonymized && (
-                                <Badge variant="outline" className="text-xs border-blue-200 text-blue-700 bg-blue-50 px-2 py-1 rounded-full">
-                                  <div className="flex items-center space-x-1">
-                                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                                    <span>Anonymized</span>
-                                  </div>
+                              <Badge variant="outline" className="text-xs">
+                                Anonymized
                               </Badge>
                             )}
-                            </div>
                           </div>
                           
                           <p className="text-sm text-gray-600 mt-1">{file.candidateTitle}</p>
@@ -484,11 +379,7 @@ export default function CompetenceFilesPage() {
                       </div>
                       
                       <div className="flex items-center space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handlePreview(file)}
-                        >
+                        <Button variant="outline" size="sm">
                           <Eye className="h-4 w-4 mr-1" />
                           Preview
                         </Button>
@@ -502,55 +393,9 @@ export default function CompetenceFilesPage() {
                           <Download className="h-4 w-4 mr-1" />
                           Download
                         </Button>
-                        
-                        {/* Actions Dropdown */}
-                        <div className="relative">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => setShowActions(showActions === file.id ? null : file.id)}
-                          >
+                        <Button variant="ghost" size="sm">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
-                          
-                          {showActions === file.id && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                              <div className="py-1">
-                                <button
-                                  onClick={() => {
-                                    handleModify(file);
-                                    setShowActions(null);
-                                  }}
-                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                  <Edit className="h-4 w-4 mr-3" />
-                                  Modify
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    handlePreview(file);
-                                    setShowActions(null);
-                                  }}
-                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                  <ExternalLink className="h-4 w-4 mr-3" />
-                                  Open Preview
-                                </button>
-                                <div className="border-t border-gray-100"></div>
-                                <button
-                                  onClick={() => {
-                                    handleDelete(file);
-                                    setShowActions(null);
-                                  }}
-                                  className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-3" />
-                                  Delete
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -588,22 +433,14 @@ export default function CompetenceFilesPage() {
                         <div className="flex-1">
                           <div className="flex items-center space-x-3">
                             <h3 className="font-semibold text-gray-900">{template.name}</h3>
-                            <div className="flex items-center space-x-2">
-                              <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-200 font-medium text-xs px-3 py-1 rounded-full shadow-sm">
-                                <div className="flex items-center space-x-1">
-                                  <div className="w-1.5 h-1.5 bg-emerald-600 rounded-full"></div>
-                                  <span>Active</span>
-                                </div>
+                            <Badge className="bg-green-100 text-green-800">
+                              {template.status}
                             </Badge>
                             {template.isClientSpecific && (
-                                <Badge variant="outline" className="text-xs border-purple-200 text-purple-700 bg-purple-50 px-2 py-1 rounded-full">
-                                  <div className="flex items-center space-x-1">
-                                    <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
-                                    <span>Client-specific</span>
-                                  </div>
+                              <Badge variant="outline" className="text-xs">
+                                Client-specific
                               </Badge>
                             )}
-                            </div>
                           </div>
                           
                           {template.description && (
@@ -654,19 +491,8 @@ export default function CompetenceFilesPage() {
       {/* Create Modals */}
       <CreateCompetenceFileModal
         isOpen={isCreateModalOpen}
-        onClose={() => {
-          setIsCreateModalOpen(false);
-          setSelectedFile(null);
-        }}
-        onSuccess={(message) => {
-          console.log('✅ Competence file generated:', message);
-          setSelectedFile(null);
-          // Add a small delay to ensure the database operation is complete
-          setTimeout(() => {
-            fetchCompetenceFiles(); // Refresh the list
-          }, 500);
-        }}
-        preselectedCandidate={selectedFile?.candidateData || null}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={handleCreateFile}
       />
       
       <CreateTemplateModal

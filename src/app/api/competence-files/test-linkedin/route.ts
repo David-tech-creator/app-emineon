@@ -8,13 +8,19 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
+    // Check authentication - REQUIRED for all users
     const { userId } = auth();
+    
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      console.log('❌ Authentication required for test LinkedIn parsing');
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        message: 'Authentication required to access this endpoint'
+      }, { status: 401 });
     }
 
-    console.log('🔗 LinkedIn parsing endpoint called');
+    console.log('✅ User authenticated for test LinkedIn parsing:', userId);
+    console.log('🔗 Test LinkedIn parsing endpoint called');
 
     const body = await request.json();
     const { linkedinText } = body;
@@ -107,7 +113,7 @@ Return ONLY the JSON object, no additional text or formatting.`
       }
 
       // Add metadata
-      candidateData.id = `linkedin_${Date.now()}`;
+      candidateData.id = `linkedin_test_${Date.now()}`;
       candidateData.source = 'linkedin_import';
       candidateData.originalText = linkedinText.substring(0, 500) + '...'; // Store first 500 chars for reference
 
@@ -142,8 +148,8 @@ Return ONLY the JSON object, no additional text or formatting.`
 
 export async function GET() {
   return NextResponse.json({
-    message: 'LinkedIn parsing endpoint',
+    message: 'Test LinkedIn parsing endpoint',
     methods: ['POST'],
-    description: 'Parse LinkedIn profile text to extract candidate information'
+    description: 'Parse LinkedIn profile text to extract candidate information (authentication required)'
   });
 } 
