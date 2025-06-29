@@ -255,4 +255,13 @@ export interface CandidateData {
   }>;
   education: string[];
   languages: string[];
+}
+
+export interface JobDescription {
+  text: string;
+  requirements: string[];
+  skills: string[];
+  responsibilities: string;
+  title?: string;
+  company?: string;
 } 

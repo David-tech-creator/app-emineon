@@ -97,6 +97,7 @@ model Candidate {
   shareWithClient       DateTime?
   competenceFiles       CompetenceFile[]
   projectCandidates     ProjectCandidate[]
+  enrichmentJobs        EnrichmentJob[]
 
   @@map("candidates")
 }
@@ -1103,7 +1104,7 @@ model CompetenceFile {
   downloadUrl       String
   format            String                   // 'pdf', 'docx', etc.
   fileSize          Int?
-  status            CompetenceFileStatus     @default(GENERATED)
+  status            CompetenceFileStatus     @default(DRAFT)
   version           Int                      @default(1)
   downloadCount     Int                      @default(0)
   isAnonymized      Boolean                  @default(false)
@@ -1124,7 +1125,27 @@ model CompetenceFile {
 
 enum CompetenceFileStatus {
   DRAFT
-  GENERATED
-  ARCHIVED
-  FAILED
+  GENERATING
+  READY
+  ERROR
+}
+
+model EnrichmentJob {
+  id             String   @id @default(cuid())
+  candidateId    String
+  candidate      Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  type           String   // 'summary' | 'skills' | 'experience' | 'areas-of-expertise' | etc.
+  status         String   // 'pending' | 'in_progress' | 'completed' | 'error'
+  startedAt      DateTime?
+  completedAt    DateTime?
+  result         Json?    // Store the enriched content
+  error          String?  // Error message if failed
+  retryCount     Int      @default(0)
+  maxRetries     Int      @default(3)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  @@index([candidateId, type])
+  @@index([status])
+  @@map("enrichment_jobs")
 }

@@ -974,32 +974,10 @@ async function generateSectionContentWithAI(sectionType: string, candidateData: 
   }
 }
 
-// Function to generate content for a specific section (fallback/basic version)
+// Function to generate content for a specific section (only factual content - no fabrication)
 function generateSectionContent(sectionType: string, candidateData: CandidateData, template?: string): string {
-  switch (sectionType) {
-    case 'header':
-      return generateHeaderContent(candidateData);
-    case 'summary':
-      return generateSummaryContent(candidateData);
-    case 'functional-skills':
-      return generateFunctionalSkillsContent(candidateData, template);
-    case 'technical-skills':
-      return generateTechnicalSkillsContent(candidateData, template);
-    case 'areas-of-expertise':
-      return generateAreasOfExpertiseContent(candidateData, template);
-    case 'experience':
-      return generateExperienceContent(candidateData);
-    case 'experiences-summary':
-      return generateExperiencesSummaryContent(candidateData);
-    case 'education':
-      return generateEducationContent(candidateData);
-    case 'certifications':
-      return generateCertificationsContent(candidateData);
-    case 'languages':
-      return generateLanguagesContent(candidateData);
-    default:
-      return '';
-  }
+  // Always use factual content generator - no fabricated content allowed
+  return generateFactualContent(sectionType, candidateData);
 }
 
 // Function to create separate experience sections with detailed structure
@@ -1050,16 +1028,8 @@ ${generateTechnicalEnvironment(candidateData.skills || [])}`;
 
 // Helper functions for experience sections
 function generateCompanyDescription(company: string, candidateData: CandidateData): string {
-  // Generate contextual company description
-  if (company.toLowerCase().includes('bank') || company.toLowerCase().includes('financial')) {
-    return 'Leading financial services organization focused on digital transformation and customer-centric solutions.';
-  } else if (company.toLowerCase().includes('tech') || company.toLowerCase().includes('software')) {
-    return 'Innovative technology company specializing in cutting-edge software solutions and digital products.';
-  } else if (company.toLowerCase().includes('consulting')) {
-    return 'Premier consulting firm providing strategic advisory services and technology implementation solutions.';
-  } else {
-    return 'Dynamic organization focused on innovation, growth, and delivering exceptional value to clients and stakeholders.';
-  }
+  // Only use actual information - no fabrication
+  return `${company} - Professional work environment where candidate gained relevant experience and applied their skills.`;
 }
 
 function formatResponsibilities(responsibilities: string): string {

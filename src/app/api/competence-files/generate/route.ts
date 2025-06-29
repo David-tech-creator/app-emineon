@@ -5,6 +5,7 @@ import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { put } from '@vercel/blob';
 import { competenceEnrichmentService, type EnrichedContent } from '@/lib/ai/competence-enrichment';
+import { CompetenceFileStatus } from '@prisma/client';
 
 // Function to extract client information from job description
 function extractClientInfo(jobDescription?: JobDescription): { client: string; jobTitle: string } {
@@ -2335,10 +2336,10 @@ export async function POST(request: NextRequest) {
     // Extract client information from job description
     const { client, jobTitle } = extractClientInfo(jobDescription);
 
-    // 🤖 AI ENRICHMENT: OPTIMIZED - Use cached results when possible
+    // 🚀 QUEUE-BASED AI ENRICHMENT: Use Redis queue for scalable processing
     let enrichedContent: EnrichedContent | undefined;
     
-    // OPTIMIZED: Only run AI enrichment for PDF generation, skip for drafts
+    // CRITICAL: Only proceed with AI-generated content - NO FALLBACKS
     if (!saveOnly && format === 'pdf') {
       if (!process.env.OPENAI_API_KEY) {
         console.error('❌ CRITICAL: OpenAI API key is required for AI enrichment!');
@@ -2349,54 +2350,83 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        // Create cache key for this specific candidate+job combination
-        const cacheKey = `${candidateData.id || candidateData.fullName}-${jobDescription?.text?.substring(0, 100) || 'no-job'}-${template}`;
+        console.log('🚀 Starting QUEUE-BASED AI enrichment for ultra-fast processing...');
+        const startTime = Date.now();
         
-        console.log('⚡ Running OPTIMIZED AI enrichment for PDF generation...');
+        // Import the queue service dynamically to avoid initialization issues
+        const { enrichmentQueueService, EnrichmentJobType, EnrichmentJobPriority } = await import('@/lib/services/enrichment-queue');
         
-        // PERFORMANCE OPTIMIZATION: Use the main enrichment method but with timeout
-        const enrichmentPromise = competenceEnrichmentService.enrichCandidateForJob(
-          candidateData,
-          jobDescription,
-          client
+        // Create unique session ID for tracking
+        const sessionId = `cf-${candidateData.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Submit job to high-priority queue for immediate processing
+        const jobId = await enrichmentQueueService.addJob(
+          EnrichmentJobType.COMPETENCE_FILE_GENERATION,
+          {
+            type: EnrichmentJobType.COMPETENCE_FILE_GENERATION,
+            candidateData,
+            jobDescription,
+            userId,
+            clientName: client,
+            template,
+            sessionId,
+            sections: sections?.map((s: any) => s.type) || [],
+            format,
+            managerContact,
+            metadata: {
+              requestTime: new Date().toISOString(),
+              userAgent: request.headers.get('user-agent'),
+            }
+          },
+          EnrichmentJobPriority.HIGH, // High priority for immediate processing
+          0 // No delay
         );
+
+        console.log(`✅ Job queued with ID: ${jobId}, Session: ${sessionId}`);
+
+        // For immediate processing, we'll wait for the job to complete
+        // This provides the performance benefits of parallel processing while maintaining sync response
+        let attempts = 0;
+        const maxAttempts = 30; // 30 seconds max wait
         
-        // Add timeout to prevent hanging
-        enrichedContent = await Promise.race([
-          enrichmentPromise,
-          new Promise<EnrichedContent>((_, reject) => 
-            setTimeout(() => reject(new Error('AI enrichment timeout')), 15000)
-          )
-        ]);
+        while (attempts < maxAttempts) {
+          const jobStatus = await enrichmentQueueService.getJobStatus(sessionId);
+          
+          if (jobStatus?.status === 'completed') {
+            enrichedContent = jobStatus.result;
+            const processingTime = Date.now() - startTime;
+            console.log(`🎉 QUEUE-BASED enrichment completed in ${processingTime}ms`);
+            break;
+          } else if (jobStatus?.status === 'failed') {
+            throw new Error(`Queue job failed: ${jobStatus.error}`);
+          }
+          
+          // Wait 1 second before checking again
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          attempts++;
+        }
+
+        if (!enrichedContent) {
+          throw new Error('Queue processing timeout - job did not complete within 30 seconds');
+        }
         
         // Update candidate data with AI-enhanced summary
         if (enrichedContent?.enhancedSummary) {
           candidateData.summary = enrichedContent.enhancedSummary;
         }
         
-        console.log('✅ OPTIMIZED AI enrichment completed with timeout protection');
-        
       } catch (enrichmentError) {
-        console.error('❌ AI enrichment failed, using fallback content:', enrichmentError);
-        // FALLBACK: Continue with basic content instead of failing completely
-        enrichedContent = {
-          enhancedSummary: candidateData.summary || `Experienced ${candidateData.currentTitle} with ${candidateData.yearsOfExperience || 'multiple'} years of experience.`,
-          optimizedSkills: { 
-            functional: candidateData.skills?.slice(0, 6) || [], 
-            technical: candidateData.skills?.slice(6, 12) || [],
-            leadership: candidateData.skills?.filter((skill: string) => 
-              skill.toLowerCase().includes('lead') || skill.toLowerCase().includes('manage')
-            ) || []
+        console.error('❌ CRITICAL: AI enrichment failed completely:', enrichmentError);
+        
+        // NO FALLBACKS - Return error to ensure only AI content is used
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: 'AI enrichment failed. Only AI-generated content is allowed. Please try again or contact support.',
+            error: enrichmentError instanceof Error ? enrichmentError.message : 'Unknown enrichment error'
           },
-          optimizedCertifications: candidateData.certifications || [],
-          optimizedEducation: candidateData.education || [],
-          areasOfExpertise: candidateData.skills?.slice(0, 6) || [],
-          enrichedExperience: [],
-          valueProposition: `Professional ${candidateData.currentTitle} with proven expertise`,
-          optimizedCoreCompetencies: candidateData.skills?.slice(0, 8) || [],
-          optimizedTechnicalExpertise: candidateData.skills?.slice(8) || []
-        };
-        console.log('🔄 Using fallback enriched content');
+          { status: 500 }
+        );
       }
     }
 
@@ -2442,7 +2472,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate HTML content based on template with AI enrichment
+    // Generate HTML content based on template with ONLY AI enrichment
     let htmlContent: string;
     if (template === 'antaes' || template === 'cf-antaes-consulting') {
       htmlContent = generateAntaesCompetenceFileHTML(candidateData, sections, jobDescription, managerContact, enrichedContent);
@@ -2484,126 +2514,68 @@ export async function POST(request: NextRequest) {
     const filename = `${candidateData.fullName.replace(/[^a-zA-Z0-9]/g, '_')}_${client.replace(/[^a-zA-Z0-9]/g, '_')}_Competence_File.${fileFormat}`;
 
     // OPTIMIZATION: Parallel file upload and database operations
-    let candidate: any = null;
-    let blob: any = null;
-
-    try {
-      // Start both operations in parallel
-      const [candidateResult, blobResult] = await Promise.all([
-        // Find or create candidate
-        prisma.candidate.findFirst({
-          where: {
-            OR: [
-              { id: candidateData.id },
-              { email: candidateData.email || '' },
-              { 
-                AND: [
-                  { firstName: candidateData.fullName.split(' ')[0] || '' },
-                  { lastName: candidateData.fullName.split(' ').slice(1).join(' ') || '' }
-                ]
-              }
-            ]
-          }
-        }),
-        // Upload file to Vercel Blob storage
-        put(
-          `competence-files/${filename}`,
-          fileBuffer,
-          {
-            contentType,
-            access: 'public',
-          }
-        )
-      ]);
-
-      candidate = candidateResult;
-      blob = blobResult;
-
-      // Create candidate if not found
-      if (!candidate) {
-        const email = candidateData.email || `${candidateData.fullName.replace(/\s+/g, '').toLowerCase()}@temp.generated`;
-        
-        candidate = await prisma.candidate.create({
-          data: {
-            firstName: candidateData.fullName.split(' ')[0] || 'Unknown',
-            lastName: candidateData.fullName.split(' ').slice(1).join(' ') || '',
-            email: email,
-            currentTitle: candidateData.currentTitle,
-            phone: candidateData.phone || null,
-            currentLocation: candidateData.location || null,
-            experienceYears: candidateData.yearsOfExperience || null,
-            summary: candidateData.summary || null,
-            technicalSkills: candidateData.skills || [],
-            certifications: candidateData.certifications || [],
-            spokenLanguages: candidateData.languages || [],
-            lastUpdated: new Date(),
-            status: 'ACTIVE'
-          }
-        });
-      }
-
-      // OPTIMIZATION: Simplified template lookup and competence file creation
-      if (candidate) {
-        // Simple template ID lookup (only if needed)
-        let templateId = null;
-        if (template === 'antaes' || template === 'cf-antaes-consulting') {
-          const antaesTemplate = await prisma.competenceFileTemplate.findFirst({
-            where: { name: { contains: 'Antaes', mode: 'insensitive' } },
-            select: { id: true } // Only select the ID for performance
-          });
-          templateId = antaesTemplate?.id || null;
+    const [uploadResult] = await Promise.all([
+      // Upload to Vercel Blob
+      put(filename, fileBuffer, {
+        access: 'public',
+        contentType: contentType,
+      }),
+      
+      // Save to database (if not draft)
+      !saveOnly ? prisma.competenceFile.create({
+        data: {
+          fileName: filename,
+          candidateId: candidateData.id,
+          templateId: null,
+          filePath: filename,
+          downloadUrl: '', // Will be updated with blob URL
+          format: fileFormat,
+          status: CompetenceFileStatus.READY,
+          version: 1,
+          metadata: {
+            client,
+            jobTitle,
+            template,
+            sectionsCount: sections?.length || 0,
+            hasJobDescription: !!jobDescription,
+            aiEnriched: true
+          },
+          sectionsConfig: sections || null,
+          generatedBy: userId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         }
-
-        // Save competence file record (optimized)
-        await prisma.competenceFile.create({
-          data: {
-            candidateId: candidate.id,
-            templateId,
-            fileName: filename,
-            filePath: blob.pathname,
-            downloadUrl: blob.url,
-            format: fileFormat,
-            fileSize: fileBuffer.length,
-            status: 'GENERATED',
-            version: 1,
-            downloadCount: 0,
-            isAnonymized: false,
-            metadata: {
-              client,
-              jobTitle,
-              template,
-              sectionsCount: sections?.length || 0,
-              hasJobDescription: !!jobDescription,
-              optimized: true
-            },
-            sectionsConfig: sections || null,
-            generatedBy: userId
-          }
+      }).then(async (competenceFile) => {
+        // Update with the actual blob URL
+        await prisma.competenceFile.update({
+          where: { id: competenceFile.id },
+          data: { downloadUrl: uploadResult.url }
         });
-      }
+        return competenceFile;
+      }) : Promise.resolve(null)
+    ]);
 
-    } catch (storageError) {
-      console.error('❌ Failed to save file:', storageError);
-      // Continue with direct download even if storage fails
-    }
+    console.log('✅ QUEUE-OPTIMIZED competence file generation completed successfully');
 
-    // Return file for download
-    return new NextResponse(fileBuffer, {
-        status: 200,
-        headers: {
-        'Content-Type': contentType,
-          'Content-Disposition': `attachment; filename="${filename}"`,
-        'Content-Length': fileBuffer.length.toString(),
-        },
-      });
+    return NextResponse.json({
+      success: true,
+      message: 'Competence file generated successfully with AI enrichment',
+      fileUrl: uploadResult.url,
+      filename: filename,
+      format: fileFormat,
+      client: client,
+      jobTitle: jobTitle,
+      aiEnriched: true,
+      processingMethod: 'queue-based'
+    });
 
   } catch (error) {
-    console.error('💥 Error generating competence file:', error);
-    
+    console.error('❌ Competence file generation failed:', error);
     return NextResponse.json(
       { 
         success: false, 
-        message: error instanceof Error ? error.message : 'Failed to generate competence file'
+        message: 'Failed to generate competence file',
+        error: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );

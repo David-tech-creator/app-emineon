@@ -62,13 +62,12 @@ export interface EnrichedContent {
 export class CompetenceEnrichmentService {
   
   /**
-   * Generic retry wrapper for OpenAI API calls - ALWAYS succeeds
+   * Generic retry wrapper for OpenAI API calls - FAILS if AI cannot generate content
    */
   private async retryWithOpenAI<T>(
     operation: () => Promise<T>,
-    fallback: () => T,
     operationName: string,
-    maxRetries: number = 5
+    maxRetries: number = 3
   ): Promise<T> {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -80,70 +79,98 @@ export class CompetenceEnrichmentService {
         console.warn(`⚠️ ${operationName} - Attempt ${attempt} failed:`, error);
         
         if (attempt === maxRetries) {
-          console.log(`🔄 ${operationName} - All retries exhausted, using intelligent fallback`);
-          return fallback();
+          console.error(`❌ ${operationName} - All retries exhausted, NO FALLBACKS - AI generation required`);
+          throw new Error(`AI generation failed for ${operationName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
         
-        // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+        // Exponential backoff: 1s, 2s, 4s
         const delay = Math.pow(2, attempt - 1) * 1000;
         console.log(`⏳ ${operationName} - Waiting ${delay}ms before retry...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
     
-    // This should never be reached, but TypeScript requires it
-    return fallback();
+    // This should never be reached due to throw above
+    throw new Error(`AI generation failed for ${operationName}: Maximum retries exceeded`);
   }
 
   /**
    * Main enrichment function that processes candidate data with job description context
+   * OPTIMIZED: Uses parallel processing for maximum speed
    */
   async enrichCandidateForJob(
     candidateData: CandidateData,
     jobDescription?: JobDescription,
     clientName?: string
   ): Promise<EnrichedContent> {
-    console.log('🤖 Starting comprehensive AI enrichment for competence file...');
+    console.log('🚀 Starting ULTRA-FAST parallel AI enrichment for competence file...');
+    const startTime = Date.now();
     
-    // Step 1: Analyze job requirements if provided (ALWAYS succeeds)
-    const jobAnalysis = jobDescription ? await this.analyzeJobRequirementsWithRetry(jobDescription) : null;
-    
-    // Step 2: Generate enhanced professional summary (ALWAYS succeeds)
-    const enhancedSummary = await this.generateEnhancedSummaryWithRetry(candidateData, jobDescription, clientName);
-    
-    // Step 3: Optimize and categorize skills (ALWAYS succeeds)
-    const optimizedSkills = await this.optimizeSkillsWithRetry(candidateData, jobAnalysis);
-    
-    // Step 4: Enrich work experience with detailed achievements (ALWAYS succeeds)
-    const enrichedExperience = await this.enrichWorkExperienceWithRetry(candidateData, jobAnalysis);
-    
-    // Step 5: Generate areas of expertise (ALWAYS succeeds)
-    const areasOfExpertise = await this.generateAreasOfExpertiseWithRetry(candidateData, jobDescription);
-    
-    // Step 6: Optimize academic background and certifications (ALWAYS succeeds)
-    const optimizedEducation = await this.optimizeEducationWithRetry(candidateData, jobDescription);
-    const optimizedCertifications = await this.optimizeCertificationsWithRetry(candidateData, jobDescription);
-    
-    // Step 7: Optimize Core Competencies and Technical Expertise (ALWAYS succeeds)
-    const optimizedCoreCompetencies = await this.optimizeCoreCompetenciesWithRetry(candidateData, jobDescription);
-    const optimizedTechnicalExpertise = await this.optimizeTechnicalExpertiseWithRetry(candidateData, jobDescription);
-    
-    // Step 8: Create value proposition (ALWAYS succeeds)
-    const valueProposition = await this.generateValuePropositionWithRetry(candidateData, jobDescription, clientName);
-    
-    console.log('✅ AI enrichment completed successfully');
-    
-    return {
-      enhancedSummary,
-      optimizedSkills,
-      enrichedExperience,
-      areasOfExpertise,
-      valueProposition,
-      optimizedEducation,
-      optimizedCertifications,
-      optimizedCoreCompetencies,
-      optimizedTechnicalExpertise
-    };
+    try {
+      // PARALLEL PROCESSING: Execute all AI operations simultaneously for maximum speed
+      const [
+        jobAnalysis,
+        enhancedSummary,
+        optimizedSkills,
+        enrichedExperience,
+        areasOfExpertise,
+        optimizedEducation,
+        optimizedCertifications,
+        optimizedCoreCompetencies,
+        optimizedTechnicalExpertise,
+        valueProposition
+      ] = await Promise.all([
+        // Step 1: Analyze job requirements (if provided)
+        jobDescription ? this.analyzeJobRequirementsWithRetry(jobDescription) : Promise.resolve(null),
+        
+        // Step 2: Generate enhanced professional summary
+        this.generateEnhancedSummaryWithRetry(candidateData, jobDescription, clientName),
+        
+        // Step 3: Optimize and categorize skills
+        this.optimizeSkillsWithRetry(candidateData, null), // Will get jobAnalysis later if needed
+        
+        // Step 4: Enrich work experience with detailed achievements
+        this.enrichWorkExperienceWithRetry(candidateData, null), // Will get jobAnalysis later if needed
+        
+        // Step 5: Generate areas of expertise
+        this.generateAreasOfExpertiseWithRetry(candidateData, jobDescription),
+        
+        // Step 6: Optimize academic background
+        this.optimizeEducationWithRetry(candidateData, jobDescription),
+        
+        // Step 7: Optimize certifications
+        this.optimizeCertificationsWithRetry(candidateData, jobDescription),
+        
+        // Step 8: Optimize Core Competencies
+        this.optimizeCoreCompetenciesWithRetry(candidateData, jobDescription),
+        
+        // Step 9: Optimize Technical Expertise
+        this.optimizeTechnicalExpertiseWithRetry(candidateData, jobDescription),
+        
+        // Step 10: Create value proposition
+        this.generateValuePropositionWithRetry(candidateData, jobDescription, clientName)
+      ]);
+      
+      const processingTime = Date.now() - startTime;
+      console.log(`✅ ULTRA-FAST parallel AI enrichment completed in ${processingTime}ms`);
+      
+      return {
+        enhancedSummary,
+        optimizedSkills,
+        enrichedExperience,
+        areasOfExpertise,
+        valueProposition,
+        optimizedEducation,
+        optimizedCertifications,
+        optimizedCoreCompetencies,
+        optimizedTechnicalExpertise
+      };
+      
+    } catch (error) {
+      const processingTime = Date.now() - startTime;
+      console.error(`❌ AI enrichment failed after ${processingTime}ms:`, error);
+      throw error; // Re-throw to ensure no fallbacks are used
+    }
   }
 
   /**
@@ -152,7 +179,6 @@ export class CompetenceEnrichmentService {
   private async analyzeJobRequirementsWithRetry(jobDescription: JobDescription) {
     return this.retryWithOpenAI(
       () => this.analyzeJobRequirements(jobDescription),
-      () => this.getFallbackJobAnalysis(),
       'Job Requirements Analysis'
     );
   }
@@ -160,7 +186,6 @@ export class CompetenceEnrichmentService {
   private async generateEnhancedSummaryWithRetry(candidateData: CandidateData, jobDescription?: JobDescription, clientName?: string) {
     return this.retryWithOpenAI(
       () => this.generateEnhancedSummary(candidateData, jobDescription, clientName),
-      () => candidateData.summary || `${candidateData.fullName} brings ${candidateData.yearsOfExperience || 'extensive'} years of proven expertise in ${candidateData.currentTitle} roles, with a track record of delivering innovative solutions and driving business growth. Their unique combination of technical excellence and strategic thinking makes them ideally positioned to contribute immediately to your organization's success.`,
       'Enhanced Summary Generation'
     );
   }
@@ -168,7 +193,6 @@ export class CompetenceEnrichmentService {
   private async optimizeSkillsWithRetry(candidateData: CandidateData, jobAnalysis: any) {
     return this.retryWithOpenAI(
       () => this.optimizeSkills(candidateData, jobAnalysis),
-      () => this.getFallbackSkills(candidateData),
       'Skills Optimization'
     );
   }
@@ -176,15 +200,6 @@ export class CompetenceEnrichmentService {
   private async enrichWorkExperienceWithRetry(candidateData: CandidateData, jobAnalysis: any) {
     return this.retryWithOpenAI(
       () => this.enrichWorkExperience(candidateData, jobAnalysis),
-      () => candidateData.experience.slice(0, 4).map(exp => ({
-        company: exp.company,
-        title: exp.title,
-        period: `${exp.startDate} - ${exp.endDate}`,
-        enhancedDescription: exp.responsibilities,
-        keyAchievements: [`Delivered exceptional results in ${exp.title} role`, `Contributed to organizational success at ${exp.company}`, `Applied professional expertise to drive business outcomes`],
-        technicalEnvironment: candidateData.skills.slice(0, 5),
-        responsibilities: [`Managed daily operations and responsibilities`, `Collaborated with team members and stakeholders`, `Delivered quality results and met objectives`]
-      })),
       'Work Experience Enrichment'
     );
   }
@@ -192,7 +207,6 @@ export class CompetenceEnrichmentService {
   private async generateAreasOfExpertiseWithRetry(candidateData: CandidateData, jobDescription?: JobDescription) {
     return this.retryWithOpenAI(
       () => this.generateAreasOfExpertise(candidateData, jobDescription),
-      () => this.getFallbackAreasOfExpertise(candidateData),
       'Areas of Expertise Generation'
     );
   }
@@ -200,7 +214,6 @@ export class CompetenceEnrichmentService {
   private async optimizeEducationWithRetry(candidateData: CandidateData, jobDescription?: JobDescription) {
     return this.retryWithOpenAI(
       () => this.optimizeEducation(candidateData, jobDescription),
-      () => candidateData.education || [],
       'Education Optimization'
     );
   }
@@ -208,7 +221,6 @@ export class CompetenceEnrichmentService {
   private async optimizeCertificationsWithRetry(candidateData: CandidateData, jobDescription?: JobDescription) {
     return this.retryWithOpenAI(
       () => this.optimizeCertifications(candidateData, jobDescription),
-      () => candidateData.certifications || [],
       'Certifications Optimization'
     );
   }
@@ -216,7 +228,6 @@ export class CompetenceEnrichmentService {
   private async optimizeCoreCompetenciesWithRetry(candidateData: CandidateData, jobDescription?: JobDescription) {
     return this.retryWithOpenAI(
       () => this.optimizeCoreCompetencies(candidateData, jobDescription),
-      () => candidateData.skills.slice(0, 8),
       'Core Competencies Optimization'
     );
   }
@@ -224,14 +235,6 @@ export class CompetenceEnrichmentService {
   private async optimizeTechnicalExpertiseWithRetry(candidateData: CandidateData, jobDescription?: JobDescription) {
     return this.retryWithOpenAI(
       () => this.optimizeTechnicalExpertise(candidateData, jobDescription),
-      () => candidateData.skills.filter(skill => 
-        skill.toLowerCase().includes('javascript') || 
-        skill.toLowerCase().includes('python') || 
-        skill.toLowerCase().includes('sql') ||
-        skill.toLowerCase().includes('aws') ||
-        skill.toLowerCase().includes('react') ||
-        skill.toLowerCase().includes('node')
-      ).slice(0, 6),
       'Technical Expertise Optimization'
     );
   }
@@ -239,7 +242,6 @@ export class CompetenceEnrichmentService {
   private async generateValuePropositionWithRetry(candidateData: CandidateData, jobDescription?: JobDescription, clientName?: string) {
     return this.retryWithOpenAI(
       () => this.generateValueProposition(candidateData, jobDescription, clientName),
-      () => `${candidateData.fullName} delivers proven expertise in ${candidateData.currentTitle} roles with a strong track record of driving results and innovation. Their comprehensive skill set and professional experience position them to make an immediate impact and contribute to organizational success.`,
       'Value Proposition Generation'
     );
   }
@@ -935,83 +937,6 @@ Focus on business impact and measurable value delivery.`;
       throw new Error('No value proposition generated');
     }
     return result;
-  }
-
-  /**
-   * Fallback methods - intelligent defaults based on candidate data
-   */
-  private getFallbackJobAnalysis() {
-    return {
-      keySkillsRequired: ["Professional Skills", "Technical Expertise"],
-      experienceEmphasis: ["Professional Experience", "Technical Leadership"],
-      industryContext: "Technology",
-      seniorityLevel: "mid",
-      technicalFocus: ["Software Development", "Technical Solutions"],
-      softSkillsNeeded: ["Communication", "Problem Solving"],
-      clientFacing: false,
-      leadershipRequired: false
-    };
-  }
-
-  private getFallbackSkills(candidateData: CandidateData) {
-    const allSkills = candidateData.skills || [];
-    
-    // Smart categorization based on common patterns
-    const technical = allSkills.filter(skill => 
-      /javascript|python|java|react|node|sql|aws|azure|docker|kubernetes|git|programming|software|development|technical|system|database|cloud|api|framework|library|tool/i.test(skill)
-    );
-    
-    const functional = allSkills.filter(skill => 
-      /management|analysis|design|strategy|planning|coordination|communication|business|process|project|marketing|sales|finance|operations|consulting/i.test(skill)
-    );
-    
-    const leadership = allSkills.filter(skill => 
-      /leadership|management|mentoring|team|project|supervision|direction|guidance|coaching|strategic/i.test(skill)
-    );
-    
-    return {
-      technical: technical.length > 0 ? technical : ["Technical Skills", "Professional Tools"],
-      functional: functional.length > 0 ? functional : ["Professional Skills", "Business Acumen"],
-      leadership: leadership.length > 0 ? leadership : ["Team Collaboration", "Professional Communication"]
-    };
-  }
-
-  private getFallbackAreasOfExpertise(candidateData: CandidateData) {
-    const areas = [];
-    
-    if (candidateData.currentTitle) {
-      areas.push(`${candidateData.currentTitle} Excellence`);
-    }
-    
-    if (candidateData.skills && candidateData.skills.length > 0) {
-      areas.push("Technical Expertise");
-      areas.push("Professional Development");
-      
-      // Add skill-specific areas
-      candidateData.skills.forEach(skill => {
-        areas.push(`${skill} Proficiency`);
-      });
-    }
-    
-    if (candidateData.experience && candidateData.experience.length > 0) {
-      areas.push("Industry Experience");
-      areas.push("Project Management");
-      
-      // Add company-specific experience
-      const uniqueCompanies = Array.from(new Set(candidateData.experience.map(exp => exp.company)));
-      uniqueCompanies.forEach(company => {
-        areas.push(`${company} Experience`);
-      });
-    }
-    
-    return areas.length > 0 ? areas : [
-      "Professional Excellence",
-      "Technical Skills",
-      "Problem Solving",
-      "Team Collaboration",
-      "Business Development",
-      "Strategic Planning"
-    ];
   }
 
   /**
