@@ -270,13 +270,13 @@ function SortableSectionEditor({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-                  body: JSON.stringify({
-            type,
-            sectionType: section.type,
-            currentContent: section.content,
-            candidateData,
+        body: JSON.stringify({
+          type,
+          sectionType: section.type,
+          currentContent: section.content,
+          candidateData,
             jobDescription: jobDescription?.text ? jobDescription : undefined,
-          }),
+        }),
       });
       
       console.log('📡 API Response status:', response.status);
@@ -593,7 +593,7 @@ function generateFunctionalSkillsContent(candidateData: CandidateData, template?
   
   // Antaes template now uses same categorization as Emineon
   if (template === 'antaes') {
-    return `**Delivery & Project Management**
+  return `**Delivery & Project Management**
 • Project planning and execution
 • Stakeholder management and communication
 • Risk assessment and mitigation strategies
@@ -610,8 +610,8 @@ Expertise in managing service delivery and coordinating releases across multiple
 • User story creation and prioritization
 • Cross-functional team collaboration
 Strong background in product strategy and working with development teams to deliver user-focused solutions.`;
-  }
-  
+}
+
   // Default Emineon template structure
   return `**Delivery & Project Management**
 • Project planning and execution
@@ -810,13 +810,20 @@ ${candidateData.languages && candidateData.languages.length > 0
 `;
 }
 
-// AI-powered content generation function
-async function generateAIContent(sectionType: string, candidateData: CandidateData, getToken: () => Promise<string | null>): Promise<string> {
+// Function to generate content for a specific section with AI enrichment
+async function generateSectionContentWithAI(sectionType: string, candidateData: CandidateData, template?: string, jobDescription?: JobDescription, getToken?: () => Promise<string | null>): Promise<string> {
+  // Always try AI enrichment - no fallbacks to basic content
+  if (!getToken) {
+    throw new Error('AI content generation requires authentication');
+  }
+  
   try {
     const token = await getToken();
     if (!token) {
-      throw new Error('Authentication required');
+      throw new Error('Authentication token not available for AI content generation');
     }
+    
+    console.log(`🤖 Generating AI content for section: ${sectionType}`);
 
     const response = await fetch('/api/ai/generate-suggestion', {
       method: 'POST',
@@ -829,23 +836,29 @@ async function generateAIContent(sectionType: string, candidateData: CandidateDa
         sectionType,
         currentContent: '',
         candidateData,
+        jobDescription: jobDescription?.text ? jobDescription : undefined,
       }),
     });
 
-    if (response.ok) {
-      const { suggestion } = await response.json();
-      return suggestion || generateSectionContent(sectionType, candidateData, undefined);
-    } else {
-      console.warn(`AI generation failed for ${sectionType}, falling back to default`);
-      return generateSectionContent(sectionType, candidateData, undefined);
+    if (!response.ok) {
+      throw new Error(`AI service returned ${response.status}: ${response.statusText}`);
     }
+    
+      const { suggestion } = await response.json();
+    if (!suggestion || !suggestion.trim()) {
+      throw new Error('AI service returned empty content');
+    }
+    
+    console.log(`✅ AI content generated for ${sectionType}`);
+    return suggestion;
   } catch (error) {
-    console.warn(`AI generation error for ${sectionType}:`, error);
-    return generateSectionContent(sectionType, candidateData, undefined);
+    console.error(`💥 AI generation failed for ${sectionType}:`, error);
+    // Return error message instead of fallback content
+    return `⚠️ AI content generation failed for this section. Please try refreshing or contact support if the issue persists.\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`;
   }
 }
 
-// Function to generate content for a specific section
+// Function to generate content for a specific section (fallback/basic version)
 function generateSectionContent(sectionType: string, candidateData: CandidateData, template?: string): string {
   switch (sectionType) {
     case 'header':
@@ -1016,6 +1029,11 @@ export function CreateCompetenceFileModal({
   const [customElements, setCustomElements] = useState<string[]>([]);
   const [newElementInput, setNewElementInput] = useState('');
   
+  // Manager contact details
+  const [managerName, setManagerName] = useState('');
+  const [managerEmail, setManagerEmail] = useState('');
+  const [managerPhone, setManagerPhone] = useState('');
+  
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jobFileInputRef = useRef<HTMLInputElement>(null);
@@ -1179,7 +1197,7 @@ export function CreateCompetenceFileModal({
       setIsParsing(false);
     }
   };
-
+  
   // Pre-populate sections when candidate data changes
   useEffect(() => {
     if (selectedCandidate && currentStep >= 3) {
@@ -1191,39 +1209,56 @@ export function CreateCompetenceFileModal({
       // Create separate experience sections
       const experienceSections = createExperienceSections(selectedCandidate);
       
-      // Update existing sections with section-specific content
-      const updatedBaseSections = [
-        { id: 'header', type: 'header', title: sectionTitles.header, content: '', visible: true, order: 0, editable: true },
-        { id: 'summary', type: 'summary', title: sectionTitles.summary, content: '', visible: true, order: 1, editable: true },
-        { id: 'functional-skills', type: 'functional-skills', title: sectionTitles['functional-skills'], content: '', visible: true, order: 2, editable: true },
-        { id: 'technical-skills', type: 'technical-skills', title: sectionTitles['technical-skills'], content: '', visible: true, order: 3, editable: true },
-        { id: 'areas-of-expertise', type: 'areas-of-expertise', title: sectionTitles['areas-of-expertise'], content: '', visible: true, order: 4, editable: true },
-        { id: 'education', type: 'education', title: sectionTitles.education, content: '', visible: true, order: 5, editable: true },
-        { id: 'certifications', type: 'certifications', title: sectionTitles.certifications, content: '', visible: true, order: 6, editable: true },
-        { id: 'languages', type: 'languages', title: sectionTitles.languages, content: '', visible: true, order: 7, editable: true },
-        { id: 'experiences-summary', type: 'experiences-summary', title: sectionTitles['experiences-summary'], content: '', visible: true, order: 8, editable: true },
-      ].map(section => ({
+      // Update existing sections with AI-enhanced content - NO FALLBACKS
+      const populateSectionsWithAI = async () => {
+        try {
+          const updatedBaseSections = await Promise.all([
+            { id: 'header', type: 'header', title: sectionTitles.header, content: '', visible: true, order: 0, editable: true },
+            { id: 'summary', type: 'summary', title: sectionTitles.summary, content: '', visible: true, order: 1, editable: true },
+            { id: 'functional-skills', type: 'functional-skills', title: sectionTitles['functional-skills'], content: '', visible: true, order: 2, editable: true },
+            { id: 'technical-skills', type: 'technical-skills', title: sectionTitles['technical-skills'], content: '', visible: true, order: 3, editable: true },
+            { id: 'areas-of-expertise', type: 'areas-of-expertise', title: sectionTitles['areas-of-expertise'], content: '', visible: true, order: 4, editable: true },
+            { id: 'education', type: 'education', title: sectionTitles.education, content: '', visible: true, order: 5, editable: true },
+            { id: 'certifications', type: 'certifications', title: sectionTitles.certifications, content: '', visible: true, order: 6, editable: true },
+            { id: 'languages', type: 'languages', title: sectionTitles.languages, content: '', visible: true, order: 7, editable: true },
+            { id: 'experiences-summary', type: 'experiences-summary', title: sectionTitles['experiences-summary'], content: '', visible: true, order: 8, editable: true },
+          ].map(async (section) => ({
         ...section,
-        content: section.content || generateSectionContent(section.type, selectedCandidate, selectedTemplate)
+            content: await generateSectionContentWithAI(
+              section.type, 
+              selectedCandidate, 
+              selectedTemplate, 
+              jobDescription.text ? jobDescription : undefined,
+              getToken
+            )
+          })));
+          
+          // Update experience sections to have orders starting after the base sections
+          const updatedExperienceSections = experienceSections.map((section, index) => ({
+            ...section,
+            order: 9 + index // Start after the 9 base sections (0-8)
       }));
       
-      // Update experience sections to have orders starting after the base sections
-      const updatedExperienceSections = experienceSections.map((section, index) => ({
-        ...section,
-        order: 9 + index // Start after the 9 base sections (0-8)
-      }));
-      
-      // Combine base sections with experience sections - experiences come LAST
+          // Combine base sections with experience sections - experiences come LAST
       const allSections = [
         ...updatedBaseSections.slice(0, 5), // header, summary, functional-skills, technical-skills, areas-of-expertise
-        ...updatedBaseSections.slice(5), // education, certifications, languages, experiences-summary
-        ...updatedExperienceSections // individual experience blocks (PROFESSIONAL EXPERIENCES) - LAST
+            ...updatedBaseSections.slice(5), // education, certifications, languages, experiences-summary
+            ...updatedExperienceSections // individual experience blocks (PROFESSIONAL EXPERIENCES) - LAST
       ];
       
       setDocumentSections(allSections);
-      console.log('✅ Sections populated with separate experience blocks:', allSections.length, 'total sections');
+          console.log('✅ Sections populated with AI-enhanced content:', allSections.length, 'total sections');
+        } catch (error) {
+          console.error('💥 Critical error: AI content generation failed completely:', error);
+          // Show error to user instead of falling back
+          alert(`AI content generation failed. Please check your internet connection and try again.\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      };
+      
+      // Start AI content generation - no fallbacks
+      populateSectionsWithAI();
     }
-  }, [selectedCandidate, currentStep, selectedTemplate]);
+  }, [selectedCandidate, currentStep, selectedTemplate, jobDescription, getToken]);
   
   // Zoom controls
   const handleZoomIn = () => {
@@ -1237,7 +1272,7 @@ export function CreateCompetenceFileModal({
   const handleZoomReset = () => {
     setZoomLevel(100);
   };
-
+  
   // Custom elements handlers
   const addCustomElement = () => {
     if (newElementInput.trim() && !customElements.includes(newElementInput.trim())) {
@@ -1702,11 +1737,16 @@ export function CreateCompetenceFileModal({
         },
         body: JSON.stringify({
           candidateData: selectedCandidate,
-          template: selectedTemplate,
+        template: selectedTemplate,
           sections: documentSections.filter(s => s.visible),
           format: 'draft', // Special format for saving drafts
           jobDescription: jobDescription.text ? jobDescription : undefined,
           saveOnly: true, // Flag to indicate this is a save operation, not generation
+          managerContact: {
+            name: managerName,
+            email: managerEmail,
+            phone: managerPhone,
+          },
         }),
       });
       
@@ -1714,10 +1754,54 @@ export function CreateCompetenceFileModal({
         const result = await response.json();
         setLastSaved(new Date());
         
-        // Show success message
+        // Don't show alert or call onSuccess for auto-saves to prevent loop
+        // Only show success for manual saves
+        console.log('Draft auto-saved successfully');
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Save failed:', error);
+      // Don't show error alerts for auto-saves to prevent loops
+      // Only log the error for debugging
+    } finally {
+      setIsAutoSaving(false);
+    }
+  }, [selectedCandidate, selectedTemplate, documentSections, jobDescription, getToken, managerName, managerEmail, managerPhone]);
+
+  // Manual save function that shows user feedback
+  const handleManualSave = useCallback(async () => {
+    if (!selectedCandidate || isAutoSaving) return;
+    
+    setIsAutoSaving(true);
+    try {
+      const token = await getToken();
+      const response = await fetch('/api/competence-files/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          candidateData: selectedCandidate,
+          template: selectedTemplate,
+          sections: documentSections.filter(s => s.visible),
+          format: 'draft',
+          jobDescription: jobDescription.text ? jobDescription : undefined,
+          saveOnly: true,
+          managerContact: {
+            name: managerName,
+            email: managerEmail,
+            phone: managerPhone,
+          },
+        }),
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setLastSaved(new Date());
         alert('Draft saved successfully!');
-        
-        // Call success callback to refresh the list but don't close modal
         onSuccess('Draft saved successfully');
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
@@ -1729,7 +1813,7 @@ export function CreateCompetenceFileModal({
     } finally {
       setIsAutoSaving(false);
     }
-  }, [selectedCandidate, selectedTemplate, documentSections, jobDescription, getToken, onSuccess]);
+  }, [selectedCandidate, selectedTemplate, documentSections, jobDescription, getToken, onSuccess, managerName, managerEmail, managerPhone]);
   
   // Generate final document
   const handleGenerateDocument = useCallback(async (format: 'pdf' | 'docx') => {
@@ -1750,6 +1834,11 @@ export function CreateCompetenceFileModal({
           sections: documentSections.filter(s => s.visible),
           format,
           jobDescription: jobDescription.text ? jobDescription : undefined,
+          managerContact: {
+            name: managerName,
+            email: managerEmail,
+            phone: managerPhone,
+          },
         }),
       });
       
@@ -1779,19 +1868,19 @@ export function CreateCompetenceFileModal({
     } finally {
       setIsGenerating(false);
     }
-  }, [selectedCandidate, selectedTemplate, documentSections, getToken, onSuccess, onClose]);
+  }, [selectedCandidate, selectedTemplate, documentSections, getToken, onSuccess, onClose, managerName, managerEmail, managerPhone]);
   
-  // Auto-save effect with debounce
-  useEffect(() => {
-    if (currentStep === 4 && selectedCandidate && !isAutoSaving) {
-      const interval = setInterval(() => {
-        if (!isAutoSaving) {
-          handleSave();
-        }
-      }, 30000); // Auto-save every 30 seconds
-      return () => clearInterval(interval);
-    }
-  }, [currentStep, selectedCandidate, handleSave, isAutoSaving]);
+  // Auto-save effect with debounce - DISABLED to prevent loops
+  // useEffect(() => {
+  //   if (currentStep === 4 && selectedCandidate && !isAutoSaving) {
+  //     const interval = setInterval(() => {
+  //       if (!isAutoSaving) {
+  //         handleSave();
+  //       }
+  //     }, 30000); // Auto-save every 30 seconds
+  //     return () => clearInterval(interval);
+  //   }
+  // }, [currentStep, selectedCandidate, handleSave, isAutoSaving]);
   
   if (!isOpen) return null;
   
@@ -2379,6 +2468,63 @@ export function CreateCompetenceFileModal({
                       )}
                     </Card>
                     
+                    {/* Manager Contact Details */}
+                    <Card className="p-6">
+                      <h4 className="text-lg font-medium text-gray-900 mb-4">Manager Contact Details</h4>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Add your contact information so clients can reach out to you directly instead of the candidate.
+                      </p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Manager Name
+                          </label>
+                          <input
+                            type="text"
+                            value={managerName}
+                            onChange={(e) => setManagerName(e.target.value)}
+                            placeholder="Your full name"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Email Address
+                          </label>
+                          <input
+                            type="email"
+                            value={managerEmail}
+                            onChange={(e) => setManagerEmail(e.target.value)}
+                            placeholder="your.email@company.com"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Phone Number
+                          </label>
+                          <input
+                            type="tel"
+                            value={managerPhone}
+                            onChange={(e) => setManagerPhone(e.target.value)}
+                            placeholder="+1 (555) 123-4567"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                      
+                      {managerName && managerEmail && (
+                        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                          <p className="text-sm text-green-800">
+                            ✓ Manager contact details will be included in the competence file
+                          </p>
+                        </div>
+                      )}
+                    </Card>
+                    
                     {/* Navigation */}
                     <div className="flex justify-between pt-4">
                       <Button
@@ -2426,20 +2572,20 @@ export function CreateCompetenceFileModal({
                 <div className="flex items-center space-x-4">
                   {/* AI Action Buttons */}
                   <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleImproveAll}
-                      disabled={isGenerating}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleImproveAll}
+                    disabled={isGenerating}
                       className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:from-green-100 hover:to-emerald-100"
-                    >
-                      {isGenerating ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
+                  >
+                    {isGenerating ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
                         <Sparkles className="h-4 w-4 mr-2 text-green-600" />
-                      )}
-                      Improve All
-                    </Button>
+                    )}
+                    Improve All
+                  </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -2505,7 +2651,7 @@ export function CreateCompetenceFileModal({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={handleSave}
+                      onClick={handleManualSave}
                       disabled={isAutoSaving}
                       className={isAutoSaving ? "opacity-50" : ""}
                     >

@@ -448,15 +448,15 @@ export default function CompetenceFilesPage() {
                                   )}
                                   <span className="capitalize">{file.status.toLowerCase()}</span>
                                 </div>
-                              </Badge>
-                              {file.isAnonymized && (
+                            </Badge>
+                            {file.isAnonymized && (
                                 <Badge variant="outline" className="text-xs border-blue-200 text-blue-700 bg-blue-50 px-2 py-1 rounded-full">
                                   <div className="flex items-center space-x-1">
                                     <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
                                     <span>Anonymized</span>
                                   </div>
-                                </Badge>
-                              )}
+                              </Badge>
+                            )}
                             </div>
                           </div>
                           
@@ -510,8 +510,8 @@ export default function CompetenceFilesPage() {
                             size="sm"
                             onClick={() => setShowActions(showActions === file.id ? null : file.id)}
                           >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
                           
                           {showActions === file.id && (
                             <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
@@ -594,15 +594,15 @@ export default function CompetenceFilesPage() {
                                   <div className="w-1.5 h-1.5 bg-emerald-600 rounded-full"></div>
                                   <span>Active</span>
                                 </div>
-                              </Badge>
-                              {template.isClientSpecific && (
+                            </Badge>
+                            {template.isClientSpecific && (
                                 <Badge variant="outline" className="text-xs border-purple-200 text-purple-700 bg-purple-50 px-2 py-1 rounded-full">
                                   <div className="flex items-center space-x-1">
                                     <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
                                     <span>Client-specific</span>
                                   </div>
-                                </Badge>
-                              )}
+                              </Badge>
+                            )}
                             </div>
                           </div>
                           
@@ -661,7 +661,10 @@ export default function CompetenceFilesPage() {
         onSuccess={(message) => {
           console.log('✅ Competence file generated:', message);
           setSelectedFile(null);
-          fetchCompetenceFiles(); // Refresh the list
+          // Add a small delay to ensure the database operation is complete
+          setTimeout(() => {
+            fetchCompetenceFiles(); // Refresh the list
+          }, 500);
         }}
         preselectedCandidate={selectedFile?.candidateData || null}
       />

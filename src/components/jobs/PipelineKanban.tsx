@@ -431,8 +431,8 @@ export function PipelineKanban({
                               </button>
                             )}
                             <button className="p-1 text-gray-400 hover:text-gray-600 transition-opacity">
-                              <MoreHorizontal className="h-3 w-3" />
-                            </button>
+                            <MoreHorizontal className="h-3 w-3" />
+                          </button>
                           </div>
                         </div>
                       </div>

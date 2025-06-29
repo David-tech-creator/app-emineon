@@ -106,12 +106,12 @@ export async function POST(request: NextRequest) {
         const totalTime = Date.now() - startTime;
         console.log(`✅ CV parsed in ${totalTime}ms`);
 
-        return NextResponse.json({
-          success: true,
+  return NextResponse.json({
+    success: true,
           data: parsedData,
           processingTime: totalTime,
-          timestamp: new Date().toISOString()
-        });
+    timestamp: new Date().toISOString()
+  });
       }
 
       case 'performance-test': {

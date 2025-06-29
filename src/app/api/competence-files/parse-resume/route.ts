@@ -211,7 +211,7 @@ ${text}`
       candidateData.originalText = text.substring(0, 500) + (text.length > 500 ? '...' : '');
 
     } else {
-      // Handle file upload (existing logic)
+      // Handle file upload
       console.log('📁 Processing file upload...');
       
       // Get the uploaded file from FormData
@@ -252,7 +252,7 @@ ${text}`
       const isPdfOrDocx = file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
       if (isPdfOrDocx) {
-        // For PDF/DOCX files, try the new Responses API with file upload first
+        // For PDF/DOCX files, try the Responses API with file upload first
         try {
           console.log('☁️ Uploading file to OpenAI for PDF/DOCX processing...');
           
@@ -286,10 +286,29 @@ ${text}`
             ]
           });
 
-          const fileUploadResponse = response.output_text;
+          // Check if response has the correct structure
+          if (!response.output || response.output.length === 0) {
+            throw new Error('No output from Responses API');
+          }
+
+          const responseMessage = response.output[0];
+          if (!responseMessage || responseMessage.type !== 'message') {
+            throw new Error('Invalid response format from Responses API');
+          }
+
+          if (!responseMessage.content || responseMessage.content.length === 0) {
+            throw new Error('No content in response from Responses API');
+          }
+
+          const textContent = responseMessage.content[0];
+          if (!textContent || textContent.type !== 'output_text') {
+            throw new Error('No text content in response from Responses API');
+          }
+
+          const fileUploadResponse = textContent.text;
           
           if (!fileUploadResponse) {
-            throw new Error('No response from OpenAI Responses API');
+            throw new Error('No response text from OpenAI Responses API');
           }
 
           console.log('📋 Raw OpenAI response length:', fileUploadResponse.length);
@@ -344,10 +363,29 @@ ${text}`
               ]
             });
 
-            const base64Response = response.output_text;
+            // Check response structure for base64 method
+            if (!response.output || response.output.length === 0) {
+              throw new Error('No output from Responses API (base64)');
+            }
+
+            const responseMessage = response.output[0];
+            if (!responseMessage || responseMessage.type !== 'message') {
+              throw new Error('Invalid response format from Responses API (base64)');
+            }
+
+            if (!responseMessage.content || responseMessage.content.length === 0) {
+              throw new Error('No content in response from Responses API (base64)');
+            }
+
+            const textContent = responseMessage.content[0];
+            if (!textContent || textContent.type !== 'output_text') {
+              throw new Error('No text content in response from Responses API (base64)');
+            }
+
+            const base64Response = textContent.text;
             
             if (!base64Response) {
-              throw new Error('No response from OpenAI Responses API (base64)');
+              throw new Error('No response text from OpenAI Responses API (base64)');
             }
 
             console.log('📋 Base64 response length:', base64Response.length);
@@ -405,10 +443,29 @@ ${text}`
             ]
           });
 
-          const textFileResponse = response.output_text;
+          // Check response structure for text files
+          if (!response.output || response.output.length === 0) {
+            throw new Error('No output from Responses API');
+          }
+
+          const responseMessage = response.output[0];
+          if (!responseMessage || responseMessage.type !== 'message') {
+            throw new Error('Invalid response format from Responses API');
+          }
+
+          if (!responseMessage.content || responseMessage.content.length === 0) {
+            throw new Error('No content in response from Responses API');
+          }
+
+          const textContent = responseMessage.content[0];
+          if (!textContent || textContent.type !== 'output_text') {
+            throw new Error('No text content in response from Responses API');
+          }
+
+          const textFileResponse = textContent.text;
           
           if (!textFileResponse) {
-            throw new Error('No response from OpenAI Responses API');
+            throw new Error('No response text from OpenAI Responses API');
           }
 
           console.log('📋 Text file response length:', textFileResponse.length);
@@ -547,32 +604,28 @@ ${extractionPrompt}`
       statusCode = 400;
       if (error?.message?.includes('Invalid MIME type')) {
         errorMessage = 'The file format is not supported. Please use PDF, DOCX, TXT, MD, or HTML format.';
+      } else if (error?.message?.includes('too large')) {
+        errorMessage = 'File is too large. Maximum file size is 25MB.';
       } else {
-        errorMessage = 'The file could not be processed. Please ensure it\'s a valid document with readable content.';
+        errorMessage = error.message || 'Invalid request format';
       }
-    } else if (error?.status === 413) {
-      statusCode = 413;
-      errorMessage = 'The file is too large. Please use a smaller file (under 25MB).';
-    } else if (error?.status === 429) {
-      statusCode = 429;
-      errorMessage = 'Service is currently busy. Please try again in a few moments.';
-    } else if (error?.message?.includes('Not allowed to download files')) {
-      errorMessage = 'File processing is temporarily unavailable. Please try again later.';
-    } else if (error?.message?.includes('Could not extract candidate name')) {
+    } else if (error?.message?.includes('Could not extract')) {
       statusCode = 422;
-      errorMessage = 'Could not extract candidate information from the resume. Please ensure the document contains clear candidate details.';
-    } else if (error?.message?.includes('Failed to parse resume content')) {
-      statusCode = 422;
-      errorMessage = 'The resume content could not be processed. Please try uploading a different format or a clearer document.';
-    } else if (error?.message?.includes('Failed to parse resume text')) {
-      statusCode = 422;
-      errorMessage = 'The resume text could not be processed. Please try again with more detailed information.';
+      errorMessage = 'Could not extract candidate information from the resume. Please ensure the file contains clear candidate details with name, experience, and skills.';
+    } else if (error?.message?.includes('Authentication') || error?.message?.includes('Unauthorized')) {
+      statusCode = 401;
+      errorMessage = 'Authentication failed. Please refresh the page and try again.';
+    } else if (error?.message?.includes('API key')) {
+      statusCode = 500;
+      errorMessage = 'Service temporarily unavailable. Please try again later.';
+    } else {
+      errorMessage = error.message || errorMessage;
     }
-    
-    return NextResponse.json({
-      error: 'Failed to process resume',
-      message: errorMessage,
-      details: error?.message || 'Unknown error'
+
+    return NextResponse.json({ 
+      success: false,
+      error: error.name || 'ParseError',
+      message: errorMessage 
     }, { status: statusCode });
   }
 }
@@ -580,7 +633,10 @@ ${extractionPrompt}`
 export async function GET() {
   return NextResponse.json({
     message: 'Resume parsing endpoint',
-    supportedFormats: Object.values(SUPPORTED_FILE_TYPES),
-    maxFileSize: '25MB'
+    supportedFormats: ['PDF', 'DOCX', 'TXT', 'MD', 'HTML'],
+    maxFileSize: '25MB',
+    authentication: 'required',
+    endpoint: '/api/competence-files/parse-resume',
+    status: 'active'
   });
 } 

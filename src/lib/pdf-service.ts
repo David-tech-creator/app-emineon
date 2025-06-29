@@ -67,11 +67,11 @@ async function getBrowser() {
     try {
       console.log('🔧 Attempting to use local Chrome executable...');
               browserInstance = await puppeteerCore.launch({
-          executablePath: LOCAL_PATH,
-          defaultViewport: null,
-          headless: true,
+        executablePath: LOCAL_PATH,
+        defaultViewport: null,
+        headless: true,
           args: optimizedArgs,
-        });
+      });
       return browserInstance;
     } catch (error) {
       console.warn('⚠️ Local Chrome failed, falling back to bundled Chromium:', error instanceof Error ? error.message : String(error));
@@ -82,9 +82,9 @@ async function getBrowser() {
   try {
     console.log('🔧 Using Puppeteer bundled Chromium...');
           browserInstance = await puppeteer.launch({
-        headless: true,
+      headless: true,
         args: optimizedArgs,
-      });
+    });
     return browserInstance;
   } catch (error) {
     console.error('❌ All browser launch attempts failed:', error);

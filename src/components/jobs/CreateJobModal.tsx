@@ -265,7 +265,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
     duration: false,
     priority: false
   });
-  
+
   const {
     register,
     handleSubmit,
@@ -1009,20 +1009,20 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
           projectId: data.projectId 
         } : {}),
         ...(selectedProjectOption === 'new' ? {
-          projectName: data.projectName,
-          totalPositions: data.totalPositions,
-          urgencyLevel: data.urgencyLevel,
-          projectDescription: data.projectDescription,
-          isRemote: data.isRemote,
-          isHybrid: data.isHybrid,
-          clientContact: data.clientContact,
-          clientEmail: data.clientEmail,
-          clientPhone: data.clientPhone,
-          expiresAt: data.slaDate, // Map slaDate to expiresAt for database
-          vertical: data.vertical,
-          budgetRange: data.budgetRange,
-          endDate: data.endDate,
-          industryBackground: data.industryBackground,
+        projectName: data.projectName,
+        totalPositions: data.totalPositions,
+        urgencyLevel: data.urgencyLevel,
+        projectDescription: data.projectDescription,
+        isRemote: data.isRemote,
+        isHybrid: data.isHybrid,
+        clientContact: data.clientContact,
+        clientEmail: data.clientEmail,
+        clientPhone: data.clientPhone,
+        expiresAt: data.slaDate, // Map slaDate to expiresAt for database
+        vertical: data.vertical,
+        budgetRange: data.budgetRange,
+        endDate: data.endDate,
+        industryBackground: data.industryBackground,
         } : {}),
       };
 
@@ -2024,11 +2024,11 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
                       <div className="flex flex-wrap gap-2 min-h-[40px] p-3 border border-gray-300 rounded-lg bg-gray-50">
                         {(watch('skills') || []).length > 0 ? (
                                                         (watch('skills') || []).map((skill: string, index: number) => (
-                                <span 
-                                  key={index} 
-                                  className="flex items-center space-x-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm"
-                                >
-                                  <span>{skill}</span>
+                            <span 
+                              key={index} 
+                              className="flex items-center space-x-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm"
+                            >
+                              <span>{skill}</span>
                               <button
                                 type="button"
                                 onClick={() => {
