@@ -71,8 +71,12 @@ export default function UserPage() {
         });
         
         if (response.ok) {
-          const data = await response.json();
-          setStats(data);
+          const result = await response.json();
+          if (result.success && result.data) {
+            setStats(result.data);
+          } else {
+            console.error('Failed to fetch user stats:', result.error);
+          }
         } else {
           console.error('Failed to fetch user stats');
         }
