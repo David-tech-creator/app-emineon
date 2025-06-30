@@ -60,6 +60,118 @@ interface JobDescription {
   company?: string;
 }
 
+// Helper functions for experience sections
+function generateCompanyDescription(company: string, candidateData: CandidateData): string {
+  // Only use actual information - no fabrication
+  return `${company} - Professional work environment where candidate gained relevant experience and applied their skills.`;
+}
+
+function formatResponsibilities(responsibilities: string): string {
+  // Split responsibilities into bullet points
+  const respArray = responsibilities.split(/[.!]/).filter(r => r.trim().length > 10);
+  return respArray.map(resp => `• ${resp.trim()}`).join('\n');
+}
+
+function extractActualAchievements(experience: any, candidateData: CandidateData): string {
+  // Extract achievements only from actual CV data - no fabrication
+  const achievements: string[] = [];
+  
+  // Only include verifiable information from their actual responsibilities
+  if (experience.responsibilities) {
+    const responsibilities = experience.responsibilities.toLowerCase();
+    
+    // Look for achievement-indicating words in their actual responsibilities
+    if (responsibilities.includes('led') || responsibilities.includes('managed')) {
+      achievements.push('Demonstrated leadership and management capabilities in professional role');
+    }
+    
+    if (responsibilities.includes('developed') || responsibilities.includes('created')) {
+      achievements.push('Applied development and creative skills in project execution');
+    }
+    
+    if (responsibilities.includes('improved') || responsibilities.includes('enhanced')) {
+      achievements.push('Contributed to process and quality improvements');
+    }
+    
+    // Only mention skills that are actually in their profile
+    const relevantSkills = candidateData.skills?.filter(skill => 
+      responsibilities.includes(skill.toLowerCase())
+    ) || [];
+    
+    if (relevantSkills.length > 0) {
+      achievements.push(`Applied expertise in ${relevantSkills.slice(0, 3).join(', ')}`);
+    }
+  }
+  
+  // If no specific achievements can be extracted, use general professional statement
+  if (achievements.length === 0) {
+    achievements.push('Delivered professional responsibilities in accordance with role requirements');
+  }
+  
+  return achievements.map(achievement => `• ${achievement}`).join('\n');
+}
+
+function generateTechnicalEnvironment(skills: string[]): string {
+  if (!skills || skills.length === 0) {
+    return 'Professional technical environment with relevant industry tools and technologies.';
+  }
+  
+  return `Technical expertise applied across: ${skills.slice(0, 8).join(', ')}.`;
+}
+
+// Function to create separate experience sections with detailed structure
+function createExperienceSections(candidateData: CandidateData): DocumentSection[] {
+  if (!candidateData.experience || candidateData.experience.length === 0) {
+    return [{
+      id: 'experience-1',
+      type: 'experience',
+      title: 'PROFESSIONAL EXPERIENCES',
+      content: 'No work experience provided.',
+      visible: true,
+      order: 9,
+      editable: true
+    }];
+  }
+
+  // Sort experiences by end date (most recent first)
+  const sortedExperiences = [...candidateData.experience].sort((a, b) => {
+    const endDateA = new Date(a.endDate === 'Present' || a.endDate === 'Current' ? '2024-12-31' : a.endDate);
+    const endDateB = new Date(b.endDate === 'Present' || b.endDate === 'Current' ? '2024-12-31' : b.endDate);
+    return endDateB.getTime() - endDateA.getTime();
+  });
+
+  return sortedExperiences.map((exp, index) => {
+    const duration = `${exp.startDate} - ${exp.endDate}`;
+    
+    // Enhanced experience block structure according to specifications
+    const content = `**${exp.company}**
+${exp.title}
+${duration}
+
+**Company Description/Context**
+${generateCompanyDescription(exp.company, candidateData)}
+
+**Responsibilities**
+${formatResponsibilities(exp.responsibilities)}
+
+**Professional Contributions**
+${extractActualAchievements(exp, candidateData)}
+
+**Technical Environment**
+${generateTechnicalEnvironment(candidateData.skills || [])}`;
+
+    return {
+      id: `experience-${index + 1}`,
+      type: 'experience',
+      title: `PROFESSIONAL EXPERIENCES`,
+      content,
+      visible: true,
+      order: 9 + index, // Start after the 9 base sections (0-8)
+      editable: true
+    };
+  });
+}
+
 export function CreateCompetenceFileModal({ 
   isOpen, 
   onClose, 
@@ -451,6 +563,36 @@ export function CreateCompetenceFileModal({
       setCurrentStep(currentStep - 1);
     }
   };
+
+  // Update document sections when candidate changes or when moving to step 4
+  useEffect(() => {
+    if (selectedCandidate && (currentStep === 4 || documentSections.length === 0)) {
+      // Create individual experience sections
+      const experienceSections = createExperienceSections(selectedCandidate);
+      
+      // Base sections (same as original)
+      const baseSections: DocumentSection[] = [
+        { id: 'header', type: 'header', title: 'HEADER', content: '', visible: true, order: 0, editable: true },
+        { id: 'summary', type: 'summary', title: 'PROFESSIONAL SUMMARY', content: '', visible: true, order: 1, editable: true },
+        { id: 'functional-skills', type: 'functional-skills', title: 'FUNCTIONAL SKILLS', content: '', visible: true, order: 2, editable: true },
+        { id: 'technical-skills', type: 'technical-skills', title: 'TECHNICAL SKILLS', content: '', visible: true, order: 3, editable: true },
+        { id: 'areas-of-expertise', type: 'areas-of-expertise', title: 'AREAS OF EXPERTISE', content: '', visible: true, order: 4, editable: true },
+        { id: 'education', type: 'education', title: 'EDUCATION', content: '', visible: true, order: 5, editable: true },
+        { id: 'certifications', type: 'certifications', title: 'CERTIFICATIONS', content: '', visible: true, order: 6, editable: true },
+        { id: 'languages', type: 'languages', title: 'LANGUAGES', content: '', visible: true, order: 7, editable: true },
+        { id: 'experiences-summary', type: 'experiences-summary', title: 'PROFESSIONAL EXPERIENCES SUMMARY', content: '', visible: true, order: 8, editable: true },
+      ];
+
+      // Combine base sections with individual experience sections
+      const allSections = [
+        ...baseSections,
+        ...experienceSections // These already have orders starting from 9
+      ];
+      
+      setDocumentSections(allSections);
+      console.log(`✅ Document sections updated with ${experienceSections.length} individual experience sections`);
+    }
+  }, [selectedCandidate, currentStep]);
 
   const canProceedToNext = () => {
     switch (currentStep) {

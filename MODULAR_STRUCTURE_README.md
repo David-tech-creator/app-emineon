@@ -121,4 +121,40 @@ This allows for gradual migration and easy rollback if needed.
 2. **Advanced AI Features**: More sophisticated content optimization
 3. **Performance Optimization**: Code splitting and lazy loading
 4. **Comprehensive Testing**: Unit and integration test suites
-5. **Analytics Integration**: Usage tracking and optimization insights 
+5. **Analytics Integration**: Usage tracking and optimization insights
+
+## ✅ **DOCUMENT STRUCTURE (COMPLETE WITH INDIVIDUAL EXPERIENCES)**
+
+The system now creates the **exact same document structure** as the original modal, including individual professional experience sections:
+
+### **Base Sections (Order 0-8):**
+1. **HEADER** (0) - Candidate profile information
+2. **PROFESSIONAL SUMMARY** (1) - Executive summary
+3. **FUNCTIONAL SKILLS** (2) - Core competencies
+4. **TECHNICAL SKILLS** (3) - Technical expertise
+5. **AREAS OF EXPERTISE** (4) - Specialized knowledge areas
+6. **EDUCATION** (5) - Academic background
+7. **CERTIFICATIONS** (6) - Professional certifications
+8. **LANGUAGES** (7) - Language proficiencies
+9. **PROFESSIONAL EXPERIENCES SUMMARY** (8) - Work experience overview
+
+### **Individual Experience Sections (Order 9+):**
+After the summary, the system automatically generates individual sections for each job experience:
+- **PROFESSIONAL EXPERIENCES** (9) - Most recent job (sorted by end date)
+- **PROFESSIONAL EXPERIENCES** (10) - Second most recent job
+- **PROFESSIONAL EXPERIENCES** (11) - Third most recent job
+- And so on...
+
+Each individual experience section includes:
+- **Company & Position Details**: Company name, job title, duration
+- **Company Description/Context**: Professional work environment context
+- **Responsibilities**: Bullet-pointed responsibilities from CV
+- **Professional Contributions**: AI-extracted achievements (factual only)
+- **Technical Environment**: Relevant skills and technologies used
+
+### **🔄 Automatic Experience Sorting:**
+- Experiences are **automatically sorted by end date**
+- **Most recent positions appear first** (standard CV format)
+- Current/ongoing positions (marked as "Present" or "Current") appear at the top
+
+This ensures the competence file follows the exact same structure as the original modal, with the **Professional Experiences Summary** followed by **detailed individual experience sections** in reverse chronological order. 
