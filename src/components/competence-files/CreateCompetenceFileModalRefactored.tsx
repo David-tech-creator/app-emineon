@@ -60,77 +60,10 @@ interface JobDescription {
   company?: string;
 }
 
-// Helper functions for experience sections
-function generateCompanyDescription(company: string, candidateData: CandidateData): string {
-  // Only use actual information - no fabrication
-  return `${company} - Professional work environment where candidate gained relevant experience and applied their skills.`;
-}
-
-function formatResponsibilities(responsibilities: string): string {
-  // Split responsibilities into bullet points
-  const respArray = responsibilities.split(/[.!]/).filter(r => r.trim().length > 10);
-  return respArray.map(resp => `• ${resp.trim()}`).join('\n');
-}
-
-function extractActualAchievements(experience: any, candidateData: CandidateData): string {
-  // Extract achievements only from actual CV data - no fabrication
-  const achievements: string[] = [];
-  
-  // Only include verifiable information from their actual responsibilities
-  if (experience.responsibilities) {
-    const responsibilities = experience.responsibilities.toLowerCase();
-    
-    // Look for achievement-indicating words in their actual responsibilities
-    if (responsibilities.includes('led') || responsibilities.includes('managed')) {
-      achievements.push('Demonstrated leadership and management capabilities in professional role');
-    }
-    
-    if (responsibilities.includes('developed') || responsibilities.includes('created')) {
-      achievements.push('Applied development and creative skills in project execution');
-    }
-    
-    if (responsibilities.includes('improved') || responsibilities.includes('enhanced')) {
-      achievements.push('Contributed to process and quality improvements');
-    }
-    
-    // Only mention skills that are actually in their profile
-    const relevantSkills = candidateData.skills?.filter(skill => 
-      responsibilities.includes(skill.toLowerCase())
-    ) || [];
-    
-    if (relevantSkills.length > 0) {
-      achievements.push(`Applied expertise in ${relevantSkills.slice(0, 3).join(', ')}`);
-    }
-  }
-  
-  // If no specific achievements can be extracted, use general professional statement
-  if (achievements.length === 0) {
-    achievements.push('Delivered professional responsibilities in accordance with role requirements');
-  }
-  
-  return achievements.map(achievement => `• ${achievement}`).join('\n');
-}
-
-function generateTechnicalEnvironment(skills: string[]): string {
-  if (!skills || skills.length === 0) {
-    return 'Professional technical environment with relevant industry tools and technologies.';
-  }
-  
-  return `Technical expertise applied across: ${skills.slice(0, 8).join(', ')}.`;
-}
-
-// Function to create separate experience sections with detailed structure
+// Function to create separate experience sections via OpenAI API only
 function createExperienceSections(candidateData: CandidateData): DocumentSection[] {
   if (!candidateData.experience || candidateData.experience.length === 0) {
-    return [{
-      id: 'experience-1',
-      type: 'experience',
-      title: 'PROFESSIONAL EXPERIENCES',
-      content: 'No work experience provided.',
-      visible: true,
-      order: 9,
-      editable: true
-    }];
+    return [];
   }
 
   // Sort experiences by end date (most recent first)
@@ -141,35 +74,106 @@ function createExperienceSections(candidateData: CandidateData): DocumentSection
   });
 
   return sortedExperiences.map((exp, index) => {
-    const duration = `${exp.startDate} - ${exp.endDate}`;
-    
-    // Enhanced experience block structure according to specifications
-    const content = `**${exp.company}**
-${exp.title}
-${duration}
-
-**Company Description/Context**
-${generateCompanyDescription(exp.company, candidateData)}
-
-**Responsibilities**
-${formatResponsibilities(exp.responsibilities)}
-
-**Professional Contributions**
-${extractActualAchievements(exp, candidateData)}
-
-**Technical Environment**
-${generateTechnicalEnvironment(candidateData.skills || [])}`;
-
     return {
       id: `experience-${index + 1}`,
       type: 'experience',
       title: `PROFESSIONAL EXPERIENCES`,
-      content,
+      content: '', // Empty - will be populated via OpenAI API only
       visible: true,
       order: 9 + index, // Start after the 9 base sections (0-8)
       editable: true
     };
   });
+}
+
+// Function to generate content via OpenAI API only - NO FALLBACKS
+async function generateSectionContentWithAI(
+  sectionType: string, 
+  candidateData: CandidateData, 
+  jobDescription?: JobDescription, 
+  getToken?: () => Promise<string | null>
+): Promise<string> {
+  if (!getToken) {
+    throw new Error('❌ AI content generation requires authentication');
+  }
+  
+  try {
+    const token = await getToken();
+    if (!token) {
+      throw new Error('❌ Authentication token not available for AI content generation');
+    }
+
+    // Generate unique session ID for this generation batch
+    const sessionId = `frontend-session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const requestTimestamp = Date.now();
+
+    console.log(`🤖 [${sectionType}] [SESSION: ${sessionId}] Starting AI content generation...`);
+    console.log(`📊 [${sectionType}] Candidate data:`, {
+      name: candidateData.fullName,
+      title: candidateData.currentTitle,
+      skillsCount: candidateData.skills?.length || 0,
+      hasJobDescription: !!jobDescription,
+      sessionId,
+      timestamp: requestTimestamp
+    });
+
+    const requestBody = {
+      type: 'generate',
+      sectionType,
+      currentContent: '',
+      candidateData,
+      jobDescription: jobDescription?.text ? jobDescription : undefined,
+      sessionId,
+      clientTimestamp: requestTimestamp.toString()
+    };
+
+    console.log(`📤 [${sectionType}] [SESSION: ${sessionId}] Sending request to AI API...`);
+
+    const response = await fetch('/api/ai/generate-suggestion', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'X-Session-ID': sessionId,
+        'X-Section-Type': sectionType,
+        'X-Request-Timestamp': requestTimestamp.toString()
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    console.log(`📨 [${sectionType}] [SESSION: ${sessionId}] Response status:`, response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ [${sectionType}] [SESSION: ${sessionId}] AI service error:`, response.status, errorText);
+      throw new Error(`❌ AI service failed for ${sectionType}: ${response.status} - ${errorText}`);
+    }
+    
+    const responseData = await response.json();
+    const suggestion = responseData.suggestion;
+    
+    if (!suggestion || !suggestion.trim()) {
+      console.error(`❌ [${sectionType}] [SESSION: ${sessionId}] Empty response from AI service`);
+      throw new Error(`❌ AI service returned empty content for ${sectionType}`);
+    }
+
+    // Validate response matches request
+    if (responseData.sectionType !== sectionType) {
+      console.error(`❌ [${sectionType}] [SESSION: ${sessionId}] Section type mismatch! Expected: ${sectionType}, Got: ${responseData.sectionType}`);
+      throw new Error(`❌ Section type mismatch in AI response for ${sectionType}`);
+    }
+    
+    console.log(`✅ [${sectionType}] [SESSION: ${sessionId}] AI content generated successfully:`, {
+      length: suggestion.length,
+      preview: suggestion.substring(0, 100) + '...'
+    });
+    
+    return suggestion;
+  } catch (error) {
+    console.error(`💥 [${sectionType}] AI generation failed:`, error);
+    // NO FALLBACKS - Throw error to ensure only AI content is used
+    throw new Error(`❌ AI content generation failed for ${sectionType}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 export function CreateCompetenceFileModal({ 
@@ -566,33 +570,101 @@ export function CreateCompetenceFileModal({
 
   // Update document sections when candidate changes or when moving to step 4
   useEffect(() => {
-    if (selectedCandidate && (currentStep === 4 || documentSections.length === 0)) {
-      // Create individual experience sections
-      const experienceSections = createExperienceSections(selectedCandidate);
+    if (selectedCandidate && currentStep === 4 && documentSections.every(section => !section.content)) {
+      console.log('🚀 Starting comprehensive AI content generation for all sections...');
       
-      // Base sections (same as original)
-      const baseSections: DocumentSection[] = [
-        { id: 'header', type: 'header', title: 'HEADER', content: '', visible: true, order: 0, editable: true },
-        { id: 'summary', type: 'summary', title: 'PROFESSIONAL SUMMARY', content: '', visible: true, order: 1, editable: true },
-        { id: 'functional-skills', type: 'functional-skills', title: 'FUNCTIONAL SKILLS', content: '', visible: true, order: 2, editable: true },
-        { id: 'technical-skills', type: 'technical-skills', title: 'TECHNICAL SKILLS', content: '', visible: true, order: 3, editable: true },
-        { id: 'areas-of-expertise', type: 'areas-of-expertise', title: 'AREAS OF EXPERTISE', content: '', visible: true, order: 4, editable: true },
-        { id: 'education', type: 'education', title: 'EDUCATION', content: '', visible: true, order: 5, editable: true },
-        { id: 'certifications', type: 'certifications', title: 'CERTIFICATIONS', content: '', visible: true, order: 6, editable: true },
-        { id: 'languages', type: 'languages', title: 'LANGUAGES', content: '', visible: true, order: 7, editable: true },
-        { id: 'experiences-summary', type: 'experiences-summary', title: 'PROFESSIONAL EXPERIENCES SUMMARY', content: '', visible: true, order: 8, editable: true },
-      ];
+      const generateAllContent = async () => {
+        try {
+          // Create individual experience sections
+          const experienceSections = createExperienceSections(selectedCandidate);
+          
+          // Define all base sections that need AI content generation
+          const baseSectionTypes = [
+            { type: 'header', title: 'HEADER', order: 0 },
+            { type: 'summary', title: 'PROFESSIONAL SUMMARY', order: 1 },
+            { type: 'functional-skills', title: 'FUNCTIONAL SKILLS', order: 2 },
+            { type: 'technical-skills', title: 'TECHNICAL SKILLS', order: 3 },
+            { type: 'areas-of-expertise', title: 'AREAS OF EXPERTISE', order: 4 },
+            { type: 'education', title: 'EDUCATION', order: 5 },
+            { type: 'certifications', title: 'CERTIFICATIONS', order: 6 },
+            { type: 'languages', title: 'LANGUAGES', order: 7 },
+            { type: 'experiences-summary', title: 'PROFESSIONAL EXPERIENCES SUMMARY', order: 8 },
+          ];
 
-      // Combine base sections with individual experience sections
-      const allSections = [
-        ...baseSections,
-        ...experienceSections // These already have orders starting from 9
-      ];
-      
-      setDocumentSections(allSections);
-      console.log(`✅ Document sections updated with ${experienceSections.length} individual experience sections`);
+          // Generate AI content for all base sections in parallel
+          console.log('🤖 Generating AI content for base sections...');
+          const baseSectionPromises = baseSectionTypes.map(async (sectionDef) => {
+            try {
+              const content = await generateSectionContentWithAI(
+                sectionDef.type,
+                selectedCandidate,
+                jobDescription.text ? jobDescription : undefined,
+                getToken
+              );
+              
+              return {
+                id: sectionDef.type,
+                type: sectionDef.type,
+                title: sectionDef.title,
+                content,
+                visible: true,
+                order: sectionDef.order,
+                editable: true
+              };
+            } catch (error) {
+              console.error(`❌ Failed to generate AI content for ${sectionDef.type}:`, error);
+              throw new Error(`AI generation failed for ${sectionDef.type}`);
+            }
+          });
+
+          // Generate AI content for individual experience sections in parallel
+          console.log('🤖 Generating AI content for individual experience sections...');
+          const experienceSectionPromises = experienceSections.map(async (expSection) => {
+            try {
+              const content = await generateSectionContentWithAI(
+                'experience',
+                selectedCandidate,
+                jobDescription.text ? jobDescription : undefined,
+                getToken
+              );
+              
+              return {
+                ...expSection,
+                content
+              };
+            } catch (error) {
+              console.error(`❌ Failed to generate AI content for experience section ${expSection.id}:`, error);
+              throw new Error(`AI generation failed for experience section ${expSection.id}`);
+            }
+          });
+
+          // Wait for ALL AI generations to complete
+          console.log('⏳ Waiting for all AI content generation to complete...');
+          const [aiBaseSections, aiExperienceSections] = await Promise.all([
+            Promise.all(baseSectionPromises),
+            Promise.all(experienceSectionPromises)
+          ]);
+
+          // Combine all AI-generated sections
+          const allAISections = [
+            ...aiBaseSections,
+            ...aiExperienceSections
+          ];
+
+          setDocumentSections(allAISections);
+          console.log(`✅ ALL content generated via AI! Total sections: ${allAISections.length}`);
+          
+        } catch (error) {
+          console.error('💥 Critical error during AI content generation:', error);
+          alert(`❌ AI content generation failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease check your internet connection and try again.`);
+          // Go back to step 3 on failure
+          setCurrentStep(3);
+        }
+      };
+
+      generateAllContent();
     }
-  }, [selectedCandidate, currentStep]);
+  }, [selectedCandidate, currentStep, getToken, jobDescription]);
 
   const canProceedToNext = () => {
     switch (currentStep) {

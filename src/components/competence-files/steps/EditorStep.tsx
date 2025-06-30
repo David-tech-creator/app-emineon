@@ -159,30 +159,33 @@ function SortableSectionEditor({
     setIsGenerating(true);
     try {
       const token = await getToken();
-      const response = await fetch('/api/ai/enhance-section', {
+      const response = await fetch('/api/ai/generate-suggestion', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
+          type,
           sectionType: section.type,
           currentContent: section.content,
           candidateData,
           jobDescription,
-          enhancementType: type,
         }),
       });
 
       if (response.ok) {
-        const { enhancedContent } = await response.json();
-        onUpdate(enhancedContent);
+        const { suggestion } = await response.json();
+        onUpdate(suggestion);
         setLastSaved(new Date());
       } else {
-        console.error('Failed to enhance content');
+        console.error('Failed to enhance content:', response.status);
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        alert(`Failed to ${type} content: ${errorData.error || 'Please try again'}`);
       }
     } catch (error) {
       console.error('Error enhancing content:', error);
+      alert(`Failed to ${type} content. Please check your connection and try again.`);
     } finally {
       setIsGenerating(false);
     }
