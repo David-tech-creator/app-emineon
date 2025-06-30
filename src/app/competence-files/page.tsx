@@ -37,7 +37,7 @@ interface CompetenceFile {
   templateName: string;
   client: string;
   job: string;
-  status: 'GENERATED' | 'DRAFT' | 'ARCHIVED' | 'FAILED' | 'Generated' | 'Draft' | 'Archived' | 'Failed';
+  status: 'GENERATED' | 'DRAFT' | 'ARCHIVED' | 'FAILED' | 'Generated' | 'Draft' | 'Archived' | 'Failed' | 'READY' | 'Ready' | 'GENERATING' | 'Generating' | 'ERROR' | 'Error';
   createdAt: string;
   updatedAt: string;
   version: number;
@@ -53,12 +53,18 @@ interface CompetenceFile {
 const statusColors = {
   'GENERATED': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
   'Generated': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+  'READY': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+  'Ready': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
   'DRAFT': 'bg-amber-100 text-amber-800 border border-amber-200',
   'Draft': 'bg-amber-100 text-amber-800 border border-amber-200',
+  'GENERATING': 'bg-blue-100 text-blue-800 border border-blue-200',
+  'Generating': 'bg-blue-100 text-blue-800 border border-blue-200',
   'ARCHIVED': 'bg-slate-100 text-slate-800 border border-slate-200',
   'Archived': 'bg-slate-100 text-slate-800 border border-slate-200',
   'FAILED': 'bg-red-100 text-red-800 border border-red-200',
-  'Failed': 'bg-red-100 text-red-800 border border-red-200'
+  'Failed': 'bg-red-100 text-red-800 border border-red-200',
+  'ERROR': 'bg-red-100 text-red-800 border border-red-200',
+  'Error': 'bg-red-100 text-red-800 border border-red-200'
 };
 
 export default function CompetenceFilesPage() {
@@ -463,8 +469,11 @@ export default function CompetenceFilesPage() {
                   className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">All Status</option>
+                  <option value="ready">Ready</option>
                   <option value="generated">Generated</option>
+                  <option value="generating">Generating</option>
                   <option value="draft">Draft</option>
+                  <option value="error">Error</option>
                   <option value="archived">Archived</option>
                 </select>
               </div>
@@ -544,16 +553,18 @@ export default function CompetenceFilesPage() {
                             <div className="flex items-center space-x-2">
                               <Badge className={`${statusColors[file.status as keyof typeof statusColors]} font-medium text-xs px-3 py-1 rounded-full shadow-sm`}>
                                 <div className="flex items-center space-x-1">
-                                  {file.status === 'GENERATED' || file.status === 'Generated' ? (
+                                  {file.status === 'GENERATED' || file.status === 'Generated' || file.status === 'READY' || file.status === 'Ready' ? (
                                     <div className="w-1.5 h-1.5 bg-emerald-600 rounded-full"></div>
                                   ) : file.status === 'DRAFT' || file.status === 'Draft' ? (
                                     <div className="w-1.5 h-1.5 bg-amber-600 rounded-full"></div>
-                                  ) : file.status === 'FAILED' || file.status === 'Failed' ? (
+                                  ) : file.status === 'GENERATING' || file.status === 'Generating' ? (
+                                    <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse"></div>
+                                  ) : file.status === 'FAILED' || file.status === 'Failed' || file.status === 'ERROR' || file.status === 'Error' ? (
                                     <div className="w-1.5 h-1.5 bg-red-600 rounded-full"></div>
                                   ) : (
                                     <div className="w-1.5 h-1.5 bg-slate-600 rounded-full"></div>
                                   )}
-                                  <span className="capitalize">{file.status.toLowerCase()}</span>
+                                  <span className="capitalize">{file.status === 'READY' || file.status === 'Ready' ? 'Ready' : file.status.toLowerCase()}</span>
                                 </div>
                             </Badge>
                             {file.isAnonymized && (
