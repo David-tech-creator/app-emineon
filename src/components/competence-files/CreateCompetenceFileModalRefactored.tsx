@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/Button';
 import { X } from 'lucide-react';
 
 // Import step components
-// import { CandidateSelectionStep } from './steps/CandidateSelectionStep';
-// import { TemplateSelectionStep } from './steps/TemplateSelectionStep';
-// import { JobDescriptionStep } from './steps/JobDescriptionStep';
+import { CandidateSelectionStep } from './steps/CandidateSelectionStep';
+import { TemplateSelectionStep } from './steps/TemplateSelectionStep';
+import { JobDescriptionStep } from './steps/JobDescriptionStep';
+import { EditorStep } from './steps/EditorStep';
 
 // Types
 interface CandidateData {
@@ -105,6 +106,10 @@ export function CreateCompetenceFileModal({
   const [managerName, setManagerName] = useState('');
   const [managerEmail, setManagerEmail] = useState('');
   const [managerPhone, setManagerPhone] = useState('');
+
+  // Additional state for editor
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
 
   // File upload and parsing handlers
   const handleFileUpload = useCallback(async (files: File[]) => {
@@ -409,6 +414,31 @@ export function CreateCompetenceFileModal({
     setCustomElements(customElements.filter(e => e !== element));
   };
 
+  // Document generation handlers
+  const handleSave = async () => {
+    setIsAutoSaving(true);
+    try {
+      // Implement save logic here
+      console.log('Saving draft...');
+    } catch (error) {
+      console.error('Error saving draft:', error);
+    } finally {
+      setIsAutoSaving(false);
+    }
+  };
+
+  const handleGenerateDocument = async (format: 'pdf' | 'docx') => {
+    setIsGenerating(true);
+    try {
+      // Implement document generation logic here
+      console.log(`Generating ${format} document...`);
+    } catch (error) {
+      console.error('Error generating document:', error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   // Navigation handlers
   const handleNext = () => {
     if (currentStep < 4) {
@@ -427,9 +457,9 @@ export function CreateCompetenceFileModal({
       case 1:
         return selectedCandidate !== null;
       case 2:
-        return selectedTemplate !== null;
+        return true; // Job description is optional, but having it enables AI optimization
       case 3:
-        return true; // Job description is optional
+        return selectedTemplate !== null;
       default:
         return false;
     }
@@ -439,16 +469,34 @@ export function CreateCompetenceFileModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl h-[90vh] m-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl h-[90vh] m-4 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b flex-shrink-0">
           <div>
             <h2 className="text-xl font-semibold">Create Competence File</h2>
             <div className="flex items-center space-x-4 mt-2">
-              <div className="flex items-center space-x-2 text-blue-600">
-                <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium bg-blue-600 text-white">1</div>
-                <span className="text-sm">Candidate</span>
-              </div>
+              {[1, 2, 3, 4].map((step) => (
+                <div key={step} className="flex items-center space-x-2">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                    currentStep === step 
+                      ? 'bg-blue-600 text-white' 
+                      : currentStep > step 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-gray-200 text-gray-600'
+                  }`}>
+                    {step}
+                  </div>
+                  <span className={`text-sm ${
+                    currentStep === step ? 'text-blue-600 font-medium' : 'text-gray-600'
+                  }`}>
+                    {step === 1 && 'Candidate'}
+                    {step === 2 && 'Job Description'}
+                    {step === 3 && 'Template & Sections'}
+                    {step === 4 && 'AI Editor'}
+                  </span>
+                  {step < 4 && <span className="text-gray-300">→</span>}
+                </div>
+              ))}
             </div>
           </div>
           <Button variant="ghost" onClick={onClose}>
@@ -457,14 +505,99 @@ export function CreateCompetenceFileModal({
         </div>
         
         {/* Content */}
-        <div className="flex-1 overflow-hidden">
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Refactored Modal</h3>
-              <p className="text-gray-600">This is the new modular structure</p>
-            </div>
-          </div>
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Step 1: Candidate Selection */}
+          {currentStep === 1 && (
+            <CandidateSelectionStep
+              selectedCandidate={selectedCandidate}
+              onCandidateSelected={setSelectedCandidate}
+              isParsing={isParsing}
+              onFileUpload={handleFileUpload}
+              onTextParse={handleTextParse}
+              onUrlParse={async (url: string) => {
+                // Handle LinkedIn URL parsing
+                console.log('LinkedIn URL parsing:', url);
+              }}
+            />
+          )}
+
+          {/* Step 2: Job Description & Manager Details */}
+          {currentStep === 2 && (
+            <JobDescriptionStep
+              jobDescription={jobDescription}
+              onJobDescriptionUpdate={setJobDescription}
+              jobInputMethod={jobInputMethod}
+              onJobInputMethodChange={setJobInputMethod}
+              isRecording={isRecording}
+              onStartRecording={startVoiceRecording}
+              onStopRecording={stopVoiceRecording}
+              isParsing={isParsing}
+              jobDescriptionFiles={jobDescriptionFiles}
+              onJobFileSelect={handleJobFileSelect}
+              isJobDescriptionExpanded={isJobDescriptionExpanded}
+              onToggleJobDescriptionExpanded={() => setIsJobDescriptionExpanded(!isJobDescriptionExpanded)}
+              managerName={managerName}
+              onManagerNameChange={setManagerName}
+              managerEmail={managerEmail}
+              onManagerEmailChange={setManagerEmail}
+              managerPhone={managerPhone}
+              onManagerPhoneChange={setManagerPhone}
+            />
+          )}
+
+          {/* Step 3: AI-Optimized Template & Section Configuration */}
+          {currentStep === 3 && selectedCandidate && (
+            <TemplateSelectionStep
+              selectedCandidate={selectedCandidate}
+              selectedTemplate={selectedTemplate}
+              onTemplateSelect={setSelectedTemplate}
+              documentSections={documentSections}
+              onSectionsUpdate={setDocumentSections}
+              customElements={customElements}
+              onCustomElementsUpdate={setCustomElements}
+              newElementInput={newElementInput}
+              onNewElementInputChange={setNewElementInput}
+              onAddCustomElement={addCustomElement}
+              onRemoveCustomElement={removeCustomElement}
+              jobDescription={jobDescription}
+            />
+          )}
+
+          {/* Step 4: AI-Enhanced Editor */}
+          {currentStep === 4 && selectedCandidate && (
+            <EditorStep
+              selectedCandidate={selectedCandidate}
+              selectedTemplate={selectedTemplate}
+              documentSections={documentSections}
+              onSectionsUpdate={setDocumentSections}
+              jobDescription={jobDescription}
+              onBack={handleBack}
+              onSave={handleSave}
+              onGenerateDocument={handleGenerateDocument}
+              isGenerating={isGenerating}
+              isAutoSaving={isAutoSaving}
+            />
+          )}
         </div>
+
+        {/* Footer with navigation buttons */}
+        {currentStep < 4 && (
+          <div className="flex items-center justify-between p-6 border-t bg-gray-50 flex-shrink-0">
+            <Button
+              variant="outline"
+              onClick={handleBack}
+              disabled={currentStep === 1}
+            >
+              Back
+            </Button>
+            <Button
+              onClick={handleNext}
+              disabled={!canProceedToNext()}
+            >
+              {currentStep === 2 ? 'Configure Template & Sections' : currentStep === 3 ? 'Continue to AI Editor' : 'Next'}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

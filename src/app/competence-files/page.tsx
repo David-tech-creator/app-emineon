@@ -24,7 +24,7 @@ import {
   Trash2,
   ExternalLink
 } from 'lucide-react';
-import { CreateCompetenceFileModal } from '@/components/competence-files/CreateCompetenceFileModal';
+import { CreateCompetenceFileModal as CreateCompetenceFileModalRefactored } from '@/components/competence-files/CreateCompetenceFileModalRefactored';
 import { CreateTemplateModal } from '@/components/competence-files/CreateTemplateModal';
 
 // Interface for competence file data
@@ -770,7 +770,7 @@ export default function CompetenceFilesPage() {
       </div>
 
       {/* Create Modals */}
-      <CreateCompetenceFileModal
+      <CreateCompetenceFileModalRefactored
         isOpen={isCreateModalOpen}
         onClose={() => {
           setIsCreateModalOpen(false);

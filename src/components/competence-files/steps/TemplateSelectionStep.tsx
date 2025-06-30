@@ -77,6 +77,14 @@ interface TemplateSelectionStepProps {
   onNewElementInputChange: (value: string) => void;
   onAddCustomElement: () => void;
   onRemoveCustomElement: (element: string) => void;
+  jobDescription?: {
+    text: string;
+    requirements: string[];
+    skills: string[];
+    responsibilities: string;
+    title?: string;
+    company?: string;
+  };
 }
 
 // Sortable Section Item Component
@@ -158,7 +166,8 @@ export function TemplateSelectionStep({
   newElementInput,
   onNewElementInputChange,
   onAddCustomElement,
-  onRemoveCustomElement
+  onRemoveCustomElement,
+  jobDescription
 }: TemplateSelectionStepProps) {
   // DND Kit sensors
   const sensors = useSensors(
@@ -245,6 +254,45 @@ export function TemplateSelectionStep({
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Customize Your Competence File</h3>
               <p className="text-gray-600">Choose a template and select which sections to include</p>
             </div>
+
+            {/* AI Optimization Preview */}
+            {jobDescription && (jobDescription.text || jobDescription.title) && (
+              <Card className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-sm font-bold">AI</span>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-medium text-blue-900 mb-2">AI-Powered Section Optimization</h4>
+                    <p className="text-blue-800 text-sm mb-3">
+                      Based on the job description{jobDescription.title && ` for "${jobDescription.title}"`}, 
+                      AI will automatically optimize each section with relevant content that highlights 
+                      your candidate's alignment with the role requirements.
+                    </p>
+                    {jobDescription.skills && jobDescription.skills.length > 0 && (
+                      <div className="mb-3">
+                        <span className="text-xs font-medium text-blue-700 uppercase tracking-wide">Key Skills to Highlight:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {jobDescription.skills.slice(0, 5).map((skill, index) => (
+                            <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                              {skill}
+                            </span>
+                          ))}
+                          {jobDescription.skills.length > 5 && (
+                            <span className="px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded-full">
+                              +{jobDescription.skills.length - 5} more
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    <div className="text-xs text-blue-600">
+                      💡 Sections will be intelligently populated with optimized content in the next step
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
             
             {/* Candidate Info */}
             <Card className="p-4">
