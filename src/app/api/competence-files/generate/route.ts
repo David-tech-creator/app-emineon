@@ -4,8 +4,8 @@ import { generatePDF } from '@/lib/pdf-service';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { put } from '@vercel/blob';
-import { competenceEnrichmentService, type EnrichedContent } from '@/lib/ai/competence-enrichment';
 import { CompetenceFileStatus } from '@prisma/client';
+import { type EnrichedContent } from '@/lib/ai/competence-enrichment';
 
 // Function to extract client information from job description
 function extractClientInfo(jobDescription?: JobDescription): { client: string; jobTitle: string } {
@@ -1381,11 +1381,50 @@ export function generateAntaesCompetenceFileHTML(candidateData: CandidateData, s
   `;
 }
 
-export function generateCompetenceFileHTML(candidateData: CandidateData, sections?: any[], jobDescription?: JobDescription, managerContact?: ManagerContact, enrichedContent?: EnrichedContent): string {
+// Template-specific styling configurations
+function getTemplateStyles(template: string) {
+  const styles = {
+    professional: {
+      primaryColor: '#073C51',
+      accentColor: '#FFB800',
+      fontFamily: 'Inter',
+      headerStyle: 'border-bottom: 2px solid #073C51;',
+      logoStyle: 'height: 80px; width: auto;'
+    },
+    modern: {
+      primaryColor: '#1f2937',
+      accentColor: '#3b82f6',
+      fontFamily: 'Inter',
+      headerStyle: 'border-bottom: 3px solid #3b82f6;',
+      logoStyle: 'height: 75px; width: auto;'
+    },
+    minimal: {
+      primaryColor: '#374151',
+      accentColor: '#6b7280',
+      fontFamily: 'Inter',
+      headerStyle: 'border-bottom: 1px solid #e5e7eb;',
+      logoStyle: 'height: 70px; width: auto;'
+    },
+    emineon: {
+      primaryColor: '#073C51',
+      accentColor: '#FFB800',
+      fontFamily: 'Inter',
+      headerStyle: 'border-bottom: 3px solid #FFB800; background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);',
+      logoStyle: 'height: 85px; width: auto;'
+    }
+  };
+  
+  return styles[template as keyof typeof styles] || styles.professional;
+}
+
+export function generateCompetenceFileHTML(candidateData: CandidateData, sections?: any[], jobDescription?: JobDescription, managerContact?: ManagerContact, enrichedContent?: EnrichedContent, template: string = 'professional'): string {
   // Use AI-enriched experience if available, otherwise fallback to original
   const experienceHTML = enrichedContent?.enrichedExperience ? 
     generateEnrichedExperienceHTML(enrichedContent.enrichedExperience) : 
     generateExperienceHTML(candidateData.experience);
+  
+  // Template-specific styling configurations
+  const templateStyles = getTemplateStyles(template);
   
   // Generate functional skills with explanatory text
   const generateFunctionalSkills = (skills: string[]) => {
@@ -1634,7 +1673,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
           align-items: flex-start;
           margin-bottom: 40px;
           padding-bottom: 25px;
-          border-bottom: 2px solid #073C51;
+          ${templateStyles.headerStyle}
         }
         
         .header-left {
@@ -1644,7 +1683,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         .header h1 {
           font-size: 32px;
           font-weight: 700;
-          color: #073C51;
+          color: ${templateStyles.primaryColor};
           margin-bottom: 8px;
           letter-spacing: -0.5px;
         }
@@ -1652,7 +1691,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         .header-role {
           font-size: 18px;
           font-weight: 600;
-          color: #FFB800;
+          color: ${templateStyles.accentColor};
           margin-bottom: 5px;
         }
         
@@ -1679,7 +1718,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         .manager-label {
           font-size: 12px;
           font-weight: 600;
-          color: #073C51;
+          color: ${templateStyles.primaryColor};
           margin-bottom: 6px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
@@ -1702,8 +1741,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         }
         
         .logo-image {
-          height: 80px;
-          width: auto;
+          ${templateStyles.logoStyle}
         }
         
         /* Content Area */
@@ -1720,12 +1758,12 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         .section-title {
           font-size: 16px;
           font-weight: 700;
-          color: #073C51;
+          color: ${templateStyles.primaryColor};
           text-transform: uppercase;
           letter-spacing: 1px;
           margin-bottom: 15px;
           padding-bottom: 8px;
-          border-bottom: 2px solid #073C51;
+          border-bottom: 2px solid ${templateStyles.primaryColor};
         }
         
         .section-content {
@@ -1754,7 +1792,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         
         .section-content li:before {
           content: "•";
-          color: #FFB800;
+          color: ${templateStyles.accentColor};
           font-weight: bold;
           position: absolute;
           left: 0;
@@ -1763,7 +1801,7 @@ export function generateCompetenceFileHTML(candidateData: CandidateData, section
         
         .section-content strong {
           font-weight: 700;
-          color: #073C51;
+          color: ${templateStyles.primaryColor};
         }
         
         .section-content em {
@@ -2291,44 +2329,81 @@ export async function POST(request: NextRequest) {
     
     if (!userId) {
       return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
+        { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
     const body = await request.json();
-    const { candidateData, template = 'professional', content, format = 'pdf', sections, jobDescription, saveOnly = false, managerContact } = body;
+    const { 
+      candidateData, 
+      template, 
+      sections, 
+      format = 'pdf', 
+      saveOnly = false, 
+      jobDescription, 
+      managerContact 
+    } = body;
 
-    // 🛡️ RATE LIMITING: Prevent rapid duplicate saves for the same candidate+template
-    if (saveOnly && candidateData) {
-      const saveKey = `${candidateData.id || candidateData.fullName}-${template}`;
-      const now = Date.now();
-      const lastSaveTime = saveRequests.get(saveKey) || 0;
-      const timeSinceLastSave = now - lastSaveTime;
-      
-      // Prevent saves within 30 seconds of each other
-      if (timeSinceLastSave < 30000) {
-        return NextResponse.json({
-          success: true,
-          message: 'Save skipped - too frequent',
-          rateLimited: true
-        });
-      }
-      
-      // Record this save time
-      saveRequests.set(saveKey, now);
-      
-      // Clean up old entries (older than 5 minutes)
-      saveRequests.forEach((time, key) => {
-        if (now - time > 300000) {
-          saveRequests.delete(key);
+    console.log('🚀 ===== COMPETENCE FILE GENERATION REQUEST =====');
+    console.log(`📋 Request details: format=${format}, saveOnly=${saveOnly}, sectionsCount=${sections?.length || 0}`);
+    console.log(`👤 Candidate: ${candidateData?.fullName || 'Unknown'}`);
+    console.log(`📄 Template: ${template || 'None'}`);
+    console.log(`🎯 Job Description: ${jobDescription ? 'PROVIDED' : 'NOT PROVIDED'}`);
+    
+    // ENHANCED SECTION ANALYSIS
+    if (sections && sections.length > 0) {
+      console.log('🔍 ===== DETAILED SECTION ANALYSIS =====');
+      sections.forEach((section: any, index: number) => {
+        const contentLength = section.content?.length || 0;
+        const hasContent = section.content && section.content.trim().length > 0;
+        const isGenerationFailed = hasContent && section.content.includes('Generation failed');
+        const isTryRegenerating = hasContent && section.content.includes('Try regenerating');
+        const isErrorMessage = hasContent && (
+          section.content.includes('Generation failed') || 
+          section.content.includes('Try regenerating') ||
+          section.content.includes('Error:') ||
+          section.content.startsWith('Failed to')
+        );
+        const isValidContent = hasContent && !isErrorMessage;
+        
+        console.log(`  ${index + 1}. ${section.title || section.type || 'Unnamed'}`);
+        console.log(`     📝 Content Length: ${contentLength} chars`);
+        console.log(`     ✅ Has Content: ${hasContent}`);
+        console.log(`     ❌ Is Error Message: ${isErrorMessage}`);
+        console.log(`     🔍 Contains "Generation failed": ${isGenerationFailed}`);
+        console.log(`     🔍 Contains "Try regenerating": ${isTryRegenerating}`);
+        console.log(`     ✅ Is Valid Content: ${isValidContent}`);
+        if (hasContent) {
+          const preview = contentLength > 50 ? section.content.substring(0, 50) + '...' : section.content;
+          console.log(`     📄 Content Preview: "${preview}"`);
         }
+        console.log(`     🎯 Type: ${section.type}, Order: ${section.order}, Visible: ${section.visible}`);
+        console.log('     ─────────────────────────────────────────');
       });
+      
+      // Test detection logic explicitly
+      const hasAnyValidContent = sections.some((section: any) => {
+        if (!section.content || section.content.trim().length === 0) {
+          return false;
+        }
+        const isErrorMessage = section.content.includes('Generation failed') || 
+                              section.content.includes('Try regenerating') ||
+                              section.content.includes('Error:') ||
+                              section.content.startsWith('Failed to');
+        return !isErrorMessage;
+      });
+      
+      console.log(`🎯 FINAL DETECTION RESULT: ${hasAnyValidContent ? 'HAS VALID CONTENT' : 'NO VALID CONTENT'}`);
+      console.log(`🚀 Will ${hasAnyValidContent ? 'SKIP' : 'RUN'} AI enrichment`);
+    } else {
+      console.log('❌ No sections provided in request');
     }
+    console.log('🚀 ============================================');
 
-    if (!candidateData) {
+    if (!candidateData || !candidateData.fullName) {
       return NextResponse.json(
-        { success: false, message: 'Candidate data is required' },
+        { success: false, message: 'Missing candidate data' },
         { status: 400 }
       );
     }
@@ -2336,11 +2411,48 @@ export async function POST(request: NextRequest) {
     // Extract client information from job description
     const { client, jobTitle } = extractClientInfo(jobDescription);
 
+    // 🔥 SEGMENT-BASED GENERATION: Use segments if provided with content
+    const hasContentfulSections = sections && sections.length > 0 && 
+      sections.some((section: any) => {
+        if (!section.content || section.content.trim().length === 0) {
+          return false;
+        }
+        // Check if content is an error message
+        const isErrorMessage = section.content.includes('Generation failed') || 
+                              section.content.includes('Try regenerating') ||
+                              section.content.includes('Error:') ||
+                              section.content.startsWith('Failed to');
+        return !isErrorMessage;
+      });
+
+    console.log(`📋 Section analysis: ${sections?.length || 0} sections provided, ${hasContentfulSections ? 'WITH' : 'WITHOUT'} content`);
+    
+    // Debug: Log all sections with their content status
+    if (sections && sections.length > 0) {
+      console.log('🔍 Section content analysis:');
+      sections.forEach((section: any, index: number) => {
+        const contentPreview = section.content ? 
+          (section.content.length > 100 ? section.content.substring(0, 100) + '...' : section.content) : 
+          'NO CONTENT';
+        const hasContent = section.content && section.content.trim().length > 0;
+        const isErrorMessage = hasContent && (
+          section.content.includes('Generation failed') || 
+          section.content.includes('Try regenerating') ||
+          section.content.includes('Error:') ||
+          section.content.startsWith('Failed to')
+        );
+        const isValidContent = hasContent && !isErrorMessage;
+        console.log(`  ${index + 1}. ${section.title || section.type} (order: ${section.order})`);
+        console.log(`     Content: ${isValidContent ? '✅ VALID' : isErrorMessage ? '⚠️ ERROR' : '❌ EMPTY'} - "${contentPreview}"`);
+        console.log(`     Type: ${section.type}, Visible: ${section.visible}`);
+      });
+    }
+
     // 🚀 QUEUE-BASED AI ENRICHMENT: Use Redis queue for scalable processing
     let enrichedContent: EnrichedContent | undefined;
     
-    // CRITICAL: Only proceed with AI-generated content - NO FALLBACKS
-    if (!saveOnly && format === 'pdf') {
+    // CRITICAL: Only proceed with AI-generated content if no contentful sections provided
+    if (!saveOnly && format === 'pdf' && !hasContentfulSections) {
       if (!process.env.OPENAI_API_KEY) {
         console.error('❌ CRITICAL: OpenAI API key is required for AI enrichment!');
         return NextResponse.json(
@@ -2350,64 +2462,89 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        console.log('🚀 Starting QUEUE-BASED AI enrichment for ultra-fast processing...');
+        console.log('🚀 Starting P-QUEUE AI enrichment for ultra-fast processing...');
         const startTime = Date.now();
         
-        // Import the queue service dynamically to avoid initialization issues
-        const { enrichmentQueueService, EnrichmentJobType, EnrichmentJobPriority } = await import('@/lib/services/enrichment-queue');
+        // Import the AI queue service
+        const { aiQueueService } = await import('@/lib/services/ai-queue-service');
         
         // Create unique session ID for tracking
         const sessionId = `cf-${candidateData.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
-        // Submit job to high-priority queue for immediate processing
-        const jobId = await enrichmentQueueService.addJob(
-          EnrichmentJobType.COMPETENCE_FILE_GENERATION,
+        console.log(`📝 Processing AI enrichment with p-queue for candidate: ${candidateData.fullName}`);
+        
+        // Prepare enrichment requests for parallel processing
+        const enrichmentRequests = [
           {
-            type: EnrichmentJobType.COMPETENCE_FILE_GENERATION,
+            sectionType: 'summary',
             candidateData,
             jobDescription,
-            userId,
-            clientName: client,
-            template,
+            type: 'generate' as const,
+            token: userId,
             sessionId,
-            sections: sections?.map((s: any) => s.type) || [],
-            format,
-            managerContact,
-            metadata: {
-              requestTime: new Date().toISOString(),
-              userAgent: request.headers.get('user-agent'),
-            }
           },
-          EnrichmentJobPriority.HIGH, // High priority for immediate processing
-          0 // No delay
-        );
+          {
+            sectionType: 'technical_skills',
+            candidateData,
+            jobDescription,
+            type: 'generate' as const,
+            token: userId,
+            sessionId,
+          },
+          {
+            sectionType: 'experience',
+            candidateData,
+            jobDescription,
+            type: 'generate' as const,
+            token: userId,
+            sessionId,
+          },
+        ];
 
-        console.log(`✅ Job queued with ID: ${jobId}, Session: ${sessionId}`);
-
-        // For immediate processing, we'll wait for the job to complete
-        // This provides the performance benefits of parallel processing while maintaining sync response
-        let attempts = 0;
-        const maxAttempts = 30; // 30 seconds max wait
+        console.log(`🎯 Queuing ${enrichmentRequests.length} AI enrichment tasks`);
         
-        while (attempts < maxAttempts) {
-          const jobStatus = await enrichmentQueueService.getJobStatus(sessionId);
-          
-          if (jobStatus?.status === 'completed') {
-            enrichedContent = jobStatus.result;
-            const processingTime = Date.now() - startTime;
-            console.log(`🎉 QUEUE-BASED enrichment completed in ${processingTime}ms`);
-            break;
-          } else if (jobStatus?.status === 'failed') {
-            throw new Error(`Queue job failed: ${jobStatus.error}`);
-          }
-          
-          // Wait 1 second before checking again
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          attempts++;
-        }
+        // Process all enrichment tasks in parallel using p-queue
+        const jobIds = await aiQueueService.addBatchTasks(enrichmentRequests, 8); // Very high priority
+        const results = await aiQueueService.waitForBatch(jobIds, 90000); // 90 second timeout
+        
+        // Build enriched content from results
+        enrichedContent = {
+          enhancedSummary: '',
+          optimizedSkills: { technical: [], functional: [], leadership: [] },
+          enrichedExperience: [],
+          areasOfExpertise: [],
+          valueProposition: '',
+          optimizedEducation: [],
+          optimizedCertifications: [],
+          optimizedCoreCompetencies: [],
+          optimizedTechnicalExpertise: [],
+        };
 
-        if (!enrichedContent) {
-          throw new Error('Queue processing timeout - job did not complete within 30 seconds');
+        // Map results to enriched content
+        enrichmentRequests.forEach((request, index) => {
+          const result = results[index];
+          if (result.success) {
+            switch (request.sectionType) {
+              case 'summary':
+                enrichedContent!.enhancedSummary = result.data;
+                break;
+              case 'technical_skills':
+                enrichedContent!.optimizedSkills.technical = result.data.split(',').map((s: string) => s.trim());
+                break;
+              case 'experience':
+                enrichedContent!.enrichedExperience = [result.data];
+                break;
+            }
+          }
+        });
+
+        const successfulTasks = results.filter(r => r.success).length;
+        const processingTime = Date.now() - startTime;
+        
+        console.log(`🎉 P-QUEUE enrichment completed: ${successfulTasks}/${enrichmentRequests.length} successful in ${processingTime}ms`);
+
+        if (successfulTasks === 0) {
+          throw new Error('All AI enrichment tasks failed');
         }
         
         // Update candidate data with AI-enhanced summary
@@ -2428,6 +2565,8 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
+    } else if (hasContentfulSections) {
+      console.log('✅ Using segment-based content, skipping AI enrichment');
     }
 
     // Handle draft saving (save only, no file generation)
@@ -2472,12 +2611,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate HTML content based on template with ONLY AI enrichment
+    // Generate HTML content based on template with proper styling
     let htmlContent: string;
     if (template === 'antaes' || template === 'cf-antaes-consulting') {
+      // Antaes template has its own specialized HTML generator
       htmlContent = generateAntaesCompetenceFileHTML(candidateData, sections, jobDescription, managerContact, enrichedContent);
     } else {
-      htmlContent = generateCompetenceFileHTML(candidateData, sections, jobDescription, managerContact, enrichedContent);
+      // All other templates (professional, modern, minimal, emineon) use the generic generator
+      // Template-specific styling is handled within the generic function
+      htmlContent = generateCompetenceFileHTML(candidateData, sections, jobDescription, managerContact, enrichedContent, template);
     }
 
     let fileBuffer: Buffer;
@@ -2514,6 +2656,56 @@ export async function POST(request: NextRequest) {
     const filename = `${candidateData.fullName.replace(/[^a-zA-Z0-9]/g, '_')}_${client.replace(/[^a-zA-Z0-9]/g, '_')}_Competence_File.${fileFormat}`;
 
     // OPTIMIZATION: Parallel file upload and database operations
+    let competenceFileRecord = null;
+    
+    if (!saveOnly) {
+      // Find or create candidate first to ensure valid candidateId
+      let candidate = await prisma.candidate.findFirst({
+        where: {
+          OR: [
+            { id: candidateData.id },
+            { email: candidateData.email || '' },
+            { 
+              AND: [
+                { firstName: candidateData.fullName.split(' ')[0] || '' },
+                { lastName: candidateData.fullName.split(' ').slice(1).join(' ') || '' }
+              ]
+            }
+          ]
+        }
+      });
+
+      if (!candidate) {
+        // Create candidate if not found
+        const email = candidateData.email || `${candidateData.fullName.replace(/\s+/g, '').toLowerCase()}@temp.generated`;
+        
+        candidate = await prisma.candidate.create({
+          data: {
+            firstName: candidateData.fullName.split(' ')[0] || 'Unknown',
+            lastName: candidateData.fullName.split(' ').slice(1).join(' ') || '',
+            email: email,
+            currentTitle: candidateData.currentTitle,
+            phone: candidateData.phone || null,
+            currentLocation: candidateData.location || null,
+            experienceYears: candidateData.yearsOfExperience || null,
+            summary: candidateData.summary || null,
+            technicalSkills: candidateData.skills || [],
+            certifications: candidateData.certifications || [],
+            spokenLanguages: candidateData.languages || [],
+            lastUpdated: new Date(),
+            status: 'ACTIVE'
+          }
+        });
+        
+        console.log(`✅ Created new candidate: ${candidate.id} for ${candidateData.fullName}`);
+      } else {
+        console.log(`✅ Found existing candidate: ${candidate.id} for ${candidateData.fullName}`);
+      }
+      
+      // Update candidateData.id to use the valid database ID
+      candidateData.id = candidate.id;
+    }
+
     const [uploadResult] = await Promise.all([
       // Upload to Vercel Blob
       put(filename, fileBuffer, {
@@ -2521,11 +2713,11 @@ export async function POST(request: NextRequest) {
         contentType: contentType,
       }),
       
-      // Save to database (if not draft)
+      // Save to database (if not draft) using the validated candidate ID
       !saveOnly ? prisma.competenceFile.create({
         data: {
           fileName: filename,
-          candidateId: candidateData.id,
+          candidateId: candidateData.id, // Now using validated candidate ID
           templateId: null,
           filePath: filename,
           downloadUrl: '', // Will be updated with blob URL
@@ -2547,11 +2739,12 @@ export async function POST(request: NextRequest) {
         }
       }).then(async (competenceFile) => {
         // Update with the actual blob URL
-        await prisma.competenceFile.update({
+        const updatedFile = await prisma.competenceFile.update({
           where: { id: competenceFile.id },
           data: { downloadUrl: uploadResult.url }
         });
-        return competenceFile;
+        competenceFileRecord = updatedFile;
+        return updatedFile;
       }) : Promise.resolve(null)
     ]);
 

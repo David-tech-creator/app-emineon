@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { Button } from '@/components/ui/Button';
 import {
@@ -28,14 +28,15 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
-import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
-import { $createParagraphNode, $createTextNode, $getRoot, $getSelection } from 'lexical';
+import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical';
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from '@lexical/html';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
 import { EditorState } from 'lexical';
+import { LexicalEditor } from 'lexical';
 
+// Icons
 import { 
   ArrowLeft,
   Save,
@@ -45,14 +46,18 @@ import {
   Eye,
   EyeOff,
   Trash2,
-  Wand2,
   Loader2,
   Edit3,
   Sparkles,
   RefreshCw,
+  TrendingUp,
   ZoomOut,
-  ZoomIn
+  ZoomIn,
+  X
 } from 'lucide-react';
+
+// Store imports
+import { useSegmentStore, Segment } from '@/stores/ai-generation-store';
 
 // Types
 interface CandidateData {
@@ -77,16 +82,6 @@ interface CandidateData {
   summary: string;
 }
 
-interface DocumentSection {
-  id: string;
-  type: string;
-  title: string;
-  content: string;
-  visible: boolean;
-  order: number;
-  editable: boolean;
-}
-
 interface JobDescription {
   text: string;
   requirements: string[];
@@ -98,9 +93,7 @@ interface JobDescription {
 
 interface EditorStepProps {
   selectedCandidate: CandidateData;
-  selectedTemplate: 'professional' | 'modern' | 'minimal' | 'emineon' | 'antaes';
-  documentSections: DocumentSection[];
-  onSectionsUpdate: (sections: DocumentSection[]) => void;
+  selectedTemplate: 'professional' | 'professional-classic' | 'modern' | 'minimal' | 'emineon' | 'antaes';
   jobDescription: JobDescription;
   onBack: () => void;
   onSave: () => void;
@@ -109,26 +102,18 @@ interface EditorStepProps {
   isAutoSaving: boolean;
 }
 
-// Sortable Section Editor Component
-function SortableSectionEditor({ 
-  section, 
-  onUpdate, 
-  onTitleUpdate,
-  getToken, 
-  candidateData,
-  jobDescription
-}: {
-  section: DocumentSection;
-  onUpdate: (content: string) => void;
-  onTitleUpdate: (title: string) => void;
-  getToken: () => Promise<string | null>;
-  candidateData: CandidateData | null;
-  jobDescription?: JobDescription;
+// SegmentBlock Component - Individual segment with Lexical editor
+function SegmentBlock({ segment, jobDescription, selectedCandidate }: { 
+  segment: Segment;
+  jobDescription: JobDescription;
+  selectedCandidate: CandidateData;
 }) {
+  const { updateSegment, regenerateSegment, improveSegment, expandSegment, rewriteSegment } = useSegmentStore();
+  const { getToken } = useAuth();
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState<'improve' | 'expand' | 'rewrite' | null>(null);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [tempTitle, setTempTitle] = useState(section.title);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [tempTitle, setTempTitle] = useState(segment.title);
 
   const {
     attributes,
@@ -136,64 +121,16 @@ function SortableSectionEditor({
     setNodeRef,
     transform,
     transition,
-  } = useSortable({ id: section.id });
+  } = useSortable({ id: segment.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
 
-  const handleTitleSave = () => {
-    onTitleUpdate(tempTitle);
-    setIsEditingTitle(false);
-  };
-
-  const handleTitleCancel = () => {
-    setTempTitle(section.title);
-    setIsEditingTitle(false);
-  };
-
-  const generateAIContent = async (type: 'improve' | 'expand' | 'rewrite') => {
-    if (!candidateData || !getToken) return;
-    
-    setIsGenerating(true);
-    try {
-      const token = await getToken();
-      const response = await fetch('/api/ai/generate-suggestion', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          type,
-          sectionType: section.type,
-          currentContent: section.content,
-          candidateData,
-          jobDescription,
-        }),
-      });
-
-      if (response.ok) {
-        const { suggestion } = await response.json();
-        onUpdate(suggestion);
-        setLastSaved(new Date());
-      } else {
-        console.error('Failed to enhance content:', response.status);
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        alert(`Failed to ${type} content: ${errorData.error || 'Please try again'}`);
-      }
-    } catch (error) {
-      console.error('Error enhancing content:', error);
-      alert(`Failed to ${type} content. Please check your connection and try again.`);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
   // Lexical editor configuration
   const editorConfig = {
-    namespace: `section-${section.id}`,
+    namespace: `segment-${segment.id}`,
     theme: {
       paragraph: 'mb-2',
       text: {
@@ -208,50 +145,109 @@ function SortableSectionEditor({
     nodes: [],
   };
 
-  const ContentInitializationPlugin = React.useMemo(() => {
-    const initialContent = section.content || '';
+  // Content initialization plugin
+  const ContentInitializationPlugin = () => {
+    const [editor] = useLexicalComposerContext();
     
-    return function ContentInitializationPluginComponent() {
-      const [editor] = useLexicalComposerContext();
-      const [initialized, setInitialized] = useState(false);
-
-      React.useEffect(() => {
-        if (!initialized && initialContent) {
-          editor.update(() => {
-            const root = $getRoot();
-            root.clear();
-            
-            if (initialContent.trim()) {
-              const parser = new DOMParser();
-              const doc = parser.parseFromString(initialContent, 'text/html');
-              const nodes = $generateNodesFromDOM(editor, doc);
-              root.append(...nodes);
-            } else {
-              const paragraph = $createParagraphNode();
-              paragraph.append($createTextNode(''));
-              root.append(paragraph);
-            }
-          });
-          setInitialized(true);
+    React.useEffect(() => {
+      if (!segment.content) return;
+      
+      editor.update(() => {
+        const root = $getRoot();
+        root.clear();
+        
+        if (segment.content.trim()) {
+          try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(segment.content, 'text/html');
+            const nodes = $generateNodesFromDOM(editor, doc);
+            root.append(...nodes);
+          } catch (error) {
+            console.error('Error parsing HTML content:', error);
+            // Fallback to plain text
+            const paragraph = $createParagraphNode();
+            paragraph.append($createTextNode(segment.content));
+            root.append(paragraph);
+          }
+        } else {
+          const paragraph = $createParagraphNode();
+          paragraph.append($createTextNode(''));
+          root.append(paragraph);
         }
-      }, [editor, initialized, initialContent]);
-
-      return null;
-    };
-  }, [section.content]);
+      });
+    }, [editor, segment.content]);
+    
+    return null;
+  };
 
   const handleContentChange = useCallback((editorState: EditorState) => {
     editorState.read(() => {
-      const htmlString = $generateHtmlFromNodes(editorState._nodeMap.get('root')._lexicalEditor, null);
-      if (htmlString !== section.content) {
-        onUpdate(htmlString);
+      try {
+        const textContent = $getRoot().getTextContent();
+        if (textContent !== segment.content) {
+          updateSegment(segment.id, { content: textContent });
+        }
+      } catch (error) {
+        console.error('Error getting text content:', error);
       }
     });
-  }, [onUpdate, section.content]);
+  }, [segment.id, segment.content, updateSegment]);
+
+  const handleRegenerate = async () => {
+    if (!getToken) return;
+    
+    setIsRegenerating(true);
+    try {
+      // Pass the actual job and candidate data
+      await regenerateSegment(segment.id, jobDescription, selectedCandidate);
+    } catch (error) {
+      console.error('Error regenerating segment:', error);
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
+  const handleEnhance = async (action: 'improve' | 'expand' | 'rewrite') => {
+    if (!getToken || !segment.content?.trim()) return;
+    
+    setIsEnhancing(action);
+    try {
+      const enhanceFunction = action === 'improve' ? improveSegment : 
+                             action === 'expand' ? expandSegment : 
+                             rewriteSegment;
+      
+      // Pass the actual job and candidate data
+      await enhanceFunction(segment.id, jobDescription, selectedCandidate);
+    } catch (error) {
+      console.error(`Error ${action}ing segment:`, error);
+    } finally {
+      setIsEnhancing(null);
+    }
+  };
+
+  const handleTitleSave = () => {
+    updateSegment(segment.id, { title: tempTitle });
+    setIsEditingTitle(false);
+  };
+
+  const handleTitleCancel = () => {
+    setTempTitle(segment.title);
+    setIsEditingTitle(false);
+  };
+
+  const toggleVisibility = () => {
+    updateSegment(segment.id, { visible: !segment.visible });
+  };
 
   return (
-    <div ref={setNodeRef} style={style} className="bg-white border rounded-lg p-6 shadow-sm">
-      {/* Section Header */}
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className={`bg-white border rounded-lg p-6 shadow-sm transition-opacity ${
+        !segment.visible ? 'opacity-50' : ''
+      }`}
+    >
+      {/* Segment Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-3">
           <div 
@@ -280,7 +276,7 @@ function SortableSectionEditor({
             </div>
           ) : (
             <div className="flex items-center space-x-2">
-              <h3 className="text-lg font-semibold text-gray-900">{section.title}</h3>
+              <h3 className="text-lg font-semibold text-gray-900">{segment.title}</h3>
               <Button
                 variant="ghost"
                 size="sm"
@@ -292,77 +288,124 @@ function SortableSectionEditor({
           )}
         </div>
 
-        {/* AI Enhancement Buttons */}
+        {/* Segment Toolbar */}
         <div className="flex items-center space-x-2">
+          {/* Enhancement Buttons - Only show if content exists */}
+          {segment.content && segment.content.trim() && segment.status !== 'loading' && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleEnhance('improve')}
+                disabled={isEnhancing === 'improve'}
+                className="bg-green-50 border-green-200 hover:bg-green-100"
+              >
+                {isEnhancing === 'improve' ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <TrendingUp className="h-4 w-4 mr-1 text-green-600" />
+                )}
+                Improve
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleEnhance('expand')}
+                disabled={isEnhancing === 'expand'}
+                className="bg-blue-50 border-blue-200 hover:bg-blue-100"
+              >
+                {isEnhancing === 'expand' ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <Plus className="h-4 w-4 mr-1 text-blue-600" />
+                )}
+                Expand
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleEnhance('rewrite')}
+                disabled={isEnhancing === 'rewrite'}
+                className="bg-purple-50 border-purple-200 hover:bg-purple-100"
+              >
+                {isEnhancing === 'rewrite' ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-1 text-purple-600" />
+                )}
+                Rewrite
+              </Button>
+            </>
+          )}
+          
+          {/* Generate button for empty segments */}
+          {(!segment.content || segment.content.trim() === '' || segment.status === 'error') && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRegenerate}
+              disabled={isRegenerating || segment.status === 'loading'}
+              className="bg-blue-50 border-blue-200 hover:bg-blue-100"
+            >
+              {isRegenerating || segment.status === 'loading' ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-1 text-blue-600" />
+              )}
+              Generate
+            </Button>
+          )}
+          
           <Button
             variant="outline"
             size="sm"
-            onClick={() => generateAIContent('improve')}
-            disabled={isGenerating}
-            className="bg-green-50 border-green-200 hover:bg-green-100"
+            onClick={toggleVisibility}
           >
-            {isGenerating ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            {segment.visible ? (
+              <Eye className="h-4 w-4" />
             ) : (
-              <Sparkles className="h-4 w-4 mr-1 text-green-600" />
+              <EyeOff className="h-4 w-4" />
             )}
-            Improve
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => generateAIContent('expand')}
-            disabled={isGenerating}
-            className="bg-blue-50 border-blue-200 hover:bg-blue-100"
-          >
-            {isGenerating ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-            ) : (
-              <Plus className="h-4 w-4 mr-1 text-blue-600" />
-            )}
-            Expand
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => generateAIContent('rewrite')}
-            disabled={isGenerating}
-            className="bg-purple-50 border-purple-200 hover:bg-purple-100"
-          >
-            {isGenerating ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-            ) : (
-              <RefreshCw className="h-4 w-4 mr-1 text-purple-600" />
-            )}
-            Rewrite
           </Button>
         </div>
       </div>
 
-      {/* Lexical Editor */}
-      <LexicalComposer initialConfig={editorConfig}>
-        <div className="relative">
-          <RichTextPlugin
-            contentEditable={
-              <ContentEditable className="min-h-[200px] p-4 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 prose max-w-none" />
-            }
-            placeholder={
-              <div className="absolute top-4 left-4 text-gray-400 pointer-events-none">
-                Enter content for {section.title}...
-              </div>
-            }
-            ErrorBoundary={LexicalErrorBoundary}
-          />
-          <OnChangePlugin onChange={handleContentChange} />
-          <HistoryPlugin />
-          <ContentInitializationPlugin />
+      {/* Status indicator */}
+      {segment.status === 'loading' && (
+        <div className="mb-4 flex items-center space-x-2 text-blue-600">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm">Generating content...</span>
         </div>
-      </LexicalComposer>
+      )}
 
-      {lastSaved && (
-        <div className="mt-2 text-xs text-gray-500">
-          Last saved: {lastSaved.toLocaleTimeString()}
+      {segment.status === 'error' && (
+        <div className="mb-4 flex items-center space-x-2 text-red-600">
+          <span className="text-sm">⚠️ Generation failed. Try regenerating.</span>
         </div>
+      )}
+
+      {/* Lexical Editor */}
+      {segment.visible && (
+        <LexicalComposer initialConfig={editorConfig} key={`${segment.id}-${segment.content}`}>
+          <div className="relative">
+            <RichTextPlugin
+              contentEditable={
+                <ContentEditable className="min-h-[200px] p-4 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 prose max-w-none" />
+              }
+              placeholder={
+                <div className="absolute top-4 left-4 text-gray-400 pointer-events-none">
+                  Enter content for {segment.title}...
+                </div>
+              }
+              ErrorBoundary={() => <div>Something went wrong!</div>}
+            />
+            <OnChangePlugin onChange={handleContentChange} />
+            <HistoryPlugin />
+            <ContentInitializationPlugin />
+          </div>
+        </LexicalComposer>
       )}
     </div>
   );
@@ -371,8 +414,6 @@ function SortableSectionEditor({
 export function EditorStep({
   selectedCandidate,
   selectedTemplate,
-  documentSections,
-  onSectionsUpdate,
   jobDescription,
   onBack,
   onSave,
@@ -380,8 +421,20 @@ export function EditorStep({
   isGenerating,
   isAutoSaving
 }: EditorStepProps) {
-  const { getToken } = useAuth();
+  const { 
+    segments, 
+    isLoading: segmentsLoading, 
+    error: segmentsError,
+    loadFromAI, 
+    reorderSegments,
+    getVisibleSegments,
+    clearSegments,
+    updateSegment,
+    regenerateSegment 
+  } = useSegmentStore();
+  
   const [zoomLevel, setZoomLevel] = useState(100);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -390,240 +443,187 @@ export function EditorStep({
     })
   );
 
+  // Initialize segments when component mounts
+  useEffect(() => {
+    if (!hasInitialized && selectedCandidate) {
+      console.log('🚀 Initializing segments with AI content...');
+      loadFromAI(jobDescription, selectedCandidate);
+      setHasInitialized(true);
+    }
+  }, [hasInitialized, selectedCandidate, jobDescription, loadFromAI]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // clearSegments(); // Uncomment if you want to clear segments on unmount
+    };
+  }, []);
+
+  // Debug logging for segments
+  useEffect(() => {
+    console.log('🎯 EditorStep - Segments state:', {
+      segmentsCount: segments.length,
+      isLoading: segmentsLoading,
+      error: segmentsError,
+      segments: segments.map(s => ({
+        id: s.id,
+        title: s.title,
+        type: s.type,
+        status: s.status,
+        contentLength: s.content?.length || 0,
+        visible: s.visible,
+        order: s.order
+      }))
+    });
+  }, [segments, segmentsLoading, segmentsError]);
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = documentSections.findIndex(section => section.id === active.id);
-      const newIndex = documentSections.findIndex(section => section.id === over.id);
-
-      const newSections = arrayMove(documentSections, oldIndex, newIndex).map((section, index) => ({
-        ...section,
-        order: index
-      }));
-
-      onSectionsUpdate(newSections);
+      const oldIndex = segments.findIndex(segment => segment.id === active.id);
+      const newIndex = segments.findIndex(segment => segment.id === over.id);
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        reorderSegments(oldIndex, newIndex);
+      }
     }
   };
 
-  const updateSectionContent = (sectionId: string, content: string) => {
-    const updatedSections = documentSections.map(section =>
-      section.id === sectionId ? { ...section, content } : section
+  const handleGenerateDocument = (format: 'pdf' | 'docx') => {
+    // Convert segments to the format expected by the existing PDF generation
+    const visibleSegments = getVisibleSegments();
+    const documentSections = visibleSegments.map(segment => ({
+      id: segment.id,
+      type: segment.type,
+      title: segment.title,
+      content: segment.content,
+      visible: segment.visible,
+      order: segment.order,
+      editable: segment.editable,
+    }));
+    
+    // Call the existing generation function with transformed data
+    onGenerateDocument(format);
+  };
+
+  const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 10, 150));
+  const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 10, 50));
+  const handleZoomReset = () => setZoomLevel(100);
+
+  if (segmentsError) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center">
+        <div className="text-red-600 text-center">
+          <h3 className="text-lg font-semibold mb-2">Failed to load content</h3>
+          <p className="text-sm mb-4">{segmentsError}</p>
+          <Button 
+            onClick={() => {
+              setHasInitialized(false);
+              clearSegments();
+            }}
+          >
+            Try Again
+          </Button>
+        </div>
+      </div>
     );
-    onSectionsUpdate(updatedSections);
-  };
-
-  const updateSectionTitle = (sectionId: string, title: string) => {
-    const updatedSections = documentSections.map(section =>
-      section.id === sectionId ? { ...section, title } : section
-    );
-    onSectionsUpdate(updatedSections);
-  };
-
-  const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 10, 200));
-  };
-
-  const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 10, 50));
-  };
-
-  const handleZoomReset = () => {
-    setZoomLevel(100);
-  };
-
-  const handleImproveAll = async () => {
-    // Implementation for improving all sections
-    console.log('Improving all sections...');
-  };
-
-  const handleExpandAll = async () => {
-    // Implementation for expanding all sections
-    console.log('Expanding all sections...');
-  };
-
-  const handleRewriteAll = async () => {
-    // Implementation for rewriting all sections
-    console.log('Rewriting all sections...');
-  };
+  }
 
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Editor Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-gray-50 flex-shrink-0">
+      <div className="bg-white border-b p-4 flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onBack}
-          >
+          <Button variant="outline" onClick={onBack}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <div>
-            <h4 className="font-medium">{selectedCandidate.fullName}</h4>
-            <p className="text-sm text-gray-600">{selectedTemplate} template</p>
+          <h1 className="text-xl font-semibold">Editor</h1>
+          <div className="text-sm text-gray-500">
+            {selectedCandidate.fullName} • {selectedTemplate} template
           </div>
         </div>
-        
-        {/* AI and Zoom Controls */}
-        <div className="flex items-center space-x-4">
-          {/* AI Action Buttons */}
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleImproveAll}
-              disabled={isGenerating}
-              className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:from-green-100 hover:to-emerald-100"
-            >
-              {isGenerating ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Sparkles className="h-4 w-4 mr-2 text-green-600" />
-              )}
-              Improve All
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExpandAll}
-              disabled={isGenerating}
-              className="bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200 hover:from-blue-100 hover:to-cyan-100"
-            >
-              {isGenerating ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Plus className="h-4 w-4 mr-2 text-blue-600" />
-              )}
-              Expand All
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRewriteAll}
-              disabled={isGenerating}
-              className="bg-gradient-to-r from-purple-50 to-violet-50 border-purple-200 hover:from-purple-100 hover:to-violet-100"
-            >
-              {isGenerating ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <RefreshCw className="h-4 w-4 mr-2 text-purple-600" />
-              )}
-              Rewrite All
-            </Button>
-          </div>
-          
+
+        <div className="flex items-center space-x-3">
           {/* Zoom Controls */}
-          <div className="flex items-center space-x-2 bg-white rounded-lg border px-3 py-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleZoomOut}
-              disabled={zoomLevel <= 50}
-            >
+          <div className="flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
+            <Button variant="ghost" size="sm" onClick={handleZoomOut}>
               <ZoomOut className="h-4 w-4" />
             </Button>
-            <span className="text-sm font-medium min-w-[3rem] text-center">
-              {zoomLevel}%
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleZoomIn}
-              disabled={zoomLevel >= 200}
-            >
+            <span className="text-sm font-medium px-2">{zoomLevel}%</span>
+            <Button variant="ghost" size="sm" onClick={handleZoomIn}>
               <ZoomIn className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleZoomReset}
-              className="text-xs"
-            >
+            <Button variant="ghost" size="sm" onClick={handleZoomReset}>
               Reset
             </Button>
           </div>
-          
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onSave}
-              disabled={isAutoSaving}
-              className={isAutoSaving ? "opacity-50" : ""}
-            >
-              {isAutoSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Save className="h-4 w-4 mr-2" />
-              )}
-              {isAutoSaving ? 'Saving...' : 'Save Draft'}
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => onGenerateDocument('pdf')}
-              disabled={isGenerating}
-            >
-              {isGenerating ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Download className="h-4 w-4 mr-2" />
-              )}
-              Generate PDF
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onGenerateDocument('docx')}
-              disabled={isGenerating}
-            >
-              Generate DOCX
-            </Button>
-          </div>
+
+          {/* Action Buttons */}
+          <Button variant="outline" onClick={onSave} disabled={isAutoSaving}>
+            {isAutoSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            Save
+          </Button>
+
+          <Button 
+            onClick={() => handleGenerateDocument('pdf')} 
+            disabled={isGenerating || segmentsLoading}
+          >
+            {isGenerating ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            Generate PDF
+          </Button>
         </div>
       </div>
-      
-      {/* Editor Content - Full Screen with Zoom */}
-      <div className="flex-1 overflow-y-auto bg-gray-50">
-        <div className="min-h-full p-8">
-          <div 
-            className="max-w-5xl mx-auto bg-white shadow-lg rounded-lg p-8 transition-transform duration-200"
-            style={{ 
-              transform: `scale(${zoomLevel / 100})`,
-              transformOrigin: 'top center',
-              marginBottom: zoomLevel !== 100 ? `${(zoomLevel - 100) * 2}px` : '0'
-            }}
-          >
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={documentSections.filter(s => s.visible).map(s => s.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-8">
-                  {documentSections
-                    .filter(section => section.visible)
-                    .sort((a, b) => a.order - b.order)
-                    .map((section) => (
-                      <SortableSectionEditor
-                        key={section.id}
-                        section={section}
-                        onUpdate={(content) => updateSectionContent(section.id, content)}
-                        onTitleUpdate={(title) => updateSectionTitle(section.id, title)}
-                        getToken={getToken}
-                        candidateData={selectedCandidate}
-                        jobDescription={jobDescription}
-                      />
-                    ))}
-                </div>
-              </SortableContext>
-            </DndContext>
+
+      {/* Editor Content */}
+      <div className="flex-1 overflow-auto p-6" style={{ zoom: `${zoomLevel}%` }}>
+        {segmentsLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Generating your competence file...</h3>
+              <p className="text-gray-600">This may take a few moments while we create personalized content.</p>
+            </div>
           </div>
-        </div>
+        ) : segments.length === 0 ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold mb-2">No content available</h3>
+              <p className="text-gray-600 mb-4">Something went wrong while generating content.</p>
+              <Button 
+                onClick={() => {
+                  setHasInitialized(false);
+                  clearSegments();
+                }}
+              >
+                Try Again
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={segments.map(s => s.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-6 max-w-4xl mx-auto">
+                {segments.map((segment) => (
+                  <SegmentBlock key={segment.id} segment={segment} jobDescription={jobDescription} selectedCandidate={selectedCandidate} />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
       </div>
     </div>
   );
