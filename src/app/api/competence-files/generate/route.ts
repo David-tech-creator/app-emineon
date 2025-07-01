@@ -2706,7 +2706,7 @@ export async function POST(request: NextRequest) {
       candidateData.id = candidate.id;
     }
 
-    const [uploadResult] = await Promise.all([
+    const [uploadResult, databaseResult]: [any, any] = await Promise.all([
       // Upload to Vercel Blob
       put(filename, fileBuffer, {
         access: 'public',
