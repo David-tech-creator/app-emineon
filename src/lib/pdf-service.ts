@@ -14,14 +14,11 @@ async function getBrowser() {
 
   console.log('🔧 Configuring Puppeteer for PDF generation...');
   
-  const REMOTE_PATH = process.env.CHROMIUM_REMOTE_EXEC_PATH;
-  const LOCAL_PATH = process.env.CHROMIUM_LOCAL_EXEC_PATH;
-  
   console.log('🔧 Environment check:', {
     NODE_ENV: process.env.NODE_ENV,
     VERCEL: process.env.VERCEL,
-    hasRemotePath: !!REMOTE_PATH,
-    hasLocalPath: !!LOCAL_PATH
+    isProduction: process.env.NODE_ENV === 'production',
+    isVercel: !!process.env.VERCEL
   });
 
   // Optimized launch arguments for better performance
@@ -42,36 +39,39 @@ async function getBrowser() {
     '--memory-pressure-off'
   ];
 
-  // Use remote executable path (for Vercel/production)
-  if (!!REMOTE_PATH && (process.env.NODE_ENV === 'production' || process.env.VERCEL)) {
-    console.log('🚀 Using remote Chromium executable for production');
+  // Use @sparticuz/chromium-min for production/Vercel environments
+  if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
+    console.log('🚀 Using @sparticuz/chromium-min for serverless environment');
     try {
       browserInstance = await puppeteerCore.launch({
         args: [...chromium.args, ...optimizedArgs],
-        executablePath: await chromium.executablePath(REMOTE_PATH),
+        executablePath: await chromium.executablePath(),
         defaultViewport: null,
         headless: true,
       });
+      console.log('✅ Serverless Chromium launched successfully');
       return browserInstance;
     } catch (error) {
-      console.error('❌ Failed to launch remote Chromium:', error);
-      throw new Error('Failed to launch remote Chromium for production');
+      console.error('❌ Failed to launch serverless Chromium:', error);
+      throw new Error(`Failed to launch serverless Chromium: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
-  // For development, try local Chrome first, then fall back to bundled Chromium
+  // For development environment
   console.log('🚀 Using local environment for development');
   
-  // Try local Chrome executable if path is provided
+  // Try local Chrome executable if available
+  const LOCAL_PATH = process.env.CHROMIUM_LOCAL_EXEC_PATH;
   if (LOCAL_PATH) {
     try {
       console.log('🔧 Attempting to use local Chrome executable...');
-              browserInstance = await puppeteerCore.launch({
+      browserInstance = await puppeteerCore.launch({
         executablePath: LOCAL_PATH,
         defaultViewport: null,
         headless: true,
-          args: optimizedArgs,
+        args: optimizedArgs,
       });
+      console.log('✅ Local Chrome launched successfully');
       return browserInstance;
     } catch (error) {
       console.warn('⚠️ Local Chrome failed, falling back to bundled Chromium:', error instanceof Error ? error.message : String(error));
@@ -81,10 +81,11 @@ async function getBrowser() {
   // Fall back to Puppeteer's bundled Chromium for development
   try {
     console.log('🔧 Using Puppeteer bundled Chromium...');
-          browserInstance = await puppeteer.launch({
+    browserInstance = await puppeteer.launch({
       headless: true,
-        args: optimizedArgs,
+      args: optimizedArgs,
     });
+    console.log('✅ Bundled Chromium launched successfully');
     return browserInstance;
   } catch (error) {
     console.error('❌ All browser launch attempts failed:', error);
