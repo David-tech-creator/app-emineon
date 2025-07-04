@@ -122,6 +122,11 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
 
+  // Environment variables
+  env: {
+    NEXT_PUBLIC_VERCEL_ENVIRONMENT: process.env.VERCEL_ENV === 'production' ? 'production' : 'development',
+  },
+
   async rewrites() {
     return [
       {

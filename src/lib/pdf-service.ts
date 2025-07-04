@@ -2,94 +2,57 @@ import chromium from "@sparticuz/chromium-min";
 import puppeteerCore from "puppeteer-core";
 import puppeteer from "puppeteer";
 
+const remoteExecutablePath =
+  "https://github.com/Sparticuz/chromium/releases/download/v121.0.0/chromium-v121.0.0-pack.tar";
+
 // Singleton browser instance for better performance
-let browserInstance: any = null;
+let browser: any = null;
 
 async function getBrowser() {
   // Return cached browser if available
-  if (browserInstance && browserInstance.isConnected()) {
+  if (browser) {
     console.log('🔄 Reusing existing browser instance');
-    return browserInstance;
+    return browser;
   }
 
   console.log('🔧 Configuring Puppeteer for PDF generation...');
   
   console.log('🔧 Environment check:', {
     NODE_ENV: process.env.NODE_ENV,
-    VERCEL: process.env.VERCEL,
-    isProduction: process.env.NODE_ENV === 'production',
-    isVercel: !!process.env.VERCEL
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    NEXT_PUBLIC_VERCEL_ENVIRONMENT: process.env.NEXT_PUBLIC_VERCEL_ENVIRONMENT,
+    isProduction: process.env.NEXT_PUBLIC_VERCEL_ENVIRONMENT === "production"
   });
 
-  // Optimized launch arguments for better performance
-  const optimizedArgs = [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-dev-shm-usage',
-    '--disable-gpu',
-    '--disable-web-security',
-    '--disable-features=VizDisplayCompositor',
-    '--disable-extensions',
-    '--disable-plugins',
-    '--disable-background-timer-throttling',
-    '--disable-backgrounding-occluded-windows',
-    '--disable-renderer-backgrounding',
-    '--no-first-run',
-    '--no-default-browser-check',
-    '--memory-pressure-off'
-  ];
-
-  // Use @sparticuz/chromium-min for production/Vercel environments
-  if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
-    console.log('🚀 Using @sparticuz/chromium-min for serverless environment');
+  // Use remote Chromium for production/Vercel environments
+  if (process.env.NEXT_PUBLIC_VERCEL_ENVIRONMENT === "production") {
+    console.log('🚀 Using remote Chromium for production environment');
     try {
-      browserInstance = await puppeteerCore.launch({
-        args: [...chromium.args, ...optimizedArgs],
-        executablePath: await chromium.executablePath(),
-        defaultViewport: null,
+      browser = await puppeteerCore.launch({
+        args: chromium.args,
+        executablePath: await chromium.executablePath(remoteExecutablePath),
         headless: true,
       });
-      console.log('✅ Serverless Chromium launched successfully');
-      return browserInstance;
+      console.log('✅ Remote Chromium launched successfully');
+      return browser;
     } catch (error) {
-      console.error('❌ Failed to launch serverless Chromium:', error);
-      throw new Error(`Failed to launch serverless Chromium: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('❌ Failed to launch remote Chromium:', error);
+      throw new Error(`Failed to launch remote Chromium: ${error instanceof Error ? error.message : String(error)}`);
     }
-  }
-
-  // For development environment
-  console.log('🚀 Using local environment for development');
-  
-  // Try local Chrome executable if available
-  const LOCAL_PATH = process.env.CHROMIUM_LOCAL_EXEC_PATH;
-  if (LOCAL_PATH) {
+  } else {
+    // For development environment
+    console.log('🚀 Using local Puppeteer for development');
     try {
-      console.log('🔧 Attempting to use local Chrome executable...');
-      browserInstance = await puppeteerCore.launch({
-        executablePath: LOCAL_PATH,
-        defaultViewport: null,
+      browser = await puppeteer.launch({
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
         headless: true,
-        args: optimizedArgs,
       });
-      console.log('✅ Local Chrome launched successfully');
-      return browserInstance;
+      console.log('✅ Local Puppeteer launched successfully');
+      return browser;
     } catch (error) {
-      console.warn('⚠️ Local Chrome failed, falling back to bundled Chromium:', error instanceof Error ? error.message : String(error));
+      console.error('❌ Failed to launch local Puppeteer:', error);
+      throw new Error(`Failed to launch local Puppeteer: ${error instanceof Error ? error.message : String(error)}`);
     }
-  }
-
-  // Fall back to Puppeteer's bundled Chromium for development
-  try {
-    console.log('🔧 Using Puppeteer bundled Chromium...');
-    browserInstance = await puppeteer.launch({
-      headless: true,
-      args: optimizedArgs,
-    });
-    console.log('✅ Bundled Chromium launched successfully');
-    return browserInstance;
-  } catch (error) {
-    console.error('❌ All browser launch attempts failed:', error);
-    throw new Error('Failed to launch any browser for PDF generation. Please ensure Chrome is installed or check your configuration.');
   }
 }
 
@@ -168,10 +131,10 @@ export async function generatePDF(htmlContent: string): Promise<Buffer> {
 
 // Cleanup function to close browser when needed
 export async function closeBrowser() {
-  if (browserInstance) {
+  if (browser) {
     try {
-      await browserInstance.close();
-      browserInstance = null;
+      await browser.close();
+      browser = null;
       console.log('✅ Browser closed');
     } catch (error) {
       console.error('⚠️ Error closing browser:', error);
