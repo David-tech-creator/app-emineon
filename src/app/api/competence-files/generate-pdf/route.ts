@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma';
 import { put } from '@vercel/blob';
 import { generatePDF } from '@/lib/pdf-service';
 import { CompetenceFileStatus } from '@prisma/client';
-import puppeteer from 'puppeteer';
 import { createClient } from '@supabase/supabase-js';
 import { generateAntaesCompetenceFileHTML } from '../generate/route';
 
@@ -2023,40 +2022,9 @@ export async function POST(request: NextRequest) {
                         template.charAt(0).toUpperCase() + template.slice(1);
     const fileName = `${sanitizedName}_${client || 'Client'}_${templateName}_Competence_File_${timestamp}.pdf`;
 
-    // Generate PDF with Puppeteer
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-gpu'
-      ]
-    });
-
-    const page = await browser.newPage();
-    
-    // Set content and wait for images/fonts to load
-    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-    
-    // Generate PDF with optimized settings
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: {
-        top: '1cm',
-        right: '1cm',
-        bottom: '1cm',
-        left: '1cm'
-      },
-      preferCSSPageSize: true
-    });
-
-    await browser.close();
+    // Generate PDF using serverless-compatible PDF service
+    console.log('🖨️ Generating PDF using serverless PDF service...');
+    const pdfBuffer = await generatePDF(htmlContent);
 
     // Upload to Vercel Blob with unique filename (allow overwrite)
     const { url } = await put(fileName, pdfBuffer, {
