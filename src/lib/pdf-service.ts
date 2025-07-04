@@ -1,4 +1,4 @@
-import chromium from "@sparticuz/chromium-min";
+import chromium from "@sparticuz/chromium";
 import puppeteerCore from "puppeteer-core";
 import puppeteer from "puppeteer";
 
@@ -31,10 +31,10 @@ async function getBrowser() {
 
   // Use remote Chromium for production/Vercel environments
   if (isProduction) {
-    console.log('🚀 Using @sparticuz/chromium-min for production environment');
+    console.log('🚀 Using @sparticuz/chromium for production environment');
     try {
       browser = await puppeteerCore.launch({
-        args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
+        args: chromium.args,
         executablePath: await chromium.executablePath(),
         headless: true,
       });
