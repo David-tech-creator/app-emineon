@@ -28,7 +28,6 @@ const nextConfig = {
   // Experimental features
   experimental: {
     optimizeCss: false, // Disable this as it's causing issues
-    serverComponentsExternalPackages: ["puppeteer-core", "@sparticuz/chromium-min", "puppeteer"],
   },
   
   // Performance optimizations  
@@ -135,6 +134,9 @@ const nextConfig = {
       },
     ];
   },
+
+  // v15 made this property stable - externalize puppeteer packages for serverless
+  serverExternalPackages: ["puppeteer-core", "@sparticuz/chromium-min"],
 };
 
 module.exports = nextConfig; 
