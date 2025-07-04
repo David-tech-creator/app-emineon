@@ -2,9 +2,6 @@ import chromium from "@sparticuz/chromium-min";
 import puppeteerCore from "puppeteer-core";
 import puppeteer from "puppeteer";
 
-const remoteExecutablePath =
-  "https://github.com/Sparticuz/chromium/releases/download/v121.0.0/chromium-v121.0.0-pack.tar";
-
 // Singleton browser instance for better performance
 let browser: any = null;
 
@@ -17,20 +14,28 @@ async function getBrowser() {
 
   console.log('🔧 Configuring Puppeteer for PDF generation...');
   
+  // Multiple checks for production environment
+  const isProduction = 
+    process.env.NODE_ENV === 'production' ||
+    process.env.VERCEL_ENV === 'production' ||
+    process.env.NEXT_PUBLIC_VERCEL_ENVIRONMENT === 'production' ||
+    !!process.env.VERCEL;
+
   console.log('🔧 Environment check:', {
     NODE_ENV: process.env.NODE_ENV,
     VERCEL_ENV: process.env.VERCEL_ENV,
+    VERCEL: process.env.VERCEL,
     NEXT_PUBLIC_VERCEL_ENVIRONMENT: process.env.NEXT_PUBLIC_VERCEL_ENVIRONMENT,
-    isProduction: process.env.NEXT_PUBLIC_VERCEL_ENVIRONMENT === "production"
+    isProduction
   });
 
   // Use remote Chromium for production/Vercel environments
-  if (process.env.NEXT_PUBLIC_VERCEL_ENVIRONMENT === "production") {
-    console.log('🚀 Using remote Chromium for production environment');
+  if (isProduction) {
+    console.log('🚀 Using @sparticuz/chromium-min for production environment');
     try {
       browser = await puppeteerCore.launch({
-        args: chromium.args,
-        executablePath: await chromium.executablePath(remoteExecutablePath),
+        args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
+        executablePath: await chromium.executablePath(),
         headless: true,
       });
       console.log('✅ Remote Chromium launched successfully');
