@@ -1,148 +1,238 @@
-import chromium from "@sparticuz/chromium";
-import puppeteerCore from "puppeteer-core";
-import puppeteer from "puppeteer";
+import jsPDF from 'jspdf';
+import { JSDOM } from 'jsdom';
 
-// Singleton browser instance for better performance
-let browser: any = null;
-
-async function getBrowser() {
-  // Return cached browser if available
-  if (browser) {
-    console.log('🔄 Reusing existing browser instance');
-    return browser;
-  }
-
-  console.log('🔧 Configuring Puppeteer for PDF generation...');
+// Clean HTML content for PDF generation
+function cleanHTMLContent(html: string): string {
+  // Remove HTML tags and get text content
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = html;
   
-  // Multiple checks for production environment
-  const isProduction = 
-    process.env.NODE_ENV === 'production' ||
-    process.env.VERCEL_ENV === 'production' ||
-    process.env.NEXT_PUBLIC_VERCEL_ENVIRONMENT === 'production' ||
-    !!process.env.VERCEL;
+  // Extract text while preserving structure
+  const textContent = tempDiv.textContent || tempDiv.innerText || '';
+  
+  // Clean up extra whitespace
+  return textContent.replace(/\s+/g, ' ').trim();
+}
 
-  console.log('🔧 Environment check:', {
-    NODE_ENV: process.env.NODE_ENV,
-    VERCEL_ENV: process.env.VERCEL_ENV,
-    VERCEL: process.env.VERCEL,
-    NEXT_PUBLIC_VERCEL_ENVIRONMENT: process.env.NEXT_PUBLIC_VERCEL_ENVIRONMENT,
-    isProduction
-  });
-
-  // Use remote Chromium for production/Vercel environments
-  if (isProduction) {
-    console.log('🚀 Using @sparticuz/chromium for production environment');
-    try {
-      browser = await puppeteerCore.launch({
-        args: chromium.args,
-        executablePath: await chromium.executablePath(),
-        headless: true,
+// Extract structured content from HTML using jsdom
+function extractStructuredContent(html: string): { 
+  title: string; 
+  sections: Array<{ title: string; content: string }> 
+} {
+  try {
+    // Create a JSDOM instance for server-side HTML parsing
+    const dom = new JSDOM(html);
+    const document = dom.window.document;
+    
+    // Extract title
+    const titleElement = document.querySelector('h1');
+    const title = titleElement?.textContent || 'Competence File';
+    
+    // Extract sections
+    const sections: Array<{ title: string; content: string }> = [];
+    
+    // Look for sections with class "section"
+    const sectionElements = document.querySelectorAll('.section');
+    
+    sectionElements.forEach((section: Element) => {
+      const titleEl = section.querySelector('.section-title, h2, h3');
+      const contentEl = section.querySelector('.section-content');
+      
+      if (titleEl && contentEl) {
+        sections.push({
+          title: titleEl.textContent || 'Section',
+          content: contentEl.textContent || ''
+        });
+      }
+    });
+    
+    // If no sections found, try to extract from generic structure
+    if (sections.length === 0) {
+      const headings = document.querySelectorAll('h2, h3, h4');
+      headings.forEach((heading: Element) => {
+        const content = [];
+        let nextElement = heading.nextElementSibling;
+        
+        while (nextElement && !nextElement.matches('h2, h3, h4')) {
+          if (nextElement.textContent) {
+            content.push(nextElement.textContent.trim());
+          }
+          nextElement = nextElement.nextElementSibling;
+        }
+        
+        if (content.length > 0) {
+          sections.push({
+            title: heading.textContent || 'Section',
+            content: content.join('\n\n')
+          });
+        }
       });
-      console.log('✅ Remote Chromium launched successfully');
-      return browser;
-    } catch (error) {
-      console.error('❌ Failed to launch remote Chromium:', error);
-      throw new Error(`Failed to launch remote Chromium: ${error instanceof Error ? error.message : String(error)}`);
     }
-  } else {
-    // For development environment
-    console.log('🚀 Using local Puppeteer for development');
-    try {
-      browser = await puppeteer.launch({
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-        headless: true,
-      });
-      console.log('✅ Local Puppeteer launched successfully');
-      return browser;
-    } catch (error) {
-      console.error('❌ Failed to launch local Puppeteer:', error);
-      throw new Error(`Failed to launch local Puppeteer: ${error instanceof Error ? error.message : String(error)}`);
+    
+    // If still no sections, extract all text content
+    if (sections.length === 0) {
+      const bodyText = document.body?.textContent || '';
+      if (bodyText) {
+        sections.push({
+          title: 'Content',
+          content: bodyText
+        });
+      }
     }
+    
+    // Clean up DOM
+    dom.window.close();
+    
+    return { title, sections };
+  } catch (error) {
+    console.error('Error parsing HTML:', error);
+    // Fallback: extract title and content from raw HTML
+    const titleMatch = html.match(/<h1[^>]*>(.*?)<\/h1>/i);
+    const title = titleMatch ? titleMatch[1].replace(/<[^>]*>/g, '') : 'Competence File';
+    
+    // Remove HTML tags for content
+    const textContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    
+    return {
+      title,
+      sections: [{ title: 'Content', content: textContent }]
+    };
   }
 }
 
+// Generate PDF using jsPDF (server-side compatible)
 export async function generatePDF(htmlContent: string): Promise<Buffer> {
-  let page;
-  
   try {
-    console.log('🔧 Getting browser instance...');
-    const browser = await getBrowser();
-    console.log('✅ Browser ready');
-
-    page = await browser.newPage();
+    console.log('🔧 Generating PDF using jsPDF (serverless-compatible)...');
     
-    // Optimize page settings for faster rendering
-    await page.setViewport({ width: 1200, height: 1600 });
-    await page.setDefaultNavigationTimeout(10000); // Reduced from 30s to 10s
-    await page.setDefaultTimeout(10000);
+    // Extract text content and structure from HTML
+    const { title, sections } = extractStructuredContent(htmlContent);
     
-    // Disable images and other resources for faster loading
-    await page.setRequestInterception(true);
-    page.on('request', (request: any) => {
-      const resourceType = request.resourceType();
-      if (['image', 'stylesheet', 'font'].includes(resourceType)) {
-        // Allow Cloudinary images (for logos) but block others
-        if (resourceType === 'image' && request.url().includes('cloudinary.com')) {
-          request.continue();
-        } else if (resourceType === 'font' && request.url().includes('googleapis.com')) {
-          request.continue();
-        } else {
-          request.abort();
-        }
-      } else {
-        request.continue();
+    console.log(`📋 Extracted title: ${title}`);
+    console.log(`📋 Extracted ${sections.length} sections`);
+    
+    // Create PDF document
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+    
+    // Set fonts and colors
+    doc.setFont('helvetica');
+    
+    // Add title
+    doc.setFontSize(20);
+    doc.setTextColor(7, 60, 81); // Antaes blue #073C51
+    doc.text(title, 20, 30);
+    
+    let yPosition = 50;
+    const pageHeight = doc.internal.pageSize.height;
+    const margin = 20;
+    const maxWidth = doc.internal.pageSize.width - 2 * margin;
+    
+    // Add sections
+    sections.forEach((section, index) => {
+      console.log(`📝 Processing section ${index + 1}: ${section.title}`);
+      
+      // Check if we need a new page
+      if (yPosition > pageHeight - 50) {
+        doc.addPage();
+        yPosition = 30;
       }
+      
+      // Add section title
+      doc.setFontSize(14);
+      doc.setTextColor(7, 60, 81); // Antaes blue
+      
+      // Split title if it's too long
+      const titleLines = doc.splitTextToSize(section.title, maxWidth);
+      titleLines.forEach((line: string) => {
+        if (yPosition > pageHeight - 20) {
+          doc.addPage();
+          yPosition = 30;
+        }
+        doc.text(line, margin, yPosition);
+        yPosition += 7;
+      });
+      
+      yPosition += 3; // Small gap after title
+      
+      // Add section content
+      doc.setFontSize(11);
+      doc.setTextColor(35, 38, 41); // Dark gray
+      
+      // Clean and prepare content
+      const cleanContent = section.content
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 3000); // Limit content length to prevent memory issues
+      
+      if (cleanContent) {
+        // Split text to fit page width
+        const lines = doc.splitTextToSize(cleanContent, maxWidth);
+        
+        lines.forEach((line: string) => {
+          if (yPosition > pageHeight - 20) {
+            doc.addPage();
+            yPosition = 30;
+          }
+          doc.text(line, margin, yPosition);
+          yPosition += 5;
+        });
+      }
+      
+      yPosition += 10; // Space between sections
     });
-
-    console.log('📃 Setting page content...');
     
-    await page.setContent(htmlContent, { 
-      waitUntil: 'domcontentloaded', // Changed from networkidle0 for speed
-      timeout: 8000 // Reduced timeout
-    });
-    console.log('✅ Page content set');
-
-    console.log('🖨️ Generating PDF...');
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: {
-        top: '15px',
-        right: '15px',
-        bottom: '15px',
-        left: '15px',
-      },
-      timeout: 10000, // 10 second timeout for PDF generation
-    });
+    // Add footer to all pages
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Page ${i} of ${totalPages}`, margin, pageHeight - 10);
+      doc.text('Generated by Emineon ATS', doc.internal.pageSize.width - 60, pageHeight - 10);
+    }
     
-    console.log(`✅ PDF generated, size: ${pdfBuffer.length} bytes`);
-    return Buffer.from(pdfBuffer);
+    // Get PDF as buffer
+    const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+    
+    console.log('✅ PDF generated successfully using jsPDF');
+    console.log(`📄 PDF size: ${(pdfBuffer.length / 1024).toFixed(2)} KB`);
+    console.log(`📄 Total pages: ${totalPages}`);
+    
+    return pdfBuffer;
     
   } catch (error) {
-    console.error('❌ PDF generation error:', error);
-    throw error;
-  } finally {
-    if (page) {
-      try {
-        await page.close();
-        console.log('✅ Page closed');
-      } catch (closeError) {
-        console.error('⚠️ Error closing page:', closeError);
-      }
-    }
-    // Don't close browser instance - keep it for reuse
-  }
-}
-
-// Cleanup function to close browser when needed
-export async function closeBrowser() {
-  if (browser) {
+    console.error('❌ PDF generation failed with jsPDF:', error);
+    
+    // Fallback: Create a simple text-based PDF
+    console.log('🔄 Creating fallback text-based PDF...');
+    
     try {
-      await browser.close();
-      browser = null;
-      console.log('✅ Browser closed');
-    } catch (error) {
-      console.error('⚠️ Error closing browser:', error);
+      const fallbackDoc = new jsPDF();
+      fallbackDoc.setFontSize(16);
+      fallbackDoc.setTextColor(7, 60, 81);
+      fallbackDoc.text('Competence File', 20, 30);
+      
+      fallbackDoc.setFontSize(12);
+      fallbackDoc.setTextColor(35, 38, 41);
+      fallbackDoc.text('PDF generation encountered an issue.', 20, 50);
+      fallbackDoc.text('Please contact support for assistance.', 20, 65);
+      
+      // Add timestamp
+      fallbackDoc.setFontSize(10);
+      fallbackDoc.setTextColor(100, 100, 100);
+      fallbackDoc.text(`Generated: ${new Date().toISOString()}`, 20, 80);
+      
+      const fallbackBuffer = Buffer.from(fallbackDoc.output('arraybuffer'));
+      
+      console.log('✅ Fallback PDF created successfully');
+      return fallbackBuffer;
+    } catch (fallbackError) {
+      console.error('❌ Even fallback PDF generation failed:', fallbackError);
+      throw new Error('PDF generation completely failed');
     }
   }
 } 
