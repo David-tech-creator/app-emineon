@@ -1,10 +1,11 @@
 import PQueue from 'p-queue';
 import { useAIGenerationStore, JobStatus, JobType, AIJob, generateJobId } from '@/stores/ai-generation-store';
+import { CandidateData, JobDescription } from '@/types';
 
 export interface OpenAIRequest {
   sectionType: string;
-  candidateData: any;
-  jobDescription?: any;
+  candidateData: CandidateData;
+  jobDescription?: JobDescription;
   type: 'generate' | 'improve' | 'expand' | 'rewrite';
   currentContent?: string;
   token: string;
@@ -13,7 +14,7 @@ export interface OpenAIRequest {
 
 export interface QueueTaskResult {
   success: boolean;
-  data?: any;
+  data?: string;
   error?: string;
   tokensUsed?: number;
   processingTime: number;
@@ -398,10 +399,10 @@ export const aiQueueService = new AIQueueService();
 // Convenience function for single AI requests
 export async function generateAIContent(
   sectionType: string,
-  candidateData: any,
+  candidateData: CandidateData,
   token: string,
   type: 'generate' | 'improve' | 'expand' | 'rewrite' = 'generate',
-  jobDescription?: any,
+  jobDescription?: JobDescription,
   currentContent?: string,
   priority: number = 5
 ): Promise<string> {
@@ -422,7 +423,7 @@ export async function generateAIContent(
     throw new Error(result.error || 'AI generation failed');
   }
   
-  return result.data;
+  return result.data || '';
 }
 
 // Convenience function for batch AI requests
@@ -440,6 +441,6 @@ export async function generateAIContentBatch(
     if (!result.success) {
       throw new Error(result.error || 'AI generation failed');
     }
-    return result.data;
+    return result.data || '';
   });
 } 

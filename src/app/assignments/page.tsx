@@ -1,7 +1,7 @@
 'use client';
 
 import { Layout } from '@/components/layout/Layout';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Users, CheckCircle, Clock, UserCheck, Search, FileText, Target, BarChart3, Workflow } from 'lucide-react';
 

@@ -1,4 +1,4 @@
-import { openaiService } from '@/lib/openai';
+// import { openaiService } from './openai';
 import { OpenAI } from 'openai';
 
 export interface ParsedCandidateData {

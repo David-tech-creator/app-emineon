@@ -1,12 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Card, CardContent, CardHeader } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
-import { Briefcase, MapPin, Clock, DollarSign, Users, CheckCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
+import { 
+  MapPin, Calendar, DollarSign, Clock, User, Mail, Phone, 
+  FileText, Star, Building, Users, Upload, CheckCircle
+} from 'lucide-react';
 
 interface Job {
   id: string;

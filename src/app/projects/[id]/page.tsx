@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Card, CardContent } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { 
   ArrowLeft,
   Users, 
@@ -19,7 +19,13 @@ import {
   Eye,
   CheckCircle2,
   Activity,
-  MoreHorizontal
+  MoreHorizontal,
+  Plus,
+  Search,
+  Filter,
+  MoreVertical,
+  FileText,
+  Clock
 } from 'lucide-react';
 
 interface Job {

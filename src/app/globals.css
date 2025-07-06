@@ -3,6 +3,14 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --input: 214 32% 91%;
+    --background: 0 0% 100%;
+    --ring: 222.2 84% 4.9%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --border: 214.3 31.8% 91.4%;
+  }
+
   body {
     @apply font-sans antialiased;
   }
@@ -85,6 +93,135 @@
 }
 
 @layer components {
+  /* Resume Builder Styles */
+  .resume-container {
+    @apply bg-white shadow-medium rounded-xl overflow-hidden;
+  }
+
+  .resume-section {
+    @apply p-6 border-b border-neutral-200 last:border-b-0;
+  }
+
+  .resume-section-title {
+    @apply text-xl font-semibold text-primary-700 mb-4 flex items-center gap-2;
+  }
+
+  .resume-form-group {
+    @apply mb-4;
+  }
+
+  .resume-form-label {
+    @apply block text-sm font-medium text-secondary-700 mb-1;
+  }
+
+  .resume-form-input {
+    @apply w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200;
+  }
+
+  .resume-form-textarea {
+    @apply w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200 min-h-[100px] resize-y;
+  }
+
+  .resume-preview {
+    @apply bg-white border border-neutral-200 rounded-lg p-6;
+  }
+
+  .resume-preview-header {
+    @apply flex items-center gap-4 mb-6 pb-4 border-b border-neutral-200;
+  }
+
+  .resume-preview-photo {
+    @apply w-16 h-16 rounded-lg object-cover border border-neutral-300;
+  }
+
+  .resume-preview-name {
+    @apply text-2xl font-bold text-primary-800;
+  }
+
+  .resume-preview-title {
+    @apply text-lg text-secondary-600;
+  }
+
+  .resume-preview-contact {
+    @apply text-sm text-secondary-500;
+  }
+
+  .resume-preview-section {
+    @apply mb-6 last:mb-0;
+  }
+
+  .resume-preview-section-title {
+    @apply text-lg font-semibold text-primary-700 mb-3 pb-2 border-b border-neutral-200;
+  }
+
+  .resume-skill-tag {
+    @apply inline-block bg-primary-50 text-primary-700 px-2 py-1 rounded-md text-sm font-medium mr-2 mb-2;
+  }
+
+  .resume-experience-item {
+    @apply mb-4 last:mb-0;
+  }
+
+  .resume-experience-header {
+    @apply flex justify-between items-start mb-2;
+  }
+
+  .resume-experience-title {
+    @apply font-semibold text-primary-800;
+  }
+
+  .resume-experience-company {
+    @apply text-secondary-600;
+  }
+
+  .resume-experience-date {
+    @apply text-sm text-secondary-500;
+  }
+
+  .resume-experience-description {
+    @apply text-secondary-700 whitespace-pre-line;
+  }
+
+  .resume-education-item {
+    @apply mb-3 last:mb-0;
+  }
+
+  .resume-education-degree {
+    @apply font-semibold text-primary-800;
+  }
+
+  .resume-education-school {
+    @apply text-secondary-600;
+  }
+
+  .resume-education-date {
+    @apply text-sm text-secondary-500;
+  }
+
+  .resume-ai-suggestion {
+    @apply bg-teal-50 border border-teal-200 rounded-lg p-4 mb-4;
+  }
+
+  .resume-ai-suggestion-title {
+    @apply text-teal-700 font-medium mb-2;
+  }
+
+  .resume-ai-suggestion-content {
+    @apply text-teal-600 text-sm;
+  }
+
+  .resume-color-picker {
+    @apply w-8 h-8 rounded-full border-2 border-white shadow-medium cursor-pointer;
+  }
+
+  .resume-border-style-btn {
+    @apply p-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors duration-200;
+  }
+
+  .resume-border-style-btn.active {
+    @apply bg-primary-50 border-primary-500;
+  }
+
   /* Competence File Styles */
   .candidate-header {
     @apply text-center mb-8 pb-6 border-b border-gray-200;

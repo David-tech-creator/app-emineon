@@ -15,9 +15,11 @@ const UploadRequestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
-    const metadataJson = formData.get('metadata') as string;
+    const form = await request.formData();
+    const file = form.get('file') as File;
+    const jobId = form.get('jobId') as string;
+    const candidateId = form.get('candidateId') as string;
+    const metadataJson = form.get('metadata') as string;
 
     if (!file) {
       return NextResponse.json(
@@ -46,7 +48,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { category, userId, candidateId, jobId, applicationId, description, tags } = metadata;
+    const { category, userId, jobId: metadataJobId, applicationId, description, tags } = metadata;
 
     // Convert file to buffer
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -72,7 +74,7 @@ export async function POST(request: NextRequest) {
         break;
       
       case 'jobs':
-        uploadResult = await FileTypeUtils.uploadJobFile(buffer, file.name, jobId!, userId, metadata.fileType);
+        uploadResult = await FileTypeUtils.uploadJobFile(buffer, file.name, metadataJobId!, userId, metadata.fileType);
         break;
       
       case 'applications':
@@ -106,14 +108,14 @@ export async function POST(request: NextRequest) {
       },
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('File upload error:', error);
     
     return NextResponse.json(
       { 
         error: 'Failed to upload file',
-        message: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        message: error instanceof Error ? error.message : 'An unknown error occurred',
+        stack: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.stack : undefined : undefined
       },
       { status: 500 }
     );

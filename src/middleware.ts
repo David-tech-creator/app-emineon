@@ -22,7 +22,7 @@ export default authMiddleware({
 
   // Custom logic after authentication
   afterAuth: (auth, req) => {
-    const { userId, sessionClaims } = auth;
+    const { userId } = auth;
     const { pathname } = req.nextUrl;
 
     console.log(`🔍 Middleware processing: ${pathname}`);

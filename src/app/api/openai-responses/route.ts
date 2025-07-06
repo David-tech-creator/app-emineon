@@ -1,67 +1,133 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import OpenAI from 'openai';
+import { type JobDescription, type CandidateData } from '@/types';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Type definitions for section generation
-interface SectionGenerationRequest {
-  section: string;
-  candidateData: any;
-  jobData?: any;
-  order?: number;
-  enhancementAction?: 'improve' | 'expand' | 'rewrite' | 'format_for_pdf';
+// Remove unused interfaces
+
+interface GenerationRequest {
+  candidateData: CandidateData;
+  jobDescription: JobDescription;
+  segmentType: string;
   existingContent?: string;
-  finalEditorContent?: string;
-  sectionType?: string;
-  experienceIndex?: number;
+  enhancementAction?: string;
+  order?: number;
 }
 
-interface SectionGenerationResponse {
-  success: boolean;
-  content: string;
-  section: string;
-  order: number;
-  tokensUsed?: number;
+interface OpenAIResponse {
+  hasOutput: boolean;
+  outputLength: number;
+  usage?: {
+    input_tokens: number;
+    input_tokens_details?: { cached_tokens: number };
+    output_tokens: number;
+    output_tokens_details?: { reasoning_tokens: number };
+    total_tokens: number;
+  };
   processingTime: number;
-  error?: string;
 }
 
-// Helper function to safely extract job requirements/responsibilities
-function getJobContext(job: any): string {
-  if (!job) return 'Professional role requirements';
+// Helper function to map segment types to proper section names
+function mapSegmentTypeToSection(segmentType: string): string {
+  const typeMapping: Record<string, string> = {
+    'HEADER': 'HEADER',
+    'SUMMARY': 'PROFESSIONAL SUMMARY',
+    'SKILLS': 'FUNCTIONAL SKILLS',
+    'FUNCTIONAL SKILLS': 'FUNCTIONAL SKILLS',
+    'TECHNICAL SKILLS': 'TECHNICAL SKILLS',
+    'AREAS OF EXPERTISE': 'AREAS OF EXPERTISE',
+    'EXPERIENCE': 'PROFESSIONAL EXPERIENCE 1',
+    'EXPERIENCE-SUMMARY': 'PROFESSIONAL EXPERIENCES SUMMARY',
+    'PROFESSIONAL EXPERIENCES SUMMARY': 'PROFESSIONAL EXPERIENCES SUMMARY',
+    'EDUCATION': 'EDUCATION',
+    'CERTIFICATIONS': 'CERTIFICATIONS',
+    'LANGUAGES': 'LANGUAGES',
+    'STATIC': 'AREAS OF EXPERTISE',
+    'DYNAMIC': 'TECHNICAL SKILLS'
+  };
   
-  let context = '';
+  // Check for exact matches first
+  if (typeMapping[segmentType.toUpperCase()]) {
+    return typeMapping[segmentType.toUpperCase()];
+  }
   
-  // Handle responsibilities
+  // Check for professional experience patterns
+  if (segmentType.toUpperCase().includes('PROFESSIONAL EXPERIENCE')) {
+    return segmentType;
+  }
+  
+  // Check for partial matches
+  const segmentUpper = segmentType.toUpperCase();
+  if (segmentUpper.includes('FUNCTIONAL') || segmentUpper.includes('SKILLS')) {
+    return 'FUNCTIONAL SKILLS';
+  }
+  
+  if (segmentUpper.includes('TECHNICAL')) {
+    return 'TECHNICAL SKILLS';
+  }
+  
+  if (segmentUpper.includes('AREAS') || segmentUpper.includes('EXPERTISE')) {
+    return 'AREAS OF EXPERTISE';
+  }
+  
+  if (segmentUpper.includes('CERTIFICATIONS')) {
+    return 'CERTIFICATIONS';
+  }
+  
+  if (segmentUpper.includes('LANGUAGES')) {
+    return 'LANGUAGES';
+  }
+  
+  // Default fallback
+  console.warn(`⚠️ Unknown segment type: ${segmentType}, using as-is`);
+  return segmentType;
+}
+
+// Helper function to safely extract job context from job data
+function getJobContext(job: JobDescription): string {
+  if (!job) return 'Not specified';
+  
+  const parts = [];
+  
+  if (job.title) parts.push(`Position: ${job.title}`);
+  if (job.company) parts.push(`Company: ${job.company}`);
+  
+  // Handle responsibilities - check if it's an array or string
   if (job.responsibilities) {
     if (Array.isArray(job.responsibilities)) {
-      context = job.responsibilities.join(', ');
+      if (job.responsibilities.length > 0) {
+        parts.push(`Key Responsibilities: ${job.responsibilities.slice(0, 3).join(', ')}`);
+      }
     } else if (typeof job.responsibilities === 'string') {
-      context = job.responsibilities;
+      parts.push(`Responsibilities: ${job.responsibilities.substring(0, 200)}${job.responsibilities.length > 200 ? '...' : ''}`);
     }
   }
   
-  // Handle requirements
+  // Handle requirements - check if it's an array or string  
   if (job.requirements) {
-    const requirementsText = Array.isArray(job.requirements) ? job.requirements.join(', ') : job.requirements;
-    context = context ? `${context}, ${requirementsText}` : requirementsText;
+    if (Array.isArray(job.requirements)) {
+      if (job.requirements.length > 0) {
+        parts.push(`Requirements: ${job.requirements.slice(0, 3).join(', ')}`);
+      }
+    } else if (typeof job.requirements === 'string') {
+      parts.push(`Requirements: ${job.requirements.substring(0, 200)}${job.requirements.length > 200 ? '...' : ''}`);
+    }
   }
   
   // Handle skills
-  if (job.skills) {
-    const skillsText = Array.isArray(job.skills) ? job.skills.join(', ') : job.skills;
-    context = context ? `${context}, ${skillsText}` : skillsText;
+  if (job.skills && Array.isArray(job.skills) && job.skills.length > 0) {
+    parts.push(`Key Skills: ${job.skills.slice(0, 5).join(', ')}`);
   }
   
-  return context || `${job.title || 'Professional role'} requirements`;
+  return parts.length > 0 ? parts.join(' | ') : 'Not specified';
 }
 
 // Competence file section prompts using OpenAI Responses API
 const SECTION_PROMPTS = {
-  'HEADER': (candidate: any, job?: any) => `
+  'HEADER': (candidate: CandidateData, job?: JobDescription) => `
 STRICT GENERATION RULES:
 • Your response MUST start immediately with the candidate's full name
 • DO NOT write "Here is" or "Below is" or any introduction
@@ -80,7 +146,7 @@ ${job ? `TARGET ROLE: ${getJobContext(job)}` : ''}
 
 Return ONLY the formatted header content.`,
 
-  'PROFESSIONAL SUMMARY': (candidate: any, job?: any) => `
+  'PROFESSIONAL SUMMARY': (candidate: CandidateData, job?: JobDescription) => `
 STRICT GENERATION RULES:
 • Your response MUST start immediately with content (no "Here is" or introductions)
 • Write in third person about the candidate
@@ -97,7 +163,7 @@ Write a compelling professional summary that highlights the candidate's key stre
 Focus on measurable impact and leadership qualities.
 Return ONLY the summary content, no additional formatting.`,
 
-  'FUNCTIONAL SKILLS': (candidate: any, job?: any) => `
+  'FUNCTIONAL SKILLS': (candidate: CandidateData, job?: JobDescription) => `
 STRICT GENERATION RULES:
 • Your response MUST start immediately with "**" 
 • DO NOT write introductory text like "Here are" or "Below is"
@@ -105,7 +171,7 @@ STRICT GENERATION RULES:
 • Use detailed bullet points with specific examples
 
 CANDIDATE BACKGROUND: ${candidate.currentTitle} with ${candidate.yearsOfExperience || 'multiple'} years experience
-EXPERIENCE LEVEL: ${candidate.experienceLevel || 'Senior Professional'}
+EXPERIENCE LEVEL: ${getCandidateLevel(candidate)}
 
 ${job ? `TARGET ROLE: ${getJobContext(job)}` : ''}
 
@@ -119,28 +185,44 @@ Generate functional skills organized in categories:
 Each bullet point should be detailed and demonstrate specific capabilities.
 Return ONLY the formatted functional skills content.`,
 
-  'TECHNICAL SKILLS': (candidate: any, job?: any) => `
+  'TECHNICAL SKILLS': (candidate: CandidateData, job?: JobDescription) => `
 STRICT GENERATION RULES:
-• Your response MUST start immediately with "**" (no introduction text)
-• Organize skills into relevant categories
-• Use bullet points for each skill
-• DO NOT write "Here are" or "Below are" or explanations
+• Your response MUST start immediately with "**Programming Languages:**" 
+• DO NOT write "Here are" or "Below are" or any introduction
+• Organize skills into clear categories with proper spacing
+• Separate each category clearly with double line breaks
+• Use clean formatting with categories as headers
 
 CANDIDATE SKILLS: ${candidate.skills?.join(', ') || 'Technical expertise'}
 CURRENT ROLE: ${candidate.currentTitle}
 
 ${job ? `TARGET ROLE REQUIREMENTS: ${getJobContext(job)}` : ''}
 
-Organize the skills into categories like:
-**Programming & Development**
-**Cloud & Infrastructure** 
-**Database & Analytics**
-**Development Tools & Methodologies**
+Format exactly like this structure:
 
-Use bullet points (•) for each skill within categories.
-Return ONLY the formatted skills content.`,
+**Programming Languages:**
+C, C++, Python, JavaScript, TypeScript
 
-  'AREAS OF EXPERTISE': (candidate: any, job?: any) => `
+**Frameworks & Libraries:**
+RTOS, IoT, Embedded Systems, React, Node.js
+
+**Cloud & Infrastructure:**
+AWS, Azure, Google Cloud, Docker, Kubernetes
+
+**Databases & Storage:**
+SQL, NoSQL, MongoDB, PostgreSQL, Data Lakes
+
+**Development Tools & Methodologies:**
+JIRA, Git, Agile, Scrum, Waterfall, DevOps
+
+**Specialized Technologies:**
+AI/ML/DL Foundations, Tableau, Power BI, Data Analytics
+
+Each category should have technologies separated by commas on a single line.
+Add appropriate line spacing between categories.
+Return ONLY the formatted skills content with proper organization.`,
+
+  'AREAS OF EXPERTISE': (candidate: CandidateData, job?: JobDescription) => `
 STRICT GENERATION RULES:
 • Your response MUST start immediately with "1. **"
 • DO NOT write "Certainly!" or "Below is" or "Here's" or any introduction
@@ -156,8 +238,15 @@ ${job ? `TARGET ROLE: ${job.title} - ${getJobContext(job)}` : ''}
 
 REQUIRED FORMAT - START IMMEDIATELY WITH THIS:
 
-1. **Digital Transformation & Innovation Leadership**
+**Industry Expertise:**
+IoT, Telecommunications, Systems Engineering, Digital Transformation, Enterprise Solutions
 
+**Technical Proficiency:**
+JIRA, Waterfall, Agile, SAFe, Tableau, AI/ML/DL Foundations, Cloud & App Development, RTOS
+
+**Functional Skills:**
+
+1. **Digital Transformation & Innovation Leadership**
 
    • Strategic planning and execution of digital transformation initiatives across enterprise organizations
 
@@ -168,7 +257,6 @@ REQUIRED FORMAT - START IMMEDIATELY WITH THIS:
 
 2. **Project & Program Management Excellence**
 
-
    • End-to-end project lifecycle management using Agile, Scrum, and traditional waterfall methodologies
 
    • Resource optimization, timeline management, and stakeholder coordination for multi-million dollar initiatives
@@ -177,7 +265,6 @@ REQUIRED FORMAT - START IMMEDIATELY WITH THIS:
 
 
 3. **Business Strategy & Operational Optimization**
-
 
    • Strategic analysis and business process reengineering to enhance organizational performance
 
@@ -188,10 +275,9 @@ REQUIRED FORMAT - START IMMEDIATELY WITH THIS:
 
 4. **Team Leadership & Organizational Development**
 
-
    • Building and leading high-performing teams across diverse functional areas and geographic locations`,
 
-  'EDUCATION': (candidate: any, job?: any) => `
+  'EDUCATION': (candidate: CandidateData, job?: JobDescription) => `
 Generate education section:
 
 CANDIDATE EDUCATION: ${candidate.education?.join(', ') || candidate.degrees?.join(', ') || 'Professional education'}
@@ -203,7 +289,7 @@ Create structured education entries:
 
 Include relevant coursework, academic achievements, or specializations.`,
 
-  'CERTIFICATIONS': (candidate: any, job?: any) => `
+  'CERTIFICATIONS': (candidate: CandidateData, job?: JobDescription) => `
 Generate specific, realistic professional certifications based on the candidate's profile - NO placeholder text:
 
 CANDIDATE BACKGROUND: ${candidate.currentTitle} with ${candidate.yearsOfExperience || 'multiple'} years experience
@@ -242,7 +328,7 @@ Create relevant, specific certifications organized by category. Use REAL certifi
 Generate ONLY realistic, industry-standard certifications that actually exist.
 Base selections on the candidate's role and skills. NO generic placeholders or brackets.`,
 
-  'LANGUAGES': (candidate: any, job?: any) => `
+  'LANGUAGES': (candidate: CandidateData, job?: JobDescription) => `
 Generate a clean languages section using the candidate's actual language data:
 
 CANDIDATE LANGUAGES: ${candidate.languages?.join(', ') || candidate.spokenLanguages?.join(', ') || 'English (Native)'}
@@ -258,7 +344,7 @@ If only English is mentioned or no specific languages provided, show:
 Do NOT include placeholder text, brackets, or example languages. Use only real data.
 Return ONLY the formatted language list, nothing else.`,
 
-  'PROFESSIONAL EXPERIENCES SUMMARY': (candidate: any, job?: any) => `
+  'PROFESSIONAL EXPERIENCES SUMMARY': (candidate: CandidateData, job?: JobDescription) => `
 Create a chronological listing of all professional experiences in reverse chronological order (latest first):
 
 CANDIDATE EXPERIENCES: ${JSON.stringify(candidate.experience || candidate.workHistory || [], null, 2)}
@@ -279,7 +365,7 @@ ${job ? `TARGET ROLE CONTEXT: ${getJobContext(job)}` : ''}
 
 Return ONLY the formatted chronological listing, no explanations or additional text.`,
 
-  'PROFESSIONAL EXPERIENCE': (candidate: any, job?: any, experienceIndex: number = 0) => `
+  'PROFESSIONAL EXPERIENCE': (candidate: CandidateData, job?: JobDescription, experienceIndex: number = 0) => `
 Generate a detailed professional experience entry for experience #${experienceIndex + 1}:
 
 CANDIDATE EXPERIENCES: ${JSON.stringify(candidate.experience || [], null, 2)}
@@ -315,7 +401,7 @@ Return ONLY the formatted experience entry, no introductory text or explanations
 
 // Enhancement prompts for improve/expand/rewrite/format_for_pdf functionality
 const ENHANCEMENT_PROMPTS = {
-  improve: (section: string, existingContent: string, candidateData: any, jobData?: any) => `
+  improve: (section: string, existingContent: string, candidateData: CandidateData, jobData?: JobDescription) => `
 Improve the following ${section} content by making it more compelling, professional, and impactful:
 
 EXISTING CONTENT:
@@ -349,7 +435,7 @@ CRITICAL FORMATTING REQUIREMENTS:
 
 Enhance the content while maintaining excellent formatting and structure.`,
 
-  expand: (section: string, existingContent: string, candidateData: any, jobData?: any) => `
+  expand: (section: string, existingContent: string, candidateData: CandidateData, jobData?: JobDescription) => `
 Expand the following ${section} content by adding more detail, depth, and comprehensive coverage:
 
 EXISTING CONTENT:
@@ -383,7 +469,7 @@ CRITICAL FORMATTING REQUIREMENTS:
 
 Expand the content significantly while maintaining excellent formatting and structure.`,
 
-  rewrite: (section: string, existingContent: string, candidateData: any, jobData?: any) => `
+  rewrite: (section: string, existingContent: string, candidateData: CandidateData, jobData?: JobDescription) => `
 Completely rewrite the following ${section} content with a fresh perspective while maintaining the same core information:
 
 EXISTING CONTENT:
@@ -417,54 +503,107 @@ CRITICAL FORMATTING REQUIREMENTS:
 
 Completely rewrite the content while maintaining excellent formatting and structure.`,
 
-  format_for_pdf: (section: string, existingContent: string, candidateData: any, jobData?: any) => `
-Format the following ${section} content for optimal PDF presentation with proper structure and spacing:
+  format_for_pdf: (section: string, existingContent: string, candidateData: CandidateData, jobData?: JobDescription) => `
+CRITICAL INSTRUCTION: You must PRESERVE the exact content provided below. Do NOT generate new content, do NOT add information, do NOT change the meaning. ONLY convert the formatting to clean HTML with proper structure.
 
-EXISTING CONTENT:
+ORIGINAL CONTENT TO PRESERVE:
 ${existingContent}
 
-CANDIDATE CONTEXT:
-${JSON.stringify({ 
-  name: candidateData.fullName, 
-  title: candidateData.currentTitle,
-  experience: candidateData.experience || candidateData.workHistory,
-  skills: candidateData.skills 
-}, null, 2)}
+TASK: Convert the above content to clean HTML format for PDF generation. You must:
 
-${jobData ? `TARGET ROLE: ${getJobContext(jobData)}` : ''}
+✅ PRESERVE every piece of information exactly as written
+✅ PRESERVE all bullet points, sections, and structure
+✅ PRESERVE all company names, dates, achievements, and details
+✅ PRESERVE all technical skills, certifications, and languages exactly as listed
+✅ ONLY convert formatting (markdown to HTML, improve structure, add proper styling classes)
 
-PDF FORMATTING GUIDELINES:
-• Convert content to clean HTML format suitable for PDF generation
-• Use proper HTML tags: <p>, <strong>, <ul>, <li>, <br>
-• Maintain clear hierarchy with proper heading structure
-• Ensure consistent spacing and bullet point formatting
-• Remove any markdown syntax and convert to HTML
-• Make content print-friendly and visually appealing
+SPECIAL FORMATTING RULES FOR SPECIFIC SECTIONS:
 
-CRITICAL PDF FORMATTING REQUIREMENTS:
-- Convert **text** to <strong>text</strong>
-- Convert bullet points (•) to <ul><li> lists
-- Use <p> tags for paragraphs with proper spacing
-- Use <br> for line breaks where needed
-- Remove any introductory text or explanations
-- Return ONLY the formatted HTML content
-- Ensure content flows well on printed pages
+${section.includes('FUNCTIONAL SKILLS') || section.includes('SKILLS') ? `
+FOR FUNCTIONAL SKILLS - Structure like Core Competencies:
+- Create subsections with clear subtitles (e.g., "Leadership & Management", "Strategic Planning", "Communication & Collaboration", etc.)
+- Use this HTML structure:
+<div class="skills-category">
+  <h4 class="skills-subtitle">Leadership & Management</h4>
+  <ul class="skills-list">
+    <li class="skill-item">• Specific skill or achievement from original content</li>
+    <li class="skill-item">• Another specific skill or achievement</li>
+  </ul>
+  <p class="skills-description">Brief descriptive summary in italics</p>
+</div>
 
-Format the content as clean HTML suitable for PDF generation.`
+- Group related skills under logical subtitles
+- Keep all original content but organize it under appropriate categories
+- Use yellow bullet points (•) for each skill item
+- Add brief italic descriptions for each category
+` : ''}
+
+${section.includes('TECHNICAL') ? `
+FOR TECHNICAL SKILLS - Structure with multiple categories:
+- Create subsections like "Programming Languages", "Frameworks & Libraries", "Databases & Storage", etc.
+- Use the same HTML structure as functional skills
+- Group technologies logically
+- Keep all original technical items
+` : ''}
+
+${section.includes('EXPERIENCE') && !section.includes('SUMMARY') ? `
+FOR PROFESSIONAL EXPERIENCE - Use structured format:
+<div class="experience-entry">
+  <div class="company-header">
+    <h3 class="company-name">Company Name</h3>
+    <h4 class="role-title">Job Title</h4>
+    <p class="duration">Start Date - End Date</p>
+  </div>
+  
+  <div class="role-overview">
+    <h5>ROLE OVERVIEW</h5>
+    <p>Brief overview paragraph</p>
+  </div>
+  
+  <div class="responsibilities">
+    <h5>KEY RESPONSIBILITIES</h5>
+    <ul>
+      <li>• Responsibility item</li>
+    </ul>
+  </div>
+  
+  <div class="achievements">
+    <h5>KEY ACHIEVEMENTS</h5>
+    <ul>
+      <li>• Achievement with metrics</li>
+    </ul>
+  </div>
+  
+  <div class="technical-environment">
+    <h5>TECHNICAL ENVIRONMENT</h5>
+    <div class="tech-tags">
+      <span class="tech-tag">Technology</span>
+    </div>
+  </div>
+</div>
+` : ''}
+
+GENERAL HTML FORMATTING:
+- Convert **bold text** to <strong>bold text</strong>
+- Convert bullet points to proper <li> elements with • symbols
+- Use appropriate heading levels (h3, h4, h5)
+- Add CSS classes for styling (skills-category, skill-item, etc.)
+- Ensure clean, semantic HTML structure
+- Remove any markdown formatting syntax
+- Keep all specific details, numbers, achievements, and metrics exactly as written
+
+Remember: Your job is ONLY to format the existing content into clean HTML structure, NOT to create new content or change any information.`
 };
 
 export async function POST(request: NextRequest) {
-  let body: SectionGenerationRequest | undefined;
+  const startTime = Date.now();
   
   try {
-    const { userId } = auth();
+    const body: GenerationRequest = await request.json();
+    console.log('📥 OpenAI Response API called for:', body.segmentType);
     
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    let result = '';
+    let usage = undefined;
 
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
@@ -473,22 +612,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    body = await request.json() as SectionGenerationRequest;
     const { 
-      section, 
       candidateData, 
-      jobData, 
-      order = 0, 
-      enhancementAction, 
+      jobDescription, 
+      segmentType, 
       existingContent, 
-      finalEditorContent, 
-      sectionType, 
-      experienceIndex 
+      enhancementAction 
     } = body;
 
-    if (!section && !sectionType) {
+    if (!segmentType) {
       return NextResponse.json(
-        { success: false, error: 'Section or sectionType is required' },
+        { success: false, error: 'segmentType is required' },
         { status: 400 }
       );
     }
@@ -501,17 +635,35 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle finalEditorContent parameter - when present, automatically use format_for_pdf enhancement
-    const actualSection = section || sectionType || 'UNKNOWN';
+    const actualSection = segmentType;
     let actualEnhancementAction = enhancementAction;
     let actualExistingContent = existingContent;
     
-    if (finalEditorContent && !enhancementAction) {
-      console.log(`📝 Final editor content provided for ${actualSection}, using format_for_pdf enhancement`);
+    // Map segment types to proper section names for PDF generation
+    let mappedSection = actualSection;
+    if (segmentType && !segmentType) {
+      mappedSection = mapSegmentTypeToSection(segmentType);
+      console.log(`🔄 Mapped segment type "${segmentType}" to section "${mappedSection}"`);
+    }
+    
+    if (existingContent && !enhancementAction) {
+      console.log(`📝 Final editor content provided for ${mappedSection}, using format_for_pdf enhancement`);
+      console.log(`📄 Final editor content length: ${existingContent.length} chars`);
+      console.log(`📄 Final editor content preview:`, existingContent.substring(0, 300) + (existingContent.length > 300 ? '...' : ''));
       actualEnhancementAction = 'format_for_pdf';
-      actualExistingContent = finalEditorContent;
-    } else if (finalEditorContent && enhancementAction) {
-      console.log(`📝 Final editor content provided for ${actualSection} with ${enhancementAction} enhancement`);
-      actualExistingContent = finalEditorContent;
+      actualExistingContent = existingContent;
+    }
+    
+    console.log(`🎯 Processing section: ${mappedSection}`);
+    console.log(`🎯 Enhancement action: ${actualEnhancementAction || 'generate'}`);
+    console.log(`🎯 Has existing content: ${!!actualExistingContent}`);
+    console.log(`🎯 Has final editor content: ${!!existingContent}`);
+    
+    if (actualExistingContent || existingContent) {
+      const contentToCheck = actualExistingContent || existingContent;
+      if (contentToCheck) {
+        console.log(`📋 Content to process (${contentToCheck.length} chars):`, contentToCheck.substring(0, 200) + (contentToCheck.length > 200 ? '...' : ''));
+      }
     }
 
     // Validation for enhancement actions
@@ -522,36 +674,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const startTime = Date.now();
-
-    console.log(`🤖 Generating section: ${actualSection} (order: ${order})${actualEnhancementAction ? ` - ${actualEnhancementAction.toUpperCase()} enhancement` : ''}`);
+    console.log(`🤖 Generating section: ${mappedSection} (order: ${body.order})${actualEnhancementAction ? ` - ${actualEnhancementAction.toUpperCase()} enhancement` : ''}`);
 
     // Get the appropriate prompt for this section
     let prompt: string;
     
     // Handle enhancement actions first
     if (actualEnhancementAction && actualExistingContent) {
-      console.log(`🎨 Processing ${actualEnhancementAction} enhancement for ${actualSection}`);
-      console.log(`📄 Existing content preview (first 150 chars):`, actualExistingContent.substring(0, 150) + (actualExistingContent.length > 150 ? '...' : ''));
-      prompt = ENHANCEMENT_PROMPTS[actualEnhancementAction](actualSection, actualExistingContent, candidateData, jobData);
-    } else if (actualSection.startsWith('PROFESSIONAL EXPERIENCE ') && actualSection !== 'PROFESSIONAL EXPERIENCES SUMMARY') {
-      const experienceIndex = parseInt(actualSection.split(' ')[2]) - 1;
-      console.log(`🔄 Processing dynamic professional experience: index ${experienceIndex}`);
-      console.log(`📋 Candidate experience data:`, JSON.stringify(candidateData.experience || candidateData.workHistory || [], null, 2));
-      console.log(`🎯 Target experience at index ${experienceIndex}:`, JSON.stringify(candidateData.experience?.[experienceIndex] || candidateData.workHistory?.[experienceIndex] || 'NOT FOUND', null, 2));
-      prompt = SECTION_PROMPTS['PROFESSIONAL EXPERIENCE'](candidateData, jobData, experienceIndex);
-    } else if (SECTION_PROMPTS[actualSection as keyof typeof SECTION_PROMPTS]) {
-      console.log(`🔄 Processing standard section: ${actualSection}`);
-      if (actualSection === 'PROFESSIONAL EXPERIENCES SUMMARY') {
-        console.log(`📋 Experience data for summary:`, JSON.stringify(candidateData.experience || candidateData.workHistory || [], null, 2));
+      console.log(`🎨 Processing ${actualEnhancementAction} enhancement for ${mappedSection}`);
+      console.log(`📄 Original content length: ${actualExistingContent.length} chars`);
+      console.log(`📄 Original content preview (first 300 chars):`, actualExistingContent.substring(0, 300) + (actualExistingContent.length > 300 ? '...' : ''));
+      
+      if (actualEnhancementAction === 'format_for_pdf') {
+        console.log(`🔧 CRITICAL: Using format_for_pdf enhancement - should preserve exact content`);
       }
-      prompt = SECTION_PROMPTS[actualSection as keyof typeof SECTION_PROMPTS](candidateData, jobData);
+      
+      prompt = ENHANCEMENT_PROMPTS[actualEnhancementAction](mappedSection, actualExistingContent, candidateData, jobDescription);
+      
+      console.log(`📝 Enhancement prompt preview (first 500 chars):`, prompt.substring(0, 500) + '...');
     } else {
-      console.error(`❌ Unknown section type: ${actualSection}`);
-      return NextResponse.json(
-        { success: false, error: `Unknown section type: ${actualSection}` },
-        { status: 400 }
-      );
+      // Use generation prompts for initial content creation
+      if (mappedSection.startsWith('PROFESSIONAL EXPERIENCE ') && mappedSection !== 'PROFESSIONAL EXPERIENCES SUMMARY') {
+        const experienceIndex = parseInt(mappedSection.split(' ')[2]) - 1;
+        console.log(`🔄 Processing dynamic professional experience: index ${experienceIndex}`);
+        console.log(`📋 Candidate experience data:`, JSON.stringify(candidateData.experience || candidateData.workHistory || [], null, 2));
+        console.log(`🎯 Target experience at index ${experienceIndex}:`, JSON.stringify(candidateData.experience?.[experienceIndex] || candidateData.workHistory?.[experienceIndex] || 'NOT FOUND', null, 2));
+        prompt = SECTION_PROMPTS['PROFESSIONAL EXPERIENCE'](candidateData, jobDescription, experienceIndex);
+      } else if (SECTION_PROMPTS[mappedSection as keyof typeof SECTION_PROMPTS]) {
+        console.log(`🔄 Processing standard section: ${mappedSection}`);
+        if (mappedSection === 'PROFESSIONAL EXPERIENCES SUMMARY') {
+          console.log(`📋 Experience data for summary:`, JSON.stringify(candidateData.experience || candidateData.workHistory || [], null, 2));
+        }
+        prompt = SECTION_PROMPTS[mappedSection as keyof typeof SECTION_PROMPTS](candidateData, jobDescription);
+      } else {
+        console.error(`❌ Unknown section type: ${mappedSection}`);
+        return NextResponse.json(
+          { success: false, error: `Unknown section type: ${mappedSection}` },
+          { status: 400 }
+        );
+      }
     }
 
     console.log(`📝 Generated prompt preview (first 200 chars): ${prompt.substring(0, 200)}...`);
@@ -574,7 +735,7 @@ export async function POST(request: NextRequest) {
 
     const processingTime = Date.now() - startTime;
     
-    console.log(`📊 OpenAI Response received for ${actualSection}:`, {
+    console.log(`📊 OpenAI Response received for ${mappedSection}:`, {
       hasOutput: !!response.output,
       outputLength: response.output?.length || 0,
       usage: response.usage,
@@ -584,72 +745,77 @@ export async function POST(request: NextRequest) {
     // Extract the response content
     const responseMessage = response.output[0];
     if (!responseMessage || responseMessage.type !== 'message') {
-      console.error(`❌ Invalid response structure for ${actualSection}:`, { responseMessage, responseType: responseMessage?.type });
+      console.error(`❌ Invalid response structure for ${mappedSection}:`, { responseMessage, responseType: responseMessage?.type });
       throw new Error('No valid response from OpenAI Responses API');
     }
 
     const textContent = responseMessage.content[0];
     if (!textContent || textContent.type !== 'output_text') {
-      console.error(`❌ Invalid text content structure for ${actualSection}:`, { textContent, contentType: textContent?.type });
+      console.error(`❌ Invalid text content structure for ${mappedSection}:`, { textContent, contentType: textContent?.type });
       throw new Error('No text content in OpenAI Responses API response');
     }
 
     const generatedContent = textContent.text;
     
-    console.log(`📝 Raw content generated for ${actualSection} (${generatedContent?.length || 0} chars):`, 
-      generatedContent?.substring(0, 150) + (generatedContent?.length > 150 ? '...' : ''));
+    console.log(`📝 Raw content generated for ${mappedSection} (${generatedContent?.length || 0} chars):`, 
+      generatedContent?.substring(0, 300) + (generatedContent?.length > 300 ? '...' : ''));
+
+    // Special debugging for skills sections
+    if (mappedSection.includes('SKILLS') || mappedSection.includes('EXPERTISE')) {
+      console.log(`🔍 SKILLS SECTION DEBUG for ${mappedSection}:`);
+      console.log(`  - Enhancement action: ${actualEnhancementAction}`);
+      console.log(`  - Has existing content: ${!!actualExistingContent}`);
+      console.log(`  - Has final editor content: ${!!existingContent}`);
+      console.log(`  - Raw response length: ${generatedContent?.length || 0}`);
+      console.log(`  - Raw response content:`, generatedContent || 'NO CONTENT');
+    }
+
+    if (actualEnhancementAction === 'format_for_pdf') {
+      console.log(`🔍 VERIFICATION: Checking if content was preserved...`);
+      const originalWords = actualExistingContent?.split(/\s+/).slice(0, 10).join(' ') || '';
+      const generatedWords = generatedContent?.split(/\s+/).slice(0, 10).join(' ') || '';
+      console.log(`📄 Original first 10 words: "${originalWords}"`);
+      console.log(`📄 Generated first 10 words: "${generatedWords}"`);
+      
+      if (originalWords && generatedWords && !generatedWords.includes(originalWords.split(' ')[0])) {
+        console.warn(`⚠️ WARNING: Content may not have been preserved properly for ${mappedSection}!`);
+      }
+    }
 
     if (!generatedContent || generatedContent.trim().length === 0) {
-      console.error(`❌ Empty content returned for ${actualSection}`);
+      console.error(`❌ Empty content returned for ${mappedSection}`);
       throw new Error('OpenAI returned empty content');
     }
 
     // Clean the content to remove unwanted preambles and conclusions
-    const cleanedContent = cleanGeneratedContent(generatedContent, actualSection);
+    const cleanedContent = cleanGeneratedContent(generatedContent, mappedSection);
 
-    console.log(`✅ Section ${actualSection} generated successfully in ${processingTime}ms`);
-
-    const result: SectionGenerationResponse = {
-      success: true,
-      content: cleanedContent,
-      section: actualSection,
-      order,
-      processingTime,
-      tokensUsed: response.usage?.total_tokens || 0,
+    console.log(`✅ Section ${mappedSection} generated successfully in ${processingTime}ms`);
+    
+    // Create response object with proper typing
+    const openaiResponse: OpenAIResponse = {
+      hasOutput: cleanedContent.length > 0,
+      outputLength: cleanedContent.split(' ').length,
+      usage: response.usage,
+      processingTime
     };
 
-    return NextResponse.json(result);
+    console.log(`📊 OpenAI Response received for ${mappedSection}:`, openaiResponse);
 
-  } catch (error) {
-    console.error('❌ OpenAI Responses API error:', error);
-    console.error(`❌ Error details:`, {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : 'No stack trace',
+    return NextResponse.json({
+      success: true,
+      content: cleanedContent,
+      section: mappedSection,
+      order: body.order || 0,
+      tokensUsed: response.usage?.total_tokens,
+      processingTime,
+      response: openaiResponse
     });
 
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
-    // Parse the request body again to get section and order for error response
-    let errorSection = 'unknown';
-    let errorOrder = 0;
-    
-    try {
-      const errorBody = await request.json() as SectionGenerationRequest;
-      errorSection = errorBody.section || 'unknown';
-      errorOrder = errorBody.order || 0;
-    } catch {
-      // If parsing fails, use defaults
-    }
-    
+  } catch (error: unknown) {
+    console.error('Error in OpenAI content generation:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: `Failed to generate content: ${errorMessage}`,
-        content: '',
-        section: errorSection,
-        order: errorOrder,
-        processingTime: 0,
-      } as SectionGenerationResponse,
+      { error: 'Failed to generate content' },
       { status: 500 }
     );
   }
@@ -754,4 +920,26 @@ export async function GET() {
     authentication: 'required',
     timestamp: new Date().toISOString(),
   });
+}
+
+// Fix property access to match CandidateData interface
+function getCandidateLevel(candidate: CandidateData): string {
+  // Determine experience level based on years of experience
+  const years = candidate.yearsOfExperience || 0;
+  if (years < 2) return 'Junior';
+  if (years < 5) return 'Mid-level';
+  if (years < 8) return 'Senior';
+  return 'Lead/Principal';
+}
+
+function getCandidateEducation(candidate: CandidateData): string {
+  return candidate.education?.join(', ') || 'Education details available upon request';
+}
+
+function getCandidateLanguages(candidate: CandidateData): string {
+  return candidate.languages?.join(', ') || 'English (Professional)';
+}
+
+function getCandidateExperiences(candidate: CandidateData): Array<{company: string; title: string; startDate: string; endDate: string; responsibilities: string}> {
+  return candidate.experience || [];
 } 

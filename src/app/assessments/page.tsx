@@ -1,52 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
-import { Layout } from '@/components/layout/Layout';
+import { Badge } from '@/components/ui/Badge';
 import { 
-  ClipboardList, 
-  Plus, 
-  Brain, 
-  Users, 
-  Code, 
-  BarChart3, 
-  CheckCircle, 
-  Clock, 
-  AlertCircle,
-  Eye,
-  Edit,
-  Trash2,
-  Search,
-  Filter,
-  X,
-  Play,
-  Copy,
-  Download,
-  Share2,
-  MoreVertical,
-  Calendar,
-  Timer,
-  Award,
-  TrendingUp,
-  FileText,
-  Grid,
-  List,
-  ChevronDown,
-  Send,
-  UserPlus,
-  Mail,
-  Tag,
-  ArrowLeft,
-  Settings,
-  Star,
-  Globe,
-  Shield,
-  ArrowRight
+  Send, Grid, List, Code, Brain, Award, 
+  X, ChevronDown, ClipboardList, Edit, Shield, Copy, ArrowRight,
+  UserPlus, UserCheck, Calendar, Plus, Settings, Search, Clock, Users, 
+  FileText, CheckCircle, AlertCircle, Eye, Download, 
+  Filter, Star, Building, Phone, Mail, MapPin, 
+  Globe, Zap, Activity, TrendingUp, Briefcase, ArrowUpRight, ArrowLeft, Play,
+  BarChart3, MoreVertical
 } from 'lucide-react';
+import { Layout } from '@/components/layout/Layout';
 
 interface Assessment {
   id: string;
@@ -99,8 +69,8 @@ export default function AssessmentsPage() {
   
   // State management
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedType, setSelectedType] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedType] = useState('all');
+  const [selectedStatus] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [sortBy, setSortBy] = useState<'name' | 'created' | 'candidates' | 'score'>('created');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -191,52 +161,6 @@ export default function AssessmentsPage() {
     logoFile: null as File | null
   });
 
-  const [assessments, setAssessments] = useState<Assessment[]>([
-    {
-      id: '1',
-      title: 'Full-stack - Agile, Java, JavaScript, React, SQL - Expert',
-      type: 'technical',
-      description: 'Comprehensive assessment for senior full-stack developers',
-      duration: 120,
-      questions: 25,
-      status: 'active',
-      candidates: 8,
-      averageScore: 69,
-      createdAt: '2024-02-15',
-      aiGenerated: true,
-      tags: ['React', 'Java', 'SQL', 'Agile'],
-      difficulty: 'advanced'
-    },
-    {
-      id: '2',
-      title: 'Full-stack - JavaScript, React - Senior',
-      type: 'technical',
-      description: 'Senior-level React and JavaScript assessment',
-      duration: 90,
-      questions: 20,
-      status: 'active',
-      candidates: 1,
-      averageScore: 89,
-      createdAt: '2024-02-12',
-      tags: ['React', 'JavaScript'],
-      difficulty: 'advanced'
-    },
-    {
-      id: '3',
-      title: 'Data engineer - Python 3, SQL, Tableau - Expert',
-      type: 'technical',
-      description: 'Expert-level data engineering assessment',
-      duration: 115,
-      questions: 18,
-      status: 'active',
-      candidates: 3,
-      averageScore: 0,
-      createdAt: '2024-01-28',
-      tags: ['Python', 'SQL', 'Tableau'],
-      difficulty: 'advanced'
-    }
-  ]);
-
   const [testCandidates, setTestCandidates] = useState<Candidate[]>([
     {
       id: '1',
@@ -302,12 +226,12 @@ export default function AssessmentsPage() {
   ]);
 
   // Filter and sort assessments
-  const filteredAssessments = assessments.filter(assessment => {
-    const matchesSearch = assessment.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         assessment.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         assessment.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesType = selectedType === 'all' || assessment.type === selectedType;
-    const matchesStatus = selectedStatus === 'all' || assessment.status === selectedStatus;
+  const filteredAssessments = testCandidates.filter(candidate => {
+    const matchesSearch = candidate.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         candidate.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         candidate.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesType = selectedType === 'all' || candidate.type === selectedType;
+    const matchesStatus = selectedStatus === 'all' || candidate.status === selectedStatus;
     
     return matchesSearch && matchesType && matchesStatus;
   });
@@ -358,7 +282,7 @@ export default function AssessmentsPage() {
       setInviteStep('form');
       
       // Update assessment candidates count
-      setAssessments(prev => prev.map(a => 
+      setTestCandidates(prev => prev.map(a => 
         a.id === selectedAssessment.id 
           ? { ...a, candidates: a.candidates + 1 }
           : a
@@ -396,7 +320,7 @@ export default function AssessmentsPage() {
       difficulty: selectedExperience === 'junior' ? 'beginner' : selectedExperience === 'senior' ? 'intermediate' : 'advanced'
     };
     
-    setAssessments(prev => [newAssessment, ...prev]);
+    setTestCandidates(prev => [newAssessment, ...prev]);
     
     // Reset modal state
     setCreateStep('role');

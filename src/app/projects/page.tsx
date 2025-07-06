@@ -6,37 +6,17 @@ import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
-import { Card, CardContent } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
 import { 
   Plus, 
   Search, 
   Filter, 
-  MoreHorizontal, 
+  MoreVertical, 
+  Eye, 
   Users, 
-  Briefcase, 
-  Clock, 
-  AlertCircle,
-  TrendingUp,
-  Calendar,
-  MapPin,
-  Mail,
-  Phone,
-
-  Grid3X3,
-  List,
-  Download,
-  Upload,
-  CheckCircle2,
-  Building2,
-  Target,
-  Eye,
-  Share2,
-  ChevronDown,
-  Star,
-  Trash2,
-  Edit3,
-  X
+  FileText,
+  Calendar
 } from 'lucide-react';
 
 interface Project {
@@ -149,7 +129,7 @@ const ProjectActionsDropdown = ({ project, onRefresh }: { project: Project; onRe
         onClick={() => setIsOpen(!isOpen)}
         className="px-2"
       >
-        <MoreHorizontal className="w-4 h-4" />
+        <MoreVertical className="w-4 h-4" />
       </Button>
 
       {isOpen && (

@@ -68,17 +68,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
 
     try {
       // Convert File to Buffer for OpenAI upload
-      const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+      const buffer = Buffer.from(await file.arrayBuffer());
       
-      // Create a readable stream from the buffer
-      const stream = new ReadableStream({
-        start(controller) {
-          controller.enqueue(buffer);
-          controller.close();
-        }
-      });
-
       // Upload file to OpenAI Files API
       const uploadedFile = await openai.files.create({
         file: new File([buffer], file.name, { type: file.type }),
@@ -118,10 +109,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
       }
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Upload error:', error);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { error: 'Upload failed', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

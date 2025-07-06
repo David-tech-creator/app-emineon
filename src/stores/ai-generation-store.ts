@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { CandidateData, JobDescription } from '@/types';
 
 export enum JobStatus {
   PENDING = 'pending',
@@ -298,6 +299,14 @@ export const createJob = (
 };
 
 // New Segment Model for Competence Files
+interface ExperienceData {
+  company: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  responsibilities: string;
+}
+
 export type Segment = {
   id: string;
   title: string; // e.g., "PROFESSIONAL SUMMARY"
@@ -307,7 +316,7 @@ export type Segment = {
   order: number;
   visible: boolean;
   type: string; // section type for AI prompts
-  experienceData?: any;
+  experienceData?: ExperienceData | null;
 };
 
 // Segment Store Interface
@@ -321,11 +330,11 @@ export interface SegmentState {
   addSegment: (segment: Segment) => void;
   removeSegment: (id: string) => void;
   reorderSegments: (fromIndex: number, toIndex: number) => void;
-  loadFromAI: (jobData: any, candidateData: any) => Promise<void>;
-  regenerateSegment: (segmentId: string, jobData: any, candidateData: any) => Promise<void>;
-  improveSegment: (segmentId: string, jobData: any, candidateData: any) => Promise<void>;
-  expandSegment: (segmentId: string, jobData: any, candidateData: any) => Promise<void>;
-  rewriteSegment: (segmentId: string, jobData: any, candidateData: any) => Promise<void>;
+  loadFromAI: (jobData: JobDescription, candidateData: CandidateData) => Promise<void>;
+  regenerateSegment: (segmentId: string, jobData: JobDescription, candidateData: CandidateData) => Promise<void>;
+  improveSegment: (segmentId: string, jobData: JobDescription, candidateData: CandidateData) => Promise<void>;
+  expandSegment: (segmentId: string, jobData: JobDescription, candidateData: CandidateData) => Promise<void>;
+  rewriteSegment: (segmentId: string, jobData: JobDescription, candidateData: CandidateData) => Promise<void>;
   clearSegments: () => void;
   
   // Getters
@@ -378,34 +387,35 @@ export const useSegmentStore = create<SegmentState>()(
         set({ isLoading: true, error: null });
         
         try {
-          // Define the standard document sections with correct API section names
+          // ✅ JO VINKENROYE INSPIRED ORDERING - Perfect match to the screenshot
           const staticSections = [
             { id: 'header', title: 'HEADER', type: 'HEADER', order: 0 },
-            { id: 'summary', title: 'PROFESSIONAL SUMMARY', type: 'PROFESSIONAL SUMMARY', order: 1 },
-            { id: 'skills', title: 'FUNCTIONAL SKILLS', type: 'FUNCTIONAL SKILLS', order: 2 },
-            { id: 'technical', title: 'TECHNICAL SKILLS', type: 'TECHNICAL SKILLS', order: 3 },
-            { id: 'expertise', title: 'AREAS OF EXPERTISE', type: 'AREAS OF EXPERTISE', order: 4 },
-            { id: 'certifications', title: 'CERTIFICATIONS', type: 'CERTIFICATIONS', order: 5 },
-            { id: 'languages', title: 'LANGUAGES', type: 'LANGUAGES', order: 6 },
-            { id: 'experiences-summary', title: 'PROFESSIONAL EXPERIENCES SUMMARY', type: 'PROFESSIONAL EXPERIENCES SUMMARY', order: 7 },
+            { id: 'summary', title: 'EXECUTIVE SUMMARY', type: 'PROFESSIONAL SUMMARY', order: 1 },
+            { id: 'core-competencies', title: 'CORE COMPETENCIES', type: 'AREAS OF EXPERTISE', order: 2 },
+            { id: 'education', title: 'ACADEMIC QUALIFICATIONS', type: 'EDUCATION', order: 3 }, // ✅ Right after Core Competencies
+            { id: 'certifications', title: 'PROFESSIONAL CERTIFICATIONS', type: 'CERTIFICATIONS', order: 4 }, // ✅ Right after Education
+            { id: 'experiences-summary', title: 'PROFESSIONAL EXPERIENCE SUMMARY', type: 'PROFESSIONAL EXPERIENCES SUMMARY', order: 5 }, // ✅ Right after Certifications
+            { id: 'technical', title: 'TECHNICAL EXPERTISE', type: 'TECHNICAL SKILLS', order: 6 },
+            { id: 'skills', title: 'FUNCTIONAL SKILLS', type: 'FUNCTIONAL SKILLS', order: 7 },
+            { id: 'languages', title: 'LANGUAGES & SKILLS', type: 'LANGUAGES', order: 8 },
           ];
 
           // 🔁 Dynamic PROFESSIONAL EXPERIENCES - Generate based on candidate's work history
           const experienceSections: Segment[] = [];
-          const candidateExperiences = candidateData.experience || candidateData.workHistory || [];
+          const candidateExperiences = candidateData.experience || [];
           
           if (candidateExperiences.length > 0) {
             candidateExperiences.forEach((exp: any, index: number) => {
               experienceSections.push({
                 id: `experience-${index}`,
                 title: `PROFESSIONAL EXPERIENCE ${index + 1}`,
-                type: `PROFESSIONAL EXPERIENCE ${index + 1}`, // This will match the API logic
+                type: `PROFESSIONAL EXPERIENCE ${index + 1}`,
                 content: '',
                 status: 'idle' as const,
                 editable: true,
-                order: 8 + index, // Start after experiences summary
+                order: 9 + index, // Start after LANGUAGES (order 8)
                 visible: true,
-                experienceData: exp // Store the actual experience data
+                experienceData: exp
               });
             });
           } else {
@@ -419,21 +429,17 @@ export const useSegmentStore = create<SegmentState>()(
                 content: '',
                 status: 'idle' as const,
                 editable: true,
-                order: 8 + i,
+                order: 9 + i,
                 visible: true,
                 experienceData: null
               });
             }
           }
 
-          // Static sections that come after experiences - removed because they're now included above
-          const postExperienceSections: any[] = [];
-
           // Combine all sections
           const allSections = [
             ...staticSections,
-            ...experienceSections,
-            ...postExperienceSections
+            ...experienceSections
           ].map(section => ({
             ...section,
             visible: true,
@@ -441,14 +447,8 @@ export const useSegmentStore = create<SegmentState>()(
             status: 'idle' as const
           }));
 
-          console.log(`🚀 Starting AI content generation for ${allSections.length} segments (${experienceSections.length} dynamic experiences)...`);
-          console.log('📋 Job Data being sent to API:', JSON.stringify(jobData, null, 2));
-          console.log('👤 Candidate Data preview:', {
-            name: candidateData.fullName,
-            title: candidateData.currentTitle,
-            experienceCount: candidateData.experience?.length || 0,
-            skillsCount: candidateData.skills?.length || 0
-          });
+          console.log(`🚀 Starting AI content generation with JO VINKENROYE ORDERING for ${allSections.length} segments...`);
+          console.log('📋 New Jo Vinkenroye section order:', allSections.map(s => `${s.order}: ${s.title}`));
           
           // Generate content for all sections in parallel with retry logic
           const results = await Promise.allSettled(
@@ -460,12 +460,12 @@ export const useSegmentStore = create<SegmentState>()(
                 headers: {
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                  section: section.type,
-                  candidateData,
-                  jobData,
-                  order: section.order,
-                }),
+                            body: JSON.stringify({
+              segmentType: section.type,
+              candidateData,
+              jobDescription: jobData,
+              order: section.order,
+            }),
               });
 
               if (!response.ok) {
@@ -497,11 +497,6 @@ export const useSegmentStore = create<SegmentState>()(
               console.log(`✅ ${section.title} - Generated successfully`);
             } else {
               console.error(`❌ ${section.title} - Generation failed:`, result.reason);
-              console.error(`❌ Error details for ${section.title}:`, {
-                sectionType: section.type,
-                errorMessage: result.reason?.message || 'Unknown error',
-                errorStack: result.reason?.stack || 'No stack trace'
-              });
               segments.push({
                 ...section,
                 content: `Generation failed. Try regenerating this section.`,
@@ -511,7 +506,7 @@ export const useSegmentStore = create<SegmentState>()(
           });
 
           set({ segments, isLoading: false });
-          console.log(`🎉 AI content generation completed! Generated ${segments.length} segments`);
+          console.log(`🎉 JO VINKENROYE INSPIRED AI content generation completed! Generated ${segments.length} segments`);
           
         } catch (error) {
           console.error('💥 Critical error during AI content generation:', error);
@@ -539,9 +534,9 @@ export const useSegmentStore = create<SegmentState>()(
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              section: segment.type,  // This should already be the correct section type from loadFromAI
+              segmentType: segment.type,  // This should already be the correct section type from loadFromAI
               candidateData,
-              jobData,
+              jobDescription: jobData,
               order: segment.order, // Include order for proper sequencing
             }),
           });
@@ -591,9 +586,9 @@ export const useSegmentStore = create<SegmentState>()(
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              section: segment.type,
+              segmentType: segment.type,
               candidateData,
-              jobData,
+              jobDescription: jobData,
               order: segment.order,
               enhancementAction: 'improve',
               existingContent: segment.content,
@@ -644,9 +639,9 @@ export const useSegmentStore = create<SegmentState>()(
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              section: segment.type,
+              segmentType: segment.type,
               candidateData,
-              jobData,
+              jobDescription: jobData,
               order: segment.order,
               enhancementAction: 'expand',
               existingContent: segment.content,
@@ -697,9 +692,9 @@ export const useSegmentStore = create<SegmentState>()(
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              section: segment.type,
+              segmentType: segment.type,
               candidateData,
-              jobData,
+              jobDescription: jobData,
               order: segment.order,
               enhancementAction: 'rewrite',
               existingContent: segment.content,

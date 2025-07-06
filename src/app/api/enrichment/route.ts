@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { 
   aiQueueService,
-  generateAIContent,
-  generateAIContentBatch,
   type OpenAIRequest 
 } from '@/lib/services/ai-queue-service';
-import { 
-  useAIGenerationStore,
-  JobType,
-  JobStatus,
-  generateJobId 
-} from '@/stores/ai-generation-store';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,8 +16,7 @@ export async function POST(request: NextRequest) {
       sessionId,
       sectionType,
       currentContent,
-      enhancementType = 'generate',
-      metadata 
+      enhancementType = 'generate' 
     } = body;
 
     if (!type || !userId) {

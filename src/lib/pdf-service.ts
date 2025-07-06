@@ -4,37 +4,84 @@ import puppeteerCore from "puppeteer-core";
 async function getBrowser() {
   const REMOTE_PATH = process.env.CHROMIUM_REMOTE_EXEC_PATH;
   const LOCAL_PATH = process.env.CHROMIUM_LOCAL_EXEC_PATH;
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isVercel = !!process.env.VERCEL_ENV;
   
   console.log('🔧 PDF Service Environment Check:', {
     REMOTE_PATH: REMOTE_PATH ? 'Set' : 'Not set',
     LOCAL_PATH: LOCAL_PATH ? 'Set' : 'Not set',
     NODE_ENV: process.env.NODE_ENV,
     VERCEL_ENV: process.env.VERCEL_ENV,
+    isDevelopment,
+    isVercel
   });
 
-  if (!REMOTE_PATH && !LOCAL_PATH) {
-    console.error('❌ Missing chromium executable paths');
-    throw new Error("Missing a path for chromium executable");
+  // Prioritize local development environment
+  if (isDevelopment && !isVercel) {
+    if (LOCAL_PATH) {
+      console.log('🚀 Using local Chromium for development environment');
+      return await puppeteerCore.launch({
+        executablePath: LOCAL_PATH,
+        defaultViewport: null,
+        headless: true,
+        args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+    '--disable-gpu',
+          '--window-size=1920x1080'
+        ]
+      });
+    } else {
+      // Try to find Chrome/Chromium on macOS
+      const macChromePaths = [
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        '/Applications/Chromium.app/Contents/MacOS/Chromium',
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/google-chrome',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium'
+  ];
+
+      for (const chromePath of macChromePaths) {
+        try {
+          console.log(`🔍 Trying Chrome path: ${chromePath}`);
+          return await puppeteerCore.launch({
+            executablePath: chromePath,
+        defaultViewport: null,
+        headless: true,
+            args: [
+              '--no-sandbox',
+              '--disable-setuid-sandbox',
+              '--disable-dev-shm-usage',
+              '--disable-accelerated-2d-canvas',
+              '--disable-gpu',
+              '--window-size=1920x1080'
+            ]
+          });
+    } catch (error) {
+          console.log(`❌ Failed to launch with ${chromePath}`);
+          continue;
+        }
+      }
+      
+      throw new Error('Could not find Chrome/Chromium installation for local development');
+    }
   }
 
-  if (!!REMOTE_PATH) {
+  // For production/serverless environments
+  if (REMOTE_PATH) {
     console.log('🚀 Using remote Chromium for serverless environment');
     return await puppeteerCore.launch({
       args: chromium.args,
-      executablePath: await chromium.executablePath(
-        process.env.CHROMIUM_REMOTE_EXEC_PATH,
-      ),
+      executablePath: await chromium.executablePath(REMOTE_PATH),
       defaultViewport: null,
       headless: true,
     });
   }
 
-  console.log('🚀 Using local Chromium for development');
-  return await puppeteerCore.launch({
-    executablePath: LOCAL_PATH,
-    defaultViewport: null,
-    headless: true,
-  });
+  throw new Error("Missing a path for chromium executable");
 }
 
 // Generate PDF from HTML content (adapted from user's makePDFFromDomain)
@@ -47,7 +94,7 @@ export const generatePDF = async (htmlContent: string): Promise<Buffer> => {
     
     browser = await getBrowser();
     console.log('✅ Browser launched successfully');
-    
+
     page = await browser.newPage();
     
     // Error handling
@@ -75,7 +122,7 @@ export const generatePDF = async (htmlContent: string): Promise<Buffer> => {
     const pdf = await page.pdf({
       format: "A4",
       printBackground: true,
-      margin: { 
+      margin: {
         top: "20px", 
         right: "20px", 
         bottom: "20px", 
@@ -85,7 +132,7 @@ export const generatePDF = async (htmlContent: string): Promise<Buffer> => {
       displayHeaderFooter: false,
       scale: 1.0,
     });
-
+    
     console.log('✅ PDF generated successfully');
     console.log(`📄 PDF size: ${(pdf.length / 1024).toFixed(2)} KB`);
 
@@ -105,9 +152,9 @@ export const generatePDF = async (htmlContent: string): Promise<Buffer> => {
       }
     }
     if (browser) {
-      try {
+    try {
         await browser.close();
-        console.log('✅ Browser closed');
+      console.log('✅ Browser closed');
       } catch (closeError) {
         console.error('⚠️ Error closing browser:', closeError);
       }

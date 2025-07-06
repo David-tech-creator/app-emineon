@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { put } from '@vercel/blob';
 import { generatePDF } from '@/lib/pdf-service';
 import { CompetenceFileStatus } from '@prisma/client';
-import { createClient } from '@supabase/supabase-js';
-import { generateAntaesCompetenceFileHTML } from '../generate/route';
 
 // Types for the request
 interface SegmentContent {
@@ -16,40 +13,7 @@ interface SegmentContent {
   order: number;
 }
 
-interface PDFGenerationRequest {
-  candidateData: {
-    id: string;
-    fullName: string;
-    currentTitle: string;
-    email: string;
-    phone: string;
-    location: string;
-    yearsOfExperience: number;
-    skills: string[];
-    certifications: string[];
-    experience: any[];
-    education: string[];
-    languages: string[];
-    summary: string;
-  };
-  segments: SegmentContent[];
-  jobDescription?: {
-    text: string;
-    requirements: string[];
-    skills: string[];
-    responsibilities: string[];
-    title?: string;
-    company?: string;
-  };
-  managerContact?: {
-    name?: string;
-    email?: string;
-    phone?: string;
-  };
-  template?: string;
-  client?: string;
-  jobTitle?: string;
-}
+
 
 // 🏗️ STEP 1: SEGMENT STRUCTURING
 interface StructuredSegment {
@@ -62,7 +26,7 @@ interface StructuredSegment {
 }
 
 // ENHANCED SEGMENT STRUCTURING with better recognition
-function structureSegments(segments: SegmentContent[], candidateData: any, template: string): StructuredSegment[] {
+function structureSegments(segments: SegmentContent[], candidateData: unknown, template: string): StructuredSegment[] {
   console.log('🏗️ STEP 1: Structuring segments with proper normalization...');
   
   const structuredSegments: StructuredSegment[] = segments
@@ -198,32 +162,70 @@ function cleanAndNormalizeContent(content: string, formatting: StructuredSegment
   return cleanedContent;
 }
 
-// 🎨 STEP 3: ENHANCED SEMANTIC FORMATTING with comprehensive section structuring
-async function applySemanticFormatting(content: string, segmentType: StructuredSegment['type'], template: string): Promise<string> {
-  console.log(`🎨 Applying semantic formatting for type: ${segmentType}`);
+// 🎨 STEP 3: ENHANCED SEMANTIC FORMATTING with OpenAI responses API integration
+async function applySemanticFormatting(content: string, segmentType: StructuredSegment['type'], template: string, candidateData?: unknown, jobDescription?: unknown): Promise<string> {
+  console.log(`🎨 Applying semantic formatting for type: ${segmentType} via OpenAI responses API`);
   
   try {
-    switch (segmentType) {
-      case 'header':
-        return await formatHeaderContent(content, template);
-      case 'summary':
-        return await formatSummaryContent(content, template);
-      case 'skills':
-        return await formatSkillsContent(content, template);
-      case 'experience':
-        return await formatExperienceContent(content, template);
-      case 'experience-summary':
-        return await formatExperienceSummaryContent(content, template);
-      case 'education':
-        return formatEducationContent(content);
-      case 'static':
-        return formatStaticContent(content, template);
-      default:
-        return await applyGeneralFormatting(content);
+    // Call OpenAI responses API with final editor content
+    console.log(`📡 Calling OpenAI responses API for ${segmentType} with finalEditorContent`);
+    
+    const response = await fetch('/api/openai-responses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        finalEditorContent: content,
+        sectionType: segmentType.toUpperCase(),
+        candidateData,
+        jobDescription,
+        // finalEditorContent automatically triggers format_for_pdf enhancement
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`OpenAI API error ${response.status}: ${errorData.error || 'Request failed'}`);
     }
+
+    const result = await response.json();
+    
+    if (!result.success || !result.content) {
+      throw new Error(`OpenAI API returned: ${result.error || 'No content generated'}`);
+    }
+
+    console.log(`✅ OpenAI formatting successful for ${segmentType} (${result.content.length} chars)`);
+    return result.content;
+    
   } catch (error) {
-    console.error(`❌ Error in semantic formatting for ${segmentType}:`, error);
-    return convertMarkdownToHTML(content);
+    console.error(`❌ OpenAI formatting failed for ${segmentType}:`, error);
+    console.log(`🔄 Falling back to local formatting for ${segmentType}`);
+    
+    // Fallback to local formatting functions
+    try {
+      switch (segmentType) {
+        case 'header':
+          return await formatHeaderContent(content, template);
+        case 'summary':
+          return await formatSummaryContent(content, template);
+        case 'skills':
+          return await formatSkillsContent(content, template);
+        case 'experience':
+          return await formatExperienceContent(content, template);
+        case 'experience-summary':
+          return await formatExperienceSummaryContent(content, template);
+        case 'education':
+          return formatEducationContent(content);
+        case 'static':
+          return formatStaticContent(content, template);
+        default:
+          return await applyGeneralFormatting(content);
+      }
+    } catch (fallbackError) {
+      console.error(`❌ Fallback formatting also failed for ${segmentType}:`, fallbackError);
+      return convertMarkdownToHTML(content);
+    }
   }
 }
 
@@ -829,9 +831,9 @@ async function applyGeneralFormatting(content: string): Promise<string> {
 // Main formatting pipeline
 async function formatContentForPDF(
   segments: SegmentContent[], 
-  candidateData: any, 
+  candidateData: unknown, 
   template: string = 'professional-classic',
-  jobDescription?: any
+  jobDescription?: unknown
 ): Promise<SegmentContent[]> {
   console.log('🎯 STEP 4: Applying 5-step formatting pipeline...');
   
@@ -848,8 +850,8 @@ async function formatContentForPDF(
       // Step 2: Clean content
       const cleanedContent = cleanAndNormalizeContent(segment.content, segment.formatting);
       
-      // Step 3: Apply semantic formatting with AI
-      const formattedContent = await applySemanticFormatting(cleanedContent, segment.type, template);
+      // Step 3: Apply semantic formatting with OpenAI API
+      const formattedContent = await applySemanticFormatting(cleanedContent, segment.type, template, candidateData, jobDescription);
       
       formattedSegments.push({
         id: `formatted_${segment.order}`,
@@ -878,7 +880,7 @@ async function formatContentForPDF(
 }
 
 // 🏗️ STEP 4: ENHANCED HTML GENERATION with modular structure
-function generateHTMLFromSegments(segments: SegmentContent[], candidateData: any, template: string = 'professional-classic'): string {
+function generateHTMLFromSegments(segments: SegmentContent[], candidateData: { fullName: string; currentTitle: string; email: string; phone: string; location: string; yearsOfExperience: number; }, template: string = 'professional-classic'): string {
   const headerData = {
     fullName: candidateData.fullName,
     currentTitle: candidateData.currentTitle,
@@ -1063,7 +1065,56 @@ function getTemplateStyles(template: string): string {
     .skills-section {
       margin-bottom: 25px;
     }
-    
+
+    /* NEW: Enhanced Skills Category Structure */
+    .skills-category {
+      margin-bottom: 20px;
+      page-break-inside: avoid;
+      border-left: 4px solid #FFB800;
+      padding-left: 16px;
+      background: #fefefe;
+      padding: 12px 16px;
+      border-radius: 4px;
+    }
+
+    .skills-subtitle {
+      font-size: 13px;
+      font-weight: 600;
+      color: #073C51;
+      margin-bottom: 8px;
+      margin-top: 0;
+    }
+
+    .skills-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 8px 0;
+    }
+
+    .skill-item {
+      color: #FFB800;
+      font-weight: 500;
+      margin-bottom: 4px;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .skill-item::before {
+      content: "●";
+      color: #FFB800;
+      font-weight: bold;
+      margin-right: 8px;
+    }
+
+    .skills-description {
+      font-style: italic;
+      color: #666666;
+      font-size: 10px;
+      margin: 8px 0 0 0;
+      line-height: 1.3;
+    }
+
+    /* LEGACY: Original skill styles for backward compatibility */
     .skill-category {
       margin-bottom: 16px;
       page-break-inside: avoid;
@@ -1204,6 +1255,120 @@ function getTemplateStyles(template: string): string {
       font-size: 9px;
       font-weight: 500;
       border: 1px solid #ddd;
+      white-space: nowrap;
+    }
+
+    /* ===== NEW ENHANCED EXPERIENCE STYLES ===== */
+    .experience-entry {
+      margin-bottom: 25px;
+      page-break-inside: avoid;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      overflow: hidden;
+      background: white;
+    }
+
+    .company-header {
+      background: #f8f9fa;
+      padding: 16px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .experience-entry .company-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #073C51;
+      margin: 0 0 4px 0;
+    }
+
+    .experience-entry .role-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #FFB800;
+      margin: 0 0 4px 0;
+    }
+
+    .duration {
+      font-size: 11px;
+      color: #666666;
+      margin: 0;
+    }
+
+    .role-overview,
+    .responsibilities,
+    .achievements,
+    .technical-environment {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .role-overview:last-child,
+    .responsibilities:last-child,
+    .achievements:last-child,
+    .technical-environment:last-child {
+      border-bottom: none;
+    }
+
+    .role-overview h5,
+    .responsibilities h5,
+    .achievements h5,
+    .technical-environment h5 {
+      font-size: 11px;
+      font-weight: 600;
+      color: #073C51;
+      margin: 0 0 8px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .role-overview p {
+      font-size: 11px;
+      line-height: 1.4;
+      color: #555555;
+      margin: 0;
+    }
+
+    .responsibilities ul,
+    .achievements ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .responsibilities li,
+    .achievements li {
+      font-size: 11px;
+      line-height: 1.4;
+      color: #555555;
+      margin-bottom: 4px;
+      padding-left: 12px;
+      position: relative;
+    }
+
+    .responsibilities li::before,
+    .achievements li::before {
+      content: "●";
+      color: #FFB800;
+      font-weight: bold;
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+
+    .tech-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tech-tag.enhanced {
+      background: #f0f8ff;
+      color: #073C51;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 9px;
+      font-weight: 500;
+      border: 1px solid #d0e7ff;
       white-space: nowrap;
     }
     
@@ -1437,25 +1602,262 @@ function getTemplateStyles(template: string): string {
     }
   `;
 
-  // Template-specific styles - simplified
+  // Template-specific styles - enhanced
   if (template === 'antaes') {
     return baseStyles + `
-      /* Antaes Template Specific Styles */
+      /* Antaes Template - Professional Clean Design */
+      * {
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        line-height: 1.6;
+        color: #2c3e50;
+        background: #ffffff;
+        font-size: 13px;
+        margin: 0;
+        padding: 0;
+      }
+      
+      .competence-document {
+        max-width: 210mm;
+        margin: 0 auto;
+        background: white;
+        min-height: 297mm;
+        padding: 25mm 20mm;
+        position: relative;
+      }
+      
+      /* Header - Clean Professional Layout */
+      .document-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #2c3e50;
+      }
+      
+      .candidate-info {
+        flex: 1;
+      }
+      
       .candidate-name {
-        color: #8B0000;
+        font-size: 26px;
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 0 0 8px 0;
+        letter-spacing: -0.3px;
+      }
+      
+      .candidate-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #e67e22;
+        margin-bottom: 12px;
+      }
+      
+      .contact-info {
+        font-size: 13px;
+        color: #7f8c8d;
+        line-height: 1.5;
+      }
+      
+      .contact-row {
+        margin-bottom: 4px;
+      }
+      
+      .contact-item {
+        margin-right: 15px;
+        font-weight: 500;
+      }
+      
+      /* Section Styling - Clean and Organized */
+      .section {
+        margin-bottom: 24px;
+        page-break-inside: avoid;
       }
       
       .section-title {
-        color: #8B0000;
-        border-bottom-color: #8B0000;
+        font-size: 14px;
+        font-weight: 700;
+        color: #2c3e50;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 15px;
+        padding-bottom: 6px;
+        border-bottom: 2px solid #2c3e50;
+      }
+      
+      .section-content {
+        font-size: 13px;
+        line-height: 1.6;
+        color: #34495e;
+      }
+      
+      /* Skills Section - Organized Categories */
+      .skills-section {
+        margin: 15px 0;
+      }
+      
+      .skills-category {
+        margin-bottom: 18px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border-left: 4px solid #e67e22;
+      }
+      
+      .skills-subtitle {
+        font-size: 13px;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      .skills-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      
+      .skill-tag {
+        display: inline-block;
+        background: #ecf0f1;
+        color: #2c3e50;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        border: 1px solid #bdc3c7;
+        white-space: nowrap;
+      }
+      
+      /* Experience Section - Professional Format */
+      .experience-block {
+        margin-bottom: 25px;
+        padding: 18px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border-left: 4px solid #2c3e50;
+        page-break-inside: avoid;
       }
       
       .company-name {
-        color: #8B0000;
+        font-size: 15px;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 3px;
       }
       
-      .document-header {
-        border-bottom-color: #8B0000;
+      .job-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #e67e22;
+        margin-bottom: 6px;
+      }
+      
+      .job-dates {
+        font-size: 12px;
+        color: #7f8c8d;
+        font-weight: 600;
+        margin-bottom: 12px;
+      }
+      
+      .experience-content ul {
+        list-style: none;
+        padding-left: 0;
+        margin: 10px 0;
+      }
+      
+      .experience-content li {
+        position: relative;
+        padding-left: 18px;
+        margin-bottom: 6px;
+        line-height: 1.5;
+        color: #34495e;
+      }
+      
+      .experience-content li:before {
+        content: "•";
+        color: #e67e22;
+        font-weight: bold;
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+      
+      /* Bullet Point Lists */
+      .section-content ul {
+        list-style: none;
+        padding-left: 0;
+        margin: 12px 0;
+      }
+      
+      .section-content li {
+        position: relative;
+        padding-left: 18px;
+        margin-bottom: 6px;
+        line-height: 1.5;
+        color: #34495e;
+      }
+      
+      .section-content li:before {
+        content: "•";
+        color: #e67e22;
+        font-weight: bold;
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+      
+      /* Typography Enhancements */
+      .section-content strong {
+        font-weight: 700;
+        color: #2c3e50;
+      }
+      
+      .section-content em {
+        font-style: italic;
+        color: #7f8c8d;
+      }
+      
+      /* Print Optimization */
+      @media print {
+        body { 
+          font-size: 12px;
+          -webkit-print-color-adjust: exact;
+          color-adjust: exact;
+        }
+        .competence-document { 
+          max-width: none; 
+          margin: 0; 
+          padding: 15mm;
+        }
+        .section { 
+          page-break-inside: avoid; 
+        }
+        .experience-block {
+          page-break-inside: avoid;
+        }
+      }
+      
+      /* Mobile Responsiveness */
+      @media (max-width: 768px) {
+        .document-header { 
+          flex-direction: column; 
+          gap: 15px;
+        }
+        .candidate-name { 
+          font-size: 22px; 
+        }
+        .section-title { 
+          font-size: 13px; 
+        }
       }
     `;
   } else {
@@ -1489,7 +1891,7 @@ function convertSegmentsToSections(segments: SegmentContent[], candidateData: an
 }
 
 // NEW: Enhanced Antaes HTML generator using processed segments
-function generateAntaesHTMLFromSegments(segments: SegmentContent[], candidateData: any, jobDescription?: any, managerContact?: any): string {
+async function generateAntaesHTMLFromSegments(segments: SegmentContent[], candidateData: any, jobDescription?: any, managerContact?: any): Promise<string> {
   console.log('🎨 Generating Antaes HTML with processed segments');
   
   // Group segments by type for easy access
@@ -1508,362 +1910,293 @@ function generateAntaesHTMLFromSegments(segments: SegmentContent[], candidateDat
     phone: candidateData.phone || ''
   };
 
-  // Generate sections HTML using processed content
-  const sectionsHTML = segments
+  // Generate sections HTML using processed content with beautiful formatting
+  const sectionsHTMLPromises = segments
     .sort((a, b) => a.order - b.order)
-    .map(segment => {
+    .map(async segment => {
       const sectionClass = `section-${segment.type.toLowerCase().replace(/\s+/g, '-')}`;
+      
+      // Transform content to beautiful HTML based on segment type
+      const beautifulContent = await transformContentToBeautifulHTML(segment.content, segment.type, candidateData);
       
       return `
         <div class="section ${sectionClass}" id="${segment.type.toLowerCase()}">
           <h2 class="section-title">${segment.title.toUpperCase()}</h2>
           <div class="section-content">
-            ${segment.content}
+            ${beautifulContent}
           </div>
         </div>
       `;
-    })
-    .join('');
+    });
+  
+  const sectionsHTML = (await Promise.all(sectionsHTMLPromises)).join('');
 
   // Complete Antaes template with processed content
   return `
     <!DOCTYPE html>
     <html lang="en">
     <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${headerData.fullName} - Competence File</title>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-      <style>
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        
-        body {
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          line-height: 1.6;
-          color: #232629;
-          background: #ffffff;
-          font-size: 14px;
-        }
-        
-        .container {
-          max-width: 210mm;
-          margin: 0 auto;
-          background: white;
-          min-height: 297mm;
-          padding: 30px;
-          position: relative;
-          padding-bottom: 80px;
-        }
-        
-        /* Header Styling - Logo on right, content on left */
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 25px;
-          padding-bottom: 20px;
-          border-bottom: 2px solid #073C51;
-        }
-        
-        .header-content {
-          flex: 1;
-          text-align: left;
-        }
-        
-        .header-logo {
-          flex-shrink: 0;
-          margin-left: 20px;
-        }
-        
-        .logo-image {
-          height: 70px;
-          width: auto;
-          max-width: 250px;
-          opacity: 1 !important;
-          visibility: visible !important;
-          display: block !important;
-        }
-        
-        .header h1 {
-          font-size: 28px;
-          font-weight: 700;
-          color: #073C51;
-          margin-bottom: 6px;
-          letter-spacing: -0.5px;
-        }
-        
-        .header-role {
-          font-size: 16px;
-          font-weight: 600;
-          color: #FFB800;
-          margin-bottom: 4px;
-        }
-        
-        .header-experience {
-          font-size: 14px;
-          font-weight: 500;
-          color: #444B54;
-          margin-bottom: 12px;
-        }
-        
-        .location-info {
-          font-size: 14px;
-          color: #444B54;
-          margin-bottom: 12px;
-          font-weight: 500;
-        }
-        
-        .manager-contact {
-          margin-top: 12px;
-          padding-top: 12px;
-          border-top: 1px solid #e9ecef;
-        }
-        
-        .manager-label {
-          font-size: 12px;
-          font-weight: 600;
-          color: #073C51;
-          margin-bottom: 6px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        
-        .contact-item {
-          color: #444B54;
-          font-size: 13px;
-          margin-bottom: 3px;
-        }
-        
-        .contact-label {
-          font-weight: 700;
-          color: #232629;
-        }
-        
-        /* Content Area */
-        .content {
-          margin-bottom: 60px;
-        }
-        
-        /* Section Styling */
-        .section {
-          margin-bottom: 20px;
-          page-break-inside: avoid;
-        }
-        
-        .section-title {
-          font-size: 15px;
-          font-weight: 700;
-          color: #073C51;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          margin-bottom: 12px;
-          padding-bottom: 6px;
-          border-bottom: 2px solid #073C51;
-        }
-        
-        .section-content {
-          font-size: 14px;
-          line-height: 1.7;
-        }
-        
-        /* Enhanced Content Formatting for Processed Content */
-        .section-content p {
-          margin-bottom: 12px;
-          line-height: 1.7;
-        }
-        
-        .section-content ul {
-          margin: 12px 0;
-          padding-left: 0;
-          list-style: none;
-        }
-        
-        .section-content li {
-          position: relative;
-          padding-left: 20px;
-          margin-bottom: 8px;
-          line-height: 1.6;
-        }
-        
-        .section-content li:before {
-          content: "•";
-          color: #FFB800;
-          font-weight: bold;
-          position: absolute;
-          left: 0;
-          top: 0;
-        }
-        
-        .section-content strong {
-          font-weight: 700;
-          color: #073C51;
-        }
-        
-        .section-content em {
-          font-style: italic;
-          color: #444B54;
-        }
-        
-        .section-content h3 {
-          font-size: 16px;
-          font-weight: 700;
-          color: #073C51;
-          margin: 15px 0 8px 0;
-        }
-        
-        .section-content h4 {
-          font-size: 14px;
-          font-weight: 600;
-          color: #FFB800;
-          margin: 12px 0 6px 0;
-        }
-        
-        .section-content h5 {
-          font-size: 13px;
-          font-weight: 600;
-          color: #073C51;
-          margin: 10px 0 4px 0;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        
-        /* Skills sections styling */
-        .section-skills .section-content,
-        .section-technical-skills .section-content,
-        .section-functional-skills .section-content {
-          display: grid;
-          gap: 15px;
-        }
-        
-        /* Experience sections enhanced styling */
-        .section-experience .section-content,
-        .section-professional-experience .section-content,
-        .section-professional-experience-1 .section-content,
-        .section-professional-experience-2 .section-content,
-        .section-professional-experience-3 .section-content {
-          background: #f8f9fa;
-          padding: 20px;
-          border-radius: 6px;
-          border-left: 4px solid #073C51;
-        }
-        
-        /* Education and certifications styling */
-        .section-education .section-content,
-        .section-certifications .section-content {
-          background: #f8f9fa;
-          padding: 15px;
-          border-radius: 6px;
-          border-left: 4px solid #FFB800;
-        }
-        
-        /* Languages and static content styling */
-        .section-languages .section-content,
-        .section-static .section-content {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-        }
-        
-        .section-languages .section-content span,
-        .section-static .section-content span {
-          display: inline-flex;
-          align-items: center;
-          padding: 6px 12px;
-          background: #f8f9fa;
-          border-radius: 20px;
-          font-weight: 500;
-          color: #073C51;
-          font-size: 12px;
-          border: 1px solid #e9ecef;
-        }
-        
-        /* Page counter for PDF generation */
-        @page {
-          margin: 20mm;
-          @bottom-left {
-            content: counter(page);
-            font-family: 'Inter', sans-serif;
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${headerData.fullName} - Competence File</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
+          body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: #232629;
+            background: #ffffff;
+            font-size: 14px;
+          }
+          
+          .container {
+            max-width: 210mm;
+            margin: 0 auto;
+            background: white;
+            min-height: 297mm;
+            padding: 30px;
+            position: relative;
+            padding-bottom: 80px;
+          }
+          
+          /* Header Styling - Logo on right, content on left */
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #073C51;
+          }
+          
+          .header-content {
+            flex: 1;
+            text-align: left;
+          }
+          
+          .header-logo {
+            flex-shrink: 0;
+            margin-left: 20px;
+          }
+          
+          .logo-image {
+            height: 70px;
+            width: auto;
+            max-width: 250px;
+            opacity: 1 !important;
+            visibility: visible !important;
+            display: block !important;
+          }
+          
+          .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #073C51;
+            margin-bottom: 6px;
+            letter-spacing: -0.5px;
+          }
+          
+          .header-role {
+            font-size: 16px;
+            font-weight: 600;
+            color: #FFB800;
+            margin-bottom: 4px;
+          }
+          
+          .header-experience {
+            font-size: 14px;
+            font-weight: 500;
+            color: #444B54;
+            margin-bottom: 12px;
+          }
+          
+          .location-info {
+            font-size: 14px;
+            color: #444B54;
+            margin-bottom: 12px;
+            font-weight: 500;
+          }
+          
+          .manager-contact {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e9ecef;
+          }
+          
+          .manager-label {
             font-size: 12px;
             font-weight: 600;
             color: #073C51;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
           }
-          @bottom-center {
-            content: "Partnership for Excellence";
-            font-family: 'Inter', sans-serif;
-            font-size: 10px;
+          
+          .contact-item {
             color: #444B54;
+            font-size: 13px;
+            margin-bottom: 3px;
           }
-        }
-        
-        /* Print Optimization */
-        @media print {
-          body { 
-            font-size: 12px; 
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+          
+          .contact-label {
+            font-weight: 700;
+            color: #232629;
           }
-          .container { 
-            max-width: none; 
-            margin: 0; 
-            padding: 20px;
-            padding-bottom: 60px;
+          
+          /* Content Area */
+          .content {
+            margin-bottom: 60px;
           }
-          .section { 
-            page-break-inside: avoid; 
+          
+          /* Section Styling */
+          .section {
+            margin-bottom: 20px;
+            page-break-inside: avoid;
           }
-          .logo-image {
-            opacity: 1 !important;
-            visibility: visible !important;
-            display: block !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-            background: transparent !important;
+          
+          .section-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #073C51;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #073C51;
           }
-          .header-logo {
-            opacity: 1 !important;
-            visibility: visible !important;
-            display: block !important;
+          
+          .section-content {
+            font-size: 14px;
+            line-height: 1.7;
           }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <!-- HEADER - Content on left, logo on right -->
-        <div class="header">
-          <div class="header-content">
-            <h1>${headerData.fullName}</h1>
-            <div class="header-role">${headerData.currentTitle}</div>
-            <div class="header-experience">${headerData.yearsOfExperience} years of experience</div>
-            ${headerData.location ? `<div class="location-info">${headerData.location}</div>` : ''}
-            ${managerContact && (managerContact.name || managerContact.email || managerContact.phone) ? `
-              <div class="manager-contact">
-                <div class="manager-label">For inquiries, contact:</div>
-                ${managerContact.name ? `<div class="contact-item"><span class="contact-label">Manager:</span> ${managerContact.name}</div>` : ''}
-                ${managerContact.email ? `<div class="contact-item"><span class="contact-label">Email:</span> ${managerContact.email}</div>` : ''}
-                ${managerContact.phone ? `<div class="contact-item"><span class="contact-label">Phone:</span> ${managerContact.phone}</div>` : ''}
-              </div>
-            ` : ''}
+          
+          /* Enhanced Content Formatting for Processed Content */
+          .section-content p {
+            margin-bottom: 12px;
+            line-height: 1.7;
+          }
+          
+          .section-content ul {
+            margin: 12px 0;
+            padding-left: 0;
+            list-style: none;
+          }
+          
+          .section-content li {
+            position: relative;
+            padding-left: 20px;
+            margin-bottom: 8px;
+            line-height: 1.6;
+          }
+          
+          .section-content li:before {
+            content: "•";
+            color: #FFB800;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+            top: 0;
+          }
+          
+          /* Beautiful Content Formatting */
+          .skills-container {
+            margin: 12px 0;
+          }
+          
+          .skills-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 8px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+          }
+          
+          /* Legacy skill-item styles - replaced by new skills-section styles below */
+          .skills-list .skill-item {
+            position: relative;
+            padding: 8px 12px 8px 24px;
+            margin: 0;
+            background: #f8f9fb;
+            border-left: 3px solid #FFB800;
+            border-radius: 4px;
+            line-height: 1.4;
+            font-size: 13px;
+            font-weight: 500;
+          }
+          
+          .skills-list .skill-item:before {
+            content: "•";
+            color: #FFB800;
+            font-weight: bold;
+            position: absolute;
+            left: 8px;
+            top: 8px;
+          }
+
+          /* Print Optimization */
+          @media print {
+            body { 
+              font-size: 12px; 
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .container { 
+              max-width: none; 
+              margin: 0; 
+              padding: 20px;
+              padding-bottom: 60px;
+            }
+            .section { 
+              page-break-inside: avoid; 
+            }
+            .logo-image {
+              opacity: 1 !important;
+              visibility: visible !important;
+              display: block !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+              background: transparent !important;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <!-- HEADER - Content on left, logo on right -->
+          <div class="header">
+            <div class="header-content">
+              <h1>${headerData.fullName}</h1>
+              <div class="header-role">${headerData.currentTitle}</div>
+              ${managerContact && (managerContact.name || managerContact.email || managerContact.phone) ? `
+                <div class="manager-contact">
+                  <div class="manager-label">For inquiries, contact:</div>
+                  ${managerContact.name ? `<div class="contact-item"><span class="contact-label">Manager:</span> ${managerContact.name}</div>` : ''}
+                  ${managerContact.email ? `<div class="contact-item"><span class="contact-label">Email:</span> ${managerContact.email}</div>` : ''}
+                  ${managerContact.phone ? `<div class="contact-item"><span class="contact-label">Phone:</span> ${managerContact.phone}</div>` : ''}
+                </div>
+              ` : ''}
+            </div>
+            <div class="header-logo">
+              <img src="https://res.cloudinary.com/emineon/image/upload/w_200,h_100,c_fit,q_100,f_png/Antaes_logo" 
+                   alt="ANTAES" 
+                   class="logo-image" 
+                   style="width: 150px; height: 80px; object-fit: contain; display: block !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; opacity: 1 !important; visibility: visible !important; background: transparent !important;" 
+                   onload="this.style.opacity='1';" />
+            </div>
           </div>
-          <div class="header-logo">
-            <img src="https://res.cloudinary.com/emineon/image/upload/w_200,h_100,c_fit,q_100,f_png/Antaes_logo" 
-                 alt="ANTAES" 
-                 class="logo-image" 
-                 style="width: 150px; height: 80px; object-fit: contain; display: block !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; opacity: 1 !important; visibility: visible !important; background: transparent !important;" 
-                 onload="this.style.opacity='1';" 
-                 onerror="console.error('Antaes logo failed to load:', this.src);" />
+          
+          <div class="content">
+            ${sectionsHTML}
           </div>
         </div>
-        
-        <div class="content">
-          ${sectionsHTML}
-        </div>
-      </div>
-    </body>
+      </body>
     </html>
   `;
 }
@@ -1973,6 +2306,164 @@ function formatSummaryExperienceItem(experienceHeader: string, details: string[]
   return summaryHtml;
 }
 
+// AI-powered content formatting for PDF generation - temporarily disabled
+async function formatContentWithAI(content: string, sectionType: string, candidateData?: any): Promise<string | null> {
+  // Temporarily disabled to fix URL parsing errors in server environment
+  // Falls back to direct content processing which works well
+  console.log(`🔧 AI formatting disabled for ${sectionType}, using direct processing`);
+  return null;
+}
+
+// Enhanced content transformation for beautiful PDF formatting
+async function transformContentToBeautifulHTML(content: string, segmentType: string, candidateData?: any): Promise<string> {
+  if (!content || content.trim() === '') {
+    return '<p>No content available</p>';
+  }
+
+  // Clean the content first (remove only script/style tags, keep formatting)
+  const cleanContent = content
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .trim();
+
+  console.log(`🎨 RAW CONTENT for ${segmentType}: ${cleanContent.substring(0, 200)}...`);
+
+  // 🚨 CRITICAL FIX: Check if content is already well-formatted HTML from template
+  const isAlreadyFormattedHTML = cleanContent.includes('<div class="') || 
+                                 cleanContent.includes('<ul class="') || 
+                                 cleanContent.includes('skill-category-title') ||
+                                 cleanContent.includes('technical-skill-category') ||
+                                 cleanContent.includes('functional-skill-category');
+
+  if (isAlreadyFormattedHTML) {
+    console.log(`✅ Content already well-formatted for ${segmentType}, skipping transformation`);
+    return cleanContent;
+  }
+
+  // 🚀 BYPASS ALL TRANSFORMATIONS - Return raw content as-is with minimal formatting
+  console.log(`🔧 BYPASSING TRANSFORMATIONS for ${segmentType} - returning raw content with basic HTML conversion`);
+  
+  // Convert markdown-style bold to HTML bold and convert line breaks to HTML
+  let htmlContent = cleanContent
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/\n/g, '<br>');
+  
+  return `<div class="content-section">${htmlContent}</div>`;
+}
+
+// NEW: Enhanced function to handle skills content matching Antaes CSS structure
+function transformSkillsContentDirect(content: string, segmentType: string): string {
+  console.log(`🔧 Processing skills content directly for ${segmentType}: ${content.substring(0, 200)}...`);
+  
+  // Convert markdown-style bold to HTML bold
+  let htmlContent = content
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>');
+  
+  // Process line by line to maintain structure
+  const lines = htmlContent.split('\n').filter(line => line.trim());
+  let result = '';
+  
+  let currentCategoryName = '';
+  let categorySkills: string[] = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // Skip empty lines
+    if (!line) continue;
+    
+    // Check if it's a bold category header like "<strong>Leadership & Management</strong>"
+    if (line.includes('<strong>') && line.includes('</strong>') && !line.includes(':')) {
+      // Save previous category if exists
+      if (currentCategoryName && categorySkills.length > 0) {
+        result += formatSkillsCategory(currentCategoryName, categorySkills);
+        categorySkills = [];
+      }
+      
+      // Start new category - extract text from <strong> tags
+      currentCategoryName = line.replace(/<\/?strong>/g, '').trim();
+      console.log(`🏷️ Found category: ${currentCategoryName}`);
+    }
+    // Check if it's a category header with colon (fallback format)
+    else if (line.includes(':') && (line.includes('<strong>') || /^[A-Z]/.test(line))) {
+      // Save previous category if exists
+      if (currentCategoryName && categorySkills.length > 0) {
+        result += formatSkillsCategory(currentCategoryName, categorySkills);
+        categorySkills = [];
+      }
+      
+      // Start new category
+      currentCategoryName = line.replace(/<\/?strong>/g, '').replace(/:$/, '').trim();
+      console.log(`🏷️ Found category with colon: ${currentCategoryName}`);
+    }
+    // Check if it's a bullet point with detailed skill description
+    else if ((line.startsWith('•') || line.startsWith('-') || line.startsWith('*')) && currentCategoryName) {
+      // Extract skill details for current category
+      const cleanLine = line.replace(/^[•\-\*]\s*/, '').trim();
+      
+      // Look for nested bold skills like "**Transformational Leadership:** description"
+      const skillMatch = cleanLine.match(/<strong>([^<]+)<\/strong>:\s*(.*)/);
+      if (skillMatch) {
+        const skillName = skillMatch[1].trim();
+        const skillDescription = skillMatch[2].trim();
+        categorySkills.push(`${skillName}: ${skillDescription}`);
+        console.log(`📌 Added detailed skill: ${skillName}`);
+      } else {
+        // Regular bullet point content
+        categorySkills.push(cleanLine.replace(/<\/?strong>/g, ''));
+      }
+    }
+    // Check if it's skills for current category (comma-separated on next line)
+    else if (currentCategoryName && !line.startsWith('•') && !line.startsWith('-') && !line.startsWith('*') && !line.includes('<strong>')) {
+      // Split skills by comma
+      const skills = line.split(',').map(skill => skill.trim()).filter(skill => skill.length > 0);
+      categorySkills.push(...skills);
+      console.log(`📝 Added skills to ${currentCategoryName}: ${skills.join(', ')}`);
+    }
+    // Check if it's a numbered item (Areas of Expertise: 1. Digital Transformation...)
+    else if (/^\d+\./.test(line)) {
+      result += `<div class="expertise-item">
+        <strong>${line.replace(/^\d+\.\s*/, '').replace(/<\/?strong>/g, '')}</strong>
+      </div>`;
+    }
+    // Check if it's a bullet point or other content
+    else if (line.startsWith('•') || line.startsWith('-') || line.startsWith('*')) {
+      result += `<ul class="section-content"><li>${line.replace(/^[•\-\*]\s*/, '')}</li></ul>`;
+    }
+    // Regular descriptive text
+    else if (!currentCategoryName) {
+      result += `<p class="section-content">${line}</p>`;
+    }
+  }
+  
+  // Add final category if exists
+  if (currentCategoryName && categorySkills.length > 0) {
+    result += formatSkillsCategory(currentCategoryName, categorySkills);
+  }
+  
+  console.log(`✅ Transformed skills content for ${segmentType}: ${result.substring(0, 300)}...`);
+  return result;
+}
+
+// Helper function to format a skills category with proper Antaes styling
+function formatSkillsCategory(categoryName: string, skills: string[]): string {
+  // Remove duplicates and clean skills
+  const uniqueSkills = Array.from(new Set(skills.map(skill => skill.trim()))).filter(skill => skill.length > 0);
+  
+  return `
+    <div class="skills-category">
+      <h4 class="skills-subtitle">${categoryName}</h4>
+      <div class="skills-tags">
+        ${uniqueSkills.map(skill => `
+          <span class="skill-tag">${skill}</span>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   
@@ -1993,24 +2484,29 @@ export async function POST(request: NextRequest) {
     console.log(`👤 Candidate: ${candidateData.fullName}`);
     console.log(`💼 Position: ${jobTitle || 'N/A'} at ${client || 'N/A'}`);
 
-    // STEP 1-5: Enhanced 5-Step Pipeline Processing for ALL templates
-    const processedSegments = await formatContentForPDF(segments, candidateData, template, jobDescription);
-    
+    // Log the segments content for debugging
+    console.log('🔍 Segments content preview:');
+    segments.forEach((segment: SegmentContent, index: number) => {
+      console.log(`  ${index + 1}. ${segment.title} (${segment.type}): ${segment.content?.substring(0, 100)}...`);
+    });
+
     // Generate HTML content based on template type
     let htmlContent: string;
     
-    if (template === 'antaes' || template === 'cf-antaes-consulting') {
-      console.log('🎨 Using Antaes template with 5-step pipeline processing');
+    if (template === 'antaes') {
+      console.log('🎨 Using Antaes template with DIRECT content processing (no pipeline)');
       
-      // Use the new enhanced Antaes generator with processed content
-      htmlContent = generateAntaesHTMLFromSegments(
-        processedSegments, 
+      // Use segments directly without processing pipeline
+      htmlContent = await generateAntaesHTMLFromSegments(
+        segments, 
         candidateData, 
         jobDescription, 
         managerContact
       );
     } else {
       console.log('🎨 Using Professional Classic template with 5-step pipeline processing');
+      // STEP 1-5: Enhanced 5-Step Pipeline Processing for non-Antaes templates
+      const processedSegments = await formatContentForPDF(segments, candidateData, template, jobDescription);
       htmlContent = generateHTMLFromSegments(processedSegments, candidateData, template);
     }
 
@@ -2018,7 +2514,7 @@ export async function POST(request: NextRequest) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
     const sanitizedName = candidateData.fullName.replace(/[^a-zA-Z0-9]/g, '_');
     const templateName = template === 'professional-classic' ? 'Professional_Classic' : 
-                        template === 'antaes' || template === 'cf-antaes-consulting' ? 'Antaes' :
+                        template === 'antaes' ? 'Antaes' :
                         template.charAt(0).toUpperCase() + template.slice(1);
     const fileName = `${sanitizedName}_${client || 'Client'}_${templateName}_Competence_File_${timestamp}.pdf`;
 
@@ -2059,7 +2555,7 @@ export async function POST(request: NextRequest) {
               template,
               templateName,
               segmentsCount: segments.length,
-              processingMethod: '5-step-pipeline',
+              processingMethod: template === 'antaes' ? 'direct-content' : '5-step-pipeline',
               processingTime,
               generationTimestamp: new Date().toISOString()
             },
@@ -2083,13 +2579,14 @@ export async function POST(request: NextRequest) {
     console.log(`📎 File URL: ${url}`);
     console.log(`📊 Segments processed: ${segments.length}`);
     console.log(`🎨 Template: ${template}`);
+    console.log(`🔧 Processing method: ${template === 'antaes' ? 'direct-content' : '5-step-pipeline'}`);
 
     return NextResponse.json({
       success: true,
       fileUrl: url,
       fileName,
       templateName: templateName,
-      processingMethod: '5-step-pipeline',
+      processingMethod: template === 'antaes' ? 'direct-content' : '5-step-pipeline',
       processingTime,
       segmentsProcessed: segments.length,
       candidateName: candidateData.fullName,

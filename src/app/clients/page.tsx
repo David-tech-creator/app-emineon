@@ -5,81 +5,15 @@ import { Layout } from '@/components/layout/Layout';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { 
-  Building2, 
-  Plus, 
-  Search, 
-  Filter,
-  MapPin,
-  DollarSign,
-  Users,
-  Calendar,
-  Briefcase,
-  Brain,
-  Shield,
-  Globe,
-  Zap,
-  TrendingUp,
-  Eye,
-  Edit,
-  Mail,
-  Phone,
-  Settings,
-  CheckCircle,
-  Target,
-  Star,
-  Activity,
-  BarChart3,
-  Sparkles,
-  Award,
-  Clock,
-  UserCheck,
-  ArrowUpRight,
-  FileText,
-  MessageSquare,
-  ExternalLink,
-  Handshake,
-  PieChart
+  Plus, Search, Filter, MoreVertical, 
+  Building, Star, TrendingUp, ArrowLeft, 
+  FileText, Mail, Phone, MapPin, Globe, 
+  Settings, Users2, Briefcase
 } from 'lucide-react';
 
 export default function ClientsPage() {
-  const dummyClients = [
-    {
-      id: '1',
-      name: 'TechCorp Solutions',
-      industry: 'Technology',
-      location: 'San Francisco, CA',
-      employees: '500-1000',
-      contact: 'sarah.johnson@techcorp.com',
-      phone: '+1 (555) 123-4567',
-      activeJobs: 5,
-      totalHires: 23,
-    },
-    {
-      id: '2', 
-      name: 'InnovateLabs',
-      industry: 'Software Development',
-      location: 'Austin, TX',
-      employees: '100-500',
-      contact: 'mike.chen@innovatelabs.io',
-      phone: '+1 (555) 987-6543',
-      activeJobs: 3,
-      totalHires: 12,
-    },
-    {
-      id: '3',
-      name: 'Digital Dynamics',
-      industry: 'Digital Marketing',
-      location: 'New York, NY',
-      employees: '50-100',
-      contact: 'alex.rodriguez@digitaldynamics.com',
-      phone: '+1 (555) 456-7890',
-      activeJobs: 2,
-      totalHires: 8,
-    },
-  ];
-
   const clientMetrics = [
-    { label: 'Active Clients', value: '48', icon: Building2, color: 'primary' },
+    { label: 'Active Clients', value: '48', icon: Building, color: 'primary' },
     { label: 'Open Positions', value: '127', icon: Briefcase, color: 'teal' },
     { label: 'Avg Client Value', value: '$85k', icon: DollarSign, color: 'accent' },
     { label: 'Satisfaction Rate', value: '96%', icon: Star, color: 'secondary' }
@@ -175,7 +109,7 @@ export default function ClientsPage() {
               <div className="hidden lg:block ml-8">
                 <div className="relative w-32 h-32 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
                   <div className="relative w-20 h-20">
-                    <Building2 className="h-20 w-20 text-white opacity-80" />
+                    <Building className="h-20 w-20 text-white opacity-80" />
                   </div>
                   <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-pulse"></div>
                 </div>

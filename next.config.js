@@ -27,8 +27,11 @@ const nextConfig = {
   
   // Experimental features
   experimental: {
-    optimizeCss: false, // Disable this as it's causing issues
-    serverComponentsExternalPackages: ["puppeteer-core", "@sparticuz/chromium-min"],
+    optimizeCss: false, // Disable this as it can cause issues
+    optimizePackageImports: ['lucide-react'],
+    outputFileTracingIncludes: {
+      '/api/**/*': ['./node_modules/puppeteer-core/.local-chromium/**/*'],
+    },
   },
   
   // Performance optimizations  
@@ -75,8 +78,16 @@ const nextConfig = {
     ];
   },
   
-  // Webpack configuration
-  webpack: (config, { isServer }) => {
+  // Webpack configuration for stable builds
+  webpack: (config, { dev, isServer }) => {
+    if (dev) {
+      config.watchOptions = {
+        ...config.watchOptions,
+        poll: 1000,
+        aggregateTimeout: 300,
+      };
+    }
+    
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -116,7 +127,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  
+
   // ESLint configuration
   eslint: {
     ignoreDuringBuilds: true,
@@ -125,6 +136,7 @@ const nextConfig = {
   // Environment variables
   env: {
     NEXT_PUBLIC_VERCEL_ENVIRONMENT: process.env.VERCEL_ENV === 'production' ? 'production' : 'development',
+    CUSTOM_KEY: 'my-value',
   },
 
   async rewrites() {
@@ -136,7 +148,7 @@ const nextConfig = {
     ];
   },
 
-
+  // Note: serverExternalPackages not supported in Next.js 14.2.30
 };
 
 module.exports = nextConfig; 

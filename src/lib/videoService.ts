@@ -31,6 +31,12 @@ class VideoService {
   private readonly maxFileSize = 100 * 1024 * 1024; // 100MB max
   private readonly allowedFormats = ['mp4', 'webm', 'mov', 'avi'];
 
+  private readonly CLOUDINARY_CONFIG = {
+    cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  };
+
   /**
    * Validate video file before upload
    */

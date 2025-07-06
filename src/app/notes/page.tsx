@@ -1,9 +1,9 @@
 'use client';
 
 import { Layout } from '@/components/layout/Layout';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { MessageSquare, Clock, Plus, FileText, Users, BarChart3, Zap, Search, Filter, User, Calendar, Tag, Eye, Edit, Trash2 } from 'lucide-react';
+import { MessageSquare, Clock, Plus, FileText, Users, BarChart3, Zap, Search, Filter, User, Tag, Eye, Edit, Trash2 } from 'lucide-react';
 
 export default function NotesPage() {
   const noteCategories = [

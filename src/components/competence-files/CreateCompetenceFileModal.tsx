@@ -408,7 +408,15 @@ export function CreateCompetenceFileModal({
     }
   };
 
-  const handleGenerateDocument = async (format: 'pdf' | 'docx') => {
+  const handleGenerateDocument = async (format: 'pdf' | 'docx', finalEditorSegments?: Array<{
+    id: string;
+    type: string;
+    title: string;
+    content: string;
+    visible: boolean;
+    order: number;
+    editable: boolean;
+  }>) => {
     setIsGenerating(true);
     setProcessingStep('Initializing...');
     setProcessingProgress(0);
@@ -426,8 +434,50 @@ export function CreateCompetenceFileModal({
       setProcessingStep('Preparing document content...');
       setProcessingProgress(15);
 
-      // Get visible segments for PDF generation from editor
-      const visibleSegments = segments
+      console.log('🎯 Modal - handleGenerateDocument called with:', {
+        format,
+        finalEditorSegmentsProvided: !!finalEditorSegments,
+        finalEditorSegmentsCount: finalEditorSegments?.length || 0,
+        storeSegmentsCount: segments.length,
+        finalEditorSegments: finalEditorSegments?.map(s => ({
+          id: s.id,
+          title: s.title,
+          type: s.type,
+          visible: s.visible,
+          contentLength: s.content?.length || 0,
+          hasContent: !!s.content && s.content.trim().length > 0
+        }))
+      });
+
+      // Use final editor content if provided, otherwise fall back to store segments
+      let visibleSegments;
+      
+      if (finalEditorSegments) {
+        console.log('🎯 Using final editor content for PDF generation:', {
+          segmentsCount: finalEditorSegments.length,
+          segments: finalEditorSegments.map(s => ({
+            title: s.title,
+            type: s.type,
+            visible: s.visible,
+            contentLength: s.content?.length || 0,
+            contentPreview: s.content?.substring(0, 100) || ''
+          }))
+        });
+        
+        visibleSegments = finalEditorSegments
+          .filter(segment => segment.visible)
+          .sort((a, b) => a.order - b.order)
+          .map(segment => ({
+            id: segment.id,
+            type: segment.type,
+            title: segment.title,
+            content: segment.content,
+            order: segment.order,
+          }));
+      } else {
+        console.log('⚠️ No final editor content provided, using store segments');
+        // Fallback to store segments (original behavior)
+        visibleSegments = segments
         .filter(segment => segment.visible)
         .sort((a, b) => a.order - b.order)
         .map(segment => ({
@@ -437,6 +487,19 @@ export function CreateCompetenceFileModal({
           content: segment.content,
           order: segment.order,
         }));
+      }
+
+      console.log('📋 Modal - Final visibleSegments being sent to API:', {
+        count: visibleSegments.length,
+        segments: visibleSegments.map(s => ({
+          id: s.id,
+          title: s.title,
+          type: s.type,
+          contentLength: s.content?.length || 0,
+          hasContent: !!s.content && s.content.trim().length > 0,
+          contentPreview: s.content?.substring(0, 150) || ''
+        }))
+      });
 
       setProcessingStep('Applying professional formatting...');
       setProcessingProgress(40);
@@ -444,13 +507,22 @@ export function CreateCompetenceFileModal({
       let response;
       
       if (format === 'pdf') {
-        // Use the new generate-pdf endpoint for PDF generation from editor content
-        console.log('🎯 Using generate-pdf endpoint for editor-based PDF generation...');
+        // Use the new structured-generate endpoint with p-queue throttling
+        console.log('🎯 Using structured-generate endpoint with p-queue optimization...');
+        console.log('📄 Final segments being sent to structured PDF API:', {
+          count: visibleSegments.length,
+          segments: visibleSegments.map(s => ({
+            title: s.title,
+            type: s.type,
+            contentLength: s.content?.length || 0,
+            contentPreview: s.content?.substring(0, 150) || ''
+          }))
+        });
         
-        setProcessingStep('Generating document...');
+        setProcessingStep('Processing with AI optimization...');
         setProcessingProgress(70);
         
-        response = await fetch('/api/competence-files/generate-pdf', {
+        response = await fetch('/api/competence-files/structured-generate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -458,16 +530,23 @@ export function CreateCompetenceFileModal({
           },
           body: JSON.stringify({
             candidateData: selectedCandidate,
-            segments: visibleSegments,
-            jobDescription: jobDescription.text ? jobDescription : undefined,
-            managerContact: {
-              name: managerName,
-              email: managerEmail,
-              phone: managerPhone,
+            jobDescription: jobDescription.text ? {
+              text: jobDescription.text,
+              requirements: jobDescription.requirements || [],
+              skills: jobDescription.skills || [],
+              responsibilities: jobDescription.responsibilities || [],
+              title: jobDescription.title,
+              company: jobDescription.company,
+            } : undefined,
+            clientName: jobDescription.company || managerName || 'Client',
+            finalEditorSegments: visibleSegments, // 🚀 CRITICAL FIX: Send final editor content
+            options: {
+              template: selectedTemplate === 'professional-classic' ? 'professional' : 
+                       selectedTemplate === 'antaes' ? 'antaes' : 
+                       selectedTemplate === 'emineon' ? 'emineon' : 'professional',
+              format: 'pdf',
+              logoUrl: undefined, // Can be added later
             },
-            template: selectedTemplate,
-            client: jobDescription.company || 'Client',
-            jobTitle: jobDescription.title || 'Position',
           }),
         });
       } else {
@@ -521,30 +600,44 @@ export function CreateCompetenceFileModal({
       setProcessingStep('Complete');
       setProcessingProgress(100);
       
-      if (result.success && result.fileUrl) {
-        console.log(`✅ ${format.toUpperCase()} document generated successfully!`);
-        console.log(`📎 File URL: ${result.fileUrl}`);
+      if (result.success && (result.fileUrl || result.data?.fileUrl)) {
+        const fileUrl = result.fileUrl || result.data?.fileUrl;
+        const fileName = result.fileName || result.data?.fileName || `${selectedCandidate.fullName}_${selectedTemplate}_Competence_File.pdf`;
         
-        // Auto-download the PDF file
+        console.log(`✅ ${format.toUpperCase()} document generated successfully!`);
+        console.log(`📎 File URL: ${fileUrl}`);
+        
+        // Show queue metrics if available
+        if (result.metrics?.queueMetrics) {
+          console.log('📊 Queue Metrics:', result.metrics.queueMetrics);
+        }
+        
+        // Auto-download the PDF file using the download proxy
         if (format === 'pdf') {
+          try {
+            const downloadUrl = `/api/competence-files/download?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(fileName)}`;
+            
           const link = document.createElement('a');
-          link.href = result.fileUrl;
-          link.download = result.fileName || `${selectedCandidate.fullName}_${selectedTemplate}_Competence_File.pdf`;
-          link.target = '_blank';
+            link.href = downloadUrl;
+            link.download = fileName;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
           
-          console.log(`📥 Auto-downloading: ${result.fileName}`);
+            console.log(`📥 Auto-downloading via proxy: ${fileName}`);
+          } catch (downloadError) {
+            console.error('Auto-download failed:', downloadError);
+            console.log('📎 PDF generated successfully, you can download it manually from the competence files list');
+          }
         }
         
         // Show success message
         alert(`Document generated successfully!\n\nYour ${format.toUpperCase()} file has been ${format === 'pdf' ? 'downloaded' : 'created'}.`);
         
         // Call success callback to refresh the competence files list
-        onSuccess(result.fileUrl);
+        onSuccess(fileUrl);
       } else {
-        throw new Error(result.message || 'Document generation failed');
+        throw new Error(result.message || result.error || 'Document generation failed');
       }
     } catch (error) {
       console.error('Error generating document:', error);
@@ -574,7 +667,7 @@ export function CreateCompetenceFileModal({
     if (selectedCandidate && currentStep === 4 && segments.length === 0) {
       console.log('🚀 Starting AI content generation for all segments...');
       
-      const jobData = jobDescription.text ? jobDescription : undefined;
+      const jobData = jobDescription.text ? jobDescription : { text: '', requirements: [], skills: [], responsibilities: '' };
       
       loadFromAI(jobData, selectedCandidate).catch(error => {
         console.error('💥 Critical error during AI content generation:', error);

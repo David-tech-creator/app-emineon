@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/Button';
 import { MessageSquare, Send } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -67,9 +68,9 @@ export function DashboardChatbox() {
         
         <div className="flex flex-wrap gap-2">
           {[
-            "Show me today's interviews",
-            "Which jobs need attention?",
-            "Top candidates this week"
+            'Show me today\'s interviews',
+            'Which jobs need attention?',
+            'Top candidates this week'
           ].map((suggestion, index) => (
             <button
               key={index}

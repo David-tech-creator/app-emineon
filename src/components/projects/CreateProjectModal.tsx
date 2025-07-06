@@ -1,7 +1,7 @@
 'use client';
 // @ts-nocheck
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -85,6 +85,33 @@ const projectSchema = z.object({
   })).min(1, 'At least one job position is required')
 });
 
+// Project creation interfaces
+interface JobData {
+  title: string;
+  company: string;
+  location: string;
+  description: string;
+  contractType: string;
+  workMode: string;
+  startDate: string;
+  salary: string;
+  department: string;
+  priority: string;
+  owner: string;
+  status: 'draft' | 'active';
+  skills: string[];
+}
+
+interface JobPosition {
+  id: string;
+  title: string;
+  level: string;
+  count: number;
+  urgency: string;
+  skills: string[];
+  isCompleted?: boolean;
+}
+
 type ProjectFormData = z.infer<typeof projectSchema>;
 
 interface CreateProjectModalProps {
@@ -145,17 +172,32 @@ const commonLanguages = [
 ];
 
 export function CreateProjectModal({ open, onClose, emailData }: CreateProjectModalProps) {
-  const [currentStep, setCurrentStep] = useState<'details' | 'positions' | 'job-creation' | 'review'>('details');
+  const [currentStep, setCurrentStep] = useState<'basics' | 'roles' | 'skills' | 'timeline' | 'positions' | 'job-creation'>('basics');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isParsingEmail, setIsParsingEmail] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  
-  // Job creation workflow state
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [projectType, setProjectType] = useState('recruitment');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [currentJobIndex, setCurrentJobIndex] = useState(0);
-  const [jobCreationStep, setJobCreationStep] = useState<'intake' | 'analysis' | 'review' | 'configure'>('intake');
-  const [createdJobs, setCreatedJobs] = useState<any[]>([]);
-  const [currentJobData, setCurrentJobData] = useState<any>(null);
+  const [jobCreationStep, setJobCreationStep] = useState<'intake' | 'analysis' | 'review' | 'config'>('intake');
   const [isProcessingJob, setIsProcessingJob] = useState(false);
+  const [currentJobData, setCurrentJobData] = useState<JobData>({
+    title: '',
+    company: '',
+    location: '',
+    description: '',
+    contractType: 'full-time',
+    workMode: 'hybrid',
+    startDate: '',
+    salary: '',
+    department: '',
+    priority: 'medium',
+    owner: '',
+    status: 'draft',
+    skills: []
+  });
+  const [clientJobPositions, setClientJobPositions] = useState<string[]>([]);
   
   const {
     register,
@@ -203,10 +245,10 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
     }
   }, [emailData, open]);
 
-  const parseEmailData = async () => {
+  const parseEmailData = useCallback(async () => {
     if (!emailData) return;
     
-    setIsParsingEmail(true);
+    setIsAnalyzing(true);
     try {
       const response = await fetch('/api/projects/parse-email', {
         method: 'POST',
@@ -233,9 +275,9 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
     } catch (error) {
       console.error('Error parsing email:', error);
     } finally {
-      setIsParsingEmail(false);
+      setIsAnalyzing(false);
     }
-  };
+  }, []);
 
   const addJobPosition = () => {
     const currentPositions = getValues('jobPositions');
@@ -266,7 +308,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
     try {
       const projectData = {
         ...data,
-        createdJobs: createdJobs
+        createdJobs: jobPositions
       };
 
       const response = await fetch('/api/projects', {
@@ -293,27 +335,44 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
 
   const handleClose = () => {
     reset();
-    setCurrentStep('details');
+    setCurrentStep('basics');
     setCurrentJobIndex(0);
     setJobCreationStep('intake');
-    setCreatedJobs([]);
-    setCurrentJobData(null);
+    setCurrentJobData({
+      title: '',
+      company: '',
+      location: '',
+      description: '',
+      contractType: 'full-time',
+      workMode: 'hybrid',
+      startDate: '',
+      salary: '',
+      department: '',
+      priority: 'medium',
+      owner: '',
+      status: 'draft',
+      skills: []
+    });
+    setClientJobPositions([]);
     setIsProcessingJob(false);
-    setShowAdvanced(false);
     onClose();
   };
 
   // Navigation functions
   const nextStep = () => {
-    if (currentStep === 'details') setCurrentStep('positions');
+    if (currentStep === 'basics') setCurrentStep('roles');
+    else if (currentStep === 'roles') setCurrentStep('skills');
+    else if (currentStep === 'skills') setCurrentStep('timeline');
+    else if (currentStep === 'timeline') setCurrentStep('positions');
     else if (currentStep === 'positions') setCurrentStep('job-creation');
-    else if (currentStep === 'job-creation') setCurrentStep('review');
   };
 
   const prevStep = () => {
-    if (currentStep === 'positions') setCurrentStep('details');
+    if (currentStep === 'positions') setCurrentStep('timeline');
     else if (currentStep === 'job-creation') setCurrentStep('positions');
-    else if (currentStep === 'review') setCurrentStep('job-creation');
+    else if (currentStep === 'timeline') setCurrentStep('skills');
+    else if (currentStep === 'skills') setCurrentStep('roles');
+    else if (currentStep === 'roles') setCurrentStep('basics');
   };
 
   // Job creation workflow functions
@@ -326,7 +385,15 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
       description: '',
       location: data.location || '',
       skills: [...(data.skillsRequired || [])],
-      company: data.clientName || ''
+      company: data.clientName || '',
+      contractType: 'full-time',
+      workMode: 'hybrid',
+      startDate: '',
+      salary: '',
+      department: '',
+      priority: 'medium',
+      owner: '',
+      status: 'draft'
     });
   };
 
@@ -361,7 +428,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
   };
 
   const continueToConfiguration = () => {
-    setJobCreationStep('configure');
+    setJobCreationStep('config');
   };
 
   const saveJobAndContinue = () => {
@@ -372,7 +439,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
       positionTitle: positions[currentJobIndex]?.title
     };
     
-    setCreatedJobs(prev => [...prev, jobToSave]);
+    setClientJobPositions(prev => [...prev, jobToSave.title]);
 
     // Move to next job or complete
     if (currentJobIndex < positions.length - 1) {
@@ -423,6 +490,25 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
     return ['Bachelor\'s degree', '3+ years experience', 'Strong communication skills'];
   };
 
+  // Fix the onChange handlers with proper typing
+  const updateJobData = (field: keyof JobData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setCurrentJobData((prev) => ({ ...prev, [field]: e.target.value }));
+  };
+
+  const addSkillToJobData = (skill: string) => {
+    setCurrentJobData((prev) => ({ 
+      ...prev, 
+      skills: [...prev.skills, skill]
+    }));
+  };
+
+  const removeSkillFromJobData = (skillIndex: number) => {
+    setCurrentJobData((prev) => ({ 
+      ...prev, 
+      skills: prev.skills.filter((_, index) => index !== skillIndex)
+    }));
+  };
+
   if (!open) return null;
 
   return (
@@ -450,29 +536,29 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
         {/* Progress Steps */}
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className={`flex items-center space-x-2 ${currentStep === 'details' ? 'text-primary-600' : (currentStep === 'positions' || currentStep === 'job-creation' || currentStep === 'review') ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep === 'details' ? 'bg-primary-100 text-primary-600' : (currentStep === 'positions' || currentStep === 'job-creation' || currentStep === 'review') ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                {(currentStep === 'positions' || currentStep === 'job-creation' || currentStep === 'review') ? <CheckCircle className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+            <div className={`flex items-center space-x-2 ${currentStep === 'basics' ? 'text-primary-600' : (currentStep === 'roles' || currentStep === 'skills' || currentStep === 'timeline' || currentStep === 'positions' || currentStep === 'job-creation') ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep === 'basics' ? 'bg-primary-100 text-primary-600' : (currentStep === 'roles' || currentStep === 'skills' || currentStep === 'timeline' || currentStep === 'positions' || currentStep === 'job-creation') ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                {(currentStep === 'positions' || currentStep === 'job-creation') ? <CheckCircle className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
               </div>
               <span className="font-medium">Details</span>
             </div>
             <ArrowRight className="h-4 w-4 text-gray-400" />
-            <div className={`flex items-center space-x-2 ${currentStep === 'positions' ? 'text-primary-600' : (currentStep === 'job-creation' || currentStep === 'review') ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep === 'positions' ? 'bg-primary-100 text-primary-600' : (currentStep === 'job-creation' || currentStep === 'review') ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                {(currentStep === 'job-creation' || currentStep === 'review') ? <CheckCircle className="h-4 w-4" /> : <Users className="h-4 w-4" />}
+            <div className={`flex items-center space-x-2 ${currentStep === 'roles' ? 'text-primary-600' : (currentStep === 'skills' || currentStep === 'timeline' || currentStep === 'positions' || currentStep === 'job-creation') ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep === 'roles' ? 'bg-primary-100 text-primary-600' : (currentStep === 'skills' || currentStep === 'timeline' || currentStep === 'positions' || currentStep === 'job-creation') ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                {(currentStep === 'skills' || currentStep === 'job-creation') ? <CheckCircle className="h-4 w-4" /> : <Users className="h-4 w-4" />}
               </div>
               <span className="font-medium">Positions</span>
             </div>
             <ArrowRight className="h-4 w-4 text-gray-400" />
-            <div className={`flex items-center space-x-2 ${currentStep === 'job-creation' ? 'text-primary-600' : currentStep === 'review' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep === 'job-creation' ? 'bg-primary-100 text-primary-600' : currentStep === 'review' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                {currentStep === 'review' ? <CheckCircle className="h-4 w-4" /> : <Briefcase className="h-4 w-4" />}
+            <div className={`flex items-center space-x-2 ${currentStep === 'skills' ? 'text-primary-600' : currentStep === 'timeline' || currentStep === 'positions' || currentStep === 'job-creation' ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep === 'skills' ? 'bg-primary-100 text-primary-600' : (currentStep === 'timeline' || currentStep === 'positions' || currentStep === 'job-creation') ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                {currentStep === 'job-creation' ? <CheckCircle className="h-4 w-4" /> : <Briefcase className="h-4 w-4" />}
               </div>
               <span className="font-medium">Job Creation</span>
             </div>
             <ArrowRight className="h-4 w-4 text-gray-400" />
-            <div className={`flex items-center space-x-2 ${currentStep === 'review' ? 'text-primary-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep === 'review' ? 'bg-primary-100 text-primary-600' : 'bg-gray-100 text-gray-400'}`}>
+            <div className={`flex items-center space-x-2 ${currentStep === 'timeline' || currentStep === 'positions' || currentStep === 'job-creation' ? 'text-primary-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${currentStep === 'timeline' || currentStep === 'positions' || currentStep === 'job-creation' ? 'bg-primary-100 text-primary-600' : 'bg-gray-100 text-gray-400'}`}>
                 <Eye className="h-4 w-4" />
               </div>
               <span className="font-medium">Review</span>
@@ -484,9 +570,9 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
         <div className="p-6 overflow-y-auto max-h-[calc(95vh-200px)]">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Step 1: Project Details */}
-            {currentStep === 'details' && (
+            {currentStep === 'basics' && (
               <div className="space-y-6">
-                {emailData && isParsingEmail && (
+                {emailData && isAnalyzing && (
                   <Card className="p-4 bg-blue-50 border-blue-200">
                     <div className="flex items-center space-x-2">
                       <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
@@ -625,132 +711,18 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    onClick={() => setCurrentStep('roles')}
                     className="flex items-center space-x-2"
                   >
-                    {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    <ChevronUp className="w-4 h-4" />
                     <span>Advanced Options</span>
                   </Button>
-
-                  {showAdvanced && (
-                    <div className="mt-4 space-y-4 p-4 bg-gray-50 rounded-lg">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Client Contact Person
-                          </label>
-                          <Input
-                            {...register('clientContact')}
-                            placeholder="e.g., Emmanuel Dubois"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Hiring Manager
-                          </label>
-                          <Input
-                            {...register('hiringManager')}
-                            placeholder="e.g., Sarah Johnson"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Client Email
-                          </label>
-                          <Input
-                            type="email"
-                            {...register('clientEmail')}
-                            placeholder="e.g., emmanuel@company.com"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Client Phone
-                          </label>
-                          <Input
-                            {...register('clientPhone')}
-                            placeholder="e.g., +41 22 123 4567"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            SLA Date (Closing Date)
-                          </label>
-                          <Input
-                            type="date"
-                            {...register('slaDate')}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Vertical
-                          </label>
-                          <select
-                            {...register('vertical')}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          >
-                            <option value="">Select vertical...</option>
-                            {verticals.map(vertical => (
-                              <option key={vertical} value={vertical}>
-                                {vertical}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Budget Range
-                          </label>
-                          <Input
-                            {...register('budgetRange')}
-                            placeholder="e.g., €500k - €750k"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Start Date
-                          </label>
-                          <Input
-                            type="date"
-                            {...register('startDate')}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            End Date
-                          </label>
-                          <Input
-                            type="date"
-                            {...register('endDate')}
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Industry Background
-                        </label>
-                        <Input
-                          {...register('industryBackground')}
-                          placeholder="e.g., Medical/Healthcare, Financial Services, Technology"
-                        />
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
 
             {/* Step 2: Job Positions */}
-            {currentStep === 'positions' && (
+            {currentStep === 'roles' && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-medium text-gray-900">Job Positions</h3>
@@ -824,33 +796,33 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                       </p>
                     </div>
                     <div className="text-sm text-blue-600">
-                      {createdJobs.length} of {jobPositions.length} completed
+                      {jobPositions.length} of {jobPositions.length} completed
                     </div>
                   </div>
                   
                   {/* Job Creation Progress */}
                   <div className="flex items-center space-x-2 mt-4">
-                    {['intake', 'analysis', 'review', 'configure'].map((step, index) => (
+                    {['intake', 'analysis', 'review', 'config'].map((step, index) => (
                       <div key={step} className="flex items-center">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                           jobCreationStep === step ? 'bg-blue-600 text-white' :
-                          ['intake', 'analysis', 'review', 'configure'].indexOf(jobCreationStep) > index ? 'bg-green-100 text-green-600' :
+                          ['intake', 'analysis', 'review', 'config'].indexOf(jobCreationStep) > index ? 'bg-green-100 text-green-600' :
                           'bg-gray-100 text-gray-400'
                         }`}>
-                          {['intake', 'analysis', 'review', 'configure'].indexOf(jobCreationStep) > index ? 
+                          {['intake', 'analysis', 'review', 'config'].indexOf(jobCreationStep) > index ? 
                             <CheckCircle className="w-4 h-4" /> : 
                             index + 1
                           }
                         </div>
                         <span className={`ml-2 text-sm ${
                           jobCreationStep === step ? 'text-blue-600 font-medium' :
-                          ['intake', 'analysis', 'review', 'configure'].indexOf(jobCreationStep) > index ? 'text-green-600' :
+                          ['intake', 'analysis', 'review', 'config'].indexOf(jobCreationStep) > index ? 'text-green-600' :
                           'text-gray-400'
                         }`}>
                           {step === 'intake' && 'Smart Intake'}
                           {step === 'analysis' && 'Smart Analysis'}
                           {step === 'review' && 'Review & Edit'}
-                          {step === 'configure' && 'Configure & Publish'}
+                          {step === 'config' && 'Configure & Publish'}
                         </span>
                         {index < 3 && <ArrowRight className="w-4 h-4 text-gray-400 mx-2" />}
                       </div>
@@ -874,7 +846,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                         rows={6}
                         className="mb-4"
                         value={currentJobData?.description || ''}
-                        onChange={(e) => setCurrentJobData((prev: any) => ({ ...prev, description: e.target.value }))}
+                        onChange={updateJobData('description')}
                       />
                       <div className="flex justify-center space-x-3">
                         <Button
@@ -910,7 +882,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => setCurrentStep('positions')}
+                        onClick={() => setCurrentStep('roles')}
                       >
                         Back to Positions
                       </Button>
@@ -1089,7 +1061,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                             <input
                               type="text"
                               value={currentJobData?.title || ''}
-                              onChange={(e) => setCurrentJobData((prev: any) => ({ ...prev, title: e.target.value }))}
+                              onChange={updateJobData('title')}
                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                               placeholder="e.g., Senior Software Engineer"
                             />
@@ -1100,7 +1072,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                             <input
                               type="text"
                               value={currentJobData?.company || data.clientName || ''}
-                              onChange={(e) => setCurrentJobData((prev: any) => ({ ...prev, company: e.target.value }))}
+                              onChange={updateJobData('company')}
                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                               placeholder="e.g., TechCorp AG"
                             />
@@ -1111,7 +1083,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                             <input
                               type="text"
                               value={currentJobData?.location || data.location || ''}
-                              onChange={(e) => setCurrentJobData((prev: any) => ({ ...prev, location: e.target.value }))}
+                              onChange={updateJobData('location')}
                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                               placeholder="e.g., Zurich, Switzerland"
                             />
@@ -1121,7 +1093,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                             <label className="block text-sm font-medium text-gray-700 mb-1">Contract Type *</label>
                             <select
                               value={currentJobData?.contractType || 'permanent'}
-                              onChange={(e) => setCurrentJobData((prev: any) => ({ ...prev, contractType: e.target.value }))}
+                              onChange={updateJobData('contractType')}
                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                             >
                               <option value="permanent">Permanent</option>
@@ -1135,7 +1107,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                             <label className="block text-sm font-medium text-gray-700 mb-1">Work Mode</label>
                             <select
                               value={currentJobData?.workMode || 'hybrid'}
-                              onChange={(e) => setCurrentJobData((prev: any) => ({ ...prev, workMode: e.target.value }))}
+                              onChange={updateJobData('workMode')}
                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                             >
                               <option value="hybrid">Hybrid</option>
@@ -1149,7 +1121,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                             <input
                               type="date"
                               value={currentJobData?.startDate || ''}
-                              onChange={(e) => setCurrentJobData((prev: any) => ({ ...prev, startDate: e.target.value }))}
+                              onChange={updateJobData('startDate')}
                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                             />
                           </div>
@@ -1159,7 +1131,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                             <input
                               type="text"
                               value={currentJobData?.salary || ''}
-                              onChange={(e) => setCurrentJobData((prev: any) => ({ ...prev, salary: e.target.value }))}
+                              onChange={updateJobData('salary')}
                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                               placeholder="e.g., CHF 80k - 120k"
                             />
@@ -1169,7 +1141,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                             <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
                             <select
                               value={currentJobData?.department || data.vertical || ''}
-                              onChange={(e) => setCurrentJobData((prev: any) => ({ ...prev, department: e.target.value }))}
+                              onChange={updateJobData('department')}
                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                             >
                               <option value="">Select Department</option>
@@ -1192,7 +1164,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                             <label className="block text-sm font-medium text-gray-700 mb-1">Job Description *</label>
                             <textarea
                               value={currentJobData?.description || ''}
-                              onChange={(e) => setCurrentJobData((prev: any) => ({ ...prev, description: e.target.value }))}
+                              onChange={updateJobData('description')}
                               rows={8}
                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                               placeholder="Describe the role, responsibilities, and requirements..."
@@ -1215,7 +1187,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                             <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
                             <select
                               value={currentJobData?.priority || 'medium'}
-                              onChange={(e) => setCurrentJobData((prev: any) => ({ ...prev, priority: e.target.value }))}
+                              onChange={updateJobData('priority')}
                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                             >
                               <option value="low">Low</option>
@@ -1229,7 +1201,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                             <input
                               type="text"
                               value={currentJobData?.owner || 'David V'}
-                              onChange={(e) => setCurrentJobData((prev: any) => ({ ...prev, owner: e.target.value }))}
+                              onChange={updateJobData('owner')}
                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                               placeholder="e.g., Sarah Johnson"
                             />
@@ -1414,7 +1386,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                             // Save as draft and continue
                             const jobData = { ...currentJobData, status: 'draft' };
                             setCurrentJobData(jobData);
-                            setJobCreationStep('configure');
+                            setJobCreationStep('config');
                           }}
                         >
                           Save as Draft
@@ -1434,7 +1406,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                 )}
 
                 {/* Configure & Publish */}
-                {jobCreationStep === 'configure' && (
+                {jobCreationStep === 'config' && (
                   <div className="space-y-6">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
                       <div className="flex items-center space-x-3 mb-4">
@@ -1565,10 +1537,10 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                     </div>
 
                     <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Created Jobs ({createdJobs.length})</h4>
+                      <h4 className="font-medium text-gray-900 mb-2">Created Jobs ({jobPositions.length})</h4>
                       <div className="space-y-2 text-sm">
-                        {createdJobs.length > 0 ? (
-                          createdJobs.map((job, index) => (
+                        {jobPositions.length > 0 ? (
+                          jobPositions.map((job, index) => (
                             <div key={index} className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-md">
                               <div>
                                 <div className="font-medium text-gray-900">{job.title}</div>
@@ -1582,7 +1554,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                         )}
                         
                         {/* Show remaining positions */}
-                        {jobPositions.slice(createdJobs.length).map((position, index) => (
+                        {jobPositions.slice(jobPositions.length).map((position, index) => (
                           <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
                             <span className="font-medium">{position.title}</span>
                             <span className="text-gray-500 text-xs">Pending</span>
@@ -1592,12 +1564,12 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                     </div>
                   </div>
 
-                  {createdJobs.length < jobPositions.length && (
+                  {jobPositions.length < watchedValues.totalPositions && (
                     <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                       <div className="flex items-center space-x-2">
                         <AlertCircle className="w-5 h-5 text-yellow-600" />
                         <span className="text-yellow-800 font-medium">
-                          {jobPositions.length - createdJobs.length} job{jobPositions.length - createdJobs.length > 1 ? 's' : ''} still need to be created
+                          {watchedValues.totalPositions - jobPositions.length} job{watchedValues.totalPositions - jobPositions.length > 1 ? 's' : ''} still need to be created
                         </span>
                       </div>
                       <p className="text-yellow-700 text-sm mt-1">
@@ -1621,7 +1593,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                 </div>
 
                 {/* Job Publishing Section */}
-                {createdJobs.length > 0 && (
+                {jobPositions.length > 0 && (
                   <div className="bg-white border border-gray-200 rounded-lg p-6">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
                       <Settings className="h-5 w-5 text-primary-600" />
@@ -1632,7 +1604,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                     </p>
                     
                     <div className="space-y-4">
-                      {createdJobs.map((job, index) => (
+                      {jobPositions.map((job, index) => (
                         <div key={index} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                           <div className="flex-1">
                             <h5 className="font-medium text-gray-900">{job.title}</h5>
@@ -1642,9 +1614,9 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                             <select
                               value={job.status || 'draft'}
                               onChange={(e) => {
-                                const updatedJobs = [...createdJobs];
+                                const updatedJobs = [...jobPositions];
                                 updatedJobs[index] = { ...job, status: e.target.value };
-                                setCreatedJobs(updatedJobs);
+                                setJobPositionsList(updatedJobs);
                               }}
                               className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                             >
@@ -1677,9 +1649,9 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                         After creating this project, we'll automatically:
                       </p>
                       <ul className="text-sm text-green-700 mt-2 list-disc list-inside space-y-1">
-                        {createdJobs.length > 0 ? (
+                        {jobPositions.length > 0 ? (
                           <>
-                            <li>Create the project with {createdJobs.length} job{createdJobs.length > 1 ? 's' : ''}</li>
+                            <li>Create the project with {jobPositions.length} job{jobPositions.length > 1 ? 's' : ''}</li>
                             <li>Run AI candidate matching against our database</li>
                             <li>Generate a client portal for project collaboration</li>
                             <li>Set up automated progress tracking and reporting</li>
@@ -1703,7 +1675,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
           {currentStep !== 'job-creation' && (
             <div className="flex justify-between pt-6 border-t border-gray-200 mt-6">
               <div>
-                {currentStep !== 'details' && (
+                {currentStep !== 'basics' && (
                   <Button
                     type="button"
                     variant="outline"
@@ -1723,7 +1695,7 @@ export function CreateProjectModal({ open, onClose, emailData }: CreateProjectMo
                   Cancel
                 </Button>
                 
-                {currentStep === 'positions' ? (
+                {currentStep === 'roles' ? (
                   <Button
                     type="button"
                     onClick={startJobCreation}

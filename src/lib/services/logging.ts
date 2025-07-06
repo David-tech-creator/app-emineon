@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+// import { prisma } from '@/lib/prisma';
 
 export interface LogEntry {
   actor?: string;
@@ -159,6 +159,28 @@ export class LoggingService {
       })),
     };
     */
+  }
+
+  async logActivity(
+    type: string,
+    action: string,
+    userId: string,
+    details: Record<string, unknown> = {}
+  ) {
+    // ... existing code ...
+  }
+
+  async getActivityLogs(
+    userId?: string,
+    type?: string,
+    limit: number = 50
+  ) {
+    // Remove unused filters variable
+    const logs = [
+      // Mock data for now
+    ];
+    
+    // ... existing code ...
   }
 }
 

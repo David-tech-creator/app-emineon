@@ -371,9 +371,10 @@ export const competenceFileQueueService = new CompetenceFileQueueService();
  */
 export async function generateCompetenceFile(
   candidateData: CandidateData,
-  jobDescription?: JobDescription
+  jobDescription?: JobDescription,
+  maxRetries: number = 2
 ): Promise<CompetenceFileGenerationResult> {
-  return competenceFileQueueService.generateCompetenceFile(candidateData, jobDescription);
+  return competenceFileQueueService.generateCompetenceFile(candidateData, jobDescription, maxRetries);
 }
 
 /**

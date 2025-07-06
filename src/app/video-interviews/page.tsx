@@ -1,39 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { 
-  Video, 
-  Play, 
-  Calendar, 
-  Clock,
-  Users,
-  Star,
-  TrendingUp,
-  Brain,
-  Shield,
-  Globe,
-  Zap,
-  CheckCircle,
-  Plus,
-  Filter,
-  Settings,
-  Send,
-  Eye,
-  BarChart3,
-  Award,
-  Mic,
-  Camera,
-  Headphones,
-  UserCheck,
-  Timer,
-  MessageSquare,
-  Download,
-  Share,
-  BookOpen,
-  Target,
-  Sparkles
+  VideoIcon, Calendar, Users, Settings, BarChart3, 
+  UserCheck, Clock, Globe, Brain, Star, Award, 
+  MessageSquare, Shield, Plus, CheckCircle, Filter,
+  Eye, Download, Sparkles, Target, Play, Search, MoreVertical, User, Badge
 } from 'lucide-react';
 
 interface Interview {
@@ -55,84 +30,12 @@ interface Interview {
 }
 
 export default function VideoInterviewsPage() {
-  const [activeTab, setActiveTab] = useState('upcoming');
-  const [showAIAssistant, setShowAIAssistant] = useState(false);
-
-  const interviews: Interview[] = [
-    {
-      id: '1',
-      candidateName: 'Sarah Chen',
-      candidateEmail: 'sarah.chen@email.com',
-      jobTitle: 'Senior Frontend Developer',
-      scheduledDate: 'Today, 2:00 PM',
-      duration: 45,
-      status: 'scheduled',
-      hasRecording: false,
-      hasTranscript: false,
-      hasAINotes: false,
-      interviewer: 'John Smith'
-    },
-    {
-      id: '2',
-      candidateName: 'Michael Rodriguez',
-      candidateEmail: 'michael.r@email.com',
-      jobTitle: 'Product Manager',
-      scheduledDate: 'Yesterday, 3:30 PM',
-      duration: 60,
-      status: 'completed',
-      rating: 4,
-      hasRecording: true,
-      hasTranscript: true,
-      hasAINotes: true,
-      aiSummary: 'Strong technical background with excellent communication skills. 8+ years experience in product management. Demonstrated leadership at previous roles.',
-      keyInsights: [
-        '8+ years React/TypeScript experience',
-        'Led team of 12 engineers',
-        'Excellent problem-solving skills',
-        'Strong cultural fit'
-      ],
-      nextSteps: [
-        'Schedule final interview with CTO',
-        'Check references',
-        'Prepare offer package'
-      ],
-      interviewer: 'Jane Doe'
-    },
-    {
-      id: '3',
-      candidateName: 'Emily Watson',
-      candidateEmail: 'emily.watson@email.com',
-      jobTitle: 'UX Designer',
-      scheduledDate: 'Tomorrow, 10:00 AM',
-      duration: 30,
-      status: 'scheduled',
-      hasRecording: false,
-      hasTranscript: false,
-      hasAINotes: false,
-      interviewer: 'Alex Johnson'
-    }
-  ];
-
-  const upcomingInterviews = interviews.filter(i => i.status === 'scheduled');
-  const completedInterviews = interviews.filter(i => i.status === 'completed');
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'scheduled':
-        return 'bg-blue-100 text-blue-800';
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'missed':
-        return 'bg-red-100 text-red-800';
-      case 'in-progress':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const [isLoading] = useState(false);
+  const [searchTerm] = useState('');
+  const [interviews] = useState([]);
 
   const interviewMetrics = [
-    { label: 'Interviews Conducted', value: '1.2k', icon: Video, color: 'primary' },
+    { label: 'Interviews Conducted', value: '1.2k', icon: VideoIcon, color: 'primary' },
     { label: 'AI Assessments', value: '892', icon: Brain, color: 'teal' },
     { label: 'Avg Rating', value: '4.7', icon: Star, color: 'accent' },
     { label: 'Time Saved', value: '180hrs', icon: Clock, color: 'secondary' }
@@ -224,7 +127,7 @@ export default function VideoInterviewsPage() {
               <div className="hidden lg:block ml-8">
                 <div className="relative w-32 h-32 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
                   <div className="relative w-20 h-20">
-                    <Video className="h-20 w-20 text-white opacity-80" />
+                    <VideoIcon className="h-20 w-20 text-white opacity-80" />
                   </div>
                   <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-pulse"></div>
                 </div>
@@ -396,7 +299,7 @@ export default function VideoInterviewsPage() {
                     </div>
                     <div className="flex space-x-1">
                       <button className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors rounded-lg hover:bg-neutral-50">
-                        <Video className="h-4 w-4" />
+                        <VideoIcon className="h-4 w-4" />
                       </button>
                     </div>
                   </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
@@ -10,16 +11,11 @@ import { CreatePortalModal } from '@/components/portal/CreatePortalModal';
 import { 
   Building2, 
   Users, 
-  TrendingUp, 
   Activity, 
-  Calendar,
   Globe,
-  Shield,
   Mail,
   Settings,
   Plus,
-  Search,
-  Filter,
   BarChart3,
   Banknote,
   CreditCard,
@@ -28,7 +24,8 @@ import {
   FlaskConical,
   Coffee,
   ShieldCheck,
-  Clock
+  Clock,
+  ExternalLink
 } from 'lucide-react';
 
 interface PortalStats {
@@ -265,7 +262,7 @@ export default function PortalManagerPage() {
     // TODO: Implement settings management
   };
 
-  const handlePortalCreated = (newPortal: any) => {
+  const handlePortalCreated = (newPortal: unknown) => {
     console.log('New portal created:', newPortal);
     // TODO: Refresh the portals list or add the new portal to the current list
     if (stats) {

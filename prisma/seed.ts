@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client';
 import { jobTemplates } from '../src/data/job-templates';
-import { competenceFileTemplates } from '../src/data/competence-file-templates';
 
 const prisma = new PrismaClient();
 
@@ -45,38 +44,8 @@ async function main() {
     }
   }
 
-  // Seed Competence File Templates
-  console.log('👤 Seeding competence file templates...');
-  for (const template of competenceFileTemplates) {
-    const existingTemplate = await prisma.competenceFileTemplate.findFirst({
-      where: { name: template.name }
-    });
-
-    if (!existingTemplate) {
-      await prisma.competenceFileTemplate.create({
-        data: {
-          name: template.name,
-          description: template.description,
-          category: template.category,
-          industry: template.industry,
-          features: template.features || ['Professional Layout', 'Customizable Sections'],
-          colorScheme: {
-            primary: template.colors?.[0] || template.styleConfig.primaryColor,
-            secondary: template.colors?.[1] || template.styleConfig.secondaryColor,
-            accent: template.colors?.[2] || template.styleConfig.accentColor,
-            background: template.styleConfig.backgroundColor,
-          } as any,
-          styleConfig: template.styleConfig as any,
-          sections: template.sections as any,
-          isActive: true,
-          isDefault: template.id === 'cf-modern-tech', // Set first template as default
-        }
-      });
-      console.log(`✅ Created competence file template: ${template.name}`);
-    } else {
-      console.log(`⏭️  Competence file template already exists: ${template.name}`);
-    }
-  }
+  // Competence file templates are now managed dynamically through the API
+  console.log('👤 Competence file templates will be managed through the UI/API');
 
   console.log('🎉 Database seeding completed successfully!');
 }

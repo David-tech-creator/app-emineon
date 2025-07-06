@@ -6,7 +6,6 @@ import { prisma } from '@/lib/prisma';
 function getTemplateDisplayName(template: string): string {
   switch (template) {
     case 'antaes':
-    case 'cf-antaes-consulting':
       return 'Antaes Consulting';
     case 'emineon':
       return 'Emineon Professional';

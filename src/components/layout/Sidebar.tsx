@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -28,8 +29,12 @@ import {
   Mail,
   Bot,
   Menu,
-  X
+  X,
+  LucideIcon
 } from 'lucide-react';
+import { Button } from '../ui/Button';
+import { Badge } from '../ui/Badge';
+import { useUser } from '@clerk/nextjs';
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -39,12 +44,12 @@ interface SidebarProps {
 interface NavigationItem {
   name: string;
   href: string;
-  icon: any;
+  icon: LucideIcon;
 }
 
 interface NavigationSection {
   name: string;
-  icon: any;
+  icon: LucideIcon;
   items: NavigationItem[];
   collapsible?: boolean;
 }

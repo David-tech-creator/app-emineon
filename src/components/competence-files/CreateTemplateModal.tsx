@@ -33,10 +33,57 @@ import {
   PenTool,
   Monitor,
   Database,
-  Cpu
+  Cpu,
+  Edit3
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+
+// Enhanced Template interfaces
+interface Competency {
+  id: string;
+  category: string;
+  name: string;
+  type: 'technical' | 'soft' | 'experience' | 'certification' | 'language';
+  required: boolean;
+  weight: number;
+}
+
+interface Client {
+  id: string;
+  name: string;
+  industry: string;
+  logo: string | null;
+}
+
+interface Job {
+  id: string;
+  title: string;
+  clientId: string;
+  department: string;
+  level: string;
+  status: string;
+}
+
+interface TemplateConfiguration {
+  clientId: string;
+  jobId: string;
+}
+
+interface Template {
+  id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  targetLevel?: string;
+  industry?: string;
+  competencies: Competency[];
+  configuration: TemplateConfiguration;
+  linkedClient?: Client;
+  linkedJob?: Job;
+  createdAt: string;
+}
 
 // Template schema
 const templateSchema = z.object({
@@ -64,7 +111,7 @@ type TemplateFormData = z.infer<typeof templateSchema>;
 interface CreateTemplateModalProps {
   open: boolean;
   onClose: () => void;
-  onSave?: (template: any) => void;
+  onSave?: (template: Template) => void;
 }
 
 // Predefined skill categories and suggestions
@@ -165,11 +212,11 @@ const mockJobs = [
 
 export function CreateTemplateModal({ open, onClose, onSave }: CreateTemplateModalProps) {
   const [currentStep, setCurrentStep] = useState<'basics' | 'competencies' | 'configuration' | 'preview'>('basics');
-  const [competencies, setCompetencies] = useState<any[]>([]);
+  const [competencies, setCompetencies] = useState<Competency[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<keyof typeof skillCategories>('technical');
-  const [selectedClient, setSelectedClient] = useState<any>(null);
-  const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [jobSearchQuery, setJobSearchQuery] = useState('');
 
@@ -211,20 +258,20 @@ export function CreateTemplateModal({ open, onClose, onSave }: CreateTemplateMod
     setCompetencies(competencies.filter(c => c.id !== id));
   };
 
-  const updateCompetency = (id: string, updates: Partial<any>) => {
+  const updateCompetency = (id: string, updates: Partial<Competency>) => {
     setCompetencies(competencies.map(c => c.id === id ? { ...c, ...updates } : c));
   };
 
-  const onSubmit = (data: any) => {
-    const templateData = {
+  const onSubmit = (data: TemplateFormData) => {
+    const templateData: Template = {
       ...data,
       competencies,
       configuration: {
         clientId: selectedClient?.id || '',
         jobId: selectedJob?.id || ''
       },
-      linkedClient: selectedClient,
-      linkedJob: selectedJob,
+      linkedClient: selectedClient || undefined,
+      linkedJob: selectedJob || undefined,
       createdAt: new Date().toISOString(),
       id: Date.now().toString()
     };

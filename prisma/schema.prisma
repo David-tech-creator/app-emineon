@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Candidate {
@@ -97,7 +98,7 @@ model Candidate {
   shareWithClient       DateTime?
   competenceFiles       CompetenceFile[]
   projectCandidates     ProjectCandidate[]
-  enrichmentJobs        EnrichmentJob[]
+      enrichmentJobs        EnrichmentJob[]
 
   @@map("candidates")
 }
@@ -1148,4 +1149,69 @@ model EnrichmentJob {
   @@index([candidateId, type])
   @@index([status])
   @@map("enrichment_jobs")
+}
+
+// Resume Builder Models
+model Resume {
+  id     String @id @default(cuid())
+  userId String
+
+  title       String?
+  description String?
+
+  photoUrl    String?
+  colorHex    String  @default("#000000")
+  borderStyle String  @default("squircle")
+  summary     String?
+  firstName   String?
+  lastName    String?
+  jobTitle    String?
+  city        String?
+  country     String?
+  phone       String?
+  email       String?
+
+  workExperiences WorkExperience[]
+  educations      Education[]
+  skills          String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("resumes")
+}
+
+model WorkExperience {
+  id String @id @default(cuid())
+
+  position    String?
+  company     String?
+  startDate   DateTime?
+  endDate     DateTime?
+  description String?
+
+  resumeId String
+  resume   Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("work_experiences")
+}
+
+model Education {
+  id String @id @default(cuid())
+
+  degree    String?
+  school    String?
+  startDate DateTime?
+  endDate   DateTime?
+
+  resumeId String
+  resume   Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("educations")
 }

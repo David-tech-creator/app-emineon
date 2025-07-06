@@ -6,11 +6,36 @@ import { useRouter } from 'next/navigation';
 import { X, Upload, FileText, Linkedin, User, Brain, CheckCircle, UserPlus, Loader2, Paperclip, Mic, MicOff, Eye, EyeOff, Plus, Trash2, Tag, Briefcase, Users, Star, Save, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
+interface Job {
+  id: string;
+  title: string;
+  company: string;
+  status: string;
+  department?: string;
+  location?: string;
+}
+
+interface TalentPool {
+  id: string;
+  name: string;
+  count: number;
+}
+
+interface CreatedCandidate {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  currentTitle: string;
+  currentLocation: string;
+}
+
 interface CreateCandidateModalProps {
   open: boolean;
   onClose: () => void;
   jobId?: string; // Optional job ID to automatically assign candidate to
-  onCandidateCreated?: (candidate: any) => void; // Callback when candidate is created
+  onCandidateCreated?: (candidate: CreatedCandidate) => void; // Callback when candidate is created
 }
 
 type Step = 'intake' | 'parsing' | 'review' | 'assign';
@@ -68,6 +93,27 @@ interface ParsedCandidate {
   }>;
 }
 
+interface ParsedData {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  currentTitle?: string;
+  location?: string;
+  summary?: string;
+  yearsOfExperience?: number;
+  skills?: string[];
+  languages?: string[];
+  certifications?: string[];
+  education?: string[];
+  experience?: Array<{
+    title?: string;
+    company?: string;
+    startDate?: string;
+    endDate?: string;
+    responsibilities?: string;
+  }>;
+}
+
 export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated }: CreateCandidateModalProps) {
   const { getToken } = useAuth();
   const router = useRouter();
@@ -84,11 +130,11 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
   const [candidateTags, setCandidateTags] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [createdCandidate, setCreatedCandidate] = useState<any>(null);
+  const [createdCandidate, setCreatedCandidate] = useState<CreatedCandidate | null>(null);
   
   // Real data states
-  const [availableJobs, setAvailableJobs] = useState<any[]>([]);
-  const [availableTalentPools, setAvailableTalentPools] = useState<any[]>([]);
+  const [availableJobs, setAvailableJobs] = useState<Job[]>([]);
+  const [availableTalentPools, setAvailableTalentPools] = useState<TalentPool[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [loadingTalentPools, setLoadingTalentPools] = useState(false);
   
@@ -342,7 +388,7 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
     setCurrentStep('parsing');
 
     try {
-      let parsedData: any = null;
+      let parsedData: ParsedData | null = null;
       
       if (inputMethod === 'upload' && uploadedFile) {
         // Parse uploaded file
@@ -430,7 +476,8 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
           softSkills: [], // Will be filled from skills analysis
           spokenLanguages: parsedData.languages || [],
           linkedinUrl: linkedinUrl || '',
-          seniorityLevel: parsedData.yearsOfExperience > 5 ? 'SENIOR' : parsedData.yearsOfExperience > 2 ? 'MID_LEVEL' : 'JUNIOR',
+          seniorityLevel: (parsedData.yearsOfExperience && parsedData.yearsOfExperience > 5) ? 'SENIOR' : 
+                         (parsedData.yearsOfExperience && parsedData.yearsOfExperience > 2) ? 'MID_LEVEL' : 'JUNIOR',
           primaryIndustry: 'Technology', // Default - could be enhanced with AI classification
           availability: 'Available',
           expectedSalary: '',

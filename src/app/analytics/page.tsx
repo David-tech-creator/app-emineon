@@ -1,39 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import React from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { 
   BarChart3, 
-  TrendingUp, 
-  PieChart, 
-  LineChart,
+  TrendingUp,
   Users,
-  Briefcase,
+  Target,
+  Download,
+  Filter,
+  Calendar,
   DollarSign,
   Clock,
-  Brain,
-  Shield,
-  Globe,
-  Zap,
-  Target,
   Star,
+  Building2,
+  Brain,
   Activity,
-  Calendar,
-  Download,
-  Share,
-  Settings,
-  Filter,
-  RefreshCw,
   ArrowUpRight,
   ArrowDownRight,
-  Eye,
+  RefreshCw,
   CheckCircle,
+  LineChart,
+  PieChart,
   AlertTriangle,
-  Sparkles,
-  Award,
-  Building2
+  Award
 } from 'lucide-react';
 
 export default function AnalyticsPage() {

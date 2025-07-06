@@ -90,7 +90,12 @@ export default function UserPage() {
   }, [user, getToken]);
 
   // Helper function to get badge styles based on status
-  const getBadgeStyles = (status: string) => {
+  const getBadgeStyles = (status: string | undefined | null) => {
+    // Handle undefined, null, or empty status
+    if (!status) {
+      return 'bg-gray-100 text-gray-800 border-gray-300 font-semibold';
+    }
+    
     switch (status.toUpperCase()) {
       case 'GENERATED':
         return 'bg-green-100 text-green-800 border-green-300 font-semibold';
@@ -110,7 +115,7 @@ export default function UserPage() {
         return 'bg-yellow-100 text-yellow-800 border-yellow-300 font-semibold';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-300 font-semibold';
-  }
+    }
   };
 
   const userRole = user?.publicMetadata?.role as string || 'user';
