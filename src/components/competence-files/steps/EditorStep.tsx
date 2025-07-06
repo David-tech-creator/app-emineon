@@ -1386,12 +1386,13 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
     
     React.useEffect(() => {
       // Don't reinitialize if content hasn't actually changed from external source
-      if (isInitializedRef.current && lastInitializedContentRef.current === segment.content) {
+      const contentToCheck = segment.htmlContent || segment.content;
+      if (isInitializedRef.current && lastInitializedContentRef.current === contentToCheck) {
         return;
       }
       
       // Don't reinitialize if content is empty and we already have editor content
-      if (!segment.content?.trim() && isInitializedRef.current) {
+      if (!contentToCheck?.trim() && isInitializedRef.current) {
         return;
       }
       
@@ -1404,6 +1405,8 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
       }
       
       console.log('🔄 Initializing editor content for segment:', segment.id, {
+        hasHtmlContent: !!segment.htmlContent,
+        htmlContentLength: segment.htmlContent?.length || 0,
         contentLength: segment.content?.length || 0,
         isFirstTime: !isInitializedRef.current
       });
@@ -1412,20 +1415,43 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
         const root = $getRoot();
         root.clear();
         
-        if (segment.content?.trim()) {
+        // Priority 1: Use HTML content if available (rich formatting)
+        if (segment.htmlContent?.trim()) {
           try {
-            // Enhanced markdown parsing for structured content
+            console.log('📝 Initializing with HTML content (rich formatting preserved)');
+            // Parse HTML content into Lexical nodes
+            const parser = new DOMParser();
+            const dom = parser.parseFromString(segment.htmlContent, 'text/html');
+            const nodes = $generateNodesFromDOM(editor, dom);
+            root.append(...nodes);
+          } catch (error) {
+            console.warn('HTML content parsing failed, falling back to markdown:', error);
+            // Fallback to markdown parsing of regular content
+            if (segment.content?.trim()) {
+              createStructuredNodesFromMarkdown(root, segment.content);
+            } else {
+              const paragraph = $createParagraphNode();
+              paragraph.append($createTextNode(''));
+              root.append(paragraph);
+            }
+          }
+        }
+        // Priority 2: Use plain content with markdown parsing
+        else if (segment.content?.trim()) {
+          try {
+            console.log('📝 Initializing with plain content (markdown parsing)');
             createStructuredNodesFromMarkdown(root, segment.content);
           } catch (error) {
             console.warn('Structured content parsing failed, using fallback:', error);
-            
             // Fallback to simple paragraph
             const paragraph = $createParagraphNode();
             paragraph.append($createTextNode(segment.content || 'Enter content here...'));
             root.append(paragraph);
           }
-        } else {
-          // Empty content case
+        } 
+        // Priority 3: Empty content case
+        else {
+          console.log('📝 Initializing with empty content');
           const paragraph = $createParagraphNode();
           paragraph.append($createTextNode(''));
           root.append(paragraph);
@@ -1433,9 +1459,9 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
         
         // Mark as initialized and store the content we just initialized with
         isInitializedRef.current = true;
-        lastInitializedContentRef.current = segment.content || '';
+        lastInitializedContentRef.current = contentToCheck || '';
       });
-    }, [editor, segment.content]);
+    }, [editor, segment.content, segment.htmlContent]);
     
     return null;
   };
@@ -3068,7 +3094,7 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
     </div>
   );
 
-  // Enhanced OnChange plugin to track content changes
+  // Enhanced OnChange plugin to track content changes and sync HTML
   const ContentChangeTracker = () => {
     const [editor] = useLexicalComposerContext();
     
@@ -3082,12 +3108,28 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
             // Store the current content in a way we can access it
             (window as any)[`editorContent_${segment.id}`] = textContent;
             
-            // Also try to get HTML content for richer formatting
+            // Generate and store HTML content for rich formatting
             try {
               const htmlContent = $generateHtmlFromNodes(editor, null);
               (window as any)[`editorHtmlContent_${segment.id}`] = htmlContent;
+              
+              // Debounced update to segment store (real-time preview)
+              clearTimeout((window as any)[`syncTimer_${segment.id}`]);
+              (window as any)[`syncTimer_${segment.id}`] = setTimeout(() => {
+                console.log('🔄 Syncing HTML content to segment store for real-time preview');
+                updateSegment(segment.id, { 
+                  content: textContent,
+                  htmlContent: htmlContent
+                });
+              }, 500); // 500ms debounce for real-time updates
+              
             } catch (error) {
               console.warn('Could not generate HTML content:', error);
+              // Fallback to text content only
+              clearTimeout((window as any)[`syncTimer_${segment.id}`]);
+              (window as any)[`syncTimer_${segment.id}`] = setTimeout(() => {
+                updateSegment(segment.id, { content: textContent });
+              }, 500);
             }
           });
         }}
@@ -3762,7 +3804,10 @@ function LivePreview({
 
     // Add each segment
     visibleSegments.forEach(segment => {
-      const content = segment.content.trim();
+      // Prefer HTML content for rich formatting, fallback to plain content
+      const content = segment.htmlContent && segment.htmlContent.trim() 
+        ? segment.htmlContent.trim() 
+        : segment.content.trim();
       if (!content) return;
 
       html += `
@@ -3771,42 +3816,69 @@ function LivePreview({
           <div class="section-content">
       `;
 
-      // Process content based on segment type
-      if (segment.type.includes('SKILLS') || segment.type.includes('TECHNICAL') || segment.type.includes('COMPETENC')) {
-        html += formatSkillsContent(content);
-      } else if (segment.type.includes('EXPERIENCE')) {
-        const experience = parseExperienceContent(content);
-        if (experience && experience.company) {
-          html += `
-            <div class="experience-entry">
-              <div class="experience-company">${experience.company}</div>
-              <div class="experience-role">${experience.role}</div>
-              <div class="experience-dates">${experience.dates}</div>
-              
-              ${experience.responsibilities.length > 0 ? `
-                <div class="experience-section">
-                  <h5>Key Responsibilities</h5>
-                  <ul class="experience-list">
-                    ${experience.responsibilities.map(resp => `<li>${resp}</li>`).join('')}
-                  </ul>
-                </div>
-              ` : ''}
-              
-              ${experience.achievements.length > 0 ? `
-                <div class="experience-section">
-                  <h5>Major Achievements</h5>
-                  <ul class="experience-list">
-                    ${experience.achievements.map(achieve => `<li>${achieve}</li>`).join('')}
-                  </ul>
-                </div>
-              ` : ''}
-            </div>
-          `;
+      // If we have HTML content, use it directly (preserving rich formatting)
+      if (segment.htmlContent && segment.htmlContent.trim()) {
+        // Clean and enhance Lexical HTML output for preview
+        const cleanHtmlContent = content
+          // Enhance Lexical paragraph styling
+          .replace(/<p>/g, '<p style="margin-bottom: 16px; line-height: 1.6;">')
+          // Enhance Lexical heading styling
+          .replace(/<h1>/g, '<h1 style="font-size: 24px; font-weight: 700; margin: 24px 0 16px 0; color: #1e293b;">')
+          .replace(/<h2>/g, '<h2 style="font-size: 20px; font-weight: 600; margin: 20px 0 12px 0; color: #334155;">')
+          .replace(/<h3>/g, '<h3 style="font-size: 18px; font-weight: 600; margin: 16px 0 10px 0; color: #475569;">')
+          // Enhance list styling
+          .replace(/<ul>/g, '<ul style="margin: 16px 0; padding-left: 24px; list-style-type: disc;">')
+          .replace(/<ol>/g, '<ol style="margin: 16px 0; padding-left: 24px; list-style-type: decimal;">')
+          .replace(/<li>/g, '<li style="margin-bottom: 8px; line-height: 1.6;">')
+          // Enhance emphasis styling
+          .replace(/<strong>/g, '<strong style="font-weight: 600; color: #1e293b;">')
+          .replace(/<em>/g, '<em style="font-style: italic; color: #475569;">')
+          // Enhance code styling
+          .replace(/<code>/g, '<code style="background: #f1f5f9; color: #374151; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em;">')
+          // Enhance link styling
+          .replace(/<a([^>]*)>/g, '<a$1 style="color: #f97316; text-decoration: underline;">')
+          // Enhance blockquote styling
+          .replace(/<blockquote>/g, '<blockquote style="border-left: 4px solid #f97316; padding-left: 16px; margin: 16px 0; font-style: italic; color: #64748b;">');
+        
+        html += cleanHtmlContent;
+      } else {
+        // Fallback to plain content processing for segments without HTML
+        if (segment.type.includes('SKILLS') || segment.type.includes('TECHNICAL') || segment.type.includes('COMPETENC')) {
+          html += formatSkillsContent(content);
+        } else if (segment.type.includes('EXPERIENCE')) {
+          const experience = parseExperienceContent(content);
+          if (experience && experience.company) {
+            html += `
+              <div class="experience-entry">
+                <div class="experience-company">${experience.company}</div>
+                <div class="experience-role">${experience.role}</div>
+                <div class="experience-dates">${experience.dates}</div>
+                
+                ${experience.responsibilities.length > 0 ? `
+                  <div class="experience-section">
+                    <h5>Key Responsibilities</h5>
+                    <ul class="experience-list">
+                      ${experience.responsibilities.map(resp => `<li>${resp}</li>`).join('')}
+                    </ul>
+                  </div>
+                ` : ''}
+                
+                ${experience.achievements.length > 0 ? `
+                  <div class="experience-section">
+                    <h5>Major Achievements</h5>
+                    <ul class="experience-list">
+                      ${experience.achievements.map(achieve => `<li>${achieve}</li>`).join('')}
+                    </ul>
+                  </div>
+                ` : ''}
+              </div>
+            `;
+          } else {
+            html += formatRegularContent(content);
+          }
         } else {
           html += formatRegularContent(content);
         }
-      } else {
-        html += formatRegularContent(content);
       }
 
       html += `

@@ -311,6 +311,7 @@ export type Segment = {
   id: string;
   title: string; // e.g., "PROFESSIONAL SUMMARY"
   content: string;
+  htmlContent?: string; // Rich HTML content from Lexical editor
   status: 'idle' | 'loading' | 'done' | 'error';
   editable: boolean;
   order: number;
