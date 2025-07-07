@@ -1775,45 +1775,27 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
     return parts;
   };
 
-  const handleContentChange = useCallback((editorState: EditorState) => {
-    // Store content changes without triggering re-renders to prevent scroll jumping
+  // Simplified OnChange plugin for basic content tracking only
+  const handleContentChange = (editorState: any) => {
     editorState.read(() => {
       const root = $getRoot();
       const textContent = root.getTextContent();
       
-      // Store the current content in global variables for backup and preview
+      // Simple content storage without HTML synchronization
       (window as any)[`editorContent_${segment.id}`] = textContent;
-      
-      // Also store HTML content for richer formatting (will be generated when needed)
-      // Note: HTML generation is done separately to avoid complex editor state access
-      
-      // Note: We don't update the segment store here to prevent scroll jumping
-      // Content will be synced when user stops editing or saves
     });
-  }, [segment.id]);
+  };
 
-  // Debounced content sync function
-  const syncEditorContent = useCallback(() => {
-    const currentContent = getCurrentEditorContent();
-    if (currentContent !== segment.content) {
-      console.log('📤 Syncing editor content to segment store');
-      updateSegment(segment.id, { content: currentContent });
+  // Function to get current content from Lexical editor (simplified)
+  const getCurrentEditorContent = (): string => {
+    try {
+      const textContent = (window as any)[`editorContent_${segment.id}`];
+      return textContent || segment.content;
+    } catch (error) {
+      console.error('Failed to get current editor content:', error);
+      return segment.content;
     }
-  }, [segment.id, segment.content, updateSegment]);
-
-  // Debounced sync - sync content after user stops typing for 2 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      syncEditorContent();
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, [(window as any)[`editorContent_${segment.id}`]]);
-
-  // Sync content on blur (when user clicks away from editor)
-  const handleEditorBlur = useCallback(() => {
-    syncEditorContent();
-  }, [syncEditorContent]);
+  };
 
   const handleRegenerate = async () => {
     if (!getToken) return;
@@ -3094,82 +3076,6 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
     </div>
   );
 
-  // Enhanced OnChange plugin to track content changes and sync HTML
-  const ContentChangeTracker = () => {
-    const [editor] = useLexicalComposerContext();
-    
-    return (
-      <OnChangePlugin
-        onChange={(editorState) => {
-          editorState.read(() => {
-            const root = $getRoot();
-            const textContent = root.getTextContent();
-            
-            // Store the current content in a way we can access it
-            (window as any)[`editorContent_${segment.id}`] = textContent;
-            
-            // Generate and store HTML content for rich formatting
-            try {
-              const htmlContent = $generateHtmlFromNodes(editor, null);
-              (window as any)[`editorHtmlContent_${segment.id}`] = htmlContent;
-              
-              // Debounced update to segment store (real-time preview)
-              clearTimeout((window as any)[`syncTimer_${segment.id}`]);
-              (window as any)[`syncTimer_${segment.id}`] = setTimeout(() => {
-                console.log('🔄 Syncing HTML content to segment store for real-time preview');
-                updateSegment(segment.id, { 
-                  content: textContent,
-                  htmlContent: htmlContent
-                });
-              }, 500); // 500ms debounce for real-time updates
-              
-            } catch (error) {
-              console.warn('Could not generate HTML content:', error);
-              // Fallback to text content only
-              clearTimeout((window as any)[`syncTimer_${segment.id}`]);
-              (window as any)[`syncTimer_${segment.id}`] = setTimeout(() => {
-                updateSegment(segment.id, { content: textContent });
-              }, 500);
-            }
-          });
-        }}
-      />
-    );
-  };
-
-  // Function to get current content from Lexical editor
-  const getCurrentEditorContent = (): string => {
-    try {
-      // Try to get the stored content
-      const textContent = (window as any)[`editorContent_${segment.id}`];
-      const htmlContent = (window as any)[`editorHtmlContent_${segment.id}`];
-      
-      // Prefer HTML content if it's significantly different from text content
-      if (htmlContent && textContent && htmlContent.length > textContent.length * 1.2) {
-        console.log('📝 Using HTML content from editor:', {
-          contentLength: htmlContent.length,
-          contentPreview: htmlContent.substring(0, 150) + (htmlContent.length > 150 ? '...' : '')
-        });
-        return htmlContent;
-      }
-      
-      if (textContent) {
-        console.log('📝 Using text content from editor:', {
-          contentLength: textContent.length,
-          contentPreview: textContent.substring(0, 150) + (textContent.length > 150 ? '...' : '')
-        });
-        return textContent;
-      }
-      
-      // Fallback to segment content
-      console.warn('No current editor content found, using segment content');
-      return segment.content;
-    } catch (error) {
-      console.error('Failed to get current editor content:', error);
-      return segment.content;
-    }
-  };
-
   return (
     <div 
       ref={setNodeRef} 
@@ -3411,7 +3317,6 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
                 <HistoryPlugin />
                 <KeyboardShortcutsPlugin />
                 <ContentInitializationPlugin />
-                {/* <ContentChangeTracker /> */}
               </div>
             </LexicalComposer>
           )}
@@ -3804,10 +3709,7 @@ function LivePreview({
 
     // Add each segment
     visibleSegments.forEach(segment => {
-      // Prefer HTML content for rich formatting, fallback to plain content
-      const content = segment.htmlContent && segment.htmlContent.trim() 
-        ? segment.htmlContent.trim() 
-        : segment.content.trim();
+      const content = segment.content.trim();
       if (!content) return;
 
       html += `
@@ -3816,69 +3718,42 @@ function LivePreview({
           <div class="section-content">
       `;
 
-      // If we have HTML content, use it directly (preserving rich formatting)
-      if (segment.htmlContent && segment.htmlContent.trim()) {
-        // Clean and enhance Lexical HTML output for preview
-        const cleanHtmlContent = content
-          // Enhance Lexical paragraph styling
-          .replace(/<p>/g, '<p style="margin-bottom: 16px; line-height: 1.6;">')
-          // Enhance Lexical heading styling
-          .replace(/<h1>/g, '<h1 style="font-size: 24px; font-weight: 700; margin: 24px 0 16px 0; color: #1e293b;">')
-          .replace(/<h2>/g, '<h2 style="font-size: 20px; font-weight: 600; margin: 20px 0 12px 0; color: #334155;">')
-          .replace(/<h3>/g, '<h3 style="font-size: 18px; font-weight: 600; margin: 16px 0 10px 0; color: #475569;">')
-          // Enhance list styling
-          .replace(/<ul>/g, '<ul style="margin: 16px 0; padding-left: 24px; list-style-type: disc;">')
-          .replace(/<ol>/g, '<ol style="margin: 16px 0; padding-left: 24px; list-style-type: decimal;">')
-          .replace(/<li>/g, '<li style="margin-bottom: 8px; line-height: 1.6;">')
-          // Enhance emphasis styling
-          .replace(/<strong>/g, '<strong style="font-weight: 600; color: #1e293b;">')
-          .replace(/<em>/g, '<em style="font-style: italic; color: #475569;">')
-          // Enhance code styling
-          .replace(/<code>/g, '<code style="background: #f1f5f9; color: #374151; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em;">')
-          // Enhance link styling
-          .replace(/<a([^>]*)>/g, '<a$1 style="color: #f97316; text-decoration: underline;">')
-          // Enhance blockquote styling
-          .replace(/<blockquote>/g, '<blockquote style="border-left: 4px solid #f97316; padding-left: 16px; margin: 16px 0; font-style: italic; color: #64748b;">');
-        
-        html += cleanHtmlContent;
-      } else {
-        // Fallback to plain content processing for segments without HTML
-        if (segment.type.includes('SKILLS') || segment.type.includes('TECHNICAL') || segment.type.includes('COMPETENC')) {
-          html += formatSkillsContent(content);
-        } else if (segment.type.includes('EXPERIENCE')) {
-          const experience = parseExperienceContent(content);
-          if (experience && experience.company) {
-            html += `
-              <div class="experience-entry">
-                <div class="experience-company">${experience.company}</div>
-                <div class="experience-role">${experience.role}</div>
-                <div class="experience-dates">${experience.dates}</div>
-                
-                ${experience.responsibilities.length > 0 ? `
-                  <div class="experience-section">
-                    <h5>Key Responsibilities</h5>
-                    <ul class="experience-list">
-                      ${experience.responsibilities.map(resp => `<li>${resp}</li>`).join('')}
-                    </ul>
-                  </div>
-                ` : ''}
-                
-                ${experience.achievements.length > 0 ? `
-                  <div class="experience-section">
-                    <h5>Major Achievements</h5>
-                    <ul class="experience-list">
-                      ${experience.achievements.map(achieve => `<li>${achieve}</li>`).join('')}
-                    </ul>
-                  </div>
-                ` : ''}
-              </div>
-            `;
-          } else {
-            html += formatRegularContent(content);
-          }
+      // Process content based on segment type
+      if (segment.type.includes('SKILLS') || segment.type.includes('TECHNICAL') || segment.type.includes('COMPETENC')) {
+        html += formatSkillsContent(content);
+      } else if (segment.type.includes('EXPERIENCE')) {
+        const experience = parseExperienceContent(content);
+        if (experience && experience.company) {
+          html += `
+            <div class="experience-entry">
+              <div class="experience-company">${experience.company}</div>
+              <div class="experience-role">${experience.role}</div>
+              <div class="experience-dates">${experience.dates}</div>
+              
+              ${experience.responsibilities.length > 0 ? `
+                <div class="experience-section">
+                  <h5>Key Responsibilities</h5>
+                  <ul class="experience-list">
+                    ${experience.responsibilities.map(resp => `<li>${resp}</li>`).join('')}
+                  </ul>
+                </div>
+              ` : ''}
+              
+              ${experience.achievements.length > 0 ? `
+                <div class="experience-section">
+                  <h5>Major Achievements</h5>
+                  <ul class="experience-list">
+                    ${experience.achievements.map(achieve => `<li>${achieve}</li>`).join('')}
+                  </ul>
+                </div>
+              ` : ''}
+            </div>
+          `;
         } else {
           html += formatRegularContent(content);
         }
+      } else {
+        html += formatRegularContent(content);
       }
 
       html += `
