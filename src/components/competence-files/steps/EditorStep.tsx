@@ -665,71 +665,14 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
   const { updateSegment, regenerateSegment, improveSegment, expandSegment, rewriteSegment } = useSegmentStore();
   const { getToken } = useAuth();
   
-  // Enhancement and editing state
+  // Local state for UI interactions
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState<'improve' | 'expand' | 'rewrite' | null>(null);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState(segment.title);
   
-  // Local state for different editing modes
-  const [editMode, setEditMode] = useState<'structured' | 'freetext'>('freetext');
   const [isEditing, setIsEditing] = useState(false);
   const [newTitle, setNewTitle] = useState(segment.title);
-  
-  // Structured data states for different segment types
-  const [experienceData, setExperienceData] = useState<ExperienceData>({
-    company: '',
-    role: '',
-    dates: '',
-    location: '',
-    responsibilities: [],
-    achievements: [],
-    technologies: []
-  });
-  
-  const [skillsData, setSkillsData] = useState<SkillsData>({
-    categories: []
-  });
-  
-  const [educationData, setEducationData] = useState<EducationData>({
-    institution: '',
-    degree: '',
-    field: '',
-    dates: '',
-    location: '',
-    achievements: []
-  });
-  
-  const [summaryData, setSummaryData] = useState<SummaryData>({
-    keyStrengths: [],
-    yearsOfExperience: '',
-    industryFocus: [],
-    careerHighlights: []
-  });
-  
-  const [coreCompetencyData, setCoreCompetencyData] = useState<CoreCompetencyData>({
-    categories: []
-  });
-  
-  const [certificationData, setCertificationData] = useState<CertificationData>({
-    certifications: []
-  });
-  
-  const [languageData, setLanguageData] = useState<LanguageData>({
-    languages: []
-  });
-  
-  const [projectData, setProjectData] = useState<ProjectData>({
-    projects: []
-  });
-  
-  const [areasOfExpertiseData, setAreasOfExpertiseData] = useState<AreasOfExpertiseData>({
-    areas: []
-  });
-  
-  const [awardData, setAwardData] = useState<AwardData>({
-    awards: []
-  });
 
   // Cleanup global content tracking variables when component unmounts
   useEffect(() => {
@@ -742,585 +685,6 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
       }
     };
   }, [segment.id]);
-
-  // Parse content into structured data when switching to structured mode
-  const parseContentToStructured = (content: string = segment.content) => {
-    console.log(`🔍 Parsing content to structured for ${segment.type}:`, {
-      contentLength: content.length,
-      contentPreview: content.substring(0, 150) + (content.length > 150 ? '...' : '')
-    });
-    
-    if (segment.type === 'PROFESSIONAL EXPERIENCE') {
-      parseExperienceFromContent(content);
-    } else if (segment.type === 'TECHNICAL SKILLS' || segment.type.includes('FUNCTIONAL')) {
-      parseSkillsFromContent(content);
-    } else if (segment.type === 'EDUCATION') {
-      parseEducationFromContent(content);
-    } else if (segment.type === 'SUMMARY' || segment.type === 'PROFESSIONAL SUMMARY') {
-      parseSummaryFromContent(content);
-    } else if (segment.type === 'CORE COMPETENCIES') {
-      parseCoreCompetenciesFromContent(content);
-    } else if (segment.type === 'CERTIFICATIONS') {
-      parseCertificationsFromContent(content);
-    } else if (segment.type === 'LANGUAGES') {
-      parseLanguagesFromContent(content);
-    } else if (segment.type === 'PROJECTS') {
-      parseProjectsFromContent(content);
-    } else if (segment.type === 'AREAS OF EXPERTISE') {
-      parseAreasOfExpertiseFromContent(content);
-    } else if (segment.type === 'AWARDS' || segment.type === 'ACHIEVEMENTS') {
-      parseAwardsFromContent(content);
-    }
-    console.log('✅ Parsing completed');
-  };
-
-  // Convert structured data back to content format
-  const convertStructuredToContent = () => {
-    if (segment.type === 'PROFESSIONAL EXPERIENCE') {
-      return convertExperienceToContent(experienceData);
-    } else if (segment.type === 'TECHNICAL SKILLS' || segment.type.includes('FUNCTIONAL')) {
-      return convertSkillsToContent(skillsData);
-    } else if (segment.type === 'EDUCATION') {
-      return convertEducationToContent(educationData);
-    } else if (segment.type === 'SUMMARY' || segment.type === 'PROFESSIONAL SUMMARY') {
-      return convertSummaryToContent(summaryData);
-    } else if (segment.type === 'CORE COMPETENCIES') {
-      return convertCoreCompetenciesToContent(coreCompetencyData);
-    } else if (segment.type === 'CERTIFICATIONS') {
-      return convertCertificationsToContent(certificationData);
-    } else if (segment.type === 'LANGUAGES') {
-      return convertLanguagesToContent(languageData);
-    } else if (segment.type === 'PROJECTS') {
-      return convertProjectsToContent(projectData);
-    } else if (segment.type === 'AREAS OF EXPERTISE') {
-      return convertAreasOfExpertiseToContent(areasOfExpertiseData);
-    } else if (segment.type === 'AWARDS' || segment.type === 'ACHIEVEMENTS') {
-      return convertAwardsToContent(awardData);
-    }
-    return segment.content;
-  };
-
-  // Experience parsing and conversion
-  const parseExperienceFromContent = (content: string) => {
-    const lines = content.split('\n').map(line => line.trim()).filter(Boolean);
-    let company = '', role = '', dates = '', location = '';
-    const responsibilities: string[] = [];
-    const achievements: string[] = [];
-    const technologies: string[] = [];
-
-    for (const line of lines) {
-      if (line.includes('**') && (line.includes('Director') || line.includes('Manager') || line.includes('Engineer') || line.includes('Developer'))) {
-        const parts = line.split(' - ');
-        if (parts.length >= 2) {
-          company = parts[0].replace(/\*\*/g, '').trim();
-          role = parts[1].replace(/\*\*/g, '').trim();
-        }
-      } else if (line.match(/\d{4}-\d{2} - \d{4}-\d{2}/) || line.match(/\d{4} - \d{4}/)) {
-        dates = line.trim();
-      } else if (line.startsWith('•') || line.startsWith('-')) {
-        const cleaned = line.replace(/^[•\-]\s*/, '').trim();
-        if (cleaned.toLowerCase().includes('led') || cleaned.toLowerCase().includes('managed') || cleaned.toLowerCase().includes('developed')) {
-          responsibilities.push(cleaned);
-        } else if (cleaned.toLowerCase().includes('achieved') || cleaned.toLowerCase().includes('increased') || cleaned.toLowerCase().includes('reduced')) {
-          achievements.push(cleaned);
-        } else {
-          responsibilities.push(cleaned);
-        }
-      }
-    }
-
-    setExperienceData({ company, role, dates, location, responsibilities, achievements, technologies });
-  };
-
-  const convertExperienceToContent = (data: ExperienceData): string => {
-    const parts = [];
-    
-    if (data.company && data.role) {
-      parts.push(`**${data.company}** - ${data.role}`);
-    }
-    
-    if (data.dates) {
-      parts.push(data.dates);
-    }
-    
-    if (data.location) {
-      parts.push(data.location);
-    }
-    
-    if (data.responsibilities.length > 0) {
-      parts.push('**Key Responsibilities:**');
-      data.responsibilities.forEach(resp => {
-        parts.push(`• ${resp}`);
-      });
-    }
-    
-    if (data.achievements.length > 0) {
-      parts.push('**Key Achievements:**');
-      data.achievements.forEach(ach => {
-        parts.push(`• ${ach}`);
-      });
-    }
-    
-    if (data.technologies.length > 0) {
-      parts.push('**Technologies:**');
-      parts.push(data.technologies.join(', '));
-    }
-    
-    return parts.join('\n');
-  };
-
-  // Skills parsing and conversion
-  const parseSkillsFromContent = (content: string) => {
-    const categories: Array<{ name: string; skills: string[] }> = [];
-    const lines = content.split('\n').map(line => line.trim()).filter(Boolean);
-    
-    let currentCategory = '';
-    let currentSkills: string[] = [];
-    
-    for (const line of lines) {
-      if (line.includes('**') && line.endsWith('**')) {
-        if (currentCategory && currentSkills.length > 0) {
-          categories.push({ name: currentCategory, skills: [...currentSkills] });
-        }
-        currentCategory = line.replace(/\*\*/g, '').trim();
-        currentSkills = [];
-      } else if (line && !line.includes('**')) {
-        const skills = line.split(',').map(s => s.trim()).filter(Boolean);
-        currentSkills.push(...skills);
-      }
-    }
-    
-    if (currentCategory && currentSkills.length > 0) {
-      categories.push({ name: currentCategory, skills: currentSkills });
-    }
-    
-    setSkillsData({ categories });
-  };
-
-  const convertSkillsToContent = (data: SkillsData): string => {
-    return data.categories.map(category => 
-      `**${category.name}:**\n${category.skills.join(', ')}`
-    ).join('\n\n');
-  };
-
-  // Education parsing and conversion
-  const parseEducationFromContent = (content: string) => {
-    const lines = content.split('\n').map(line => line.trim()).filter(Boolean);
-    let institution = '', degree = '', field = '', dates = '', location = '';
-    const achievements: string[] = [];
-
-    for (const line of lines) {
-      if (line.includes('**') && (line.includes('University') || line.includes('Institute') || line.includes('College'))) {
-        institution = line.replace(/\*\*/g, '').trim();
-      } else if (line.includes('Bachelor') || line.includes('Master') || line.includes('PhD') || line.includes('Diploma')) {
-        const parts = line.split(' in ');
-        degree = parts[0].trim();
-        if (parts[1]) field = parts[1].trim();
-      } else if (line.match(/\d{4}/)) {
-        dates = line.trim();
-      } else if (line.startsWith('•') || line.startsWith('-')) {
-        achievements.push(line.replace(/^[•\-]\s*/, '').trim());
-      }
-    }
-
-    setEducationData({ institution, degree, field, dates, location, achievements });
-  };
-
-  const convertEducationToContent = (data: EducationData): string => {
-    const parts = [];
-    
-    if (data.institution) {
-      parts.push(`**${data.institution}**`);
-    }
-    
-    if (data.degree && data.field) {
-      parts.push(`${data.degree} in ${data.field}`);
-    } else if (data.degree) {
-      parts.push(data.degree);
-    }
-    
-    if (data.dates) {
-      parts.push(data.dates);
-    }
-    
-    if (data.location) {
-      parts.push(data.location);
-    }
-    
-    if (data.achievements.length > 0) {
-      data.achievements.forEach(ach => {
-        parts.push(`• ${ach}`);
-      });
-    }
-    
-    return parts.join('\n');
-  };
-
-  // Summary parsing and conversion
-  const parseSummaryFromContent = (content: string) => {
-    const lines = content.split('\n').map(line => line.trim()).filter(Boolean);
-    const keyStrengths: string[] = [];
-    const industryFocus: string[] = [];
-    const careerHighlights: string[] = [];
-    let yearsOfExperience = '';
-
-    for (const line of lines) {
-      if (line.match(/\d+\+?\s*(years?|yrs?)/i)) {
-        const match = line.match(/(\d+\+?\s*(?:years?|yrs?))/i);
-        if (match) yearsOfExperience = match[1];
-      } else if (line.startsWith('•') || line.startsWith('-')) {
-        const cleaned = line.replace(/^[•\-]\s*/, '').trim();
-        if (cleaned.toLowerCase().includes('experience') || cleaned.toLowerCase().includes('background')) {
-          careerHighlights.push(cleaned);
-        } else if (cleaned.toLowerCase().includes('industry') || cleaned.toLowerCase().includes('sector')) {
-          industryFocus.push(cleaned);
-        } else {
-          keyStrengths.push(cleaned);
-        }
-      } else if (line && !line.includes('**')) {
-        keyStrengths.push(line);
-      }
-    }
-
-    setSummaryData({ keyStrengths, yearsOfExperience, industryFocus, careerHighlights });
-  };
-
-  const convertSummaryToContent = (data: SummaryData): string => {
-    const parts = [];
-    
-    if (data.yearsOfExperience) {
-      parts.push(`Professional with ${data.yearsOfExperience} of experience.`);
-    }
-    
-    if (data.keyStrengths.length > 0) {
-      parts.push('**Key Strengths:**');
-      data.keyStrengths.forEach(strength => {
-        parts.push(`• ${strength}`);
-      });
-    }
-    
-    if (data.industryFocus.length > 0) {
-      parts.push('**Industry Focus:**');
-      data.industryFocus.forEach(focus => {
-        parts.push(`• ${focus}`);
-      });
-    }
-    
-    if (data.careerHighlights.length > 0) {
-      parts.push('**Career Highlights:**');
-      data.careerHighlights.forEach(highlight => {
-        parts.push(`• ${highlight}`);
-      });
-    }
-    
-    return parts.join('\n');
-  };
-
-  // Core Competencies parsing and conversion
-  const parseCoreCompetenciesFromContent = (content: string) => {
-    const categories: Array<{ name: string; competencies: string[] }> = [];
-    const lines = content.split('\n').map(line => line.trim()).filter(Boolean);
-    
-    let currentCategory = '';
-    let currentCompetencies: string[] = [];
-    
-    for (const line of lines) {
-      if (line.includes('**') && line.endsWith('**')) {
-        if (currentCategory && currentCompetencies.length > 0) {
-          categories.push({ name: currentCategory, competencies: [...currentCompetencies] });
-        }
-        currentCategory = line.replace(/\*\*/g, '').trim();
-        currentCompetencies = [];
-      } else if (line && !line.includes('**')) {
-        if (line.startsWith('•') || line.startsWith('-')) {
-          currentCompetencies.push(line.replace(/^[•\-]\s*/, '').trim());
-        } else {
-          const competencies = line.split(',').map(s => s.trim()).filter(Boolean);
-          currentCompetencies.push(...competencies);
-        }
-      }
-    }
-    
-    if (currentCategory && currentCompetencies.length > 0) {
-      categories.push({ name: currentCategory, competencies: currentCompetencies });
-    }
-    
-    setCoreCompetencyData({ categories });
-  };
-
-  const convertCoreCompetenciesToContent = (data: CoreCompetencyData): string => {
-    return data.categories.map(category => 
-      `**${category.name}:**\n${category.competencies.map(comp => `• ${comp}`).join('\n')}`
-    ).join('\n\n');
-  };
-
-  // Certifications parsing and conversion
-  const parseCertificationsFromContent = (content: string) => {
-    const certifications: Array<{ name: string; organization: string; dateObtained: string; expiryDate?: string; certificationId?: string }> = [];
-    const lines = content.split('\n').map(line => line.trim()).filter(Boolean);
-    
-    let currentCert = { name: '', organization: '', dateObtained: '', expiryDate: '', certificationId: '' };
-    
-    for (const line of lines) {
-      if (line.includes('**') && !line.includes('Date') && !line.includes('ID')) {
-        if (currentCert.name) {
-          certifications.push({ ...currentCert });
-        }
-        currentCert = { name: line.replace(/\*\*/g, '').trim(), organization: '', dateObtained: '', expiryDate: '', certificationId: '' };
-      } else if (line.toLowerCase().includes('issued by') || line.toLowerCase().includes('organization')) {
-        currentCert.organization = line.replace(/issued by|organization:/gi, '').trim();
-      } else if (line.match(/\d{4}/)) {
-        if (!currentCert.dateObtained) {
-          currentCert.dateObtained = line.trim();
-        } else {
-          currentCert.expiryDate = line.trim();
-        }
-      } else if (line.toLowerCase().includes('id') || line.toLowerCase().includes('certificate')) {
-        currentCert.certificationId = line.trim();
-      }
-    }
-    
-    if (currentCert.name) {
-      certifications.push(currentCert);
-    }
-    
-    setCertificationData({ certifications });
-  };
-
-  const convertCertificationsToContent = (data: CertificationData): string => {
-    return data.certifications.map(cert => {
-      const parts = [`**${cert.name}**`];
-      if (cert.organization) parts.push(`Issued by: ${cert.organization}`);
-      if (cert.dateObtained) parts.push(`Date: ${cert.dateObtained}`);
-      if (cert.expiryDate) parts.push(`Expires: ${cert.expiryDate}`);
-      if (cert.certificationId) parts.push(`ID: ${cert.certificationId}`);
-      return parts.join('\n');
-    }).join('\n\n');
-  };
-
-  // Languages parsing and conversion
-  const parseLanguagesFromContent = (content: string) => {
-    const languages: Array<{ name: string; proficiency: 'Native' | 'Fluent' | 'Conversational' | 'Basic'; certifications?: string }> = [];
-    const lines = content.split('\n').map(line => line.trim()).filter(Boolean);
-    
-    for (const line of lines) {
-      if (line.startsWith('•') || line.startsWith('-')) {
-        const cleaned = line.replace(/^[•\-]\s*/, '').trim();
-        const parts = cleaned.split(/[-–—]/);
-        if (parts.length >= 2) {
-          const name = parts[0].trim();
-          const proficiencyText = parts[1].trim().toLowerCase();
-          
-          let proficiency: 'Native' | 'Fluent' | 'Conversational' | 'Basic' = 'Basic';
-          if (proficiencyText.includes('native')) proficiency = 'Native';
-          else if (proficiencyText.includes('fluent')) proficiency = 'Fluent';
-          else if (proficiencyText.includes('conversational')) proficiency = 'Conversational';
-          
-          const certifications = parts.length > 2 ? parts[2].trim() : undefined;
-          languages.push({ name, proficiency, certifications });
-        }
-      }
-    }
-    
-    setLanguageData({ languages });
-  };
-
-  const convertLanguagesToContent = (data: LanguageData): string => {
-    return data.languages.map(lang => {
-      let line = `• ${lang.name} - ${lang.proficiency}`;
-      if (lang.certifications) line += ` - ${lang.certifications}`;
-      return line;
-    }).join('\n');
-  };
-
-  // Projects parsing and conversion
-  const parseProjectsFromContent = (content: string) => {
-    const projects: Array<{ name: string; client: string; duration: string; role: string; technologies: string[]; description: string; achievements: string[] }> = [];
-    const lines = content.split('\n').map(line => line.trim()).filter(Boolean);
-    
-    let currentProject = { name: '', client: '', duration: '', role: '', technologies: [] as string[], description: '', achievements: [] as string[] };
-    
-    for (const line of lines) {
-      if (line.includes('**') && !line.includes('Client') && !line.includes('Role') && !line.includes('Technologies')) {
-        if (currentProject.name) {
-          projects.push({ ...currentProject });
-        }
-        currentProject = { name: line.replace(/\*\*/g, '').trim(), client: '', duration: '', role: '', technologies: [], description: '', achievements: [] };
-      } else if (line.toLowerCase().includes('client')) {
-        currentProject.client = line.replace(/client:/gi, '').trim();
-      } else if (line.toLowerCase().includes('duration') || line.match(/\d{4}/)) {
-        currentProject.duration = line.replace(/duration:/gi, '').trim();
-      } else if (line.toLowerCase().includes('role')) {
-        currentProject.role = line.replace(/role:/gi, '').trim();
-      } else if (line.toLowerCase().includes('technologies') || line.toLowerCase().includes('tech stack')) {
-        const techText = line.replace(/technologies:|tech stack:/gi, '').trim();
-        currentProject.technologies = techText.split(',').map(t => t.trim()).filter(Boolean);
-      } else if (line.startsWith('•') || line.startsWith('-')) {
-        const cleaned = line.replace(/^[•\-]\s*/, '').trim();
-        if (cleaned.toLowerCase().includes('achieved') || cleaned.toLowerCase().includes('delivered')) {
-          currentProject.achievements.push(cleaned);
-        } else {
-          if (!currentProject.description) {
-            currentProject.description = cleaned;
-          }
-        }
-      }
-    }
-    
-    if (currentProject.name) {
-      projects.push(currentProject);
-    }
-    
-    setProjectData({ projects });
-  };
-
-  const convertProjectsToContent = (data: ProjectData): string => {
-    return data.projects.map(project => {
-      const parts = [`**${project.name}**`];
-      if (project.client) parts.push(`Client: ${project.client}`);
-      if (project.duration) parts.push(`Duration: ${project.duration}`);
-      if (project.role) parts.push(`Role: ${project.role}`);
-      if (project.technologies.length > 0) parts.push(`Technologies: ${project.technologies.join(', ')}`);
-      if (project.description) parts.push(`• ${project.description}`);
-      project.achievements.forEach(ach => parts.push(`• ${ach}`));
-      return parts.join('\n');
-    }).join('\n\n');
-  };
-
-  // Areas of Expertise parsing and conversion
-  const parseAreasOfExpertiseFromContent = (content: string) => {
-    const areas: Array<{ category: string; expertise: string[] }> = [];
-    const lines = content.split('\n').map(line => line.trim()).filter(Boolean);
-    
-    let currentCategory = '';
-    let currentExpertise: string[] = [];
-    
-    for (const line of lines) {
-      if (line.includes('**') && line.endsWith('**')) {
-        if (currentCategory && currentExpertise.length > 0) {
-          areas.push({ category: currentCategory, expertise: [...currentExpertise] });
-        }
-        currentCategory = line.replace(/\*\*/g, '').trim();
-        currentExpertise = [];
-      } else if (line && !line.includes('**')) {
-        if (line.startsWith('•') || line.startsWith('-')) {
-          currentExpertise.push(line.replace(/^[•\-]\s*/, '').trim());
-        } else {
-          const expertise = line.split(',').map(s => s.trim()).filter(Boolean);
-          currentExpertise.push(...expertise);
-        }
-      }
-    }
-    
-    if (currentCategory && currentExpertise.length > 0) {
-      areas.push({ category: currentCategory, expertise: currentExpertise });
-    }
-    
-    setAreasOfExpertiseData({ areas });
-  };
-
-  const convertAreasOfExpertiseToContent = (data: AreasOfExpertiseData): string => {
-    return data.areas.map(area => 
-      `**${area.category}:**\n${area.expertise.map(exp => `• ${exp}`).join('\n')}`
-    ).join('\n\n');
-  };
-
-  // Awards parsing and conversion
-  const parseAwardsFromContent = (content: string) => {
-    const awards: Array<{ name: string; organization: string; date: string; description: string }> = [];
-    const lines = content.split('\n').map(line => line.trim()).filter(Boolean);
-    
-    let currentAward = { name: '', organization: '', date: '', description: '' };
-    
-    for (const line of lines) {
-      if (line.includes('**') && !line.includes('Organization') && !line.includes('Date')) {
-        if (currentAward.name) {
-          awards.push({ ...currentAward });
-        }
-        currentAward = { name: line.replace(/\*\*/g, '').trim(), organization: '', date: '', description: '' };
-      } else if (line.toLowerCase().includes('organization') || line.toLowerCase().includes('awarded by')) {
-        currentAward.organization = line.replace(/organization:|awarded by:/gi, '').trim();
-      } else if (line.match(/\d{4}/)) {
-        currentAward.date = line.trim();
-      } else if (line.startsWith('•') || line.startsWith('-')) {
-        currentAward.description = line.replace(/^[•\-]\s*/, '').trim();
-      }
-    }
-    
-    if (currentAward.name) {
-      awards.push(currentAward);
-    }
-    
-    setAwardData({ awards });
-  };
-
-  const convertAwardsToContent = (data: AwardData): string => {
-    return data.awards.map(award => {
-      const parts = [`**${award.name}**`];
-      if (award.organization) parts.push(`Organization: ${award.organization}`);
-      if (award.date) parts.push(`Date: ${award.date}`);
-      if (award.description) parts.push(`• ${award.description}`);
-      return parts.join('\n');
-    }).join('\n\n');
-  };
-
-  // Check if segment supports structured editing
-  const supportsStructuredEditing = () => {
-    return [
-      'PROFESSIONAL EXPERIENCE', 
-      'TECHNICAL SKILLS', 
-      'FUNCTIONAL SKILLS', 
-      'EDUCATION',
-      'SUMMARY',
-      'PROFESSIONAL SUMMARY',
-      'CORE COMPETENCIES',
-      'CERTIFICATIONS',
-      'LANGUAGES',
-      'PROJECTS',
-      'AREAS OF EXPERTISE',
-      'AWARDS',
-      'ACHIEVEMENTS'
-    ].includes(segment.type);
-  };
-
-  // Handle mode switch
-  const handleModeSwitch = (mode: 'structured' | 'freetext') => {
-    console.log(`🔄 Mode switch: ${editMode} → ${mode} for segment ${segment.title}`);
-    
-    if (mode === 'structured' && editMode === 'freetext') {
-      // Extract current content from Lexical editor before parsing
-      const currentContent = getCurrentEditorContent();
-      console.log('🔍 Current content before switching to structured:', {
-        length: currentContent.length,
-        preview: currentContent.substring(0, 200) + (currentContent.length > 200 ? '...' : '')
-      });
-      
-      // Update segment content with current editor content first
-      if (currentContent !== segment.content) {
-        updateSegment(segment.id, { content: currentContent });
-        console.log('✅ Updated segment content before parsing');
-      }
-      
-      // Parse the current content into structured data
-      parseContentToStructured(currentContent);
-      console.log('✅ Parsed content to structured data');
-      
-    } else if (mode === 'freetext' && editMode === 'structured') {
-      // Convert structured data back to content
-      const newContent = convertStructuredToContent();
-      console.log('🔍 New content from structured data:', {
-        length: newContent.length,
-        preview: newContent.substring(0, 200) + (newContent.length > 200 ? '...' : '')
-      });
-      
-      // Update segment content with new structured content
-      updateSegment(segment.id, { content: newContent });
-      console.log('✅ Updated segment content from structured data');
-    }
-    
-    setEditMode(mode);
-    console.log(`✅ Mode switch completed: ${editMode} → ${mode}`);
-  };
 
   const {
     attributes,
@@ -1386,7 +750,7 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
     
     React.useEffect(() => {
       // Don't reinitialize if content hasn't actually changed from external source
-      const contentToCheck = segment.htmlContent || segment.content;
+      const contentToCheck = segment.content;
       if (isInitializedRef.current && lastInitializedContentRef.current === contentToCheck) {
         return;
       }
@@ -1405,8 +769,6 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
       }
       
       console.log('🔄 Initializing editor content for segment:', segment.id, {
-        hasHtmlContent: !!segment.htmlContent,
-        htmlContentLength: segment.htmlContent?.length || 0,
         contentLength: segment.content?.length || 0,
         isFirstTime: !isInitializedRef.current
       });
@@ -1415,29 +777,8 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
         const root = $getRoot();
         root.clear();
         
-        // Priority 1: Use HTML content if available (rich formatting)
-        if (segment.htmlContent?.trim()) {
-          try {
-            console.log('📝 Initializing with HTML content (rich formatting preserved)');
-            // Parse HTML content into Lexical nodes
-            const parser = new DOMParser();
-            const dom = parser.parseFromString(segment.htmlContent, 'text/html');
-            const nodes = $generateNodesFromDOM(editor, dom);
-            root.append(...nodes);
-          } catch (error) {
-            console.warn('HTML content parsing failed, falling back to markdown:', error);
-            // Fallback to markdown parsing of regular content
-            if (segment.content?.trim()) {
-              createStructuredNodesFromMarkdown(root, segment.content);
-            } else {
-              const paragraph = $createParagraphNode();
-              paragraph.append($createTextNode(''));
-              root.append(paragraph);
-            }
-          }
-        }
-        // Priority 2: Use plain content with markdown parsing
-        else if (segment.content?.trim()) {
+        // Use plain content with markdown parsing
+        if (segment.content?.trim()) {
           try {
             console.log('📝 Initializing with plain content (markdown parsing)');
             createStructuredNodesFromMarkdown(root, segment.content);
@@ -1449,7 +790,7 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
             root.append(paragraph);
           }
         } 
-        // Priority 3: Empty content case
+        // Empty content case
         else {
           console.log('📝 Initializing with empty content');
           const paragraph = $createParagraphNode();
@@ -1461,7 +802,7 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
         isInitializedRef.current = true;
         lastInitializedContentRef.current = contentToCheck || '';
       });
-    }, [editor, segment.content, segment.htmlContent]);
+    }, [editor, segment.content]);
     
     return null;
   };
@@ -1798,32 +1139,23 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
   };
 
   const handleRegenerate = async () => {
-    if (!getToken) return;
-    
     setIsRegenerating(true);
     try {
-      // Pass the actual job and candidate data
       await regenerateSegment(segment.id, jobDescription, selectedCandidate);
     } catch (error) {
-      console.error('Error regenerating segment:', error);
+      console.error('Failed to regenerate segment:', error);
     } finally {
       setIsRegenerating(false);
     }
   };
 
   const handleEnhance = async (action: 'improve' | 'expand' | 'rewrite') => {
-    if (!getToken || !segment.content?.trim()) return;
-    
     setIsEnhancing(action);
     try {
-      const enhanceFunction = action === 'improve' ? improveSegment : 
-                             action === 'expand' ? expandSegment : 
-                             rewriteSegment;
-      
-      // Pass the actual job and candidate data
-      await enhanceFunction(segment.id, jobDescription, selectedCandidate);
+      const currentContent = getCurrentEditorContent();
+      await regenerateSegment(segment.id, jobDescription, selectedCandidate, action, currentContent);
     } catch (error) {
-      console.error(`Error ${action}ing segment:`, error);
+      console.error('Failed to enhance segment:', error);
     } finally {
       setIsEnhancing(null);
     }
@@ -1841,1240 +1173,49 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
 
   const toggleVisibility = () => {
     updateSegment(segment.id, { visible: !segment.visible });
+    
+    // Also adjust heights for smooth UX
+    const segmentElement = document.querySelector(`[data-segment-id="${segment.id}"]`);
+    if (segmentElement) {
+      if (!segment.visible) {
+        // Becoming visible
+        segmentElement.classList.add('transition-all', 'duration-300', 'ease-in-out');
+      } else {
+        // Becoming hidden
+        segmentElement.classList.add('transition-all', 'duration-300', 'ease-in-out');
+      }
+    }
   };
 
-  // Fullscreen modes: none, editor, preview, both
-  const [fullscreenMode, setFullscreenMode] = useState<'none' | 'editor' | 'preview' | 'both'>('none');
-
-  // Drag and drop sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  // Fullscreen mode controls
   const toggleEditorFullscreen = () => {
-    setFullscreenMode(fullscreenMode === 'editor' ? 'none' : 'editor');
+    // This will be handled by the parent EditorStep component
   };
 
   const togglePreviewFullscreen = () => {
-    setFullscreenMode(fullscreenMode === 'preview' ? 'none' : 'preview');
+    // This will be handled by the parent EditorStep component
   };
 
   const exitFullscreen = () => {
-    setFullscreenMode('none');
+    // This will be handled by the parent EditorStep component
   };
 
-  // Handle escape key for fullscreen exit
+  // Add keyboard shortcuts for fullscreen
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && fullscreenMode !== 'none') {
-        exitFullscreen();
+      if (event.ctrlKey || event.metaKey) {
+        if (event.key === 'e') {
+          event.preventDefault();
+          toggleEditorFullscreen();
+        } else if (event.key === 'p') {
+          event.preventDefault();
+          togglePreviewFullscreen();
+        }
       }
     };
 
-    if (fullscreenMode !== 'none') {
-      document.addEventListener('keydown', handleKeyDown);
-      // Prevent body scroll when in fullscreen
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'auto';
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = 'auto';
-    };
-  }, [fullscreenMode]);
-
-  // Structured Editor Components
-  const StructuredExperienceEditor = () => (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Company</label>
-          <input
-            type="text"
-            value={experienceData.company}
-            onChange={(e) => setExperienceData(prev => ({ ...prev, company: e.target.value }))}
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Company name"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Role</label>
-          <input
-            type="text"
-            value={experienceData.role}
-            onChange={(e) => setExperienceData(prev => ({ ...prev, role: e.target.value }))}
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Job title"
-          />
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Dates</label>
-          <input
-            type="text"
-            value={experienceData.dates}
-            onChange={(e) => setExperienceData(prev => ({ ...prev, dates: e.target.value }))}
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="2020-01 - 2023-12"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
-          <input
-            type="text"
-            value={experienceData.location}
-            onChange={(e) => setExperienceData(prev => ({ ...prev, location: e.target.value }))}
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="City, Country"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Key Responsibilities</label>
-        <div className="space-y-2">
-          {experienceData.responsibilities.map((resp, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                type="text"
-                value={resp}
-                onChange={(e) => {
-                  const newResp = [...experienceData.responsibilities];
-                  newResp[index] = e.target.value;
-                  setExperienceData(prev => ({ ...prev, responsibilities: newResp }));
-                }}
-                className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Responsibility description"
-              />
-              <button
-                onClick={() => {
-                  const newResp = experienceData.responsibilities.filter((_, i) => i !== index);
-                  setExperienceData(prev => ({ ...prev, responsibilities: newResp }));
-                }}
-                className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          <button
-            onClick={() => setExperienceData(prev => ({ ...prev, responsibilities: [...prev.responsibilities, ''] }))}
-            className="text-sm text-blue-600 hover:bg-blue-50 px-2 py-1 rounded"
-          >
-            + Add Responsibility
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Key Achievements</label>
-        <div className="space-y-2">
-          {experienceData.achievements.map((ach, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                type="text"
-                value={ach}
-                onChange={(e) => {
-                  const newAch = [...experienceData.achievements];
-                  newAch[index] = e.target.value;
-                  setExperienceData(prev => ({ ...prev, achievements: newAch }));
-                }}
-                className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Achievement description"
-              />
-              <button
-                onClick={() => {
-                  const newAch = experienceData.achievements.filter((_, i) => i !== index);
-                  setExperienceData(prev => ({ ...prev, achievements: newAch }));
-                }}
-                className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          <button
-            onClick={() => setExperienceData(prev => ({ ...prev, achievements: [...prev.achievements, ''] }))}
-            className="text-sm text-blue-600 hover:bg-blue-50 px-2 py-1 rounded"
-          >
-            + Add Achievement
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Technologies</label>
-        <div className="space-y-2">
-          {experienceData.technologies.map((tech, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                type="text"
-                value={tech}
-                onChange={(e) => {
-                  const newTech = [...experienceData.technologies];
-                  newTech[index] = e.target.value;
-                  setExperienceData(prev => ({ ...prev, technologies: newTech }));
-                }}
-                className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Technology name"
-              />
-              <button
-                onClick={() => {
-                  const newTech = experienceData.technologies.filter((_, i) => i !== index);
-                  setExperienceData(prev => ({ ...prev, technologies: newTech }));
-                }}
-                className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          <button
-            onClick={() => setExperienceData(prev => ({ ...prev, technologies: [...prev.technologies, ''] }))}
-            className="text-sm text-blue-600 hover:bg-blue-50 px-2 py-1 rounded"
-          >
-            + Add Technology
-          </button>
-        </div>
-      </div>
-
-      <button
-        onClick={() => {
-          const newContent = convertExperienceToContent(experienceData);
-          updateSegment(segment.id, { content: newContent });
-        }}
-        className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-      >
-        Update Content
-      </button>
-    </div>
-  );
-
-  const StructuredSkillsEditor = () => (
-    <div className="space-y-4">
-      {skillsData.categories.map((category, categoryIndex) => (
-        <div key={categoryIndex} className="border border-gray-200 rounded p-3 space-y-3">
-          <div className="flex gap-2 items-center">
-            <input
-              type="text"
-              value={category.name}
-              onChange={(e) => {
-                const newCategories = [...skillsData.categories];
-                newCategories[categoryIndex].name = e.target.value;
-                setSkillsData({ categories: newCategories });
-              }}
-              className="flex-1 px-2 py-1 text-sm font-medium border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Category name (e.g., Programming Languages)"
-            />
-            <button
-              onClick={() => {
-                const newCategories = skillsData.categories.filter((_, i) => i !== categoryIndex);
-                setSkillsData({ categories: newCategories });
-              }}
-              className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
-            >
-              ×
-            </button>
-          </div>
-          
-          <div className="space-y-2">
-            {category.skills.map((skill, skillIndex) => (
-              <div key={skillIndex} className="flex gap-2">
-                <input
-                  type="text"
-                  value={skill}
-                  onChange={(e) => {
-                    const newCategories = [...skillsData.categories];
-                    newCategories[categoryIndex].skills[skillIndex] = e.target.value;
-                    setSkillsData({ categories: newCategories });
-                  }}
-                  className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Skill name"
-                />
-                <button
-                  onClick={() => {
-                    const newCategories = [...skillsData.categories];
-                    newCategories[categoryIndex].skills = newCategories[categoryIndex].skills.filter((_, i) => i !== skillIndex);
-                    setSkillsData({ categories: newCategories });
-                  }}
-                  className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-            <button
-              onClick={() => {
-                const newCategories = [...skillsData.categories];
-                newCategories[categoryIndex].skills.push('');
-                setSkillsData({ categories: newCategories });
-              }}
-              className="text-sm text-blue-600 hover:bg-blue-50 px-2 py-1 rounded"
-            >
-              + Add Skill
-            </button>
-          </div>
-        </div>
-      ))}
-      
-      <button
-        onClick={() => {
-          setSkillsData(prev => ({
-            categories: [...prev.categories, { name: '', skills: [''] }]
-          }));
-        }}
-        className="w-full px-3 py-2 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50"
-      >
-        + Add Category
-      </button>
-
-      <button
-        onClick={() => {
-          const newContent = convertSkillsToContent(skillsData);
-          updateSegment(segment.id, { content: newContent });
-        }}
-        className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-      >
-        Update Content
-      </button>
-    </div>
-  );
-
-  const StructuredEducationEditor = () => (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Institution</label>
-          <input
-            type="text"
-            value={educationData.institution}
-            onChange={(e) => setEducationData(prev => ({ ...prev, institution: e.target.value }))}
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="University name"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Degree</label>
-          <input
-            type="text"
-            value={educationData.degree}
-            onChange={(e) => setEducationData(prev => ({ ...prev, degree: e.target.value }))}
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Bachelor's, Master's, etc."
-          />
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Field of Study</label>
-          <input
-            type="text"
-            value={educationData.field}
-            onChange={(e) => setEducationData(prev => ({ ...prev, field: e.target.value }))}
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Computer Science, Engineering, etc."
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Dates</label>
-          <input
-            type="text"
-            value={educationData.dates}
-            onChange={(e) => setEducationData(prev => ({ ...prev, dates: e.target.value }))}
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="2018 - 2022"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
-        <input
-          type="text"
-          value={educationData.location}
-          onChange={(e) => setEducationData(prev => ({ ...prev, location: e.target.value }))}
-          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-          placeholder="City, Country"
-        />
-      </div>
-
-      <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Achievements</label>
-        <div className="space-y-2">
-          {educationData.achievements.map((ach, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                type="text"
-                value={ach}
-                onChange={(e) => {
-                  const newAch = [...educationData.achievements];
-                  newAch[index] = e.target.value;
-                  setEducationData(prev => ({ ...prev, achievements: newAch }));
-                }}
-                className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Honor, achievement, or notable coursework"
-              />
-              <button
-                onClick={() => {
-                  const newAch = educationData.achievements.filter((_, i) => i !== index);
-                  setEducationData(prev => ({ ...prev, achievements: newAch }));
-                }}
-                className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          <button
-            onClick={() => setEducationData(prev => ({ ...prev, achievements: [...prev.achievements, ''] }))}
-            className="text-sm text-blue-600 hover:bg-blue-50 px-2 py-1 rounded"
-          >
-            + Add Achievement
-          </button>
-        </div>
-      </div>
-
-      <button
-        onClick={() => {
-          const newContent = convertEducationToContent(educationData);
-          updateSegment(segment.id, { content: newContent });
-        }}
-        className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-      >
-        Update Content
-      </button>
-    </div>
-  );
-
-  // Summary Structured Editor
-  const StructuredSummaryEditor = () => (
-    <div className="space-y-4">
-      <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Years of Experience</label>
-        <input
-          type="text"
-          value={summaryData.yearsOfExperience}
-          onChange={(e) => setSummaryData(prev => ({ ...prev, yearsOfExperience: e.target.value }))}
-          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-          placeholder="5+ years, 10 years, etc."
-        />
-      </div>
-      
-      <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Key Strengths</label>
-        <div className="space-y-2">
-          {summaryData.keyStrengths.map((strength, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                type="text"
-                value={strength}
-                onChange={(e) => {
-                  const newStrengths = [...summaryData.keyStrengths];
-                  newStrengths[index] = e.target.value;
-                  setSummaryData(prev => ({ ...prev, keyStrengths: newStrengths }));
-                }}
-                className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Strategic thinking, team leadership, etc."
-              />
-              <button
-                onClick={() => {
-                  const newStrengths = summaryData.keyStrengths.filter((_, i) => i !== index);
-                  setSummaryData(prev => ({ ...prev, keyStrengths: newStrengths }));
-                }}
-                className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          <button
-            onClick={() => setSummaryData(prev => ({ ...prev, keyStrengths: [...prev.keyStrengths, ''] }))}
-            className="text-sm text-blue-600 hover:bg-blue-50 px-2 py-1 rounded"
-          >
-            + Add Strength
-          </button>
-        </div>
-      </div>
-      
-      <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Industry Focus</label>
-        <div className="space-y-2">
-          {summaryData.industryFocus.map((focus, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                type="text"
-                value={focus}
-                onChange={(e) => {
-                  const newFocus = [...summaryData.industryFocus];
-                  newFocus[index] = e.target.value;
-                  setSummaryData(prev => ({ ...prev, industryFocus: newFocus }));
-                }}
-                className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Technology, Finance, Healthcare, etc."
-              />
-              <button
-                onClick={() => {
-                  const newFocus = summaryData.industryFocus.filter((_, i) => i !== index);
-                  setSummaryData(prev => ({ ...prev, industryFocus: newFocus }));
-                }}
-                className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          <button
-            onClick={() => setSummaryData(prev => ({ ...prev, industryFocus: [...prev.industryFocus, ''] }))}
-            className="text-sm text-blue-600 hover:bg-blue-50 px-2 py-1 rounded"
-          >
-            + Add Industry
-          </button>
-        </div>
-      </div>
-      
-      <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Career Highlights</label>
-        <div className="space-y-2">
-          {summaryData.careerHighlights.map((highlight, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                type="text"
-                value={highlight}
-                onChange={(e) => {
-                  const newHighlights = [...summaryData.careerHighlights];
-                  newHighlights[index] = e.target.value;
-                  setSummaryData(prev => ({ ...prev, careerHighlights: newHighlights }));
-                }}
-                className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Led 100+ person team, Increased revenue by 30%, etc."
-              />
-              <button
-                onClick={() => {
-                  const newHighlights = summaryData.careerHighlights.filter((_, i) => i !== index);
-                  setSummaryData(prev => ({ ...prev, careerHighlights: newHighlights }));
-                }}
-                className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          <button
-            onClick={() => setSummaryData(prev => ({ ...prev, careerHighlights: [...prev.careerHighlights, ''] }))}
-            className="text-sm text-blue-600 hover:bg-blue-50 px-2 py-1 rounded"
-          >
-            + Add Highlight
-          </button>
-        </div>
-      </div>
-      
-      <button
-        onClick={() => {
-          const newContent = convertSummaryToContent(summaryData);
-          updateSegment(segment.id, { content: newContent });
-        }}
-        className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-      >
-        Update Content
-      </button>
-    </div>
-  );
-
-  // Core Competencies Structured Editor
-  const StructuredCoreCompetenciesEditor = () => (
-    <div className="space-y-4">
-      {coreCompetencyData.categories.map((category, categoryIndex) => (
-        <div key={categoryIndex} className="border rounded-lg p-3 bg-gray-50">
-          <div className="flex gap-2 mb-2">
-            <input
-              type="text"
-              value={category.name}
-              onChange={(e) => {
-                const newCategories = [...coreCompetencyData.categories];
-                newCategories[categoryIndex].name = e.target.value;
-                setCoreCompetencyData(prev => ({ categories: newCategories }));
-              }}
-              className="flex-1 px-2 py-1 text-sm font-medium border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Category name (e.g., Leadership Skills)"
-            />
-            <button
-              onClick={() => {
-                const newCategories = coreCompetencyData.categories.filter((_, i) => i !== categoryIndex);
-                setCoreCompetencyData(prev => ({ categories: newCategories }));
-              }}
-              className="px-2 py-1 text-xs text-red-600 hover:text-red-800"
-            >
-              Remove Category
-            </button>
-          </div>
-          
-          <div className="space-y-1">
-            {category.competencies.map((competency, compIndex) => (
-              <div key={compIndex} className="flex gap-2">
-                <input
-                  type="text"
-                  value={competency}
-                  onChange={(e) => {
-                    const newCategories = [...coreCompetencyData.categories];
-                    newCategories[categoryIndex].competencies[compIndex] = e.target.value;
-                    setCoreCompetencyData(prev => ({ categories: newCategories }));
-                  }}
-                  className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Competency"
-                />
-                <button
-                  onClick={() => {
-                    const newCategories = [...coreCompetencyData.categories];
-                    newCategories[categoryIndex].competencies = newCategories[categoryIndex].competencies.filter((_, i) => i !== compIndex);
-                    setCoreCompetencyData(prev => ({ categories: newCategories }));
-                  }}
-                  className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-            <button
-              onClick={() => {
-                const newCategories = [...coreCompetencyData.categories];
-                newCategories[categoryIndex].competencies.push('');
-                setCoreCompetencyData(prev => ({ categories: newCategories }));
-              }}
-              className="text-xs text-blue-600 hover:text-blue-800"
-            >
-              + Add Competency
-            </button>
-          </div>
-        </div>
-      ))}
-      
-      <button
-        onClick={() => {
-          setCoreCompetencyData(prev => ({ 
-            categories: [...prev.categories, { name: '', competencies: [''] }] 
-          }));
-        }}
-        className="w-full px-3 py-2 text-sm text-blue-600 border border-blue-300 rounded hover:bg-blue-50"
-      >
-        + Add Category
-      </button>
-      
-      <button
-        onClick={() => {
-          const newContent = convertCoreCompetenciesToContent(coreCompetencyData);
-          updateSegment(segment.id, { content: newContent });
-        }}
-        className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-      >
-        Update Content
-      </button>
-    </div>
-  );
-
-  // Certifications Structured Editor
-  const StructuredCertificationsEditor = () => (
-    <div className="space-y-4">
-      {certificationData.certifications.map((cert, index) => (
-        <div key={index} className="border rounded-lg p-3 bg-gray-50">
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Certification Name</label>
-              <input
-                type="text"
-                value={cert.name}
-                onChange={(e) => {
-                  const newCerts = [...certificationData.certifications];
-                  newCerts[index].name = e.target.value;
-                  setCertificationData(prev => ({ certifications: newCerts }));
-                }}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="AWS Certified Solutions Architect"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Organization</label>
-              <input
-                type="text"
-                value={cert.organization}
-                onChange={(e) => {
-                  const newCerts = [...certificationData.certifications];
-                  newCerts[index].organization = e.target.value;
-                  setCertificationData(prev => ({ certifications: newCerts }));
-                }}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Amazon Web Services"
-              />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Date Obtained</label>
-              <input
-                type="text"
-                value={cert.dateObtained}
-                onChange={(e) => {
-                  const newCerts = [...certificationData.certifications];
-                  newCerts[index].dateObtained = e.target.value;
-                  setCertificationData(prev => ({ certifications: newCerts }));
-                }}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="2023"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Expiry Date (Optional)</label>
-              <input
-                type="text"
-                value={cert.expiryDate || ''}
-                onChange={(e) => {
-                  const newCerts = [...certificationData.certifications];
-                  newCerts[index].expiryDate = e.target.value;
-                  setCertificationData(prev => ({ certifications: newCerts }));
-                }}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="2026"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">ID (Optional)</label>
-              <input
-                type="text"
-                value={cert.certificationId || ''}
-                onChange={(e) => {
-                  const newCerts = [...certificationData.certifications];
-                  newCerts[index].certificationId = e.target.value;
-                  setCertificationData(prev => ({ certifications: newCerts }));
-                }}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Certification ID"
-              />
-            </div>
-          </div>
-          
-          <button
-            onClick={() => {
-              const newCerts = certificationData.certifications.filter((_, i) => i !== index);
-              setCertificationData(prev => ({ certifications: newCerts }));
-            }}
-            className="text-sm text-red-600 hover:text-red-800"
-          >
-            Remove Certification
-          </button>
-        </div>
-      ))}
-      
-      <button
-        onClick={() => {
-          setCertificationData(prev => ({ 
-            certifications: [...prev.certifications, { name: '', organization: '', dateObtained: '', expiryDate: '', certificationId: '' }] 
-          }));
-        }}
-        className="w-full px-3 py-2 text-sm text-blue-600 border border-blue-300 rounded hover:bg-blue-50"
-      >
-        + Add Certification
-      </button>
-      
-      <button
-        onClick={() => {
-          const newContent = convertCertificationsToContent(certificationData);
-          updateSegment(segment.id, { content: newContent });
-        }}
-        className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-      >
-        Update Content
-      </button>
-    </div>
-  );
-
-  // Languages Structured Editor
-  const StructuredLanguagesEditor = () => (
-    <div className="space-y-4">
-      {languageData.languages.map((lang, index) => (
-        <div key={index} className="border rounded-lg p-3 bg-gray-50">
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Language</label>
-              <input
-                type="text"
-                value={lang.name}
-                onChange={(e) => {
-                  const newLangs = [...languageData.languages];
-                  newLangs[index].name = e.target.value;
-                  setLanguageData(prev => ({ languages: newLangs }));
-                }}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="English, Spanish, French, etc."
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Proficiency</label>
-              <select
-                value={lang.proficiency}
-                onChange={(e) => {
-                  const newLangs = [...languageData.languages];
-                  newLangs[index].proficiency = e.target.value as 'Native' | 'Fluent' | 'Conversational' | 'Basic';
-                  setLanguageData(prev => ({ languages: newLangs }));
-                }}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="Basic">Basic</option>
-                <option value="Conversational">Conversational</option>
-                <option value="Fluent">Fluent</option>
-                <option value="Native">Native</option>
-              </select>
-            </div>
-          </div>
-          
-          <div className="mb-3">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Certifications (Optional)</label>
-            <input
-              type="text"
-              value={lang.certifications || ''}
-              onChange={(e) => {
-                const newLangs = [...languageData.languages];
-                newLangs[index].certifications = e.target.value;
-                setLanguageData(prev => ({ languages: newLangs }));
-              }}
-              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="TOEFL, IELTS, DELF, etc."
-            />
-          </div>
-          
-          <button
-            onClick={() => {
-              const newLangs = languageData.languages.filter((_, i) => i !== index);
-              setLanguageData(prev => ({ languages: newLangs }));
-            }}
-            className="text-sm text-red-600 hover:text-red-800"
-          >
-            Remove Language
-          </button>
-        </div>
-      ))}
-      
-      <button
-        onClick={() => {
-          setLanguageData(prev => ({ 
-            languages: [...prev.languages, { name: '', proficiency: 'Basic', certifications: '' }] 
-          }));
-        }}
-        className="w-full px-3 py-2 text-sm text-blue-600 border border-blue-300 rounded hover:bg-blue-50"
-      >
-        + Add Language
-      </button>
-      
-      <button
-        onClick={() => {
-          const newContent = convertLanguagesToContent(languageData);
-          updateSegment(segment.id, { content: newContent });
-        }}
-        className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-      >
-        Update Content
-      </button>
-    </div>
-  );
-
-  // Projects Structured Editor
-  const StructuredProjectsEditor = () => (
-    <div className="space-y-4">
-      {projectData.projects.map((project, index) => (
-        <div key={index} className="border rounded-lg p-4 bg-gray-50">
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Project Name</label>
-              <input
-                type="text"
-                value={project.name}
-                onChange={(e) => {
-                  const newProjects = [...projectData.projects];
-                  newProjects[index].name = e.target.value;
-                  setProjectData(prev => ({ projects: newProjects }));
-                }}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="E-commerce Platform Redesign"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Client/Company</label>
-              <input
-                type="text"
-                value={project.client}
-                onChange={(e) => {
-                  const newProjects = [...projectData.projects];
-                  newProjects[index].client = e.target.value;
-                  setProjectData(prev => ({ projects: newProjects }));
-                }}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="ABC Corporation"
-              />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Duration</label>
-              <input
-                type="text"
-                value={project.duration}
-                onChange={(e) => {
-                  const newProjects = [...projectData.projects];
-                  newProjects[index].duration = e.target.value;
-                  setProjectData(prev => ({ projects: newProjects }));
-                }}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Jan 2023 - Jun 2023"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Your Role</label>
-              <input
-                type="text"
-                value={project.role}
-                onChange={(e) => {
-                  const newProjects = [...projectData.projects];
-                  newProjects[index].role = e.target.value;
-                  setProjectData(prev => ({ projects: newProjects }));
-                }}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Lead Developer"
-              />
-            </div>
-          </div>
-          
-          <div className="mb-3">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              value={project.description}
-              onChange={(e) => {
-                const newProjects = [...projectData.projects];
-                newProjects[index].description = e.target.value;
-                setProjectData(prev => ({ projects: newProjects }));
-              }}
-              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Brief description of the project..."
-              rows={2}
-            />
-          </div>
-          
-          <div className="mb-3">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Technologies Used</label>
-            <div className="space-y-1">
-              {project.technologies.map((tech, techIndex) => (
-                <div key={techIndex} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={tech}
-                    onChange={(e) => {
-                      const newProjects = [...projectData.projects];
-                      newProjects[index].technologies[techIndex] = e.target.value;
-                      setProjectData(prev => ({ projects: newProjects }));
-                    }}
-                    className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="React, Node.js, AWS, etc."
-                  />
-                  <button
-                    onClick={() => {
-                      const newProjects = [...projectData.projects];
-                      newProjects[index].technologies = newProjects[index].technologies.filter((_, i) => i !== techIndex);
-                      setProjectData(prev => ({ projects: newProjects }));
-                    }}
-                    className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={() => {
-                  const newProjects = [...projectData.projects];
-                  newProjects[index].technologies.push('');
-                  setProjectData(prev => ({ projects: newProjects }));
-                }}
-                className="text-xs text-blue-600 hover:text-blue-800"
-              >
-                + Add Technology
-              </button>
-            </div>
-          </div>
-          
-          <div className="mb-3">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Key Achievements</label>
-            <div className="space-y-1">
-              {project.achievements.map((achievement, achIndex) => (
-                <div key={achIndex} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={achievement}
-                    onChange={(e) => {
-                      const newProjects = [...projectData.projects];
-                      newProjects[index].achievements[achIndex] = e.target.value;
-                      setProjectData(prev => ({ projects: newProjects }));
-                    }}
-                    className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Increased performance by 50%"
-                  />
-                  <button
-                    onClick={() => {
-                      const newProjects = [...projectData.projects];
-                      newProjects[index].achievements = newProjects[index].achievements.filter((_, i) => i !== achIndex);
-                      setProjectData(prev => ({ projects: newProjects }));
-                    }}
-                    className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={() => {
-                  const newProjects = [...projectData.projects];
-                  newProjects[index].achievements.push('');
-                  setProjectData(prev => ({ projects: newProjects }));
-                }}
-                className="text-xs text-blue-600 hover:text-blue-800"
-              >
-                + Add Achievement
-              </button>
-            </div>
-          </div>
-          
-          <button
-            onClick={() => {
-              const newProjects = projectData.projects.filter((_, i) => i !== index);
-              setProjectData(prev => ({ projects: newProjects }));
-            }}
-            className="text-sm text-red-600 hover:text-red-800"
-          >
-            Remove Project
-          </button>
-        </div>
-      ))}
-      
-      <button
-        onClick={() => {
-          setProjectData(prev => ({ 
-            projects: [...prev.projects, { name: '', client: '', duration: '', role: '', technologies: [''], description: '', achievements: [''] }] 
-          }));
-        }}
-        className="w-full px-3 py-2 text-sm text-blue-600 border border-blue-300 rounded hover:bg-blue-50"
-      >
-        + Add Project
-      </button>
-      
-      <button
-        onClick={() => {
-          const newContent = convertProjectsToContent(projectData);
-          updateSegment(segment.id, { content: newContent });
-        }}
-        className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-      >
-        Update Content
-      </button>
-    </div>
-  );
-
-  // Areas of Expertise Structured Editor
-  const StructuredAreasOfExpertiseEditor = () => (
-    <div className="space-y-4">
-      {areasOfExpertiseData.areas.map((area, areaIndex) => (
-        <div key={areaIndex} className="border rounded-lg p-3 bg-gray-50">
-          <div className="flex gap-2 mb-2">
-            <input
-              type="text"
-              value={area.category}
-              onChange={(e) => {
-                const newAreas = [...areasOfExpertiseData.areas];
-                newAreas[areaIndex].category = e.target.value;
-                setAreasOfExpertiseData(prev => ({ areas: newAreas }));
-              }}
-              className="flex-1 px-2 py-1 text-sm font-medium border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Area category (e.g., Digital Transformation)"
-            />
-            <button
-              onClick={() => {
-                const newAreas = areasOfExpertiseData.areas.filter((_, i) => i !== areaIndex);
-                setAreasOfExpertiseData(prev => ({ areas: newAreas }));
-              }}
-              className="px-2 py-1 text-xs text-red-600 hover:text-red-800"
-            >
-              Remove Area
-            </button>
-          </div>
-          
-          <div className="space-y-1">
-            {area.expertise.map((expertise, expIndex) => (
-              <div key={expIndex} className="flex gap-2">
-                <input
-                  type="text"
-                  value={expertise}
-                  onChange={(e) => {
-                    const newAreas = [...areasOfExpertiseData.areas];
-                    newAreas[areaIndex].expertise[expIndex] = e.target.value;
-                    setAreasOfExpertiseData(prev => ({ areas: newAreas }));
-                  }}
-                  className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Specific expertise"
-                />
-                <button
-                  onClick={() => {
-                    const newAreas = [...areasOfExpertiseData.areas];
-                    newAreas[areaIndex].expertise = newAreas[areaIndex].expertise.filter((_, i) => i !== expIndex);
-                    setAreasOfExpertiseData(prev => ({ areas: newAreas }));
-                  }}
-                  className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-            <button
-              onClick={() => {
-                const newAreas = [...areasOfExpertiseData.areas];
-                newAreas[areaIndex].expertise.push('');
-                setAreasOfExpertiseData(prev => ({ areas: newAreas }));
-              }}
-              className="text-xs text-blue-600 hover:text-blue-800"
-            >
-              + Add Expertise
-            </button>
-          </div>
-        </div>
-      ))}
-      
-      <button
-        onClick={() => {
-          setAreasOfExpertiseData(prev => ({ 
-            areas: [...prev.areas, { category: '', expertise: [''] }] 
-          }));
-        }}
-        className="w-full px-3 py-2 text-sm text-blue-600 border border-blue-300 rounded hover:bg-blue-50"
-      >
-        + Add Area
-      </button>
-      
-      <button
-        onClick={() => {
-          const newContent = convertAreasOfExpertiseToContent(areasOfExpertiseData);
-          updateSegment(segment.id, { content: newContent });
-        }}
-        className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-      >
-        Update Content
-      </button>
-    </div>
-  );
-
-  // Awards Structured Editor
-  const StructuredAwardsEditor = () => (
-    <div className="space-y-4">
-      {awardData.awards.map((award, index) => (
-        <div key={index} className="border rounded-lg p-3 bg-gray-50">
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Award Name</label>
-              <input
-                type="text"
-                value={award.name}
-                onChange={(e) => {
-                  const newAwards = [...awardData.awards];
-                  newAwards[index].name = e.target.value;
-                  setAwardData(prev => ({ awards: newAwards }));
-                }}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Employee of the Year"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Organization</label>
-              <input
-                type="text"
-                value={award.organization}
-                onChange={(e) => {
-                  const newAwards = [...awardData.awards];
-                  newAwards[index].organization = e.target.value;
-                  setAwardData(prev => ({ awards: newAwards }));
-                }}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Company or Organization"
-              />
-            </div>
-          </div>
-          
-          <div className="mb-3">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Date</label>
-            <input
-              type="text"
-              value={award.date}
-              onChange={(e) => {
-                const newAwards = [...awardData.awards];
-                newAwards[index].date = e.target.value;
-                setAwardData(prev => ({ awards: newAwards }));
-              }}
-              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="2023"
-            />
-          </div>
-          
-          <div className="mb-3">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              value={award.description}
-              onChange={(e) => {
-                const newAwards = [...awardData.awards];
-                newAwards[index].description = e.target.value;
-                setAwardData(prev => ({ awards: newAwards }));
-              }}
-              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Brief description of the award..."
-              rows={2}
-            />
-          </div>
-          
-          <button
-            onClick={() => {
-              const newAwards = awardData.awards.filter((_, i) => i !== index);
-              setAwardData(prev => ({ awards: newAwards }));
-            }}
-            className="text-sm text-red-600 hover:text-red-800"
-          >
-            Remove Award
-          </button>
-        </div>
-      ))}
-      
-      <button
-        onClick={() => {
-          setAwardData(prev => ({ 
-            awards: [...prev.awards, { name: '', organization: '', date: '', description: '' }] 
-          }));
-        }}
-        className="w-full px-3 py-2 text-sm text-blue-600 border border-blue-300 rounded hover:bg-blue-50"
-      >
-        + Add Award
-      </button>
-      
-      <button
-        onClick={() => {
-          const newContent = convertAwardsToContent(awardData);
-          updateSegment(segment.id, { content: newContent });
-        }}
-        className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-      >
-        Update Content
-      </button>
-    </div>
-  );
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <div 
@@ -3228,99 +1369,53 @@ function SegmentBlock({ segment, jobDescription, selectedCandidate }: {
         </div>
       )}
 
-      {/* Editor Mode Toggle - Only show for structured editing supported segments */}
-      {segment.visible && supportsStructuredEditing() && (
-        <div className="flex items-center justify-center mb-4">
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => handleModeSwitch('freetext')}
-              className={`px-3 py-1 text-sm rounded transition-colors ${
-                editMode === 'freetext' 
-                  ? 'bg-white text-gray-900 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Rich Text
-            </button>
-            <button
-              onClick={() => handleModeSwitch('structured')}
-              className={`px-3 py-1 text-sm rounded transition-colors ${
-                editMode === 'structured' 
-                  ? 'bg-white text-gray-900 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Structured Fields
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Content Editor */}
+      {/* Content Editor - Only Lexical Rich Text Editor */}
       {segment.visible && (
-        <>
-          {editMode === 'structured' && supportsStructuredEditing() ? (
-            <div className="space-y-4">
-              {segment.type === 'PROFESSIONAL EXPERIENCE' && <StructuredExperienceEditor />}
-              {(segment.type === 'TECHNICAL SKILLS' || segment.type === 'FUNCTIONAL SKILLS') && <StructuredSkillsEditor />}
-              {segment.type === 'EDUCATION' && <StructuredEducationEditor />}
-              {(segment.type === 'SUMMARY' || segment.type === 'PROFESSIONAL SUMMARY') && <StructuredSummaryEditor />}
-              {segment.type === 'CORE COMPETENCIES' && <StructuredCoreCompetenciesEditor />}
-              {segment.type === 'CERTIFICATIONS' && <StructuredCertificationsEditor />}
-              {segment.type === 'LANGUAGES' && <StructuredLanguagesEditor />}
-              {segment.type === 'PROJECTS' && <StructuredProjectsEditor />}
-              {segment.type === 'AREAS OF EXPERTISE' && <StructuredAreasOfExpertiseEditor />}
-              {(segment.type === 'AWARDS' || segment.type === 'ACHIEVEMENTS') && <StructuredAwardsEditor />}
-            </div>
-          ) : (
-            /* Lexical Editor */
-            <LexicalComposer initialConfig={editorConfig} key={`${segment.id}-${segment.content}`}>
-              <div className="relative">
-                {/* Formatting Toolbar */}
-                <FormattingToolbar />
-                
-                <RichTextPlugin
-                  contentEditable={
-                    <ContentEditable className="min-h-[200px] p-6 border border-t-0 rounded-b-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 prose prose-lg max-w-none text-base leading-relaxed bg-white transition-shadow duration-200 hover:shadow-sm" />
-                  }
-                  placeholder={
-                    <div className="absolute top-6 left-6 text-gray-400 pointer-events-none text-base leading-relaxed">
-                      Enter rich content for {segment.title}...
-                    </div>
-                  }
-                  ErrorBoundary={() => <div className="p-4 text-red-600 bg-red-50 rounded border border-red-200">Something went wrong with the editor!</div>}
-                />
-                
-                {/* Rich Formatting Plugins */}
-                <ListPlugin />
-                <LinkPlugin />
-                <TabIndentationPlugin />
-                <AutoFocusPlugin />
-                <MarkdownShortcutPlugin 
-                  transformers={[
-                    HEADING,
-                    BOLD_STAR,
-                    BOLD_UNDERSCORE,
-                    ITALIC_STAR,
-                    ITALIC_UNDERSCORE,
-                    STRIKETHROUGH,
-                    UNORDERED_LIST,
-                    ORDERED_LIST,
-                    QUOTE,
-                    CODE,
-                    LINK
-                  ]} 
-                />
-                
-                {/* Core Plugins */}
-                <OnChangePlugin onChange={handleContentChange} />
-                <HistoryPlugin />
-                <KeyboardShortcutsPlugin />
-                <ContentInitializationPlugin />
-              </div>
-            </LexicalComposer>
-          )}
-        </>
+        <LexicalComposer initialConfig={editorConfig} key={`${segment.id}-${segment.content}`}>
+          <div className="relative">
+            {/* Formatting Toolbar */}
+            <FormattingToolbar />
+            
+            <RichTextPlugin
+              contentEditable={
+                <ContentEditable className="min-h-[200px] p-6 border border-t-0 rounded-b-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 prose prose-lg max-w-none text-base leading-relaxed bg-white transition-shadow duration-200 hover:shadow-sm" />
+              }
+              placeholder={
+                <div className="absolute top-6 left-6 text-gray-400 pointer-events-none text-base leading-relaxed">
+                  Enter rich content for {segment.title}...
+                </div>
+              }
+              ErrorBoundary={() => <div className="p-4 text-red-600 bg-red-50 rounded border border-red-200">Something went wrong with the editor!</div>}
+            />
+            
+            {/* Rich Formatting Plugins */}
+            <ListPlugin />
+            <LinkPlugin />
+            <TabIndentationPlugin />
+            <AutoFocusPlugin />
+            <MarkdownShortcutPlugin 
+              transformers={[
+                HEADING,
+                BOLD_STAR,
+                BOLD_UNDERSCORE,
+                ITALIC_STAR,
+                ITALIC_UNDERSCORE,
+                STRIKETHROUGH,
+                UNORDERED_LIST,
+                ORDERED_LIST,
+                QUOTE,
+                CODE,
+                LINK
+              ]} 
+            />
+            
+            {/* Core Plugins */}
+            <OnChangePlugin onChange={handleContentChange} />
+            <HistoryPlugin />
+            <KeyboardShortcutsPlugin />
+            <ContentInitializationPlugin />
+          </div>
+        </LexicalComposer>
       )}
     </div>
   );
@@ -3351,6 +1446,68 @@ function LivePreview({
   className?: string;
 }) {
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  
+  // Add sync state management
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [previewNeedsSync, setPreviewNeedsSync] = useState(false);
+  const [isManualSync, setIsManualSync] = useState(false);
+  const [cachedPreviewHTML, setCachedPreviewHTML] = useState<string>('');
+
+  // Function to handle manual sync
+  const handleSyncPreview = () => {
+    setIsManualSync(true);
+    setLastSyncTime(new Date());
+    setPreviewNeedsSync(false);
+    
+    // Update cached preview HTML
+    setCachedPreviewHTML(generatePreviewHTML());
+    
+    // Reset sync animation
+    setTimeout(() => {
+      setIsManualSync(false);
+    }, 500);
+  };
+
+  // Function to mark preview as needing sync when segments change
+  useEffect(() => {
+    if (lastSyncTime) {
+      setPreviewNeedsSync(true);
+    }
+  }, [segments]);
+
+  // Emineon-styled Sync Button Component
+  const SyncButton = () => (
+    <button
+      onClick={handleSyncPreview}
+      className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+        previewNeedsSync 
+          ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg hover:from-orange-600 hover:to-orange-700 transform hover:scale-105' 
+          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+      }`}
+      title={previewNeedsSync ? 'Preview is outdated - Click to sync' : 'Preview is up to date'}
+    >
+      {isManualSync ? (
+        <>
+          <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
+          Syncing...
+        </>
+      ) : previewNeedsSync ? (
+        <>
+          <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Sync Preview
+        </>
+      ) : (
+        <>
+          <svg className="h-4 w-4 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          Synced
+        </>
+      )}
+    </button>
+  );
 
   // Professional experience parser
   const parseExperienceContent = (content: string) => {
@@ -3854,8 +2011,11 @@ function LivePreview({
           </div>
           
           <div className="text-xs text-gray-500">
-            Live preview • Updates automatically
+            Manual sync • Click sync to update preview
           </div>
+          
+          {/* Sync Button */}
+          <SyncButton />
         </div>
       </div>
 
@@ -4198,11 +2358,11 @@ export function EditorStep({
                 )}
               </button>
 
-              {/* Exit Fullscreen button for 'both' mode */}
+              {/* Exit Fullscreen button for 'both' mode - Updated to grey styling */}
               {fullscreenMode === 'both' && (
                 <button
                   onClick={exitFullscreen}
-                  className="flex items-center px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                  className="flex items-center px-3 py-1.5 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
                   title="Exit fullscreen"
                 >
                   <X className="h-4 w-4 mr-1.5" />
@@ -4344,4 +2504,3 @@ export function EditorStep({
 
   return editorContent;
 }
-
