@@ -101,6 +101,7 @@ export default function CandidatesPage() {
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
+  const [compactCards, setCompactCards] = useState<Set<number>>(new Set());
   // Algolia search is now the default - no toggle needed
   const [algoliaResults, setAlgoliaResults] = useState<any[]>([]);
   const [algoliaLoading, setAlgoliaLoading] = useState(false);
@@ -285,6 +286,18 @@ export default function CandidatesPage() {
   const handleApplyFilters = (filters: CandidateFilters) => {
     setAppliedFilters(filters);
     console.log('Applied filters:', filters);
+  };
+
+  const toggleCardView = (candidateId: number) => {
+    setCompactCards(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(candidateId)) {
+        newSet.delete(candidateId);
+      } else {
+        newSet.add(candidateId);
+      }
+      return newSet;
+    });
   };
 
   if (error) {
@@ -506,9 +519,10 @@ export default function CandidatesPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className={viewMode === 'compact' ? 'space-y-2' : 'space-y-4'}>
-                {allCandidates.map((candidate: Candidate) => (
-                  viewMode === 'compact' ? (
+              <div className="space-y-4">
+                {allCandidates.map((candidate: Candidate) => {
+                  const isCompact = compactCards.has(candidate.id);
+                  return isCompact ? (
                     // Compact View
                     <div key={candidate.id} className={`bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-all duration-200 group cursor-pointer ${
                       selectedCandidates.includes(candidate.id) ? 'border-blue-500 bg-blue-50' : 'hover:border-gray-300'
@@ -585,6 +599,15 @@ export default function CandidatesPage() {
                           >
                             <Phone className="h-4 w-4" />
                           </button>
+
+                          <button
+                            onClick={() => toggleCardView(candidate.id)}
+                            className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                            title="Switch to Detailed View"
+                          >
+                            <List className="h-4 w-4" />
+                          </button>
+
                           <div className="relative">
                             <button
                               onClick={(e) => toggleDropdown(candidate.id, e)}
@@ -768,6 +791,14 @@ export default function CandidatesPage() {
                           >
                             <Phone className="h-5 w-5" />
                           </button>
+
+                          <button
+                            onClick={() => toggleCardView(candidate.id)}
+                            className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                            title="Switch to Compact View"
+                          >
+                            <Grid3X3 className="h-5 w-5" />
+                          </button>
                           
                           <div className="relative">
                             <button
@@ -801,8 +832,8 @@ export default function CandidatesPage() {
                       </div>
                     </CardContent>
                   </Card>
-                  )
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
