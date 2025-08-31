@@ -33,7 +33,9 @@ import {
   Brain,
   Edit3,
   Trash2,
-  ChevronRight
+  ChevronRight,
+  Minimize2,
+  Maximize2
 } from 'lucide-react';
 
 // Candidate interface
@@ -603,9 +605,9 @@ export default function CandidatesPage() {
                           <button
                             onClick={() => toggleCardView(candidate.id)}
                             className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
-                            title="Switch to Detailed View"
+                            title="Expand to Detailed View"
                           >
-                            <List className="h-4 w-4" />
+                            <Maximize2 className="h-4 w-4" />
                           </button>
 
                           <div className="relative">
@@ -795,9 +797,9 @@ export default function CandidatesPage() {
                           <button
                             onClick={() => toggleCardView(candidate.id)}
                             className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                            title="Switch to Compact View"
+                            title="Minimize to Compact View"
                           >
-                            <Grid3X3 className="h-5 w-5" />
+                            <Minimize2 className="h-5 w-5" />
                           </button>
                           
                           <div className="relative">
