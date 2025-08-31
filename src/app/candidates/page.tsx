@@ -469,7 +469,7 @@ export default function CandidatesPage() {
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
               <p className="text-gray-600">
-                {useAlgoliaSearch ? 'Searching candidates...' : 'Loading candidates...'}
+                {algoliaLoading ? 'Searching candidates...' : 'Loading candidates...'}
               </p>
             </div>
           </div>
