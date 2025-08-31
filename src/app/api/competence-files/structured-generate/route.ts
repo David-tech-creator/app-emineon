@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { z } from 'zod';
 import { structuredCompetenceService } from '@/lib/services/structured-competence-service';
-import { renderStructuredContentToHTML } from '@/lib/templates/structured-pdf-renderer';
 import { generatePDF } from '@/lib/pdf-service';
 import { put } from '@vercel/blob';
 import { getQueueMetrics } from '@/lib/ai/queue';
+import { prisma } from '@/lib/prisma';
+import { CompetenceFileStatus } from '@prisma/client';
 
 // Helper function to convert editor segments to structured markdown
 function convertEditorSegmentsToMarkdown(
@@ -25,12 +26,7 @@ function convertEditorSegmentsToMarkdown(
   let markdown = `# ${candidateData.fullName}\n\n`;
   markdown += `**${candidateData.currentTitle}**\n\n`;
   
-  if (candidateData.email || candidateData.phone || candidateData.location) {
-    markdown += '## Contact Information\n\n';
-    if (candidateData.email) markdown += `**Email:** ${candidateData.email}\n\n`;
-    if (candidateData.phone) markdown += `**Phone:** ${candidateData.phone}\n\n`;
-    if (candidateData.location) markdown += `**Location:** ${candidateData.location}\n\n`;
-  }
+  // Do not include personal contact information in the header
   
   // Add each segment
   sortedSegments.forEach(segment => {
@@ -112,6 +108,132 @@ const StructuredRequestSchema = z.object({
   }).optional(),
 });
 
+// Copy the preview HTML generator function from LivePreview in EditorStep.tsx here:
+function generatePreviewHTML({ segments, candidate, template, font, fontSize }: {
+  segments: Array<{ id: string; title: string; content: string; visible: boolean; order: number; editable: boolean }>;
+  candidate: { fullName: string; currentTitle: string };
+  template: string;
+  font: string;
+  fontSize: number;
+}): string {
+  // Sort and filter segments
+  const visibleSegments = segments
+    .filter(segment => segment.visible && segment.content?.trim())
+    .sort((a, b) => a.order - b.order);
+
+  if (visibleSegments.length === 0) {
+    return `
+      <div style="padding: 40px; text-align: center; color: #666; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <h3 style="margin-bottom: 16px;">Preview</h3>
+        <p>Your competence file preview will appear here as you edit the content.</p>
+      </div>
+    `;
+  }
+
+  // Emineon colors
+  const primary = '#073C51';
+  const accent = '#FFB800';
+
+  // --- HEADER ---
+  let html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${candidate.fullName} - Competence File</title>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+      <style>
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          font-size: ${fontSize}px;
+          background: #fff;
+          color: #1e293b;
+          margin: 0;
+        }
+        .container {
+          max-width: 900px;
+          margin: 40px auto;
+          background: #fff;
+          border-radius: 18px;
+          box-shadow: 0 4px 24px 0 rgba(30,41,59,0.07);
+          overflow: hidden;
+          padding-left: 48px;
+          padding-right: 48px;
+        }
+        .header { padding: 40px 40px 16px 40px; }
+        .candidate-name { font-size: 1.6rem; font-weight: 700; color: ${primary}; margin-bottom: 0.2rem; }
+        .candidate-role { font-size: 0.95rem; font-weight: 700; color: ${accent}; margin-bottom: 0.2rem; }
+        .header-divider { border: none; border-top: 1px solid ${primary}; margin: 18px 0 0 0; opacity:.2 }
+        .section-title { font-size: 0.95rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: ${primary}; margin: 2.2em 0 .2rem 0; }
+        .section-divider { border: none; border-top: 1px solid ${primary}; margin: 8px 0 18px 0; opacity:.8 }
+
+        /* Emineon card with blue open bracket */
+        .section-card { background: #f5f7fa; border-radius: 10px; border: 1px solid #e2e8f0; padding: 22px 28px 18px 28px; margin-bottom: 24px; position: relative; display: flex; align-items: stretch; }
+        .section-card-bracket { width: 8px; min-width: 8px; height: 100%; background: ${primary}; opacity:.9; border-top-left-radius: 14px; border-bottom-left-radius: 14px; margin-right: 18px; position: relative; }
+        .section-card-bracket:before { content:""; position:absolute; left:-6px; top:14px; width:10px; height:22px; border-left:4px solid ${primary}; border-top:4px solid ${primary}; border-bottom:4px solid ${primary}; border-right:none; border-radius:6px 0 0 6px; }
+
+        ul.custom-bullets { list-style: none; margin: 0 0 .5rem 0; padding:0; }
+        ul.custom-bullets li { position:relative; padding-left:16px; margin-bottom:.3em; }
+        ul.custom-bullets li:before { content:"•"; position:absolute; left:0; color:${accent}; font-weight:700; }
+
+        /* Pill tags with yellow dot */
+        .tag { display:inline-flex; align-items:center; background:#eef4f8; color:${primary}; border-radius:999px; padding:.28em .9em; font-size:.85rem; font-weight:600; margin:0 .35em .35em 0; position:relative; padding-left:1.3em; border:1px solid #d1d9e0; }
+        .tag:before { content:""; position:absolute; left:.6em; width:6px; height:6px; background:${accent}; border-radius:50%; }
+
+        @media (max-width: 700px) { .container { margin:0; border-radius:0; } .header { padding:24px 16px 12px 16px; } .section-card { padding:12px 8px 10px 8px; } }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div class="candidate-name">${candidate.fullName}</div>
+          <div class="candidate-role">${candidate.currentTitle}</div>
+          <hr class="header-divider" />
+        </div>
+  `;
+
+  // --- SECTIONS ---
+  visibleSegments.forEach(segment => {
+    const content = segment.content.trim();
+    if (!content) return;
+
+    // Convert lines that look like tags into .tag spans when preceded by "Technical Environment"
+    const isTechEnv = /TECHNICAL ENVIRONMENT/i.test(segment.title);
+    const transformed = isTechEnv
+      ? content
+          .split(/[,\n]/)
+          .map(s => s.trim())
+          .filter(Boolean)
+          .map(s => `<span class="tag">${s}</span>`)
+          .join(' ')
+      : content;
+
+    html += `
+      <div class="section-block">
+        <div class="section-title">${segment.title}</div>
+        <hr class="section-divider" />
+        <div class="section-card">
+          <div class="section-card-bracket"></div>
+          <div style="flex:1;">
+            ${transformed}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `
+        <div class="footer">Powered by Emineon</div>
+      </div>
+    </body>
+    </html>
+  `;
+  // Replace **text** with <strong>text</strong>
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  return html;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { userId } = auth();
@@ -133,8 +255,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse and validate request
+    // Parse and sanitize request BEFORE validation to tolerate nulls/empties coming from parsers/DB
     const body = await request.json();
+    if (body.candidateData) {
+      const cd = body.candidateData;
+      // Normalize primitives
+      if (cd.phone == null) cd.phone = '';
+      if (cd.location == null) cd.location = '';
+      if (cd.summary === null) cd.summary = '';
+      // yearsOfExperience: drop if null/NaN; coerce numeric strings
+      if (cd.yearsOfExperience === null || cd.yearsOfExperience === undefined || Number.isNaN(cd.yearsOfExperience)) {
+        delete cd.yearsOfExperience;
+      } else if (typeof cd.yearsOfExperience === 'string') {
+        const n = Number(cd.yearsOfExperience);
+        if (Number.isFinite(n)) cd.yearsOfExperience = n; else delete cd.yearsOfExperience;
+      }
+      // Arrays: ensure arrays, filter falsy/empty strings
+      cd.skills = Array.isArray(cd.skills) ? cd.skills.filter((s: unknown) => typeof s === 'string' && s.trim().length > 0) : [];
+      cd.certifications = Array.isArray(cd.certifications) ? cd.certifications.filter((s: unknown) => typeof s === 'string' && s.trim().length > 0) : [];
+      cd.education = Array.isArray(cd.education) ? cd.education : [];
+      cd.languages = Array.isArray(cd.languages) ? cd.languages : [];
+      cd.experience = Array.isArray(cd.experience) ? cd.experience : [];
+    }
     const { candidateData, jobDescription, clientName, finalEditorSegments, options } = StructuredRequestSchema.parse(body);
 
     console.log(`🎯 Structured Competence File Generation`);
@@ -192,37 +334,20 @@ export async function POST(request: NextRequest) {
 
     // Generate HTML
     const htmlStartTime = Date.now();
-    const htmlContent = renderStructuredContentToHTML(
-      structuredMarkdown,
-      {
-        template: options?.template,
-        logoUrl: options?.logoUrl,
-        clientName: clientName,
-        candidateName: candidateData.fullName
-      }
-    );
+    const htmlContent = generatePreviewHTML({
+      segments: (finalEditorSegments ?? []).map(s => ({
+        ...s,
+        visible: true,
+        editable: true
+      })),
+      candidate: candidateData,
+      template: options?.template ?? 'professional',
+      font: 'Arial',
+      fontSize: 12
+    });
 
     const htmlTime = Date.now() - htmlStartTime;
     console.log(`✅ HTML rendering completed in ${htmlTime}ms`);
-
-    // Return HTML if requested
-    if (options?.format === 'html') {
-      return NextResponse.json({
-        success: true,
-        data: {
-          structuredContent: structuredMarkdown,
-          htmlContent: htmlContent,
-          candidateName: candidateData.fullName,
-          format: 'html'
-        },
-        metrics: {
-          contentGenerationTime: contentTime,
-          htmlRenderingTime: htmlTime,
-          queueMetrics: getQueueMetrics(),
-        },
-        processingMethod: 'structured-html',
-      });
-    }
 
     // Generate PDF
     console.log('🔄 Generating PDF from structured HTML...');
@@ -241,13 +366,57 @@ export async function POST(request: NextRequest) {
       contentType: 'application/pdf',
     });
 
+    // Save to database (NEW: ensure all generated files are persisted)
+    let dbRecord = null;
+    try {
+      dbRecord = await prisma.competenceFile.create({
+        data: {
+          fileName: fileName,
+          candidateId: candidateData.id,
+          templateId: null, // Could be extended if template info is available
+          filePath: fileName,
+          downloadUrl: uploadResult.url,
+                     format: 'pdf',
+           status: CompetenceFileStatus.READY,
+          version: 1,
+          metadata: {
+            client: clientName || 'Unknown Client',
+            jobTitle: jobDescription?.title || 'Unknown Position',
+            template: options?.template || 'professional',
+            segmentsCount: finalEditorSegments?.length || 0,
+            processingMethod: finalEditorSegments ? 'final-editor-content' : 'structured-pdf-complete',
+            processingTime: Date.now() - startTime,
+            generationTimestamp: new Date().toISOString(),
+          },
+          sectionsConfig: finalEditorSegments ? JSON.parse(JSON.stringify(finalEditorSegments)) : null,
+          generatedBy: userId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+      });
+      console.log('✅ Structured competence file metadata saved to database');
+    } catch (dbError) {
+      console.error('Database save error (structured-generate):', dbError);
+    }
+
     const totalTime = Date.now() - startTime;
     console.log(`✅ Complete structured generation finished in ${totalTime}ms`);
     console.log(`📊 Final Queue Metrics:`, getQueueMetrics());
 
     return NextResponse.json({
       success: true,
-      data: {
+      data: dbRecord ? {
+        ...dbRecord,
+        fileUrl: dbRecord.downloadUrl,
+        fileName: dbRecord.fileName,
+        format: dbRecord.format,
+        candidateName: candidateData.fullName,
+        jobTitle: jobDescription?.title || 'General Position',
+        client: clientName || 'Unknown Client',
+        structuredContent: structuredMarkdown,
+        htmlContent: htmlContent,
+      } : {
+        // fallback if DB save failed
         structuredContent: structuredMarkdown,
         htmlContent: htmlContent,
         candidateName: candidateData.fullName,

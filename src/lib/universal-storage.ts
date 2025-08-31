@@ -17,7 +17,8 @@ export type FileCategory =
   | 'documents'
   | 'templates'
   | 'applications'
-  | 'jobs';
+  | 'jobs'
+  | 'assessments';
 
 export interface FileMetadata {
   userId?: string;

@@ -36,6 +36,8 @@ interface CreateCandidateModalProps {
   onClose: () => void;
   jobId?: string; // Optional job ID to automatically assign candidate to
   onCandidateCreated?: (candidate: CreatedCandidate) => void; // Callback when candidate is created
+  onViewCandidate?: (candidateId: string) => void; // Callback to open candidate modal
+  onRefreshCandidates?: () => void; // Callback to refresh candidates list
 }
 
 type Step = 'intake' | 'parsing' | 'review' | 'assign';
@@ -114,7 +116,7 @@ interface ParsedData {
   }>;
 }
 
-export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated }: CreateCandidateModalProps) {
+export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated, onViewCandidate, onRefreshCandidates }: CreateCandidateModalProps) {
   const { getToken } = useAuth();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>('intake');
@@ -562,14 +564,37 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
       console.log('Submitting candidate data:', candidateData);
 
       const token = await getToken();
-      const response = await fetch('/api/candidates', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(candidateData),
-      });
+      
+      // Check if we have an uploaded CV file to include
+      const hasUploadedFile = uploadedFile && inputMethod === 'upload';
+      
+      let response;
+      if (hasUploadedFile) {
+        // Send as FormData to include the CV file
+        const formData = new FormData();
+        formData.append('candidateData', JSON.stringify(candidateData));
+        formData.append('cvFile', uploadedFile);
+        
+        console.log('📎 Submitting candidate with CV file:', uploadedFile.name);
+        
+        response = await fetch('/api/candidates', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+        });
+      } else {
+        // Send as JSON only
+        response = await fetch('/api/candidates', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(candidateData),
+        });
+      }
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -588,61 +613,13 @@ export function CreateCandidateModal({ open, onClose, jobId, onCandidateCreated 
           notes
         };
         
-        // Upload the original file if one was provided
-        if (inputMethod === 'upload' && uploadedFile) {
-          try {
-            console.log('Uploading original CV file for candidate:', result.data.id);
-            
-            const fileFormData = new FormData();
-            fileFormData.append('file', uploadedFile);
-            fileFormData.append('metadata', JSON.stringify({
-              category: 'cv-uploads',
-              candidateId: result.data.id,
-              description: 'Original CV uploaded during candidate creation',
-              tags: ['original-cv', 'candidate-creation']
-            }));
-
-            const fileUploadResponse = await fetch('/api/files/upload', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              },
-              body: fileFormData,
-            });
-
-            if (fileUploadResponse.ok) {
-              const fileResult = await fileUploadResponse.json();
-              console.log('File uploaded successfully:', fileResult);
-              
-              // Update candidate with file information
-              const updateResponse = await fetch(`/api/candidates/${result.data.id}`, {
-                method: 'PATCH',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  originalCvUrl: fileResult.file.url,
-                  originalCvFileName: uploadedFile.name,
-                  originalCvUploadedAt: new Date().toISOString()
-                }),
-              });
-
-              if (updateResponse.ok) {
-                console.log('Candidate updated with file information');
-              } else {
-                console.error('Failed to update candidate with file information');
-              }
-            } else {
-              console.error('Failed to upload file:', await fileUploadResponse.text());
-            }
-          } catch (fileError) {
-            console.error('Error uploading file:', fileError);
-            // Don't fail the whole candidate creation if file upload fails
-          }
-        }
-        
+        // CV file is now handled directly by the candidate creation API
         setCreatedCandidate(createdCandidateData);
+        
+        // Refresh the candidates list
+        if (onRefreshCandidates) {
+          onRefreshCandidates();
+        }
         
         // If jobId is provided, automatically assign candidate to job
         if (jobId) {
@@ -1764,15 +1741,16 @@ Bachelor's in Computer Science from ETH Zurich"
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button
                     onClick={() => {
-                      // Close modal and navigate to candidate profile
+                      // Close modal and open candidate modal
                       onClose();
-                      // Use Next.js router for navigation
-                      router.push(`/candidates/${createdCandidate.id}`);
+                      if (onViewCandidate) {
+                        onViewCandidate(createdCandidate.id);
+                      }
                     }}
                     className="btn-primary flex items-center justify-center space-x-2"
                   >
                     <Eye className="h-4 w-4" />
-                    <span>View Profile</span>
+                    <span>View Candidate</span>
                   </button>
                   
                   <Button

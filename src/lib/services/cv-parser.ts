@@ -637,25 +637,180 @@ JavaScript, React, Node.js, Python, AWS, Docker
     return this.parseCV(testCV, 'test-cv.txt');
   }
 
-  // LinkedIn profile parsing method
+  // LinkedIn profile parsing method with multiple approaches
   async parseLinkedInProfile(linkedinUrl: string): Promise<ParsedCandidateData> {
     try {
-      console.log(`Parsing LinkedIn profile: ${linkedinUrl}`);
+      console.log(`🔗 Parsing LinkedIn profile: ${linkedinUrl}`);
       
-      // Note: This is a mock implementation since we can't directly scrape LinkedIn
-      // In a real implementation, you would use LinkedIn API or authorized scraping
+      // Approach 1: Try browser extension scraping (if available)
+      const extensionData = await this.tryExtensionScraping(linkedinUrl);
+      if (extensionData) {
+        console.log('✅ LinkedIn data extracted via browser extension');
+        return extensionData;
+      }
       
-      // Extract username from URL for mock data generation
-      const usernameMatch = linkedinUrl.match(/\/in\/([^\/]+)/);
-      const username = usernameMatch ? usernameMatch[1] : 'unknown';
+      // Approach 2: Try proxy/headless browser approach
+      const proxyData = await this.tryProxyScraping(linkedinUrl);
+      if (proxyData) {
+        console.log('✅ LinkedIn data extracted via proxy scraping');
+        return proxyData;
+      }
       
-      // Return mock data based on the LinkedIn URL
-      return this.getMockLinkedInData(username, linkedinUrl);
+      // Approach 3: Manual copy-paste instruction fallback
+      console.log('⚠️ Automated scraping failed, providing manual instructions');
+      return this.getLinkedInInstructionData(linkedinUrl);
       
     } catch (error) {
       console.error('LinkedIn parsing failed:', error);
       return this.getFallbackCandidateData(`linkedin-${Date.now()}`);
     }
+  }
+
+  private async tryExtensionScraping(linkedinUrl: string): Promise<ParsedCandidateData | null> {
+    try {
+      // This would work with our Chrome extension
+      // Check if extension data is available in localStorage or via postMessage
+      if (typeof window !== 'undefined' && (window as any).linkedinExtensionData) {
+        const data = (window as any).linkedinExtensionData;
+        return this.formatExtensionData(data);
+      }
+      return null;
+    } catch (error) {
+      console.log('Extension scraping not available');
+      return null;
+    }
+  }
+
+  private async tryProxyScraping(linkedinUrl: string): Promise<ParsedCandidateData | null> {
+    try {
+      // This approach uses a proxy service or headless browser
+      // You could integrate with services like:
+      // - ScrapingBee, Scrapfly, Bright Data
+      // - Your own Puppeteer/Playwright service
+      
+      if (!process.env.SCRAPING_SERVICE_API_KEY) {
+        console.log('No scraping service configured');
+        return null;
+      }
+
+      // Example with a hypothetical scraping service
+      const response = await fetch('/api/scraping/linkedin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: linkedinUrl })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return this.formatScrapedData(data);
+      }
+      
+      return null;
+    } catch (error) {
+      console.log('Proxy scraping failed:', error);
+      return null;
+    }
+  }
+
+  private getLinkedInInstructionData(linkedinUrl: string): ParsedCandidateData {
+    // Extract username for display
+    const usernameMatch = linkedinUrl.match(/\/in\/([^\/]+)/);
+    const username = usernameMatch ? usernameMatch[1] : 'linkedin-user';
+    
+    return {
+      firstName: 'LinkedIn',
+      lastName: 'Profile',
+      currentTitle: 'Manual Input Required',
+      email: '',
+      phone: '',
+      currentLocation: '',
+      linkedinUrl: linkedinUrl,
+      summary: `LinkedIn profile detected: ${linkedinUrl}
+
+MANUAL EXTRACTION INSTRUCTIONS:
+1. Open the LinkedIn profile in a new tab
+2. Copy the profile content (About section, Experience, Education, Skills)
+3. Paste it in the "Text Input" method instead
+4. Our AI will parse the copied content automatically
+
+ALTERNATIVE SOLUTIONS:
+• Use our Chrome Extension (if installed) to auto-extract LinkedIn data
+• Export LinkedIn profile as PDF and upload via "File Upload"
+• Use LinkedIn's "Save as PDF" feature and upload the file
+
+Note: Due to LinkedIn's anti-scraping protections, direct URL parsing requires special tools or manual extraction.`,
+      experienceYears: 0,
+      technicalSkills: [],
+      softSkills: [],
+      education: [],
+      workHistory: [],
+      certifications: [],
+      languages: ['English']
+    };
+  }
+
+  private formatExtensionData(data: any): ParsedCandidateData {
+    // Format data from Chrome extension
+    return {
+      firstName: data.firstName || '',
+      lastName: data.lastName || '',
+      currentTitle: data.currentTitle || '',
+      email: data.email || '',
+      phone: data.phone || '',
+      currentLocation: data.location || '',
+      linkedinUrl: data.linkedinUrl || '',
+      summary: data.summary || '',
+      experienceYears: data.experienceYears || 0,
+      technicalSkills: data.technicalSkills || [],
+      softSkills: data.softSkills || [],
+      education: data.education || [],
+      workHistory: data.workHistory || [],
+      certifications: data.certifications || [],
+      languages: data.languages || ['English']
+    };
+  }
+
+  private formatScrapedData(data: any): ParsedCandidateData {
+    // Format data from scraping service
+    return {
+      firstName: data.name?.split(' ')[0] || '',
+      lastName: data.name?.split(' ').slice(1).join(' ') || '',
+      currentTitle: data.headline || '',
+      email: data.email || '',
+      phone: data.phone || '',
+      currentLocation: data.location || '',
+      summary: data.summary || '',
+      experienceYears: this.calculateExperience(data.experience || []),
+      technicalSkills: data.skills?.filter((s: string) => this.isTechnicalSkill(s)) || [],
+      softSkills: data.skills?.filter((s: string) => !this.isTechnicalSkill(s)) || [],
+      education: data.education || [],
+      workHistory: data.experience || [],
+      certifications: data.certifications || [],
+      languages: data.languages || ['English']
+    };
+  }
+
+  private calculateExperience(workHistory: any[]): number {
+    if (!workHistory.length) return 0;
+    
+    let totalMonths = 0;
+    workHistory.forEach(job => {
+      const start = new Date(job.startDate);
+      const end = job.endDate === 'Present' ? new Date() : new Date(job.endDate);
+      const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+      totalMonths += Math.max(0, months);
+    });
+    
+    return Math.round(totalMonths / 12);
+  }
+
+  private isTechnicalSkill(skill: string): boolean {
+    const technicalKeywords = [
+      'javascript', 'python', 'java', 'react', 'node', 'sql', 'aws', 'docker', 
+      'kubernetes', 'git', 'api', 'database', 'cloud', 'devops', 'machine learning',
+      'ai', 'data', 'analytics', 'framework', 'library', 'programming'
+    ];
+    return technicalKeywords.some(keyword => skill.toLowerCase().includes(keyword));
   }
 
   private getMockLinkedInData(username: string, linkedinUrl: string): ParsedCandidateData {

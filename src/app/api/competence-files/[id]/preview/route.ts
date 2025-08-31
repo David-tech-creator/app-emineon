@@ -42,7 +42,22 @@ export async function GET(
             spokenLanguages: true,
             summary: true,
             degrees: true,
-            softSkills: true
+            softSkills: true,
+            workExperiences: {
+              select: {
+                id: true,
+                company: true,
+                jobTitle: true,
+                startDate: true,
+                endDate: true,
+                responsibilities: true,
+                achievements: true,
+                technologies: true
+              },
+              orderBy: {
+                startDate: 'desc'
+              }
+            }
           }
         },
         template: {
@@ -75,11 +90,20 @@ export async function GET(
         ...(competenceFile.candidate?.softSkills || [])
       ],
       certifications: competenceFile.candidate?.certifications || [],
-      experience: [], // Experience data not available in current schema
+      experience: (competenceFile.candidate?.workExperiences || []).map(exp => ({
+        company: exp.company || '',
+        title: exp.jobTitle || '',
+        startDate: exp.startDate ? new Date(exp.startDate).toISOString().slice(0, 7) : '',
+        endDate: exp.endDate ? new Date(exp.endDate).toISOString().slice(0, 7) : '',
+        responsibilities: exp.responsibilities || ''
+      })),
       education: competenceFile.candidate?.degrees || [],
       languages: competenceFile.candidate?.spokenLanguages || [],
       summary: competenceFile.candidate?.summary || ''
     };
+
+    // Get sections from competence file metadata or generate default sections
+    const sections = (competenceFile.metadata as any)?.sections || [];
 
     const templateName = competenceFile.template?.name || 'Unknown';
     const candidateName = candidateData.fullName;
@@ -117,9 +141,9 @@ export async function GET(
                             (competenceFile.metadata as any)?.template === 'antaes';
     
     if (isAntaesTemplate) {
-      htmlContent = generateAntaesCompetenceFileHTML(candidateData, [], jobDescription, undefined, enrichedContent || undefined);
+      htmlContent = generateAntaesCompetenceFileHTML(candidateData, sections, jobDescription, undefined, enrichedContent || undefined);
     } else {
-      htmlContent = generateCompetenceFileHTML(candidateData, [], jobDescription, undefined, enrichedContent || undefined);
+      htmlContent = generateCompetenceFileHTML(candidateData, sections, jobDescription, undefined, enrichedContent || undefined);
     }
 
     // Add preview-specific styling and indicators

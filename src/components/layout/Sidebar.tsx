@@ -159,6 +159,11 @@ const navigationSections: NavigationSection[] = [
         href: '/ai-copilot',
         icon: Bot,
       },
+      {
+        name: 'Content Generator',
+        href: '/ai-tools/content-generator',
+        icon: ClipboardList,
+      },
     ],
     collapsible: true,
   },
@@ -241,7 +246,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
             <div className="relative w-8 h-8 mr-2 transition-transform group-hover:scale-105">
               <Image
                 src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj.png"
-                alt="Emineon ATS"
+                alt="Emineon"
                 width={32}
                 height={32}
                 className="object-contain"
@@ -254,9 +259,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
               <span className="text-lg font-bold text-primary-900 leading-tight">
                 Emineon
               </span>
-              <span className="text-xs font-medium text-primary-600 uppercase tracking-wide">
-                ATS
-              </span>
+              {/* Removed "ATS" label as requested */}
             </div>
           </Link>
         )}
@@ -280,7 +283,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
             <div className="relative w-8 h-8 transition-transform group-hover:scale-105">
               <Image
                 src="https://res.cloudinary.com/emineon/image/upload/v1749926503/Emineon_logo_tree_k8n5vj.png"
-                alt="Emineon ATS"
+                alt="Emineon"
                 width={32}
                 height={32}
                 className="object-contain"

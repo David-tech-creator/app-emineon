@@ -95,33 +95,51 @@ class CompetenceFileQueueService {
     console.log(`👤 Candidate: ${candidateData.fullName}`);
     console.log(`🎯 Job: ${jobDescription?.title || 'General Position'}`);
 
-    // Define all sections in the correct order
+    // Define all sections in the correct order, up to CERTIFICATIONS
     const sections: SectionRequest[] = [
       { order: 0, title: 'HEADER', payload: { candidateData, jobData: jobDescription } },
       { order: 1, title: 'PROFESSIONAL SUMMARY', payload: { candidateData, jobData: jobDescription } },
       { order: 2, title: 'FUNCTIONAL SKILLS', payload: { candidateData, jobData: jobDescription } },
       { order: 3, title: 'TECHNICAL SKILLS', payload: { candidateData, jobData: jobDescription } },
-      { order: 4, title: 'AREAS OF EXPERTISE', payload: { candidateData, jobData: jobDescription } },
-      { order: 5, title: 'EDUCATION', payload: { candidateData, jobData: jobDescription } },
-      { order: 6, title: 'CERTIFICATIONS', payload: { candidateData, jobData: jobDescription } },
-      { order: 7, title: 'LANGUAGES', payload: { candidateData, jobData: jobDescription } },
-      { order: 8, title: 'PROFESSIONAL EXPERIENCES SUMMARY', payload: { candidateData, jobData: jobDescription } },
+      { order: 4, title: 'LANGUAGES', payload: { candidateData, jobData: jobDescription } },
+      { order: 5, title: 'AREAS OF EXPERTISE', payload: { candidateData, jobData: jobDescription } },
+      { order: 6, title: 'EDUCATION', payload: { candidateData, jobData: jobDescription } },
+      { order: 7, title: 'CERTIFICATIONS', payload: { candidateData, jobData: jobDescription } },
     ];
 
     // Add individual professional experience sections based on candidate data
     const experienceCount = candidateData.experience?.length || 3; // Default to 3 if no data
+    const experienceSections: SectionRequest[] = [];
     for (let i = 0; i < Math.min(experienceCount, 5); i++) { // Max 5 experiences
-      sections.push({
-        order: 9 + i,
+      experienceSections.push({
+        order: 9 + i, // Will be re-ordered after insertion
         title: `PROFESSIONAL EXPERIENCE ${i + 1}`,
         payload: { candidateData, jobData: jobDescription }
       });
     }
 
+    // Insert PROFESSIONAL EXPERIENCES SUMMARY right before the first experience section
+    if (experienceSections.length > 0) {
+      sections.push({
+        order: 8,
+        title: 'PROFESSIONAL EXPERIENCES SUMMARY',
+        payload: { candidateData, jobData: jobDescription }
+      });
+      // Add all experience sections after the summary
+      experienceSections.forEach((section, idx) => {
+        section.order = 9 + idx;
+        sections.push(section);
+      });
+    }
+
     console.log(`📋 Total sections to generate: ${sections.length}`);
 
+    // After all sections have been added (including experience summary and experiences),
+    // sort the sections array by the 'order' property to guarantee correct order
+    sections.sort((a, b) => a.order - b.order);
+
     // Track generation state
-    const results: SectionResult[] = [];
+    let results: SectionResult[] = [];
     const errors: string[] = [];
     let totalTokens = 0;
 
@@ -149,12 +167,12 @@ class CompetenceFileQueueService {
 
     try {
       // Process all sections with Promise.all for parallel execution within concurrency limits
-      const sectionPromises = sections.map(section => 
-        this.queue.add(() => this.generateSection(section, maxRetries, sessionId, masterJobId))
+      const sectionPromises: Promise<SectionResult>[] = sections.map(section => 
+        this.queue.add(() => this.generateSection(section, maxRetries, sessionId, masterJobId)) as Promise<SectionResult>
       );
 
       // Wait for all sections to complete
-      const sectionResults = await Promise.all(sectionPromises);
+      const sectionResults = await Promise.all(sectionPromises) as SectionResult[];
       
       // Process results
       for (const result of sectionResults) {

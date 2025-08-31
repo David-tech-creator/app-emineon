@@ -52,80 +52,40 @@ Generate content following this EXACT format. Use real achievements and quantify
 `,
 
   PROFESSIONAL_SUMMARY: `
-You are an expert resume writer. Generate a compelling, structured professional summary.
+You are an expert resume writer. Generate a concise professional summary using ONLY candidate/job input. If insufficient data, return empty output.
 
 **REQUIRED OUTPUT STRUCTURE:**
 ## PROFESSIONAL SUMMARY
 
-[2-3 sentences describing core expertise, years of experience, and primary value proposition]
+[2-3 sentences from input describing core expertise, years of experience, and value]
 
 **Core Strengths:**
-- [Specific technical/functional strength with expertise level]
-- [Leadership/management strength with scope]
-- [Industry/domain strength with context]
+- [Strength from input]
+- [Strength from input]
+- [Strength from input]
 
-**Industry Expertise:** \`Domain1\`, \`Domain2\`, \`Domain3\`
-
-**Technical Proficiency:** \`Tech1\`, \`Tech2\`, \`Tech3\`, \`Tech4\`
-
-**EXAMPLE OUTPUT:**
-## PROFESSIONAL SUMMARY
-
-Experienced Senior Software Engineer with <strong>8+ years</strong> of expertise in full-stack development, specializing in scalable web applications and modern JavaScript frameworks. Proven track record of leading cross-functional teams and delivering high-impact solutions that drive business growth and improve user experience.
-
-**Core Strengths:**
-- Full-stack development with expertise in modern JavaScript frameworks and cloud architectures
-- Technical leadership and mentoring with experience managing teams of <strong>5-15 developers</strong>
-- Agile development methodologies and DevOps practices with focus on continuous delivery
-
-**Industry Expertise:** \`Financial Services\`, \`E-commerce\`, \`SaaS Platforms\`
-
-**Technical Proficiency:** \`React\`, \`Node.js\`, \`TypeScript\`, \`AWS\`, \`PostgreSQL\`, \`Docker\`
-
-Generate following this EXACT format with compelling, specific content.
+Rules:
+- No examples, no placeholders, no generic domains/techs
+- Do not invent content; omit lines you cannot support from input
 `,
 
   CORE_COMPETENCIES: `
-You are an expert skills organizer. Create structured, categorized competencies.
+You are an expert skills organizer. Create structured competencies using ONLY content present in the candidate/job input. If insufficient data, return empty output.
 
 **REQUIRED OUTPUT STRUCTURE:**
 ## CORE COMPETENCIES
 
-### Technical Skills
-**Programming Languages:** \`Language1\`, \`Language2\`, \`Language3\`
-**Frameworks & Libraries:** \`Framework1\`, \`Framework2\`, \`Framework3\`
-**Cloud & Infrastructure:** \`Platform1\`, \`Platform2\`, \`Platform3\`
-**Databases & Storage:** \`Database1\`, \`Database2\`, \`Database3\`
+### Technical Skills (include only if real techs are available)
+**[Category Name]:** \`Tech1\`, \`Tech2\`
 
-### Functional Skills
-- [Functional skill with application context]
-- [Process/methodology expertise with experience level]
-- [Business skill with industry application]
+### Functional Skills (include only if real items are available)
+- [Functional skill from input]
 
-### Leadership & Management
-- [Leadership experience with team size/scope]
-- [Project management with complexity/budget]
-- [Stakeholder management with audience type]
+### Leadership & Management (include only if supported by input)
+- [Leadership item from input]
 
-**EXAMPLE OUTPUT:**
-## CORE COMPETENCIES
-
-### Technical Skills
-**Programming Languages:** \`JavaScript\`, \`TypeScript\`, \`Python\`, \`Java\`
-**Frameworks & Libraries:** \`React\`, \`Angular\`, \`Node.js\`, \`Express\`
-**Cloud & Infrastructure:** \`AWS\`, \`Docker\`, \`Kubernetes\`, \`Terraform\`
-**Databases & Storage:** \`PostgreSQL\`, \`MongoDB\`, \`Redis\`, \`S3\`
-
-### Functional Skills
-- Full-stack application development with focus on scalable, maintainable architectures
-- Agile/Scrum methodologies with experience in sprint planning and retrospectives
-- DevOps practices including CI/CD pipeline setup and automated testing strategies
-
-### Leadership & Management
-- Technical team leadership with experience managing <strong>8-12 person</strong> development teams
-- Project management for initiatives with budgets ranging from <strong>$100K to $2M</strong>
-- Cross-functional collaboration with product, design, and executive stakeholders
-
-Generate following this EXACT format with appropriate categorization.
+Rules:
+- No sample categories, no example technologies
+- Omit subsections that cannot be supported by input
 `
 }; 

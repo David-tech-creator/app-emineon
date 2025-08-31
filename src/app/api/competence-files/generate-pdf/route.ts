@@ -884,9 +884,10 @@ function generateHTMLFromSegments(segments: SegmentContent[], candidateData: { f
   const headerData = {
     fullName: candidateData.fullName,
     currentTitle: candidateData.currentTitle,
-    email: candidateData.email,
-    phone: candidateData.phone,
-    location: candidateData.location,
+    // Do not expose PII in header
+    email: '',
+    phone: '',
+    location: '',
     yearsOfExperience: candidateData.yearsOfExperience
   };
   
@@ -917,16 +918,7 @@ function generateHTMLFromSegments(segments: SegmentContent[], candidateData: { f
       <div class="candidate-info">
         <h1 class="candidate-name">${headerData.fullName}</h1>
         <div class="candidate-title">${headerData.currentTitle}</div>
-        <div class="contact-info">
-          <div class="contact-row">
-            ${headerData.email ? `<span class="contact-item email">${headerData.email}</span>` : ''}
-            ${headerData.phone ? `<span class="contact-item phone">${headerData.phone}</span>` : ''}
-          </div>
-          <div class="contact-row">
-            ${headerData.location ? `<span class="contact-item location">${headerData.location}</span>` : ''}
-            ${headerData.yearsOfExperience ? `<span class="contact-item experience">${headerData.yearsOfExperience} years experience</span>` : ''}
-          </div>
-        </div>
+        <div class="contact-info"></div>
       </div>
     </header>
   `;
@@ -965,7 +957,7 @@ function getTemplateStyles(template: string): string {
     
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 12px;
+      font-size: 8px;
       line-height: 1.6;
       color: #232629;
       background: white;
@@ -981,13 +973,13 @@ function getTemplateStyles(template: string): string {
     /* ===== HEADER STYLES ===== */
     .document-header {
       text-align: center;
-      border-bottom: 2px solid #333333;
+      border-bottom: 1px solid #333333;
       padding-bottom: 20px;
       margin-bottom: 30px;
     }
     
     .candidate-name {
-      font-size: 24px;
+      font-size: 20px;
       font-weight: 700;
       color: #333333;
       margin-bottom: 8px;
@@ -995,14 +987,14 @@ function getTemplateStyles(template: string): string {
     }
     
     .candidate-title {
-      font-size: 16px;
+      font-size: 8px;
       font-weight: 500;
       color: #666666;
       margin-bottom: 15px;
     }
     
     .contact-info {
-      font-size: 11px;
+      font-size: 8px;
       color: #777777;
     }
     
@@ -1025,7 +1017,7 @@ function getTemplateStyles(template: string): string {
     
     /* ===== SECTION HEADERS ===== */
     .section-title {
-      font-size: 14px;
+      font-size: 8px;
       font-weight: 600;
       color: #333333;
       padding: 8px 0;
@@ -1051,7 +1043,7 @@ function getTemplateStyles(template: string): string {
     
     .summary-paragraph {
       margin-bottom: 12px;
-      font-size: 12px;
+      font-size: 8px;
       line-height: 1.7;
       text-align: justify;
       color: #444444;
@@ -1078,7 +1070,7 @@ function getTemplateStyles(template: string): string {
     }
 
     .skills-subtitle {
-      font-size: 13px;
+      font-size: 8px;
       font-weight: 600;
       color: #073C51;
       margin-bottom: 8px;
@@ -1095,7 +1087,7 @@ function getTemplateStyles(template: string): string {
       color: #FFB800;
       font-weight: 500;
       margin-bottom: 4px;
-      font-size: 11px;
+      font-size: 8px;
       line-height: 1.4;
     }
 
@@ -1109,7 +1101,7 @@ function getTemplateStyles(template: string): string {
     .skills-description {
       font-style: italic;
       color: #666666;
-      font-size: 10px;
+      font-size: 8px;
       margin: 8px 0 0 0;
       line-height: 1.3;
     }
@@ -1121,7 +1113,7 @@ function getTemplateStyles(template: string): string {
     }
     
     .skill-category-title {
-      font-size: 13px;
+      font-size: 8px;
       font-weight: 600;
       color: #333333;
       margin-bottom: 8px;
@@ -1139,7 +1131,7 @@ function getTemplateStyles(template: string): string {
       color: #333333;
       padding: 4px 8px;
       border-radius: 4px;
-      font-size: 10px;
+      font-size: 8px;
       font-weight: 500;
       border: 1px solid #e0e0e0;
       display: inline-block;
@@ -1155,7 +1147,7 @@ function getTemplateStyles(template: string): string {
       font-weight: 600;
       color: #555555;
       margin: 6px 0 4px 0;
-      font-size: 11px;
+      font-size: 8px;
     }
     
     .skill-subcategory-items {
@@ -1190,20 +1182,20 @@ function getTemplateStyles(template: string): string {
     }
     
     .company-name {
-      font-size: 14px;
+      font-size: 8px;
       font-weight: 600;
       color: #333333;
       margin-bottom: 4px;
     }
     
     .role-title {
-      font-size: 12px;
+      font-size: 8px;
       font-weight: 500;
       color: #666666;
     }
     
     .experience-dates {
-      font-size: 11px;
+      font-size: 8px;
       font-weight: 500;
       color: #777777;
       background: #ffffff;
@@ -1222,7 +1214,7 @@ function getTemplateStyles(template: string): string {
     }
     
     .subsection-title {
-      font-size: 11px;
+      font-size: 8px;
       font-weight: 600;
       color: #333333;
       margin-bottom: 8px;
@@ -1237,7 +1229,7 @@ function getTemplateStyles(template: string): string {
     
     .responsibility-item, .achievement-item {
       margin-bottom: 6px;
-      font-size: 11px;
+      font-size: 8px;
       line-height: 1.5;
       color: #444444;
     }
@@ -1252,7 +1244,7 @@ function getTemplateStyles(template: string): string {
       color: #555555;
       padding: 3px 6px;
       border-radius: 3px;
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 500;
       border: 1px solid #ddd;
       white-space: nowrap;
@@ -1275,21 +1267,21 @@ function getTemplateStyles(template: string): string {
     }
 
     .experience-entry .company-name {
-      font-size: 14px;
+      font-size: 8px;
       font-weight: 600;
       color: #073C51;
       margin: 0 0 4px 0;
     }
 
     .experience-entry .role-title {
-      font-size: 13px;
+      font-size: 8px;
       font-weight: 500;
       color: #FFB800;
       margin: 0 0 4px 0;
     }
 
     .duration {
-      font-size: 11px;
+      font-size: 8px;
       color: #666666;
       margin: 0;
     }
@@ -1313,7 +1305,7 @@ function getTemplateStyles(template: string): string {
     .responsibilities h5,
     .achievements h5,
     .technical-environment h5 {
-      font-size: 11px;
+      font-size: 8px;
       font-weight: 600;
       color: #073C51;
       margin: 0 0 8px 0;
@@ -1322,7 +1314,7 @@ function getTemplateStyles(template: string): string {
     }
 
     .role-overview p {
-      font-size: 11px;
+      font-size: 8px;
       line-height: 1.4;
       color: #555555;
       margin: 0;
@@ -1337,7 +1329,7 @@ function getTemplateStyles(template: string): string {
 
     .responsibilities li,
     .achievements li {
-      font-size: 11px;
+      font-size: 8px;
       line-height: 1.4;
       color: #555555;
       margin-bottom: 4px;
@@ -1366,7 +1358,7 @@ function getTemplateStyles(template: string): string {
       color: #073C51;
       padding: 4px 8px;
       border-radius: 12px;
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 500;
       border: 1px solid #d0e7ff;
       white-space: nowrap;
@@ -1402,11 +1394,11 @@ function getTemplateStyles(template: string): string {
     .summary-company {
       font-weight: 600;
       color: #333333;
-      font-size: 12px;
+      font-size: 8px;
     }
     
     .summary-role-dates {
-      font-size: 10px;
+      font-size: 8px;
       color: #777777;
       font-weight: 500;
       background: #ffffff;
@@ -1422,7 +1414,7 @@ function getTemplateStyles(template: string): string {
     }
     
     .summary-highlight {
-      font-size: 10px;
+      font-size: 8px;
       color: #555555;
       line-height: 1.4;
     }
@@ -1447,19 +1439,19 @@ function getTemplateStyles(template: string): string {
     .cert-name {
       font-weight: 600;
       color: #333333;
-      font-size: 11px;
+      font-size: 8px;
       margin-bottom: 4px;
     }
     
     .cert-provider {
-      font-size: 10px;
+      font-size: 8px;
       color: #666666;
       font-weight: 500;
       margin-bottom: 2px;
     }
     
     .cert-date {
-      font-size: 9px;
+      font-size: 8px;
       color: #777777;
     }
     
@@ -1485,11 +1477,11 @@ function getTemplateStyles(template: string): string {
     .language-name {
       font-weight: 600;
       color: #333333;
-      font-size: 11px;
+      font-size: 8px;
     }
     
     .language-level {
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 500;
       padding: 2px 6px;
       border-radius: 3px;
@@ -1512,7 +1504,7 @@ function getTemplateStyles(template: string): string {
     
     .education-item p {
       margin: 0;
-      font-size: 11px;
+      font-size: 8px;
       line-height: 1.4;
       color: #444444;
     }
@@ -1527,7 +1519,7 @@ function getTemplateStyles(template: string): string {
     }
     
     .static-category-title {
-      font-size: 12px;
+      font-size: 8px;
       font-weight: 600;
       color: #333333;
       margin-bottom: 8px;
@@ -1544,7 +1536,7 @@ function getTemplateStyles(template: string): string {
       color: #444444;
       padding: 4px 8px;
       border-radius: 4px;
-      font-size: 10px;
+      font-size: 8px;
       font-weight: 500;
       border: 1px solid #e0e0e0;
     }
@@ -1556,7 +1548,7 @@ function getTemplateStyles(template: string): string {
     
     .general-content p {
       margin-bottom: 10px;
-      font-size: 11px;
+      font-size: 8px;
       line-height: 1.5;
       color: #444444;
     }
@@ -1568,7 +1560,7 @@ function getTemplateStyles(template: string): string {
     
     .general-content li {
       margin-bottom: 4px;
-      font-size: 11px;
+      font-size: 8px;
       line-height: 1.4;
       color: #444444;
     }
@@ -1615,7 +1607,7 @@ function getTemplateStyles(template: string): string {
         line-height: 1.6;
         color: #2c3e50;
         background: #ffffff;
-        font-size: 13px;
+        font-size: 8px;
         margin: 0;
         padding: 0;
       }
@@ -1636,7 +1628,7 @@ function getTemplateStyles(template: string): string {
         align-items: flex-start;
         margin-bottom: 30px;
         padding-bottom: 20px;
-        border-bottom: 2px solid #2c3e50;
+        border-bottom: 1px solid #2c3e50;
       }
       
       .candidate-info {
@@ -1652,14 +1644,14 @@ function getTemplateStyles(template: string): string {
       }
       
       .candidate-title {
-        font-size: 16px;
+        font-size: 8px;
         font-weight: 600;
         color: #e67e22;
         margin-bottom: 12px;
       }
       
       .contact-info {
-        font-size: 13px;
+        font-size: 8px;
         color: #7f8c8d;
         line-height: 1.5;
       }
@@ -1677,21 +1669,37 @@ function getTemplateStyles(template: string): string {
       .section {
         margin-bottom: 24px;
         page-break-inside: avoid;
+        position: relative;
       }
       
       .section-title {
-        font-size: 14px;
+        font-size: 8px;
         font-weight: 700;
         color: #2c3e50;
         text-transform: uppercase;
         letter-spacing: 1px;
         margin-bottom: 15px;
         padding-bottom: 6px;
-        border-bottom: 2px solid #2c3e50;
+        border-bottom: 1px solid #2c3e50;
+      }
+
+      /* Blue open bracket for sections with bracketClass */
+      .section.has-bracket:before {
+        content: "";
+        position: absolute;
+        left: -6px;
+        top: 8px;
+        width: 10px;
+        height: 22px;
+        border-left: 4px solid #2c3e50;
+        border-top: 4px solid #2c3e50;
+        border-bottom: 4px solid #2c3e50;
+        border-right: none;
+        border-radius: 6px 0 0 6px;
       }
       
       .section-content {
-        font-size: 13px;
+        font-size: 8px;
         line-height: 1.6;
         color: #34495e;
       }
@@ -1710,7 +1718,7 @@ function getTemplateStyles(template: string): string {
       }
       
       .skills-subtitle {
-        font-size: 13px;
+        font-size: 8px;
         font-weight: 700;
         color: #2c3e50;
         margin-bottom: 10px;
@@ -1731,10 +1739,45 @@ function getTemplateStyles(template: string): string {
         color: #2c3e50;
         padding: 4px 10px;
         border-radius: 12px;
-        font-size: 11px;
+        font-size: 8px;
         font-weight: 600;
         border: 1px solid #bdc3c7;
         white-space: nowrap;
+      }
+
+      /* Technical environment chips */
+      .technical-environment-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 6px;
+      }
+
+      .tech-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        background: #ecf3f8;
+        border-radius: 14px;
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 8px;
+        border: 1px solid #c8d9e6;
+        position: relative;
+        padding-left: 22px;
+        white-space: nowrap;
+      }
+
+      .tech-tag:before {
+        content: "";
+        position: absolute;
+        left: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 6px;
+        height: 6px;
+        background: #2c3e50;
+        border-radius: 50%;
       }
       
       /* Experience Section - Professional Format */
@@ -1745,6 +1788,22 @@ function getTemplateStyles(template: string): string {
         border-radius: 6px;
         border-left: 4px solid #2c3e50;
         page-break-inside: avoid;
+        position: relative;
+      }
+
+      /* Blue open bracket decoration */
+      .experience-block:before {
+        content: "";
+        position: absolute;
+        left: -6px;
+        top: 14px;
+        width: 10px;
+        height: 22px;
+        border-left: 4px solid #2c3e50;
+        border-top: 4px solid #2c3e50;
+        border-bottom: 4px solid #2c3e50;
+        border-right: none;
+        border-radius: 6px 0 0 6px;
       }
       
       .company-name {
@@ -1755,14 +1814,14 @@ function getTemplateStyles(template: string): string {
       }
       
       .job-title {
-        font-size: 14px;
+        font-size: 8px;
         font-weight: 600;
         color: #e67e22;
         margin-bottom: 6px;
       }
       
       .job-dates {
-        font-size: 12px;
+        font-size: 8px;
         color: #7f8c8d;
         font-weight: 600;
         margin-bottom: 12px;
@@ -1829,7 +1888,7 @@ function getTemplateStyles(template: string): string {
       /* Print Optimization */
       @media print {
         body { 
-          font-size: 12px;
+          font-size: 8px;
           -webkit-print-color-adjust: exact;
           color-adjust: exact;
         }
@@ -1856,7 +1915,7 @@ function getTemplateStyles(template: string): string {
           font-size: 22px; 
         }
         .section-title { 
-          font-size: 13px; 
+          font-size: 8px; 
         }
       }
     `;
@@ -1875,6 +1934,46 @@ function getTemplateStyles(template: string): string {
       .document-header {
         border-bottom-color: #333333;
       }
+    `;
+  }
+
+  // Emineon specific styling to match reference design
+  if (template === 'emineon') {
+    const primary = '#073C51';
+    const accent = '#FFB800';
+    return baseStyles + `
+      .document-header { border-bottom: 1px solid ${primary}; }
+      .candidate-name { color: ${primary}; }
+      .candidate-title { color: ${accent}; font-weight: 700; }
+      .section-title { color: ${primary}; border-bottom: 1px solid ${primary}; font-weight: 800; }
+
+      /* Grey card with blue open bracket */
+      .experience-item, .summary-experience-item, .education-item, .static-item {
+        background: #f5f7fa;
+        border: 1px solid #e2e8f0;
+        border-left: 4px solid ${primary};
+        border-radius: 8px;
+        position: relative;
+      }
+      .experience-item:before, .summary-experience-item:before, .education-item:before, .skills-category:before {
+        content: "";
+        position: absolute; left: -6px; top: 14px; width: 10px; height: 22px;
+        border-left: 4px solid ${primary}; border-top: 4px solid ${primary}; border-bottom: 4px solid ${primary};
+        border-right: none; border-radius: 6px 0 0 6px;
+      }
+
+      .company-name { color: ${primary}; font-weight: 700; }
+      .role-title { color: ${accent}; font-weight: 700; }
+
+      /* Yellow bullet lists */
+      .responsibilities li::before, .achievements li::before { color: ${accent}; }
+
+      /* Pill tags with yellow dot */
+      .tech-tag, .skill-tag, .static-item { 
+        background: #eef4f8; color: ${primary}; border-radius: 999px; padding: 4px 10px; border: 1px solid #d1d9e0; 
+      }
+      .tech-tag { position: relative; padding-left: 18px; }
+      .tech-tag:before { content:""; position:absolute; left:8px; width:6px; height:6px; background:${accent}; border-radius:50%; }
     `;
   }
 }
@@ -1918,9 +2017,10 @@ async function generateAntaesHTMLFromSegments(segments: SegmentContent[], candid
       
       // Transform content to beautiful HTML based on segment type
       const beautifulContent = await transformContentToBeautifulHTML(segment.content, segment.type, candidateData);
+      const bracketClass = segment.type.toLowerCase().includes('experience') ? ' has-bracket' : '';
       
       return `
-        <div class="section ${sectionClass}" id="${segment.type.toLowerCase()}">
+        <div class="section ${sectionClass}${bracketClass}" id="${segment.type.toLowerCase()}">
           <h2 class="section-title">${segment.title.toUpperCase()}</h2>
           <div class="section-content">
             ${beautifulContent}
@@ -1952,7 +2052,7 @@ async function generateAntaesHTMLFromSegments(segments: SegmentContent[], candid
             line-height: 1.6;
             color: #232629;
             background: #ffffff;
-            font-size: 14px;
+            font-size: 8px;
           }
           
           .container {
@@ -1972,7 +2072,7 @@ async function generateAntaesHTMLFromSegments(segments: SegmentContent[], candid
             align-items: flex-start;
             margin-bottom: 25px;
             padding-bottom: 20px;
-            border-bottom: 2px solid #073C51;
+            border-bottom: 1px solid #073C51;
           }
           
           .header-content {
@@ -2003,21 +2103,21 @@ async function generateAntaesHTMLFromSegments(segments: SegmentContent[], candid
           }
           
           .header-role {
-            font-size: 16px;
+            font-size: 8px;
             font-weight: 600;
             color: #FFB800;
             margin-bottom: 4px;
           }
           
           .header-experience {
-            font-size: 14px;
+            font-size: 8px;
             font-weight: 500;
             color: #444B54;
             margin-bottom: 12px;
           }
           
           .location-info {
-            font-size: 14px;
+            font-size: 8px;
             color: #444B54;
             margin-bottom: 12px;
             font-weight: 500;
@@ -2030,7 +2130,7 @@ async function generateAntaesHTMLFromSegments(segments: SegmentContent[], candid
           }
           
           .manager-label {
-            font-size: 12px;
+            font-size: 8px;
             font-weight: 600;
             color: #073C51;
             margin-bottom: 6px;
@@ -2040,7 +2140,7 @@ async function generateAntaesHTMLFromSegments(segments: SegmentContent[], candid
           
           .contact-item {
             color: #444B54;
-            font-size: 13px;
+            font-size: 8px;
             margin-bottom: 3px;
           }
           
@@ -2068,11 +2168,11 @@ async function generateAntaesHTMLFromSegments(segments: SegmentContent[], candid
             letter-spacing: 1px;
             margin-bottom: 12px;
             padding-bottom: 6px;
-            border-bottom: 2px solid #073C51;
+            border-bottom: 1px solid #073C51;
           }
           
           .section-content {
-            font-size: 14px;
+            font-size: 8px;
             line-height: 1.7;
           }
           
@@ -2127,7 +2227,7 @@ async function generateAntaesHTMLFromSegments(segments: SegmentContent[], candid
             border-left: 3px solid #FFB800;
             border-radius: 4px;
             line-height: 1.4;
-            font-size: 13px;
+            font-size: 8px;
             font-weight: 500;
           }
           
@@ -2139,11 +2239,14 @@ async function generateAntaesHTMLFromSegments(segments: SegmentContent[], candid
             left: 8px;
             top: 8px;
           }
+          
+          /* Ensure certifications don't render under education lists */
+          .education-section .certification-badge { display: none; }
 
           /* Print Optimization */
           @media print {
             body { 
-              font-size: 12px; 
+              font-size: 8px; 
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
             }
@@ -2169,22 +2272,26 @@ async function generateAntaesHTMLFromSegments(segments: SegmentContent[], candid
       </head>
       <body>
         <div class="container">
+          <!-- ANTAES LOGO - Centered Above Header -->
+          <div style="width:100%;text-align:center;margin-bottom:10px;">
+            <img src="https://res.cloudinary.com/emineon/image/upload/f_auto,q_auto,c_fit,w_200,h_100/Antaes_logo" alt="ANTAES" style="height:60px;width:auto;display:inline-block;" />
+          </div>
           <!-- HEADER - Content on left, logo on right -->
           <div class="header">
             <div class="header-content">
               <h1>${headerData.fullName}</h1>
               <div class="header-role">${headerData.currentTitle}</div>
               ${managerContact && (managerContact.name || managerContact.email || managerContact.phone) ? `
-                <div class="manager-contact">
-                  <div class="manager-label">For inquiries, contact:</div>
-                  ${managerContact.name ? `<div class="contact-item"><span class="contact-label">Manager:</span> ${managerContact.name}</div>` : ''}
-                  ${managerContact.email ? `<div class="contact-item"><span class="contact-label">Email:</span> ${managerContact.email}</div>` : ''}
-                  ${managerContact.phone ? `<div class="contact-item"><span class="contact-label">Phone:</span> ${managerContact.phone}</div>` : ''}
+                <div class="manager-contact" style="margin-top:6px; font-size:12px; color:#475569; line-height:1.4;">
+                  <div class="manager-label" style="font-weight:600; color:#334155; text-transform:uppercase; letter-spacing:.5px; margin-bottom:2px;">Manager Details</div>
+                  ${managerContact.name ? `<div><span style=\"font-weight:600; color:#1f2937;\">Manager:</span> ${managerContact.name}</div>` : ''}
+                  ${managerContact.email ? `<div><span style=\"font-weight:600; color:#1f2937;\">Email:</span> ${managerContact.email}</div>` : ''}
+                  ${managerContact.phone ? `<div><span style=\"font-weight:600; color:#1f2937;\">Phone:</span> ${managerContact.phone}</div>` : ''}
                 </div>
               ` : ''}
             </div>
             <div class="header-logo">
-              <img src="https://res.cloudinary.com/emineon/image/upload/w_200,h_100,c_fit,q_100,f_png/Antaes_logo" 
+              <img src="https://res.cloudinary.com/emineon/image/upload/f_auto,q_auto,c_fit,w_200,h_100/Antaes_logo" 
                    alt="ANTAES" 
                    class="logo-image" 
                    style="width: 150px; height: 80px; object-fit: contain; display: block !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; opacity: 1 !important; visibility: visible !important; background: transparent !important;" 
@@ -2193,6 +2300,18 @@ async function generateAntaesHTMLFromSegments(segments: SegmentContent[], candid
           </div>
           
           <div class="content">
+            ${managerContact && (managerContact.name || managerContact.email || managerContact.phone) ? `
+            <div class="section">
+              <h2 class="section-title">MANAGER DETAILS</h2>
+              <div class="section-content">
+                <ul>
+                  ${managerContact.name ? `<li><strong>Manager:</strong> ${managerContact.name}</li>` : ''}
+                  ${managerContact.email ? `<li><strong>Email:</strong> ${managerContact.email}</li>` : ''}
+                  ${managerContact.phone ? `<li><strong>Phone:</strong> ${managerContact.phone}</li>` : ''}
+                </ul>
+              </div>
+            </div>
+            ` : ''}
             ${sectionsHTML}
           </div>
         </div>
@@ -2470,8 +2589,173 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🎯 PDF Generation Request received');
     
+    // Sanitize incoming body to avoid nulls violating strict types downstream
     const body = await request.json();
-    const { candidateData, segments, jobDescription, managerContact, template = 'professional-classic', client, jobTitle } = body;
+    
+    // Check if we're using preview HTML approach
+    if (body.usePreviewHTML && body.previewHTML) {
+      console.log('🎯 Using preview HTML for PDF generation');
+      
+      // Extract the complete HTML with all styles preserved
+      let finalHTML = body.previewHTML;
+      
+      // Only remove problematic transform styles that break PDF layout
+      finalHTML = finalHTML.replace(/style="[^"]*transform[^"]*"/gi, '');
+      
+      // Ensure PDF-specific optimizations with page break rules and smaller margins
+      finalHTML = finalHTML.replace(/<style>/gi, `<style>
+        /* PDF-specific optimizations */
+        @page { 
+          margin: 10mm 12mm; /* Minimal margins - content goes almost to edges */
+          size: A4;
+        }
+        
+        /* Page break rules - prevent sections from splitting */
+        .section-title, .preview-h3, .candidate-name, h1, h2, h3 {
+          page-break-after: avoid !important;
+          break-after: avoid !important;
+        }
+        
+        .section-card, .preview-section, .experience-block {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          page-break-after: auto !important;
+          break-after: auto !important;
+        }
+        
+        .section-divider, hr {
+          page-break-after: avoid !important;
+          break-after: avoid !important;
+        }
+        
+        /* Ensure sections stay together */
+        .section-title + .section-divider + .section-card {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+        
+        /* Manager details should stay with header */
+        .header, .manager-contact {
+          page-break-after: avoid !important;
+          break-after: avoid !important;
+        }
+        
+        @media print {
+          body { 
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important;
+            font-size: 12px !important;
+          }
+          * { 
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+          }
+          .container { 
+            box-shadow: none !important; 
+            margin: 0 !important; 
+            padding: 0 !important;
+            max-width: none !important;
+          }
+          iframe { display: none !important; }
+          
+          /* Force small font sizes to match preview exactly */
+          .candidate-name { font-size: 1.1rem !important; }
+          .candidate-role { font-size: 0.75rem !important; }
+          .candidate-years { font-size: 0.7rem !important; }
+          .section-title { font-size: 0.75rem !important; }
+          .section-card, .section-content, .preview-li, ul li, p { font-size: 0.8rem !important; }
+          .section-card-title { font-size: 0.8rem !important; }
+          
+          /* Remove any container padding to let page margins control spacing */
+          .header { padding: 20px 0 !important; }
+          .section-card { margin-left: 0 !important; margin-right: 0 !important; }
+          
+          /* Force colors in PDF */
+          .section-card, .preview-section { 
+            background: #f5f7fa !important; 
+            border-left: 4px solid #073C51 !important;
+          }
+          .preview-ul li::marker { color: #FFC300 !important; }
+          .section-title { color: #073C51 !important; border-bottom: 1px solid #073C51 !important; }
+          .tag::before { background: #FFB800 !important; }
+        }
+      </style>
+      <style>`);
+
+      // Generate PDF from the preview HTML
+      const pdfBuffer = await generatePDF(finalHTML);
+      
+      // Upload to Vercel Blob
+      const fileName = `${body.candidateData?.fullName?.replace(/\s+/g, '_') || 'competence_file'}_${Date.now()}.pdf`;
+      const blob = await put(fileName, pdfBuffer, {
+        access: 'public',
+        contentType: 'application/pdf',
+      });
+
+      // Save to database for /competence-files page
+      try {
+        // Check if candidate exists in database
+        const candidateExists = await prisma.candidate.findUnique({
+          where: { id: body.candidateData.id }
+        });
+
+        if (candidateExists) {
+          await prisma.competenceFile.create({
+            data: {
+              fileName: fileName,
+              candidateId: body.candidateData.id,
+              filePath: fileName,
+              downloadUrl: blob.url,
+              format: 'pdf',
+              status: CompetenceFileStatus.READY,
+              version: 1,
+              metadata: {
+                template: body.template || 'unknown',
+                templateName: body.template === 'antaes' ? 'Antaes Template' : 'Emineon Template',
+                generationMethod: 'preview-html',
+                managerContact: body.managerContact,
+                generationTimestamp: new Date().toISOString(),
+                previewGenerated: true
+              },
+              sectionsConfig: {
+                usePreviewHTML: true,
+                originalHTML: body.previewHTML
+              },
+              generatedBy: 'editor',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }
+          });
+          console.log('✅ Competence file saved to database');
+        } else {
+          console.log('⚠️ Candidate not found in database, PDF generated but not saved to competence files list');
+        }
+      } catch (dbError) {
+        console.error('❌ Failed to save competence file to database:', dbError);
+        // Continue anyway - PDF was generated successfully
+      }
+
+      console.log('✅ PDF generated successfully from preview HTML');
+      
+      return NextResponse.json({
+        success: true,
+        downloadUrl: blob.url,
+        fileName: fileName,
+        message: 'PDF generated successfully from preview'
+      });
+    }
+    
+    // Original segment-based approach
+    const { candidateData: rawCandidate, segments, jobDescription, managerContact, template = 'professional-classic', client, jobTitle } = body;
+    const candidateData = {
+      ...rawCandidate,
+      email: rawCandidate?.email ?? '',
+      phone: rawCandidate?.phone ?? '',
+      location: rawCandidate?.location ?? '',
+      yearsOfExperience: typeof rawCandidate?.yearsOfExperience === 'number' && Number.isFinite(rawCandidate.yearsOfExperience)
+        ? rawCandidate.yearsOfExperience
+        : undefined,
+    } as any;
 
     if (!candidateData || !segments) {
       return NextResponse.json(

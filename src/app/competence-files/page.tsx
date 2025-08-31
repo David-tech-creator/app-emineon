@@ -207,9 +207,16 @@ export default function CompetenceFilesPage() {
   };
 
   const handlePreview = (file: CompetenceFile) => {
-    // Open preview in a new tab
-    const previewUrl = `/api/competence-files/${file.id}/preview`;
-    window.open(previewUrl, '_blank');
+    // If file has a download URL (Vercel blob), open it directly
+    if (file.fileUrl) {
+      console.log('🔗 Opening PDF directly from Vercel blob:', file.fileUrl);
+      window.open(file.fileUrl, '_blank');
+    } else {
+      // Fallback to generated preview endpoint
+      console.log('📄 Using generated preview endpoint for:', file.id);
+      const previewUrl = `/api/competence-files/${file.id}/preview`;
+      window.open(previewUrl, '_blank');
+    }
   };
 
   const handleModify = async (file: CompetenceFile) => {
@@ -606,9 +613,10 @@ export default function CompetenceFilesPage() {
                           variant="outline" 
                           size="sm"
                           onClick={() => handlePreview(file)}
+                          title={file.fileUrl ? 'Open PDF in new tab' : 'Generate preview'}
                         >
                           <Eye className="h-4 w-4 mr-1" />
-                          Preview
+                          {file.fileUrl ? 'View PDF' : 'Preview'}
                         </Button>
                         <Button 
                           variant="outline" 
@@ -652,7 +660,7 @@ export default function CompetenceFilesPage() {
                                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                 >
                                   <ExternalLink className="h-4 w-4 mr-3" />
-                                  Open Preview
+                                  {file.fileUrl ? 'Open PDF' : 'Open Preview'}
                                 </button>
                                 <div className="border-t border-gray-100"></div>
                                 <button
@@ -785,6 +793,7 @@ export default function CompetenceFilesPage() {
           }, 500);
         }}
         preselectedCandidate={selectedFile?.candidateData || null}
+        existingFileData={selectedFile}
       />
       
       <CreateTemplateModal

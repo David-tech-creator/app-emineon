@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Candidate {
@@ -99,6 +98,7 @@ model Candidate {
   competenceFiles       CompetenceFile[]
   projectCandidates     ProjectCandidate[]
       enrichmentJobs        EnrichmentJob[]
+  jobMatches            CandidateJobMatch[]
 
   @@map("candidates")
 }
@@ -149,6 +149,7 @@ model Job {
   assessmentRequirements ClientAssessmentRequirement[]
   candidateAssessments   CandidateAssessment[]
   interviewRequests   InterviewRequest[]
+  candidateMatches    CandidateJobMatch[]
 
   @@index([expiresAt])
   @@index([publishedAt])
@@ -1214,4 +1215,25 @@ model Education {
   updatedAt DateTime @updatedAt
 
   @@map("educations")
+}
+
+model CandidateJobMatch {
+  id            String   @id @default(cuid())
+  candidateId   String
+  jobId         String
+  score         Float    // AI matching score 0-100
+  reasoning     String?  // AI explanation of the match
+  keyMatches    String[] // Array of key matching points
+  gaps          String[] // Array of identified gaps
+  recommendations String[] // Array of recommendations
+  matchedAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  candidate     Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job           Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  // Ensure one match record per candidate-job pair
+  @@unique([candidateId, jobId])
+  @@map("candidate_job_matches")
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { AlgoliaService } from '@/lib/services/algolia-service';
 
 export const runtime = 'nodejs';
 
@@ -195,6 +196,15 @@ export async function POST(request: NextRequest) {
     });
 
     console.log('Job created successfully:', job.id);
+
+    // Index job in Algolia
+    try {
+      await AlgoliaService.indexJob(job.id);
+      console.log('✅ Job indexed in Algolia');
+    } catch (algoliaError) {
+      console.error('⚠️ Failed to index job in Algolia:', algoliaError);
+      // Don't fail the entire request if Algolia fails
+    }
 
     return NextResponse.json(job, { status: 201 });
   } catch (error) {

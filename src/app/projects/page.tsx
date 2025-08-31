@@ -6,7 +6,7 @@ import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
 import { 
   Plus, 
@@ -16,7 +16,17 @@ import {
   Eye, 
   Users, 
   FileText,
-  Calendar
+  Calendar,
+  Edit3,
+  Trash2,
+  Download,
+  CheckCircle2,
+  AlertCircle,
+  TrendingUp,
+  List,
+  Grid3X3,
+  Briefcase,
+  MapPin
 } from 'lucide-react';
 
 interface Project {

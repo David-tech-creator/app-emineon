@@ -8,7 +8,8 @@ import {
   Plus, Search, Filter, MoreVertical, 
   Building, Star, TrendingUp, ArrowLeft, 
   FileText, Mail, Phone, MapPin, Globe, 
-  Settings, Users2, Briefcase
+  Settings, Users2, Briefcase,
+  Shield, Brain, PieChart, Handshake, Target, BarChart3, Eye, DollarSign, MessageSquare, Activity
 } from 'lucide-react';
 
 export default function ClientsPage() {

@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { z } from 'zod';
 import { addToQueue } from './queue';
 import { parseAndValidateJson } from './json-utils';
 import { 
@@ -338,7 +339,7 @@ Key Responsibilities Expected: ${jobAnalysis.keyResponsibilities.join(', ')}` : 
         throw new Error('No content received from OpenAI');
       }
 
-      const experiences = parseAndValidateJson(content, z.array(EnrichedExperienceSchema), 'Work Experience Enrichment');
+      const experiences = parseAndValidateJson(content, EnrichedExperienceSchema.array(), 'Work Experience Enrichment');
       return experiences;
     }, { 
       priority: 'normal', 
@@ -466,7 +467,7 @@ ${jobDescription ? `\nTarget Role: ${jobDescription.title}` : ''}`
         throw new Error('No content received from OpenAI');
       }
 
-      return parseAndValidateJson(content, z.array(z.string()), 'Certifications Optimization');
+      return parseAndValidateJson(content, z.string().array(), 'Certifications Optimization');
     }, { 
       priority: 'normal', 
       operationName: 'Certifications Optimization' 

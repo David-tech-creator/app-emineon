@@ -112,7 +112,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
   } catch (error: unknown) {
     console.error('Upload error:', error);
     return NextResponse.json(
-      { error: 'Upload failed', message: error instanceof Error ? error.message : 'Unknown error' },
+      { success: false, error: 'Upload failed', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

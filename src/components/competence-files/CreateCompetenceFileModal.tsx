@@ -5,6 +5,7 @@ import { useAuth } from '@clerk/nextjs';
 import { Button } from '@/components/ui/Button';
 import { X } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 
 
 // Import step components
@@ -13,6 +14,7 @@ import { TemplateSelectionStep } from './steps/TemplateSelectionStep';
 import { JobDescriptionStep } from './steps/JobDescriptionStep';
 import { EditorStep } from './steps/EditorStep';
 import { useSegmentStore } from '@/stores/ai-generation-store';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 
 // Types
@@ -43,6 +45,7 @@ interface CreateCompetenceFileModalProps {
   onClose: () => void;
   onSuccess: (fileUrl: string) => void;
   preselectedCandidate?: CandidateData | null;
+  existingFileData?: any; // For editing existing competence files
 }
 
 interface JobDescription {
@@ -58,7 +61,8 @@ export function CreateCompetenceFileModal({
   isOpen, 
   onClose, 
   onSuccess, 
-  preselectedCandidate 
+  preselectedCandidate,
+  existingFileData
 }: CreateCompetenceFileModalProps) {
   const { getToken } = useAuth();
   
@@ -67,6 +71,7 @@ export function CreateCompetenceFileModal({
     segments, 
     isLoading: segmentsLoading, 
     loadFromAI, 
+    loadFromExisting,
     clearSegments 
   } = useSegmentStore();
   
@@ -90,6 +95,7 @@ export function CreateCompetenceFileModal({
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [jobDescriptionFiles, setJobDescriptionFiles] = useState<File[]>([]);
   const [isJobDescriptionExpanded, setIsJobDescriptionExpanded] = useState(false);
+  const [headerCollapsed, setHeaderCollapsed] = useState(false);
   
   // Manager contact details
   const [managerName, setManagerName] = useState('');
@@ -143,7 +149,13 @@ export function CreateCompetenceFileModal({
         throw new Error(result.message || 'Invalid response format from server');
       }
       
-      const newCandidate = result.data;
+      const newCandidate = {
+        ...result.data,
+        yearsOfExperience: typeof result.data?.yearsOfExperience === 'number' && Number.isFinite(result.data.yearsOfExperience)
+          ? result.data.yearsOfExperience
+          : 0,
+        summary: result.data?.summary ?? '',
+      } as CandidateData;
       
       if (!newCandidate.fullName) {
         throw new Error('Could not extract candidate name from file. Please ensure the file contains clear candidate information.');
@@ -197,7 +209,13 @@ export function CreateCompetenceFileModal({
         throw new Error(result.message || 'Invalid response format');
       }
       
-      const newCandidate = result.data;
+      const newCandidate = {
+        ...result.data,
+        yearsOfExperience: typeof result.data?.yearsOfExperience === 'number' && Number.isFinite(result.data.yearsOfExperience)
+          ? result.data.yearsOfExperience
+          : 0,
+        summary: result.data?.summary ?? '',
+      } as CandidateData;
       
       if (!newCandidate.fullName) {
         throw new Error('Could not extract candidate name from text');
@@ -228,7 +246,7 @@ export function CreateCompetenceFileModal({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ linkedinText: url }),
       });
       
       if (!response.ok) {
@@ -251,7 +269,13 @@ export function CreateCompetenceFileModal({
         throw new Error(result.message || 'Invalid response format');
       }
       
-      const newCandidate = result.data;
+      const newCandidate = {
+        ...result.data,
+        yearsOfExperience: typeof result.data?.yearsOfExperience === 'number' && Number.isFinite(result.data.yearsOfExperience)
+          ? result.data.yearsOfExperience
+          : 0,
+        summary: result.data?.summary ?? '',
+      } as CandidateData;
       
       if (!newCandidate.fullName) {
         throw new Error('Could not extract candidate name from LinkedIn profile');
@@ -272,13 +296,23 @@ export function CreateCompetenceFileModal({
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
     
+    console.log('📁 Job description files selected:', files.map(f => ({ name: f.name, size: f.size, type: f.type })));
+    
     setJobDescriptionFiles(files);
     setIsParsing(true);
     
     try {
       const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication token not available');
+      }
+      
+      console.log('📤 Uploading files for text extraction...');
       const formData = new FormData();
-      files.forEach(file => formData.append('files', file));
+      files.forEach(file => {
+        console.log(`📎 Adding file to FormData: ${file.name} (${file.size} bytes)`);
+        formData.append('files', file);
+      });
       
       const response = await fetch('/api/files/extract-text', {
         method: 'POST',
@@ -288,16 +322,34 @@ export function CreateCompetenceFileModal({
         body: formData,
       });
       
+      console.log('📥 Text extraction response status:', response.status);
+      
       if (response.ok) {
-        const { texts } = await response.json();
-        const combinedText = texts.join('\n\n');
-        await parseJobDescription(combinedText);
+        const result = await response.json();
+        console.log('📄 Text extraction result:', {
+          hasTexts: !!result.texts,
+          hasText: !!result.text,
+          textsLength: result.texts?.length || 0,
+          textLength: result.text?.length || 0,
+          fileCount: result.fileCount || 0
+        });
+        
+        const combinedText = result.texts ? result.texts.join('\n\n') : result.text || '';
+        if (combinedText.trim()) {
+          console.log('✅ Text extracted successfully, parsing with AI...');
+          await parseJobDescription(combinedText);
+        } else {
+          throw new Error('No text could be extracted from the uploaded files');
+        }
       } else {
-        throw new Error('Failed to extract text from files');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Text extraction failed:', { status: response.status, error: errorData });
+        throw new Error(errorData.error || `Failed to extract text from files (${response.status})`);
       }
     } catch (error) {
-      console.error('Error processing job description files:', error);
-      alert('Failed to process job description files. Please try again.');
+      console.error('💥 Error processing job description files:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to process job description files: ${errorMessage}\n\nPlease check the console for more details and try again.`);
     } finally {
       setIsParsing(false);
     }
@@ -305,7 +357,13 @@ export function CreateCompetenceFileModal({
 
   const parseJobDescription = async (text: string) => {
     try {
+      console.log('🤖 Parsing job description with AI...', { textLength: text.length });
+      
       const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication token not available for job parsing');
+      }
+      
       const response = await fetch('/api/ai/job-description/parse', {
         method: 'POST',
         headers: {
@@ -315,8 +373,18 @@ export function CreateCompetenceFileModal({
         body: JSON.stringify({ text }),
       });
       
+      console.log('🔍 Job parsing response status:', response.status);
+      
       if (response.ok) {
         const parsed = await response.json();
+        console.log('✅ Job description parsed successfully:', {
+          title: parsed.title,
+          company: parsed.company,
+          requirementsCount: parsed.requirements?.length || 0,
+          skillsCount: parsed.skills?.length || 0,
+          hasResponsibilities: !!parsed.responsibilities
+        });
+        
         setJobDescription({
           text,
           requirements: parsed.requirements || [],
@@ -326,13 +394,33 @@ export function CreateCompetenceFileModal({
           company: parsed.company || ''
         });
       } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('⚠️ Job parsing failed, using text only:', { status: response.status, error: errorData });
+        
         // Fallback: just set the text
-        setJobDescription(prev => ({ ...prev, text }));
+        setJobDescription(prev => ({ 
+          ...prev, 
+          text,
+          requirements: [],
+          skills: [],
+          responsibilities: '',
+          title: '',
+          company: ''
+        }));
       }
     } catch (error) {
-      console.error('Error parsing job description:', error);
+      console.error('❌ Error parsing job description:', error);
+      
       // Fallback: just set the text
-      setJobDescription(prev => ({ ...prev, text }));
+      setJobDescription(prev => ({ 
+        ...prev, 
+        text,
+        requirements: [],
+        skills: [],
+        responsibilities: '',
+        title: '',
+        company: ''
+      }));
     }
   };
 
@@ -433,13 +521,12 @@ export function CreateCompetenceFileModal({
 
       setProcessingStep('Preparing document content...');
       setProcessingProgress(15);
-
       console.log('🎯 Modal - handleGenerateDocument called with:', {
         format,
         finalEditorSegmentsProvided: !!finalEditorSegments,
         finalEditorSegmentsCount: finalEditorSegments?.length || 0,
         storeSegmentsCount: segments.length,
-        finalEditorSegments: finalEditorSegments?.map(s => ({
+        finalEditorSegments: finalEditorSegments?.map((s: any) => ({
           id: s.id,
           title: s.title,
           type: s.type,
@@ -455,7 +542,7 @@ export function CreateCompetenceFileModal({
       if (finalEditorSegments) {
         console.log('🎯 Using final editor content for PDF generation:', {
           segmentsCount: finalEditorSegments.length,
-          segments: finalEditorSegments.map(s => ({
+          segments: finalEditorSegments.map((s: any) => ({
             title: s.title,
             type: s.type,
             visible: s.visible,
@@ -683,13 +770,99 @@ export function CreateCompetenceFileModal({
       case 1:
         return selectedCandidate !== null;
       case 2:
-        return true; // Job description is optional, but having it enables AI optimization
+        // Job description is optional - can proceed without it
+        return true;
       case 3:
         return selectedTemplate !== null;
       default:
         return false;
     }
   };
+
+  // Add supported languages
+  const SUPPORTED_LANGUAGES = [
+    { code: 'en', label: 'English' },
+    { code: 'fr', label: 'Français' },
+    { code: 'de', label: 'Deutsch' },
+    { code: 'nl', label: 'Nederlands' },
+  ];
+
+  // Add language state
+  const [language, setLanguage] = useState('en');
+
+  // Handler for language change in editor
+  const handleEditorLanguageChange = (newLang: string) => {
+    if (newLang !== language) {
+      if (window.confirm('Changing the language will regenerate all content in the new language. Continue?')) {
+        setLanguage(newLang);
+        // Optionally, reset segments or trigger regeneration here if needed
+        // For now, EditorStep will handle regeneration on prop change
+      }
+    }
+  };
+
+  // Load existing file data when editing
+  useEffect(() => {
+    if (existingFileData && isOpen) {
+      console.log('📝 Loading existing competence file for editing:', existingFileData);
+      
+      // Set candidate data from file
+      if (existingFileData.candidate) {
+        const candidateData: CandidateData = {
+          id: existingFileData.candidate.id,
+          fullName: `${existingFileData.candidate.firstName} ${existingFileData.candidate.lastName}`,
+          currentTitle: existingFileData.candidate.currentTitle || '',
+          email: existingFileData.candidate.email || '',
+          phone: existingFileData.candidate.phone || '',
+          location: existingFileData.candidate.currentLocation || '',
+          yearsOfExperience: existingFileData.candidate.experienceYears || 0,
+          skills: [
+            ...(existingFileData.candidate.technicalSkills || []),
+            ...(existingFileData.candidate.softSkills || [])
+          ],
+          certifications: existingFileData.candidate.certifications || [],
+          experience: (existingFileData.candidate.workExperiences || []).map((exp: any) => ({
+            company: exp.company || '',
+            title: exp.jobTitle || '',
+            startDate: exp.startDate ? new Date(exp.startDate).toISOString().slice(0, 7) : '',
+            endDate: exp.endDate ? new Date(exp.endDate).toISOString().slice(0, 7) : '',
+            responsibilities: exp.responsibilities || ''
+          })),
+          education: existingFileData.candidate.degrees || [],
+          languages: existingFileData.candidate.spokenLanguages || [],
+          summary: existingFileData.candidate.summary || ''
+        };
+        
+        setSelectedCandidate(candidateData);
+      }
+      
+      // Set template from metadata
+      if (existingFileData.metadata?.template) {
+        setSelectedTemplate(existingFileData.metadata.template);
+      }
+      
+      // Set job description from metadata
+      if (existingFileData.metadata?.jobDescription) {
+        setJobDescription(existingFileData.metadata.jobDescription);
+      }
+      
+      // Set manager contact from metadata
+      if (existingFileData.metadata?.managerContact) {
+        const contact = existingFileData.metadata.managerContact;
+        setManagerName(contact.name || '');
+        setManagerEmail(contact.email || '');
+        setManagerPhone(contact.phone || '');
+      }
+      
+      // Load the segments from existing file data
+      loadFromExisting(existingFileData);
+      
+      // Skip to editor step for editing
+      setCurrentStep(4);
+      
+      console.log('✅ Existing competence file loaded for editing');
+    }
+  }, [existingFileData, isOpen]);
 
   if (!isOpen) return null;
 
@@ -706,37 +879,72 @@ export function CreateCompetenceFileModal({
     <div className={modalClass}>
       <div className={innerClass}>
         {/* Header: Always show stepper and exit button */}
-        <div className="flex items-center justify-between p-6 border-b flex-shrink-0">
-          <div>
-            <h2 className="text-xl font-semibold">Create Competence File</h2>
-            <div className="flex items-center space-x-4 mt-2">
-              {[1, 2, 3, 4].map((step) => (
-                <div key={step} className="flex items-center space-x-2">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-                    currentStep === step 
-                      ? 'bg-primary-600 text-white' 
-                      : currentStep > step 
-                        ? 'bg-success-600 text-white' 
-                        : 'bg-secondary-200 text-secondary-600'
-                  }`}>
-                    {step}
-                  </div>
-                  <span className={`text-sm ${
-                    currentStep === step ? 'text-primary-600 font-medium' : 'text-secondary-600'
-                  }`}>
-                    {step === 1 && 'Candidate'}
-                    {step === 2 && 'Job Description'}
-                    {step === 3 && 'Template'}
-                    {step === 4 && 'Editor'}
-                  </span>
-                  {step < 4 && <span className="text-gray-300">→</span>}
+        <div className={`flex items-center justify-between p-6 border-b flex-shrink-0 transition-all duration-300 ${headerCollapsed ? 'h-10 min-h-10 py-1' : ''}`} style={{ minHeight: headerCollapsed ? 40 : undefined, height: headerCollapsed ? 40 : undefined, overflow: 'hidden' }}>
+          <div className={`${headerCollapsed ? 'truncate' : ''}`} style={{ maxWidth: headerCollapsed ? '80vw' : undefined }}>
+            {!headerCollapsed && (
+              <>
+                <h2 className="text-xl font-semibold">Create Competence File</h2>
+                <div className="flex items-center space-x-4 mt-2">
+                  {[1, 2, 3, 4].map((step) => (
+                    <div key={step} className="flex items-center space-x-2">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                        currentStep === step 
+                          ? 'bg-primary-600 text-white' 
+                          : currentStep > step 
+                            ? 'bg-success-600 text-white' 
+                            : 'bg-secondary-200 text-secondary-600'
+                      }`}>
+                        {step}
+                      </div>
+                      <span className={`text-sm ${
+                        currentStep === step ? 'text-primary-600 font-medium' : 'text-secondary-600'
+                      }`}>
+                        {step === 1 && 'Candidate'}
+                        {step === 2 && 'Job Description'}
+                        {step === 3 && 'Template'}
+                        {step === 4 && 'Editor'}
+                      </span>
+                      {step < 4 && <span className="text-gray-300">→</span>}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
+            {headerCollapsed && (
+              <span className="text-base font-semibold text-gray-700">Create Competence File</span>
+            )}
           </div>
-          <Button variant="ghost" onClick={onClose} className="ml-auto">
-            <X className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center space-x-2">
+            {/* Language selector (always visible) */}
+            {currentStep < 4 && (
+              <select
+                className="border rounded px-2 py-1 text-sm mr-2"
+                value={language}
+                onChange={e => setLanguage(e.target.value)}
+                aria-label="Select language"
+              >
+                {SUPPORTED_LANGUAGES.map(lang => (
+                  <option key={lang.code} value={lang.code}>{lang.label}</option>
+                ))}
+              </select>
+            )}
+            <button
+              onClick={() => setHeaderCollapsed((v) => !v)}
+              className="p-2 rounded hover:bg-gray-100 transition-colors"
+              title={headerCollapsed ? 'Show header' : 'Collapse header'}
+              aria-label={headerCollapsed ? 'Show header' : 'Collapse header'}
+            >
+              {headerCollapsed ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded hover:bg-gray-100 transition-colors ml-2"
+              title="Close"
+              aria-label="Close"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
         </div>
         
         {/* Content */}
@@ -749,10 +957,7 @@ export function CreateCompetenceFileModal({
               isParsing={isParsing}
               onFileUpload={handleFileUpload}
               onTextParse={handleTextParse}
-              onUrlParse={async (url: string) => {
-                // Handle LinkedIn URL parsing
-                console.log('LinkedIn URL parsing:', url);
-              }}
+              onUrlParse={handleUrlParse}
             />
           )}
 
@@ -792,16 +997,21 @@ export function CreateCompetenceFileModal({
 
           {/* Step 4: AI-Enhanced Editor */}
           {currentStep === 4 && selectedCandidate && (
-            <EditorStep
-              selectedCandidate={selectedCandidate}
-              selectedTemplate={selectedTemplate}
-              jobDescription={jobDescription}
-              onBack={handleBack}
-              onSave={handleSave}
-              onGenerateDocument={handleGenerateDocument}
-              isGenerating={isGenerating}
-              isAutoSaving={isAutoSaving}
-            />
+            <ErrorBoundary>
+              <EditorStep
+                selectedCandidate={selectedCandidate}
+                selectedTemplate={selectedTemplate}
+                jobDescription={jobDescription}
+                managerContact={{ name: managerName, email: managerEmail, phone: managerPhone }}
+                onBack={handleBack}
+                onSave={handleSave}
+                onGenerateDocument={handleGenerateDocument}
+                isGenerating={isGenerating}
+                isAutoSaving={isAutoSaving}
+                language={language}
+                onLanguageChange={handleEditorLanguageChange}
+              />
+            </ErrorBoundary>
           )}
         </div>
 

@@ -264,4 +264,7 @@ export interface JobDescription {
   responsibilities: string;
   title?: string;
   company?: string;
+  managerName?: string;
+  managerEmail?: string;
+  managerPhone?: string;
 } 

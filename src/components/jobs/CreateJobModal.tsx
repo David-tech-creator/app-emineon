@@ -222,6 +222,44 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
   const [isDragOver, setIsDragOver] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  
+  // AI Matching state
+  const [showAIMatching, setShowAIMatching] = useState(false);
+  const [isMatching, setIsMatching] = useState(false);
+  const [matchingResults, setMatchingResults] = useState<any[]>([]);
+  const [createdJobId, setCreatedJobId] = useState<string | null>(null);
+  
+  // AI Matching function
+  const handleAIMatching = async () => {
+    if (!createdJobId) return;
+    
+    setIsMatching(true);
+    try {
+      const response = await fetch('/api/ai/candidate-job-matching', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: createdJobId,
+          mode: 'job-to-candidates',
+          limit: 10
+        })
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        setMatchingResults(result.data.matches);
+        setShowAIMatching(true);
+      } else {
+        alert('AI matching failed: ' + result.error);
+      }
+    } catch (error) {
+      console.error('AI matching error:', error);
+      alert('AI matching failed. Please try again.');
+    } finally {
+      setIsMatching(false);
+    }
+  };
+  
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
   const [showChat, setShowChat] = useState(false);
@@ -465,7 +503,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ jobDescription: text }),
+        body: JSON.stringify({ text }),
       });
 
       console.log('📡 API Response status:', response.status);
@@ -478,31 +516,32 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
 
       const result = await response.json();
       console.log('✅ API Result:', result);
+      const parsed = result?.data ?? result;
       
       // Enhanced parsed data with AI extraction - properly map API response
       const aiParsedData: Partial<JobFormData> = {
-        title: result.data?.title || extractTitle(text) || 'Senior Software Developer',
-        company: result.data?.company || extractCompany(text) || 'Tech Company',
-        location: result.data?.location || extractLocation(text) || 'Zurich, Switzerland',
-        // Fix contract type mapping - API returns 'contract' but form expects 'fixed-term'
-        contractType: result.data?.contractType === 'contract' ? 'fixed-term' : 
-                     (result.data?.contractType || extractContractType(text) || 'permanent'),
-        workMode: result.data?.workMode || extractWorkMode(text) || 'hybrid',
-        description: result.data?.description || text,
-        skills: result.data?.skills || extractSkills(text),
-        languages: result.data?.languages || extractLanguages(text),
-        department: result.data?.department || extractDepartment(text),
-        priority: result.data?.priority || 'medium',
+        title: parsed?.title || extractTitle(text) || 'Senior Software Developer',
+        company: parsed?.company || extractCompany(text) || 'Tech Company',
+        location: parsed?.location || extractLocation(text) || 'Zurich, Switzerland',
+        // Fix contract type mapping - API may return 'contract' but form expects 'fixed-term'
+        contractType: parsed?.contractType === 'contract' ? 'fixed-term' : 
+                     (parsed?.contractType || extractContractType(text) || 'permanent'),
+        workMode: parsed?.workMode || extractWorkMode(text) || 'hybrid',
+        description: parsed?.description || text,
+        skills: parsed?.skills || parsed?.requirements || extractSkills(text),
+        languages: parsed?.languages || extractLanguages(text),
+        department: parsed?.department || extractDepartment(text),
+        priority: parsed?.priority || 'medium',
         // Use actual user name instead of hardcoded string
         owner: user?.fullName || user?.firstName + ' ' + user?.lastName || 'Current User',
-        salary: result.data?.salary || '',
-        duration: result.data?.duration || '',
+        salary: parsed?.salary || '',
+        duration: parsed?.duration || '',
         // Handle start date properly
-        startDate: result.data?.startDate ? formatDateForInput(result.data.startDate) : ''
+        startDate: parsed?.startDate ? formatDateForInput(parsed.startDate) : ''
       };
 
       console.log('🎯 Parsed Data:', aiParsedData);
-      setParsedData(aiParsedData);
+      setParsedData({ ...aiParsedData, requirements: parsed?.requirements || [], responsibilities: parsed?.responsibilities || [] });
       
       // Pre-fill form with parsed data - ensure proper type casting and force re-render
       console.log('📝 Setting form values...');
@@ -857,7 +896,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
       formData.append('file', file);
       
       console.log('📤 Uploading file for parsing...');
-      const response = await fetch('/api/files/parse', {
+      const response = await fetch('/api/files/extract-text', {
         method: 'POST',
         body: formData,
       });
@@ -869,8 +908,8 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
       const result = await response.json();
       console.log('📄 File parsing result:', result);
       
-      if (result.success && result.data?.content) {
-        await parseJobDescription(result.data.content);
+      if (result.success && result.text) {
+        await parseJobDescription(result.text);
       } else {
         throw new Error('No content extracted from file');
       }
@@ -908,7 +947,7 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
     if (files.length > 0) {
       const file = files[0];
       // Validate file type
-      const allowedTypes = ['.pdf', '.docx', '.txt', '.doc'];
+      const allowedTypes = ['.pdf', '.docx', '.txt'];
       const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
       
       if (allowedTypes.includes(fileExtension)) {
@@ -1050,16 +1089,28 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
       if (response.ok) {
         const job = await response.json();
         console.log(`Job ${isEditing ? 'updated' : 'created'} successfully:`, job);
-        setCurrentStep('success');
-        // Store job data for success screen
-        setCreatedJob(job);
-        // Auto-scroll to top for success step
-        setTimeout(scrollToTop, 100);
         
-        // Refresh the jobs page if we're on it
-        if (window.location.pathname === '/jobs') {
-          window.location.reload();
+        // Save the created job ID for AI matching
+        if (job.data?.id) {
+          setCreatedJobId(job.data.id);
         }
+        
+        // If publishing, confirm and close the modal immediately
+        if ((data.status || 'draft') === 'active') {
+          try { alert('Job published successfully'); } catch {}
+          // Refresh the jobs page if we're on it to reflect the new job and pipeline
+          if (window.location.pathname === '/jobs') {
+            window.location.reload();
+          }
+          resetModal();
+          onClose();
+          return;
+        }
+
+        // Otherwise show success screen for draft saves
+        setCurrentStep('success');
+        setCreatedJob(job); // Store job data for success screen
+        setTimeout(scrollToTop, 100); // Auto-scroll to top for success step
       } else {
         const errorData = await response.json();
         console.error('API Error:', errorData);
@@ -1703,6 +1754,43 @@ export function CreateJobModal({ open, onClose, editingJob }: CreateJobModalProp
 
               {/* Single column layout for all form fields */}
               <div className="space-y-6">
+                {/* AI Extracted Highlights */}
+                {parsedData && (
+                  <Card>
+                    <CardContent className="p-6">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                        <BarChart3 className="h-5 w-5 text-primary-600" />
+                        <span>AI Extracted Highlights</span>
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <h5 className="text-sm font-semibold text-gray-700 mb-2">Top Requirements</h5>
+                          {(parsedData.requirements || []).length === 0 ? (
+                            <p className="text-sm text-gray-500">None detected</p>
+                          ) : (
+                            <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                              {(parsedData.requirements || []).slice(0, 8).map((req: string, i: number) => (
+                                <li key={i}>{req}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                        <div>
+                          <h5 className="text-sm font-semibold text-gray-700 mb-2">Key Responsibilities</h5>
+                          {(parsedData.responsibilities || []).length === 0 ? (
+                            <p className="text-sm text-gray-500">None detected</p>
+                          ) : (
+                            <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                              {(parsedData.responsibilities || []).slice(0, 8).map((r: string, i: number) => (
+                                <li key={i}>{r}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
                 {/* Field Selection */}
                 <Card>
                   <CardContent className="p-6">
@@ -2884,7 +2972,7 @@ Apply now 👉 [link]
               <div className="space-y-4">
                 <h4 className="text-lg font-semibold text-gray-900">What would you like to do next?</h4>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Button
                     onClick={() => {
                       if (createdJob?.id) {
@@ -2895,6 +2983,24 @@ Apply now 👉 [link]
                   >
                     <Eye className="h-4 w-4 mr-2" />
                     View Job Details
+                  </Button>
+                  
+                  <Button
+                    onClick={handleAIMatching}
+                    disabled={isMatching || !createdJobId}
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+                  >
+                    {isMatching ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        AI Matching...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="h-4 w-4 mr-2" />
+                        ✨ AI Matching
+                      </>
+                    )}
                   </Button>
                   
                   <Button
@@ -2975,6 +3081,112 @@ Apply now 👉 [link]
         customStyleConfig={customStyleConfig}
          onDownload={downloadJobDescription}
        />
+       
+       {/* AI Matching Results Modal */}
+       {showAIMatching && (
+         <div className="fixed inset-0 z-60 overflow-y-auto">
+           <div className="flex items-center justify-center min-h-screen px-4">
+             <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowAIMatching(false)} />
+             <div className="relative bg-white rounded-lg max-w-4xl w-full p-6 max-h-[80vh] overflow-y-auto">
+               <div className="flex items-center justify-between mb-6">
+                 <div className="flex items-center space-x-3">
+                   <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center">
+                     <Brain className="h-5 w-5 text-white" />
+                   </div>
+                   <div>
+                     <h3 className="text-xl font-semibold text-gray-900">✨ AI Matching Results</h3>
+                     <p className="text-gray-600">Top matching candidates for this position</p>
+                   </div>
+                 </div>
+                 <button onClick={() => setShowAIMatching(false)} className="text-gray-400 hover:text-gray-600">
+                   <X className="h-6 w-6" />
+                 </button>
+               </div>
+               
+               <div className="space-y-4">
+                 {matchingResults.map((match, index) => (
+                   <div key={match.candidateId} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                     <div className="flex items-center justify-between mb-3">
+                       <div className="flex items-center space-x-3">
+                         <div className="text-2xl font-bold text-gray-400">#{index + 1}</div>
+                         <div>
+                           <h4 className="font-semibold text-gray-900">Candidate ID: {match.candidateId}</h4>
+                           <div className="flex items-center space-x-2 mt-1">
+                             <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${
+                               match.score >= 80 ? 'bg-green-100 text-green-800' :
+                               match.score >= 60 ? 'bg-blue-100 text-blue-800' :
+                               match.score >= 40 ? 'bg-yellow-100 text-yellow-800' :
+                               'bg-red-100 text-red-800'
+                             }`}>
+                               <Star className="h-4 w-4" />
+                               <span>{match.score}% Match</span>
+                             </div>
+                             <span className="text-xs text-gray-500">
+                               {match.score >= 80 ? 'Excellent Match' :
+                                match.score >= 60 ? 'Good Fit' :
+                                match.score >= 40 ? 'Moderate Fit' : 'Poor Fit'}
+                             </span>
+                           </div>
+                         </div>
+                       </div>
+                       <Button
+                         size="sm"
+                         onClick={() => {
+                           // Add candidate to job
+                           window.location.href = `/jobs/${createdJobId}#candidates`;
+                         }}
+                       >
+                         Add to Job
+                       </Button>
+                     </div>
+                     
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                       <div>
+                         <h5 className="font-medium text-green-700 mb-2">✅ Key Matches</h5>
+                         <ul className="space-y-1">
+                           {match.keyMatches?.map((keyMatch: string, idx: number) => (
+                             <li key={idx} className="text-green-600">• {keyMatch}</li>
+                           ))}
+                         </ul>
+                       </div>
+                       <div>
+                         <h5 className="font-medium text-orange-700 mb-2">⚠️ Gaps</h5>
+                         <ul className="space-y-1">
+                           {match.gaps?.map((gap: string, idx: number) => (
+                             <li key={idx} className="text-orange-600">• {gap}</li>
+                           ))}
+                         </ul>
+                       </div>
+                     </div>
+                     
+                     <div className="mt-3">
+                       <h5 className="font-medium text-gray-700 mb-2">💡 AI Reasoning</h5>
+                       <p className="text-gray-600 text-sm">{match.reasoning}</p>
+                     </div>
+                     
+                     {match.recommendations && match.recommendations.length > 0 && (
+                       <div className="mt-3">
+                         <h5 className="font-medium text-blue-700 mb-2">🎯 Recommendations</h5>
+                         <ul className="space-y-1">
+                           {match.recommendations.map((rec: string, idx: number) => (
+                             <li key={idx} className="text-blue-600 text-sm">• {rec}</li>
+                           ))}
+                         </ul>
+                       </div>
+                     )}
+                   </div>
+                 ))}
+               </div>
+               
+               <div className="flex justify-end mt-6 pt-4 border-t border-gray-200">
+                 <Button variant="outline" onClick={() => setShowAIMatching(false)}>
+                   Close
+                 </Button>
+               </div>
+             </div>
+           </div>
+         </div>
+       )}
      </div>
   );
 }

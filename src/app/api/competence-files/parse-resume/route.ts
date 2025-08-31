@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs';
 import OpenAI from 'openai';
+import { prisma } from '@/lib/prisma';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -449,26 +450,67 @@ ${text}`
     }
 
     // Add metadata
-    candidateData.id = `parsed_${Date.now()}`;
     candidateData.source = contentType.includes('application/json') ? 'text_input' : 'resume_upload';
-    
-    // Set metadata based on input type (avoid re-parsing request)
-    if (contentType.includes('application/json')) {
-      // For text input, we already have the text from earlier parsing
-      if (!candidateData.originalText) {
-        candidateData.originalText = 'Text input processed';
+
+    // --- NEW: Create or update candidate in the database ---
+    const [firstName, ...lastNameParts] = candidateData.fullName.split(' ');
+    const lastName = lastNameParts.join(' ');
+    const email = candidateData.email || `${candidateData.fullName.replace(/\s+/g, '').toLowerCase()}@temp.generated`;
+
+    // Try to find existing candidate by email or name
+    let dbCandidate = await prisma.candidate.findFirst({
+      where: {
+        OR: [
+          { email: email },
+          {
+            AND: [
+              { firstName: firstName || '' },
+              { lastName: lastName || '' }
+            ]
+          }
+        ]
       }
+    });
+
+    if (!dbCandidate) {
+      // Create new candidate
+      dbCandidate = await prisma.candidate.create({
+        data: {
+          firstName: firstName || 'Unknown',
+          lastName: lastName || '',
+          email: email,
+          currentTitle: candidateData.currentTitle || '',
+          phone: candidateData.phone || null,
+          currentLocation: candidateData.location || null,
+          experienceYears: candidateData.yearsOfExperience || null,
+          summary: candidateData.summary || null,
+          technicalSkills: candidateData.skills || [],
+          certifications: candidateData.certifications || [],
+          spokenLanguages: candidateData.languages || [],
+          lastUpdated: new Date(),
+          status: 'ACTIVE'
+        }
+      });
     } else {
-      // For file upload, we already have the file from earlier parsing
-      if (!candidateData.originalFileName) {
-        candidateData.originalFileName = 'Uploaded file';
-      }
-      if (!candidateData.fileType) {
-        candidateData.fileType = 'Unknown type';
-      }
+      // Optionally update candidate info here if needed
     }
 
-    console.log('✅ Resume parsed successfully:', candidateData.fullName);
+    // Build the response candidate object
+    const responseCandidate = {
+      id: dbCandidate.id,
+      fullName: `${dbCandidate.firstName} ${dbCandidate.lastName}`.trim(),
+      currentTitle: dbCandidate.currentTitle,
+      email: dbCandidate.email,
+      phone: dbCandidate.phone,
+      location: dbCandidate.currentLocation,
+      yearsOfExperience: typeof dbCandidate.experienceYears === 'number' && Number.isFinite(dbCandidate.experienceYears) ? dbCandidate.experienceYears : 0,
+      skills: dbCandidate.technicalSkills,
+      certifications: dbCandidate.certifications,
+      experience: candidateData.experience || [],
+      education: candidateData.education || [],
+      languages: dbCandidate.spokenLanguages,
+      summary: dbCandidate.summary || ''
+    };
 
     // Clean up uploaded file if it exists
     if (uploadedFileId) {
@@ -482,8 +524,8 @@ ${text}`
 
     return NextResponse.json({
       success: true,
-      data: candidateData,
-      message: 'Resume parsed successfully'
+      data: responseCandidate,
+      message: 'Resume parsed and candidate saved successfully'
     });
 
   } catch (error: any) {

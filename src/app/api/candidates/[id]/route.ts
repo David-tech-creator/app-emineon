@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs';
 import { prisma } from '@/lib/prisma';
+import { AlgoliaService } from '@/lib/services/algolia-service';
 
 export async function GET(
   request: NextRequest,
@@ -72,6 +73,15 @@ export async function PATCH(
 
     console.log(`✅ Candidate ${id} updated successfully`);
 
+    // Update candidate in Algolia
+    try {
+      await AlgoliaService.indexCandidate(id);
+      console.log('✅ Candidate updated in Algolia');
+    } catch (algoliaError) {
+      console.error('⚠️ Failed to update candidate in Algolia:', algoliaError);
+      // Don't fail the entire request if Algolia fails
+    }
+
     return NextResponse.json({
       success: true,
       data: updatedCandidate,
@@ -120,11 +130,32 @@ export async function DELETE(
 
     const { id } = params;
     
-    // For now, return a mock response
+    console.log(`🗑️ Deleting candidate ${id}...`);
+    
+    // Archive the candidate instead of hard delete (soft delete)
+    const deletedCandidate = await prisma.candidate.update({
+      where: { id },
+      data: {
+        archived: true,
+        lastUpdated: new Date(),
+      },
+    });
+    
+    console.log(`✅ Candidate ${id} archived successfully`);
+    
+    // Remove candidate from Algolia index
+    try {
+      await AlgoliaService.removeCandidate(id);
+      console.log('✅ Candidate removed from Algolia');
+    } catch (algoliaError) {
+      console.error('⚠️ Failed to remove candidate from Algolia:', algoliaError);
+      // Don't fail the entire request if Algolia fails
+    }
+    
     return NextResponse.json({
       success: true,
       message: 'Candidate deleted successfully',
-      deletedBy: userId,
+      data: deletedCandidate,
     });
   } catch (error) {
     console.error('Error deleting candidate:', error);

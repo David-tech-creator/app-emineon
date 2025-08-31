@@ -34,8 +34,9 @@ import {
   ChevronRight
 } from 'lucide-react';
 
-interface SwissCandidate {
+interface Candidate {
   id: number;
+  databaseId?: string;
   name: string;
   location: string;
   experience: string;
@@ -69,26 +70,104 @@ interface SwissCandidate {
     type: string;
     details?: string;
   }>;
+  // CV file information
+  originalCvUrl?: string;
+  originalCvFileName?: string;
+  originalCvUploadedAt?: string;
 }
 
 interface CandidateProfileModalProps {
-  candidate: SwissCandidate;
+  candidate: Candidate;
   isOpen: boolean;
   onClose: () => void;
+  initialEditMode?: boolean;
+  onRefresh?: () => void;
 }
 
 export function CandidateProfileModal({ 
   candidate, 
   isOpen, 
-  onClose 
+  onClose,
+  initialEditMode = false,
+  onRefresh
 }: CandidateProfileModalProps) {
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddToJobModal, setShowAddToJobModal] = useState(false);
   const [showCreateCompetenceModal, setShowCreateCompetenceModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(initialEditMode);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [editedCandidate, setEditedCandidate] = useState(candidate);
 
   if (!isOpen) return null;
+
+  const handleEdit = () => {
+    setIsEditMode(true);
+    setEditedCandidate(candidate);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    setEditedCandidate(candidate);
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      const response = await fetch(`/api/candidates/${candidate.databaseId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: editedCandidate.name.split(' ')[0],
+          lastName: editedCandidate.name.split(' ').slice(1).join(' '),
+          email: editedCandidate.email,
+          phone: editedCandidate.phone,
+          currentTitle: editedCandidate.currentRole,
+          currentLocation: editedCandidate.location,
+          summary: editedCandidate.summary,
+          technicalSkills: editedCandidate.skills,
+          expectedSalary: editedCandidate.expectedSalary,
+        }),
+      });
+
+      if (response.ok) {
+        setIsEditMode(false);
+        // Refresh the candidates list
+        onRefresh?.();
+      } else {
+        alert('Failed to update candidate');
+      }
+    } catch (error) {
+      console.error('Error updating candidate:', error);
+      alert('Failed to update candidate');
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/candidates/${candidate.databaseId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        onClose();
+        // Refresh the page to update the candidates list
+        window.location.reload();
+      } else {
+        alert('Failed to delete candidate');
+      }
+    } catch (error) {
+      console.error('Error deleting candidate:', error);
+      alert('Failed to delete candidate');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   const getTimelineIcon = (type: string) => {
     switch (type) {
@@ -166,10 +245,29 @@ export function CandidateProfileModal({
                 {candidate.avatar}
               </div>
               <div>
-                <h2 className="text-3xl font-bold text-gray-900">
-                  {candidate.name}
-                </h2>
-                <p className="text-gray-600 font-medium text-lg">{candidate.currentRole}</p>
+                {isEditMode ? (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={editedCandidate.name}
+                      onChange={(e) => setEditedCandidate({...editedCandidate, name: e.target.value})}
+                      className="text-3xl font-bold text-gray-900 bg-transparent border-b-2 border-blue-500 focus:outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={editedCandidate.currentRole}
+                      onChange={(e) => setEditedCandidate({...editedCandidate, currentRole: e.target.value})}
+                      className="text-gray-600 font-medium text-lg bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <h2 className="text-3xl font-bold text-gray-900">
+                      {candidate.name}
+                    </h2>
+                    <p className="text-gray-600 font-medium text-lg">{candidate.currentRole}</p>
+                  </div>
+                )}
                 <div className="flex items-center space-x-3 mt-2">
                   <div className="flex items-center">
                     {[...Array(5)].map((_, i) => (
@@ -194,12 +292,48 @@ export function CandidateProfileModal({
                 </div>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
-            >
-              <X className="h-6 w-6" />
-            </button>
+            <div className="flex items-center space-x-2">
+              {isEditMode ? (
+                <>
+                  <button
+                    onClick={handleSaveEdit}
+                    className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center space-x-1"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>Save</span>
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleEdit}
+                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors rounded-lg"
+                    title="Edit Candidate"
+                  >
+                    <Edit3 className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors rounded-lg"
+                    title="Delete Candidate"
+                  >
+                    <AlertCircle className="h-5 w-5" />
+                  </button>
+                </>
+              )}
+              <button
+                onClick={onClose}
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
           </div>
 
           {/* Quick Actions */}
@@ -279,19 +413,48 @@ export function CandidateProfileModal({
                     <div className="space-y-3">
                       <div className="flex items-center text-sm">
                         <Mail className="h-4 w-4 mr-3 text-gray-400" />
-                        <a href={`mailto:${candidate.email}`} className="text-primary-600 hover:text-primary-700 font-medium">
-                          {candidate.email}
-                        </a>
+                        {isEditMode ? (
+                          <input
+                            type="email"
+                            value={editedCandidate.email}
+                            onChange={(e) => setEditedCandidate({...editedCandidate, email: e.target.value})}
+                            className="flex-1 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                        ) : (
+                          <a href={`mailto:${candidate.email}`} className="text-primary-600 hover:text-primary-700 font-medium">
+                            {candidate.email}
+                          </a>
+                        )}
                       </div>
                       <div className="flex items-center text-sm">
                         <Phone className="h-4 w-4 mr-3 text-gray-400" />
-                        <a href={`tel:${candidate.phone}`} className="text-primary-600 hover:text-primary-700 font-medium">
-                          {candidate.phone}
-                        </a>
+                        {isEditMode ? (
+                          <input
+                            type="tel"
+                            value={editedCandidate.phone}
+                            onChange={(e) => setEditedCandidate({...editedCandidate, phone: e.target.value})}
+                            className="flex-1 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            placeholder="Phone number"
+                          />
+                        ) : (
+                          <a href={`tel:${candidate.phone}`} className="text-primary-600 hover:text-primary-700 font-medium">
+                            {candidate.phone}
+                          </a>
+                        )}
                       </div>
                       <div className="flex items-center text-sm text-gray-600">
                         <MapPin className="h-4 w-4 mr-3 text-gray-400" />
-                        {candidate.location}
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            value={editedCandidate.location}
+                            onChange={(e) => setEditedCandidate({...editedCandidate, location: e.target.value})}
+                            className="flex-1 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            placeholder="Location"
+                          />
+                        ) : (
+                          <span>{candidate.location}</span>
+                        )}
                       </div>
                       <div className="flex items-center text-sm text-gray-600">
                         <Building className="h-4 w-4 mr-3 text-gray-400" />
@@ -318,11 +481,31 @@ export function CandidateProfileModal({
                     <div className="space-y-3">
                       <div>
                         <label className="text-sm font-medium text-gray-700">Availability</label>
-                        <p className="text-sm text-gray-600">{candidate.availability}</p>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            value={editedCandidate.availability}
+                            onChange={(e) => setEditedCandidate({...editedCandidate, availability: e.target.value})}
+                            className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm mt-1"
+                            placeholder="Availability"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-600">{candidate.availability}</p>
+                        )}
                       </div>
                       <div>
                         <label className="text-sm font-medium text-gray-700">Expected Salary</label>
-                        <p className="text-sm text-gray-600">{candidate.expectedSalary}</p>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            value={editedCandidate.expectedSalary}
+                            onChange={(e) => setEditedCandidate({...editedCandidate, expectedSalary: e.target.value})}
+                            className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm mt-1"
+                            placeholder="Expected salary"
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-600">{candidate.expectedSalary}</p>
+                        )}
                       </div>
                       <div>
                         <label className="text-sm font-medium text-gray-700">Source</label>
@@ -441,14 +624,71 @@ export function CandidateProfileModal({
                   <Download className="h-5 w-5 mr-2 text-gray-400" />
                   Documents & Files
                 </h3>
-                <div className="text-center py-12 text-gray-500">
-                  <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                  <p className="text-lg font-medium">No documents uploaded yet</p>
-                  <p className="text-sm text-gray-400 mt-1">Documents will appear here when uploaded</p>
-                  <button className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-                    Upload Document
-                  </button>
-                </div>
+                
+                {candidate.originalCvUrl ? (
+                  <div className="space-y-4">
+                    {/* CV File */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                            <FileText className="h-5 w-5 text-red-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-gray-900">
+                              {candidate.originalCvFileName || 'CV Document'}
+                            </h4>
+                            <p className="text-sm text-gray-500">
+                              Uploaded {candidate.originalCvUploadedAt ? new Date(candidate.originalCvUploadedAt).toLocaleDateString() : 'recently'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => window.open(candidate.originalCvUrl, '_blank')}
+                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="View CV"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              const link = document.createElement('a');
+                              link.href = candidate.originalCvUrl!;
+                              link.download = candidate.originalCvFileName || 'cv.pdf';
+                              link.target = '_blank';
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            }}
+                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            title="Download CV"
+                          >
+                            <Download className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Upload More Documents */}
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                      <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                      <p className="text-sm text-gray-600 mb-2">Upload additional documents</p>
+                      <button className="px-4 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors">
+                        Choose Files
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-gray-500">
+                    <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                    <p className="text-lg font-medium">No documents uploaded yet</p>
+                    <p className="text-sm text-gray-400 mt-1">Documents will appear here when uploaded</p>
+                    <button className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                      Upload Document
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -712,6 +952,61 @@ export function CandidateProfileModal({
                     Send Email
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-70 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowDeleteConfirm(false)} />
+            <div className="relative bg-white rounded-lg max-w-md w-full p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Delete Candidate</h3>
+                <button onClick={() => setShowDeleteConfirm(false)} className="text-gray-400 hover:text-gray-600">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <div className="flex items-center mb-4">
+                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                    <AlertCircle className="h-6 w-6 text-red-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900">Are you sure?</h4>
+                    <p className="text-sm text-gray-600">This action cannot be undone.</p>
+                  </div>
+                </div>
+                <p className="text-gray-700">
+                  You are about to delete <strong>{candidate.name}</strong>. This will archive the candidate and remove them from the active candidates list.
+                </p>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <span>Delete Candidate</span>
+                  )}
+                </button>
               </div>
             </div>
           </div>

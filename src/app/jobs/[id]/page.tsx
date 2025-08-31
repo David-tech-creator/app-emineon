@@ -26,7 +26,12 @@ import {
   UserPlus,
   Settings,
   AlertCircle,
-  Loader2
+  Loader2,
+  Brain,
+  Zap,
+  Target,
+  X,
+  CheckCircle
 } from 'lucide-react';
 
 interface Job {
@@ -105,6 +110,42 @@ export default function JobDetailPage() {
   // Candidate management modals
   const [showAddExistingModal, setShowAddExistingModal] = useState(false);
   const [showCreateCandidateModal, setShowCreateCandidateModal] = useState(false);
+  
+  // AI Matching state
+  const [showAIMatching, setShowAIMatching] = useState(false);
+  const [isMatching, setIsMatching] = useState(false);
+  const [matchingResults, setMatchingResults] = useState<any[]>([]);
+
+  // AI Matching function
+  const handleAIMatching = async () => {
+    if (!job?.id) return;
+    
+    setIsMatching(true);
+    try {
+      const response = await fetch('/api/ai/candidate-job-matching', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: job.id,
+          mode: 'job-to-candidates',
+          limit: 15
+        })
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        setMatchingResults(result.data.matches);
+        setShowAIMatching(true);
+      } else {
+        alert('AI matching failed: ' + result.error);
+      }
+    } catch (error) {
+      console.error('AI matching error:', error);
+      alert('AI matching failed. Please try again.');
+    } finally {
+      setIsMatching(false);
+    }
+  };
 
   // Wait for Clerk to be fully loaded before making API calls
   const isFullyLoaded = userLoaded && authLoaded;
@@ -536,10 +577,29 @@ export default function JobDetailPage() {
                 <h3 className="text-lg font-semibold text-gray-900">All Candidates</h3>
                 <p className="text-sm text-gray-600">{candidates.length} candidates in this job</p>
               </div>
-              <AddCandidateDropdown
-                onAddExisting={() => setShowAddExistingModal(true)}
-                onCreateNew={() => setShowCreateCandidateModal(true)}
-              />
+              <div className="flex items-center space-x-3">
+                <Button
+                  onClick={handleAIMatching}
+                  disabled={isMatching}
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+                >
+                  {isMatching ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      AI Matching...
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="h-4 w-4 mr-2" />
+                      ✨ Find Best Matches
+                    </>
+                  )}
+                </Button>
+                <AddCandidateDropdown
+                  onAddExisting={() => setShowAddExistingModal(true)}
+                  onCreateNew={() => setShowCreateCandidateModal(true)}
+                />
+              </div>
             </div>
 
             {/* Candidates Table/List */}
@@ -902,6 +962,181 @@ export default function JobDetailPage() {
         jobId={jobId}
         onCandidateCreated={handleCandidateCreated}
       />
+
+      {/* AI Matching Results Modal */}
+      {showAIMatching && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowAIMatching(false)} />
+            <div className="relative bg-white rounded-lg max-w-5xl w-full p-6 max-h-[85vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center">
+                    <Brain className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-semibold text-gray-900">✨ AI Matching Results</h3>
+                    <p className="text-gray-600">Best matching candidates for "{job?.title}"</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowAIMatching(false)} className="text-gray-400 hover:text-gray-600">
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              {matchingResults.length === 0 ? (
+                <div className="text-center py-12">
+                  <Brain className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No matches found</h3>
+                  <p className="text-gray-600">Try adjusting job requirements or check candidate database</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <div className="flex items-center space-x-2">
+                      <Target className="h-5 w-5 text-blue-600" />
+                      <span className="font-medium text-blue-900">
+                        Found {matchingResults.length} potential matches
+                      </span>
+                    </div>
+                    <p className="text-blue-700 text-sm mt-1">
+                      Candidates are ranked by AI compatibility score based on skills, experience, and job requirements.
+                    </p>
+                  </div>
+                  
+                  {matchingResults.map((match, index) => (
+                    <div key={match.candidateId} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center font-bold text-gray-600">
+                            #{index + 1}
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-semibold text-gray-900">
+                              Candidate ID: {match.candidateId}
+                            </h4>
+                            <div className="flex items-center space-x-3 mt-1">
+                              <div className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium ${
+                                match.score >= 80 ? 'bg-green-100 text-green-800' :
+                                match.score >= 60 ? 'bg-blue-100 text-blue-800' :
+                                match.score >= 40 ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                <Zap className="h-4 w-4" />
+                                <span>{match.score}% AI Match</span>
+                              </div>
+                              <span className="text-sm text-gray-500">
+                                {match.score >= 80 ? '🎯 Excellent Match' :
+                                 match.score >= 60 ? '👍 Good Fit' :
+                                 match.score >= 40 ? '⚡ Moderate Fit' : '⚠️ Poor Fit'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              // View candidate details
+                              window.open(`/candidates?search=${match.candidateId}`, '_blank');
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View Profile
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={async () => {
+                              // Add candidate to job
+                              try {
+                                const response = await fetch(`/api/jobs/${jobId}/candidates`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ candidateId: match.candidateId })
+                                });
+                                if (response.ok) {
+                                  alert('Candidate added to job!');
+                                  window.location.reload();
+                                } else {
+                                  alert('Failed to add candidate');
+                                }
+                              } catch (error) {
+                                alert('Error adding candidate');
+                              }
+                            }}
+                          >
+                            <UserPlus className="h-4 w-4 mr-1" />
+                            Add to Job
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div>
+                          <h5 className="font-medium text-green-700 mb-3 flex items-center">
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Key Matches
+                          </h5>
+                          <ul className="space-y-2">
+                            {match.keyMatches?.map((keyMatch: string, idx: number) => (
+                              <li key={idx} className="text-green-600 text-sm flex items-start">
+                                <span className="text-green-500 mr-2">•</span>
+                                {keyMatch}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        
+                        <div>
+                          <h5 className="font-medium text-orange-700 mb-3 flex items-center">
+                            <AlertCircle className="h-4 w-4 mr-1" />
+                            Potential Gaps
+                          </h5>
+                          <ul className="space-y-2">
+                            {match.gaps?.map((gap: string, idx: number) => (
+                              <li key={idx} className="text-orange-600 text-sm flex items-start">
+                                <span className="text-orange-500 mr-2">•</span>
+                                {gap}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        
+                        <div>
+                          <h5 className="font-medium text-blue-700 mb-3 flex items-center">
+                            <Target className="h-4 w-4 mr-1" />
+                            AI Recommendations
+                          </h5>
+                          <ul className="space-y-2">
+                            {match.recommendations?.map((rec: string, idx: number) => (
+                              <li key={idx} className="text-blue-600 text-sm flex items-start">
+                                <span className="text-blue-500 mr-2">•</span>
+                                {rec}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <h5 className="font-medium text-gray-700 mb-2">💡 AI Analysis</h5>
+                        <p className="text-gray-600 text-sm leading-relaxed">{match.reasoning}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              <div className="flex justify-end mt-6 pt-4 border-t border-gray-200">
+                <Button variant="outline" onClick={() => setShowAIMatching(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
     </ErrorBoundary>
   );

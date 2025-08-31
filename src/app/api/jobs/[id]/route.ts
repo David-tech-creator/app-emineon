@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs';
 import { prisma } from '@/lib/prisma';
+import { AlgoliaService } from '@/lib/services/algolia-service';
 
 export const runtime = 'nodejs';
 
@@ -97,6 +98,15 @@ export async function PUT(
       }
     });
 
+    // Update job in Algolia
+    try {
+      await AlgoliaService.indexJob(jobId);
+      console.log('✅ Job updated in Algolia');
+    } catch (algoliaError) {
+      console.error('⚠️ Failed to update job in Algolia:', algoliaError);
+      // Don't fail the entire request if Algolia fails
+    }
+
     return NextResponse.json(job);
   } catch (error) {
     console.error('Error updating job:', error);
@@ -126,6 +136,15 @@ export async function DELETE(
         id: jobId
       }
     });
+
+    // Remove job from Algolia index
+    try {
+      await AlgoliaService.removeJob(jobId);
+      console.log('✅ Job removed from Algolia');
+    } catch (algoliaError) {
+      console.error('⚠️ Failed to remove job from Algolia:', algoliaError);
+      // Don't fail the entire request if Algolia fails
+    }
 
     return NextResponse.json({ message: 'Job deleted successfully' });
   } catch (error) {

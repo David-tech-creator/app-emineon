@@ -11,7 +11,7 @@ export default function SignUpPage() {
             </div>
           </div>
           <h2 className="text-3xl font-bold text-primary-900">
-            Join Emineon ATS
+            Join Emineon
           </h2>
           <p className="mt-2 text-sm text-secondary-600">
             Create your account to get started

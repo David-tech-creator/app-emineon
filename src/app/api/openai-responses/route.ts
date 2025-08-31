@@ -96,24 +96,28 @@ function getJobContext(job: JobDescription): string {
   if (job.company) parts.push(`Company: ${job.company}`);
   
   // Handle responsibilities - check if it's an array or string
-  if (job.responsibilities) {
-    if (Array.isArray(job.responsibilities)) {
-      if (job.responsibilities.length > 0) {
-        parts.push(`Key Responsibilities: ${job.responsibilities.slice(0, 3).join(', ')}`);
+  if (job && (job as any).responsibilities) {
+    const respVal = (job as any).responsibilities;
+    if (Array.isArray(respVal)) {
+      if (respVal.length > 0) {
+        parts.push(`Key Responsibilities: ${respVal.slice(0, 3).join(', ')}`);
       }
-    } else if (typeof job.responsibilities === 'string') {
-      parts.push(`Responsibilities: ${job.responsibilities.substring(0, 200)}${job.responsibilities.length > 200 ? '...' : ''}`);
+    } else if (typeof respVal === 'string') {
+      const resp = respVal as string;
+      parts.push(`Responsibilities: ${resp.substring(0, 200)}${resp.length > 200 ? '...' : ''}`);
     }
   }
   
   // Handle requirements - check if it's an array or string  
-  if (job.requirements) {
-    if (Array.isArray(job.requirements)) {
-      if (job.requirements.length > 0) {
-        parts.push(`Requirements: ${job.requirements.slice(0, 3).join(', ')}`);
+  if (job && (job as any).requirements) {
+    const reqVal = (job as any).requirements;
+    if (Array.isArray(reqVal)) {
+      if (reqVal.length > 0) {
+        parts.push(`Requirements: ${reqVal.slice(0, 3).join(', ')}`);
       }
-    } else if (typeof job.requirements === 'string') {
-      parts.push(`Requirements: ${job.requirements.substring(0, 200)}${job.requirements.length > 200 ? '...' : ''}`);
+    } else if (typeof reqVal === 'string') {
+      const req = reqVal as string;
+      parts.push(`Requirements: ${req.substring(0, 200)}${req.length > 200 ? '...' : ''}`);
     }
   }
   
@@ -125,213 +129,195 @@ function getJobContext(job: JobDescription): string {
   return parts.length > 0 ? parts.join(' | ') : 'Not specified';
 }
 
+// Map short language codes to readable names
+function getLanguageName(lang?: string): string {
+  if (!lang) return 'English';
+  const code = lang.toLowerCase();
+  switch (code) {
+    case 'fr': return 'French';
+    case 'de': return 'German';
+    case 'nl': return 'Dutch';
+    case 'en': return 'English';
+    default: return lang;
+  }
+}
+
 // Competence file section prompts using OpenAI Responses API
 const SECTION_PROMPTS = {
-  'HEADER': (candidate: CandidateData, job?: JobDescription) => `
+  'HEADER': (candidate: CandidateData, job?: JobDescription, language?: string) => `
 STRICT GENERATION RULES:
 • Your response MUST start immediately with the candidate's full name
 • DO NOT write "Here is" or "Below is" or any introduction
 • DO NOT add extra formatting or explanations
 • ONLY output the exact content requested
 
+OUTPUT LANGUAGE: ${getLanguageName((job as any)?.language || language)}
+
 CANDIDATE DATA: ${JSON.stringify(candidate, null, 2)}
 
 Create a professional header with:
 • Full Name (as main heading)
-• Current Title/Position
-• Contact Information (Email, Phone, Location)
-• Years of Experience
+• Current Title/Position (translated to ${getLanguageName((job as any)?.language || language)})
+• Years of Experience (if available, in ${getLanguageName((job as any)?.language || language)})
 
 ${job ? `TARGET ROLE: ${getJobContext(job)}` : ''}
 
-Return ONLY the formatted header content.`,
+TRANSLATE ALL TEXT including job titles and experience descriptions to ${getLanguageName((job as any)?.language || language)}.
+Return ONLY the formatted header content in ${getLanguageName((job as any)?.language || language)}.`,
 
-  'PROFESSIONAL SUMMARY': (candidate: CandidateData, job?: JobDescription) => `
+  'PROFESSIONAL SUMMARY': (candidate: CandidateData, job?: JobDescription, language?: string) => `
 STRICT GENERATION RULES:
+OUTPUT LANGUAGE: ${getLanguageName((job as any)?.language || language)}
 • Your response MUST start immediately with content (no "Here is" or introductions)
 • Write in third person about the candidate
-• Focus on high-level achievements and value proposition
+• Focus on high-level achievements and value proposition from actual data
 • Keep to 3-4 impactful sentences
+• DO NOT invent specific metrics, percentages, or achievements not in the source data
+• Use compelling language to present real information effectively
 
 CANDIDATE PROFILE: ${candidate.currentTitle} with ${candidate.yearsOfExperience || 'extensive'} years experience
 BACKGROUND: ${candidate.summary || 'Professional background'}
 SKILLS: ${candidate.skills?.join(', ') || 'Professional expertise'}
+ACTUAL EXPERIENCE: ${candidate.experience?.map((e:any)=>`${e.title || ''} at ${e.company || ''}`).join(' | ') || 'Professional experience'}
 
 ${job ? `TARGET ROLE: ${getJobContext(job)}` : ''}
 
-Write a compelling professional summary that highlights the candidate's key strengths and value proposition.
-Focus on measurable impact and leadership qualities.
-Return ONLY the summary content, no additional formatting.`,
+Write a compelling professional summary using ONLY the provided candidate data.
+Enhance the presentation using professional CV best practices without fabricating information.
+TRANSLATE ALL CONTENT to ${getLanguageName((job as any)?.language || language)}.
+Return ONLY the summary content in ${getLanguageName((job as any)?.language || language)}, no additional formatting.`,
 
-  'FUNCTIONAL SKILLS': (candidate: CandidateData, job?: JobDescription) => `
+  'FUNCTIONAL SKILLS': (candidate: CandidateData, job?: JobDescription, language?: string) => `
 STRICT GENERATION RULES:
-• Your response MUST start immediately with "**" 
-• DO NOT write introductory text like "Here are" or "Below is"
-• Focus on soft skills, leadership, and business capabilities
-• Use detailed bullet points with specific examples
+OUTPUT LANGUAGE: ${getLanguageName((job as any)?.language || language)}
+• Use ONLY information present in the candidate profile and (if provided) the job description
+• DO NOT invent skills or categories; if insufficient data, return an empty response
+• No introductory text, no explanations, no placeholders
+• Organize functional skills into logical categories derived from the input
+• FORMAT EXACTLY LIKE THIS (bullet list like Professional Experience):
 
+  **Category Name**
+  • Skill or capability with brief evidence
+  • Skill or capability with brief evidence
+
+  **Another Category Name**
+  • Skill item
+  • Skill item
+
+CANDIDATE CONTEXT:
+Title: ${candidate.currentTitle}
+Years: ${candidate.yearsOfExperience || ''}
+Skills: ${candidate.skills?.join(', ') || ''}
+Experience: ${candidate.experience?.map((e:any)=>`${e.title || ''} at ${e.company || ''}`).join(' | ') || ''}
+
+${job ? `TARGET ROLE CONTEXT: ${getJobContext(job)}` : ''}
+
+OUTPUT REQUIREMENTS:
+- Use bullet character "•" at the start of each item (not dashes)
+- Keep bold headers with **Category Name** on a separate line
+- TRANSLATE category names and skill descriptions to ${getLanguageName((job as any)?.language || language)}
+- If you cannot confidently derive content from the input, return nothing (empty string)
+`,
+
+  'TECHNICAL SKILLS': (candidate: CandidateData, job?: JobDescription, language?: string) => `
+STRICT GENERATION RULES:
+OUTPUT LANGUAGE: ${getLanguageName((job as any)?.language || language)}
+• Use ONLY technologies explicitly present in candidate.skills, candidate experience, or job requirements
+• DO NOT add generic examples or placeholders; if insufficient data, return an empty response
+• Organize real technologies into logical categories you derive from the input (e.g., Programming Languages, Frameworks, Cloud)
+• FORMAT EXACTLY LIKE THIS (bullet list like Professional Experience):
+
+  **Category Name**
+  • Technology/Tool 1
+  • Technology/Tool 2
+
+  **Another Category Name**
+  • Technology/Tool 1
+  • Technology/Tool 2
+
+CANDIDATE TECHNOLOGIES: ${candidate.skills?.join(', ') || ''}
+${job ? `JOB TECHNOLOGIES: ${job.skills?.join(', ') || ''}` : ''}
+
+OUTPUT REQUIREMENTS:
+- Use bullet character "•" at the start of each item (no comma lists)
+- Keep bold headers with **Category Name** on a separate line
+- TRANSLATE category names and technology descriptions to ${getLanguageName((job as any)?.language || language)}
+- Output nothing if you cannot confidently derive any technical skills from the input
+`,
+
+  'AREAS OF EXPERTISE': (candidate: CandidateData, job?: JobDescription, language?: string) => `
+STRICT GENERATION RULES:
+OUTPUT LANGUAGE: ${getLanguageName((job as any)?.language || language)}
+• Derive ALL content solely from candidate data and (if provided) job description
+• DO NOT include sample items, generic domains, or invented expertise areas
+• DO NOT create fake specializations or domains not evident in the input
+• If insufficient data, return an empty response
+• Organize into concise lines under bolded headers ONLY if clearly supported by input
+
+CANDIDATE SNAPSHOT:
+Title: ${candidate.currentTitle}
+Years: ${candidate.yearsOfExperience || ''}
+Skills: ${candidate.skills?.join(', ') || ''}
+Experience: ${candidate.experience?.map((e:any)=>`${e.title || ''} at ${e.company || ''}`).join(' | ') || ''}
+${job ? `JOB CONTEXT: ${getJobContext(job)}` : ''}
+
+OUTPUT REQUIREMENTS:
+- Only include expertise areas that are clearly evident from the candidate's actual experience and skills
+- Format as:
+  **Industry Expertise:** [Only domains clearly evident from experience]
+  
+  **Functional Skills:** [Only capabilities clearly evident from experience]
+  
+  **Technical Proficiency:** [Only technologies clearly evident from skills/experience]
+- If you cannot confidently derive any category from the actual input, omit that header entirely
+- If nothing can be confidently derived, return empty output
+`,
+
+  'EDUCATION': (candidate: CandidateData, job?: JobDescription, language?: string) => `
+OUTPUT LANGUAGE: ${getLanguageName((job as any)?.language || language)}
+
+CRITICAL RULES - NO FABRICATION:
+• Use ONLY education data explicitly provided by the candidate
+• DO NOT invent degrees, institutions, or academic achievements
+• DO NOT include certifications here (they belong in CERTIFICATIONS section)
+• If no education data is provided, return empty content
+
+CANDIDATE EDUCATION: ${candidate.education?.join(', ') || 'None provided'}
+
+If actual education data exists, format as bullet points:
+• **[Actual Degree]** - [Actual Institution] ([Actual Year if available])
+• **[Actual Program]** - [Actual Institution] ([Actual Year if available])
+
+Only include academic programs, thesis topics, or honors if they are explicitly mentioned in the candidate data.
+DO NOT create placeholder education entries.`,
+
+  'CERTIFICATIONS': (candidate: CandidateData, job?: JobDescription, language?: string) => `
+OUTPUT LANGUAGE: ${getLanguageName((job as any)?.language || language)}
+
+CRITICAL RULES - NO FABRICATION:
+• Use ONLY certifications explicitly listed in the candidate's certification data
+• DO NOT invent, suggest, or add certifications not provided by the candidate
+• If no certifications are provided in candidate data, return empty content
+• DO NOT use example certifications or templates
+
+CANDIDATE CERTIFICATIONS: ${candidate.certifications?.join(', ') || 'None provided'}
 CANDIDATE BACKGROUND: ${candidate.currentTitle} with ${candidate.yearsOfExperience || 'multiple'} years experience
-EXPERIENCE LEVEL: ${getCandidateLevel(candidate)}
-
-${job ? `TARGET ROLE: ${getJobContext(job)}` : ''}
-
-Generate functional skills organized in categories:
-
-**Leadership & Management**
-**Strategic Planning & Analysis** 
-**Communication & Collaboration**
-**Problem Solving & Innovation**
-
-Each bullet point should be detailed and demonstrate specific capabilities.
-Return ONLY the formatted functional skills content.`,
-
-  'TECHNICAL SKILLS': (candidate: CandidateData, job?: JobDescription) => `
-STRICT GENERATION RULES:
-• Your response MUST start immediately with "**Programming Languages:**" 
-• DO NOT write "Here are" or "Below are" or any introduction
-• Organize skills into clear categories with proper spacing
-• Separate each category clearly with double line breaks
-• Use clean formatting with categories as headers
-
-CANDIDATE SKILLS: ${candidate.skills?.join(', ') || 'Technical expertise'}
-CURRENT ROLE: ${candidate.currentTitle}
-
-${job ? `TARGET ROLE REQUIREMENTS: ${getJobContext(job)}` : ''}
-
-Format exactly like this structure:
-
-**Programming Languages:**
-C, C++, Python, JavaScript, TypeScript
-
-**Frameworks & Libraries:**
-RTOS, IoT, Embedded Systems, React, Node.js
-
-**Cloud & Infrastructure:**
-AWS, Azure, Google Cloud, Docker, Kubernetes
-
-**Databases & Storage:**
-SQL, NoSQL, MongoDB, PostgreSQL, Data Lakes
-
-**Development Tools & Methodologies:**
-JIRA, Git, Agile, Scrum, Waterfall, DevOps
-
-**Specialized Technologies:**
-AI/ML/DL Foundations, Tableau, Power BI, Data Analytics
-
-Each category should have technologies separated by commas on a single line.
-Add appropriate line spacing between categories.
-Return ONLY the formatted skills content with proper organization.`,
-
-  'AREAS OF EXPERTISE': (candidate: CandidateData, job?: JobDescription) => `
-STRICT GENERATION RULES:
-• Your response MUST start immediately with "1. **"
-• DO NOT write "Certainly!" or "Below is" or "Here's" or any introduction
-• DO NOT write "areas of expertise" or explain what you're doing
-• DO NOT add placeholder brackets like [Primary Expertise Area]
-• ONLY output the formatted content shown below
-
-CANDIDATE PROFILE: ${candidate.currentTitle} with ${candidate.yearsOfExperience || 'multiple'} years experience
-SKILLS: ${candidate.skills?.join(', ') || 'Professional expertise'}
-EXPERIENCE: ${candidate.experience?.map((exp: any) => exp.title || exp.position).join(', ') || 'Professional experience'}
-
-${job ? `TARGET ROLE: ${job.title} - ${getJobContext(job)}` : ''}
-
-REQUIRED FORMAT - START IMMEDIATELY WITH THIS:
-
-**Industry Expertise:**
-IoT, Telecommunications, Systems Engineering, Digital Transformation, Enterprise Solutions
-
-**Technical Proficiency:**
-JIRA, Waterfall, Agile, SAFe, Tableau, AI/ML/DL Foundations, Cloud & App Development, RTOS
-
-**Functional Skills:**
-
-1. **Digital Transformation & Innovation Leadership**
-
-   • Strategic planning and execution of digital transformation initiatives across enterprise organizations
-
-   • Implementation of emerging technologies and automation solutions to drive operational efficiency
-
-   • Leadership of cross-functional teams through complex technology adoption and change management processes
-
-
-2. **Project & Program Management Excellence**
-
-   • End-to-end project lifecycle management using Agile, Scrum, and traditional waterfall methodologies
-
-   • Resource optimization, timeline management, and stakeholder coordination for multi-million dollar initiatives
-
-   • Risk assessment, mitigation planning, and quality assurance frameworks for enterprise-scale projects
-
-
-3. **Business Strategy & Operational Optimization**
-
-   • Strategic analysis and business process reengineering to enhance organizational performance
-
-   • Market research, competitive analysis, and strategic roadmap development for business growth
-
-   • Performance metrics development, KPI tracking, and data-driven decision making frameworks
-
-
-4. **Team Leadership & Organizational Development**
-
-   • Building and leading high-performing teams across diverse functional areas and geographic locations`,
-
-  'EDUCATION': (candidate: CandidateData, job?: JobDescription) => `
-Generate education section:
-
-CANDIDATE EDUCATION: ${candidate.education?.join(', ') || candidate.degrees?.join(', ') || 'Professional education'}
-
-Create structured education entries:
-• **Degree Type** - Institution Name (Year)
-• **Professional Certifications** - Relevant credentials
-• **Continuing Education** - Professional development
-
-Include relevant coursework, academic achievements, or specializations.`,
-
-  'CERTIFICATIONS': (candidate: CandidateData, job?: JobDescription) => `
-Generate specific, realistic professional certifications based on the candidate's profile - NO placeholder text:
-
-CANDIDATE BACKGROUND: ${candidate.currentTitle} with ${candidate.yearsOfExperience || 'multiple'} years experience
-CANDIDATE CERTIFICATIONS: ${candidate.certifications?.join(', ') || 'Industry-relevant certifications'}
 TECHNICAL SKILLS: ${candidate.skills?.join(', ') || 'Professional skills'}
-CURRENT ROLE: ${candidate.currentTitle}
 
 ${job ? `TARGET ROLE REQUIREMENTS: ${getJobContext(job)}` : ''}
 
-Create relevant, specific certifications organized by category. Use REAL certification names that exist:
+If the candidate has actual certifications listed, format them as bullet points:
+• **[Actual Certification Name]** - [Year if available]
+• **[Actual Certification Name]** - [Year if available]
 
-**Cloud & Infrastructure**
-- AWS Certified Solutions Architect - Professional
-- Microsoft Azure Solutions Architect Expert  
-- Google Cloud Professional Cloud Architect
-- CompTIA Security+ Certification
+If no certifications are provided in the candidate data, return nothing.
+DO NOT use placeholder examples or template certifications.`,
 
-**Project Management**
-- PMP (Project Management Professional)
-- Certified ScrumMaster (CSM)
-- PRINCE2 Foundation and Practitioner
-- Agile Certified Practitioner (PMI-ACP)
-
-**Technical Expertise**
-- CISSP (Certified Information Systems Security Professional)
-- ITIL Foundation Certification
-- Cisco Certified Network Professional (CCNP)
-- Microsoft Certified Solutions Expert (MCSE)
-
-**Professional Development**
-- Six Sigma Green Belt Certification
-- TOGAF Certified Architecture Practitioner
-- COBIT Foundation Certification
-- Lean Management Certification
-
-Generate ONLY realistic, industry-standard certifications that actually exist.
-Base selections on the candidate's role and skills. NO generic placeholders or brackets.`,
-
-  'LANGUAGES': (candidate: CandidateData, job?: JobDescription) => `
+  'LANGUAGES': (candidate: CandidateData, job?: JobDescription, language?: string) => `
+OUTPUT LANGUAGE: ${getLanguageName((job as any)?.language || language)}
 Generate a clean languages section using the candidate's actual language data:
 
-CANDIDATE LANGUAGES: ${candidate.languages?.join(', ') || candidate.spokenLanguages?.join(', ') || 'English (Native)'}
+CANDIDATE LANGUAGES: ${candidate.languages?.join(', ') || 'English (Native)'}
 
 Create a properly formatted languages section using ONLY the candidate's actual languages. Format each language as:
 • **[Language Name]** - [Proficiency Level]
@@ -344,37 +330,52 @@ If only English is mentioned or no specific languages provided, show:
 Do NOT include placeholder text, brackets, or example languages. Use only real data.
 Return ONLY the formatted language list, nothing else.`,
 
-  'PROFESSIONAL EXPERIENCES SUMMARY': (candidate: CandidateData, job?: JobDescription) => `
-Create a chronological listing of all professional experiences in reverse chronological order (latest first):
+  'PROFESSIONAL EXPERIENCES SUMMARY': (candidate: CandidateData, job?: JobDescription, language?: string) => `
+OUTPUT LANGUAGE: ${getLanguageName((job as any)?.language || language)}
 
-CANDIDATE EXPERIENCES: ${JSON.stringify(candidate.experience || candidate.workHistory || [], null, 2)}
+CRITICAL RULES - NO FABRICATION:
+• Use ONLY the actual professional experiences from the candidate data
+• DO NOT invent companies, roles, or dates
+• If no experience data is available, return empty content
 
-Format as a clean chronological list with:
+CANDIDATE EXPERIENCES: ${JSON.stringify(candidate.experience || [], null, 2)}
 
-**[Company Name]** - [Role Title]  
-[Start Date] - [End Date]
+Create a chronological listing using ONLY the provided experience data in reverse chronological order (latest first):
 
-**[Company Name]** - [Role Title]  
-[Start Date] - [End Date]
+Format as:
+**[Actual Company Name]** - [Actual Role Title]  
+[Actual Start Date] - [Actual End Date]
 
-Continue for all experiences in the candidate data.
-
-If no experience data is available, create 2-3 realistic professional experiences relevant to the target role.
+**[Actual Company Name]** - [Actual Role Title]  
+[Actual Start Date] - [Actual End Date]
 
 ${job ? `TARGET ROLE CONTEXT: ${getJobContext(job)}` : ''}
 
-Return ONLY the formatted chronological listing, no explanations or additional text.`,
+Return ONLY the formatted chronological listing from actual data, no explanations or additional text.`,
 
-  'PROFESSIONAL EXPERIENCE': (candidate: CandidateData, job?: JobDescription, experienceIndex: number = 0) => `
-Generate a detailed professional experience entry for experience #${experienceIndex + 1}:
+  'PROFESSIONAL EXPERIENCE': (candidate: CandidateData, job?: JobDescription, experienceIndex: number = 0, language?: string) => `
+OUTPUT LANGUAGE: ${getLanguageName((job as any)?.language || language)}
+
+CRITICAL RULES - NO FABRICATION:
+• Use ONLY information from the candidate's actual experience data
+• DO NOT invent metrics, percentages, or specific numbers unless they appear in the source data
+• DO NOT create fake achievements with made-up statistics
+• Present real responsibilities and achievements in the most compelling way possible
+• Use professional CV best practices for impact statements without fabricating data
 
 CANDIDATE EXPERIENCES: ${JSON.stringify(candidate.experience || [], null, 2)}
 EXPERIENCE INDEX: ${experienceIndex}
-TARGET EXPERIENCE: ${candidate.experience?.[experienceIndex] ? JSON.stringify(candidate.experience[experienceIndex], null, 2) : 'Not found - create generic professional experience'}
+TARGET EXPERIENCE: ${candidate.experience?.[experienceIndex] ? JSON.stringify(candidate.experience[experienceIndex], null, 2) : 'Not found - skip this experience'}
 
 ${job ? `TARGET ROLE CONTEXT: ${getJobContext(job)}` : ''}
 
-If the experience exists at index ${experienceIndex}, use that exact data. Otherwise, create a realistic professional experience.
+If the experience exists at index ${experienceIndex}, use that exact data and enhance the presentation using CV best practices:
+- Transform responsibilities into action-oriented statements
+- Highlight achievements using power verbs and impact language
+- Present technical skills professionally
+- DO NOT add fake metrics or percentages
+
+If no experience exists at this index, return empty content.
 
 Format exactly as:
 
@@ -382,21 +383,22 @@ Format exactly as:
 [Start Date] - [End Date]
 
 **Key Responsibilities:**
-• [Responsibility 1]
-• [Responsibility 2] 
-• [Responsibility 3]
+• [Enhanced responsibility based on actual data]
+• [Enhanced responsibility based on actual data]
+• [Enhanced responsibility based on actual data]
 
 **Achievements & Impact:**
-• [Achievement 1 with quantifiable results]
-• [Achievement 2 with measurable outcomes]
-• [Achievement 3 with business impact]
+• [Real achievement presented compellingly - NO FAKE METRICS]
+• [Real achievement presented compellingly - NO FAKE METRICS]
+• [Real achievement presented compellingly - NO FAKE METRICS]
 
 **Technical Environment:**
-• [Technology/Tool 1]
-• [Technology/Tool 2]
-• [Technology/Tool 3]
+• [Actual technology/tool from experience]
+• [Actual technology/tool from experience]
+• [Actual technology/tool from experience]
 
-Return ONLY the formatted experience entry, no introductory text or explanations.`
+TRANSLATE ALL CONTENT including company names, job titles, responsibilities, achievements, and section headers to ${getLanguageName((job as any)?.language || language)}.
+Return ONLY the formatted experience entry in ${getLanguageName((job as any)?.language || language)}, no introductory text or explanations.`
 };
 
 // Enhancement prompts for improve/expand/rewrite/format_for_pdf functionality
@@ -411,7 +413,7 @@ CANDIDATE CONTEXT:
 ${JSON.stringify({ 
   name: candidateData.fullName, 
   title: candidateData.currentTitle,
-  experience: candidateData.experience || candidateData.workHistory,
+  experience: candidateData.experience,
   skills: candidateData.skills 
 }, null, 2)}
 
@@ -445,7 +447,7 @@ CANDIDATE CONTEXT:
 ${JSON.stringify({ 
   name: candidateData.fullName, 
   title: candidateData.currentTitle,
-  experience: candidateData.experience || candidateData.workHistory,
+  experience: candidateData.experience,
   skills: candidateData.skills 
 }, null, 2)}
 
@@ -479,7 +481,7 @@ CANDIDATE CONTEXT:
 ${JSON.stringify({ 
   name: candidateData.fullName, 
   title: candidateData.currentTitle,
-  experience: candidateData.experience || candidateData.workHistory,
+  experience: candidateData.experience,
   skills: candidateData.skills 
 }, null, 2)}
 
@@ -689,7 +691,8 @@ export async function POST(request: NextRequest) {
         console.log(`🔧 CRITICAL: Using format_for_pdf enhancement - should preserve exact content`);
       }
       
-      prompt = ENHANCEMENT_PROMPTS[actualEnhancementAction](mappedSection, actualExistingContent, candidateData, jobDescription);
+      const action = actualEnhancementAction as keyof typeof ENHANCEMENT_PROMPTS;
+      prompt = ENHANCEMENT_PROMPTS[action](mappedSection, actualExistingContent, candidateData, jobDescription);
       
       console.log(`📝 Enhancement prompt preview (first 500 chars):`, prompt.substring(0, 500) + '...');
     } else {
@@ -697,15 +700,15 @@ export async function POST(request: NextRequest) {
       if (mappedSection.startsWith('PROFESSIONAL EXPERIENCE ') && mappedSection !== 'PROFESSIONAL EXPERIENCES SUMMARY') {
         const experienceIndex = parseInt(mappedSection.split(' ')[2]) - 1;
         console.log(`🔄 Processing dynamic professional experience: index ${experienceIndex}`);
-        console.log(`📋 Candidate experience data:`, JSON.stringify(candidateData.experience || candidateData.workHistory || [], null, 2));
-        console.log(`🎯 Target experience at index ${experienceIndex}:`, JSON.stringify(candidateData.experience?.[experienceIndex] || candidateData.workHistory?.[experienceIndex] || 'NOT FOUND', null, 2));
-        prompt = SECTION_PROMPTS['PROFESSIONAL EXPERIENCE'](candidateData, jobDescription, experienceIndex);
+        console.log(`📋 Candidate experience data:`, JSON.stringify(candidateData.experience || [], null, 2));
+        console.log(`🎯 Target experience at index ${experienceIndex}:`, JSON.stringify(candidateData.experience?.[experienceIndex] || 'NOT FOUND', null, 2));
+        prompt = SECTION_PROMPTS['PROFESSIONAL EXPERIENCE'](candidateData, jobDescription, experienceIndex, (jobDescription as any)?.language);
       } else if (SECTION_PROMPTS[mappedSection as keyof typeof SECTION_PROMPTS]) {
         console.log(`🔄 Processing standard section: ${mappedSection}`);
         if (mappedSection === 'PROFESSIONAL EXPERIENCES SUMMARY') {
-          console.log(`📋 Experience data for summary:`, JSON.stringify(candidateData.experience || candidateData.workHistory || [], null, 2));
+          console.log(`📋 Experience data for summary:`, JSON.stringify(candidateData.experience || [], null, 2));
         }
-        prompt = SECTION_PROMPTS[mappedSection as keyof typeof SECTION_PROMPTS](candidateData, jobDescription);
+        prompt = SECTION_PROMPTS[mappedSection as keyof typeof SECTION_PROMPTS](candidateData, jobDescription, (jobDescription as any)?.language);
       } else {
         console.error(`❌ Unknown section type: ${mappedSection}`);
         return NextResponse.json(

@@ -7,7 +7,7 @@ import { useAuth } from '@clerk/nextjs';
 export function useCandidates() {
   const { getToken } = useAuth();
 
-  const fetcher = async (): Promise<CandidateResponse[]> => {
+  const fetcher = async (): Promise<any[]> => {
     const token = await getToken();
     const response = await api.candidates.list(token || undefined);
     
@@ -18,7 +18,7 @@ export function useCandidates() {
     return response.data || [];
   };
 
-  const { data, error, isLoading, mutate } = useSWR<CandidateResponse[]>(
+  const { data, error, isLoading, mutate } = useSWR<any[]>(
     'candidates',
     fetcher,
     {

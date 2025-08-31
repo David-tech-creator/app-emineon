@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@clerk/nextjs';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
+import { CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { 
   Send, Grid, List, Code, Brain, Award, 
@@ -14,7 +16,7 @@ import {
   FileText, CheckCircle, AlertCircle, Eye, Download, 
   Filter, Star, Building, Phone, Mail, MapPin, 
   Globe, Zap, Activity, TrendingUp, Briefcase, ArrowUpRight, ArrowLeft, Play,
-  BarChart3, MoreVertical
+  BarChart3, MoreVertical, Mic, Loader2
 } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 
@@ -66,6 +68,7 @@ interface Candidate {
 
 export default function AssessmentsPage() {
   const router = useRouter();
+  const { getToken } = useAuth();
   
   // State management
   const [searchQuery, setSearchQuery] = useState('');
@@ -83,18 +86,129 @@ export default function AssessmentsPage() {
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
   const [currentView, setCurrentView] = useState<'list' | 'details' | 'questions' | 'settings'>('list');
   const [settingsTab, setSettingsTab] = useState<'general' | 'communication'>('general');
+  // Persist created assessments locally (later: load from API)
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
   
   // Candidate drawer states
   const [showCandidateDrawer, setShowCandidateDrawer] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [candidateDrawerTab, setCandidateDrawerTab] = useState<'report' | 'candidate'>('report');
   
-  // Create Assessment Modal States
-  const [createStep, setCreateStep] = useState<'role' | 'experience' | 'skills' | 'ready'>('role');
+  // Create Assessment Modal States (enhanced)
+  const [createStep, setCreateStep] = useState<'describe' | 'analyze' | 'editor' | 'summary'>('describe');
   const [selectedRole, setSelectedRole] = useState<string>('');
   const [selectedExperience, setSelectedExperience] = useState<'junior' | 'senior' | 'expert'>('senior');
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [draftTitle, setDraftTitle] = useState<string>('');
   const [skillSearchQuery, setSkillSearchQuery] = useState('');
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [describeText, setDescribeText] = useState('');
+  const [describeUploading, setDescribeUploading] = useState(false);
+  const [isDictating, setIsDictating] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const [analyzeLoading, setAnalyzeLoading] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const [analyzeDuration, setAnalyzeDuration] = useState<number>(60);
+  const [analyzeDifficulty, setAnalyzeDifficulty] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
+  const [categoryMap, setCategoryMap] = useState<Record<string, string[]>>({});
+  const [categoryNewTag, setCategoryNewTag] = useState<Record<string, string>>({});
+
+  const handleAddCategoryTag = (category: string) => {
+    const value = (categoryNewTag[category] || '').trim();
+    if (!value) return;
+    setCategoryMap((prev) => ({
+      ...prev,
+      [category]: Array.from(new Set([...(prev[category] || []), value]))
+    }));
+    setCategoryNewTag((prev) => ({ ...prev, [category]: '' }));
+  };
+
+  const handleRemoveCategoryTag = (category: string, tag: string) => {
+    setCategoryMap((prev) => ({
+      ...prev,
+      [category]: (prev[category] || []).filter((t) => t !== tag)
+    }));
+  };
+
+  // Centralized analyze handler (used on step transition and in-page)
+  const runAnalyze = async () => {
+    setAnalyzeLoading(true);
+    setAnalyzeError(null);
+    try {
+      const res = await fetch('/api/assessments/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: describeText, preferTypes: selectedTypes })
+      });
+      const json = await res.json();
+      if (json?.success) {
+        const data = json.data;
+        if (Array.isArray(data?.skills)) setSelectedSkills(data.skills);
+        if (Array.isArray(data?.types)) setSelectedTypes(data.types);
+        if (data?.duration) setAnalyzeDuration(Number(data.duration));
+        if (data?.difficulty) setAnalyzeDifficulty(data.difficulty);
+        if (data?.categories) setCategoryMap(data.categories);
+      } else {
+        setAnalyzeError('AI analysis failed');
+      }
+    } catch {
+      setAnalyzeError('AI analysis failed');
+    } finally {
+      setAnalyzeLoading(false);
+    }
+  };
+  type BlockKind = 'multiple_choice' | 'code' | 'debugging' | 'architecture' | 'scenario' | 'take_home' | 'language' | 'personality' | 'cognitive';
+  const [builderBlocks, setBuilderBlocks] = useState<Array<{ id: string; kind: BlockKind; label: string; duration: number; weight: number; difficulty: 'beginner' | 'intermediate' | 'advanced' }>>([]);
+  const [editorFullscreen, setEditorFullscreen] = useState(false);
+  const [generatingLoading, setGeneratingLoading] = useState(false);
+
+  const assessmentTypeCatalog: { id: string; label: string; group: 'Technical' | 'Functional' | 'Other' }[] = [
+    { id: 'technical_mcq', label: 'MCQ', group: 'Technical' },
+    { id: 'technical_code', label: 'Coding', group: 'Technical' },
+    { id: 'debugging', label: 'Debugging', group: 'Technical' },
+    { id: 'architecture', label: 'Architecture', group: 'Technical' },
+    { id: 'functional_pm', label: 'Product/PM', group: 'Functional' },
+    { id: 'functional_qa', label: 'QA', group: 'Functional' },
+    { id: 'language', label: 'Language', group: 'Other' },
+    { id: 'personality', label: 'Personality', group: 'Other' },
+    { id: 'cognitive', label: 'Cognitive', group: 'Other' },
+  ];
+
+  const assessmentTemplates: Array<{ id: string; name: string; description: string; tags: string[]; blocks: Array<{ kind: BlockKind; label: string; duration: number; weight: number; difficulty: 'beginner' | 'intermediate' | 'advanced' }> }> = [
+    {
+      id: 'tpl_fe_senior',
+      name: 'Frontend Senior (React)',
+      description: 'Balanced MCQ, coding and debugging tasks focused on React/JS/TS.',
+      tags: ['React', 'TypeScript', 'Debugging'],
+      blocks: [
+        { kind: 'multiple_choice', label: 'React/TS MCQ', duration: 15, weight: 5, difficulty: 'intermediate' },
+        { kind: 'code', label: 'React Coding', duration: 30, weight: 8, difficulty: 'advanced' },
+        { kind: 'debugging', label: 'Bug Fixing', duration: 20, weight: 6, difficulty: 'intermediate' },
+      ],
+    },
+    {
+      id: 'tpl_be_java',
+      name: 'Backend Senior (Java)',
+      description: 'Java, Spring, architecture and debugging focus.',
+      tags: ['Java', 'Spring', 'Architecture'],
+      blocks: [
+        { kind: 'multiple_choice', label: 'Java/Spring MCQ', duration: 15, weight: 5, difficulty: 'intermediate' },
+        { kind: 'architecture', label: 'System Design', duration: 25, weight: 7, difficulty: 'advanced' },
+        { kind: 'debugging', label: 'Log Analysis', duration: 15, weight: 5, difficulty: 'intermediate' },
+      ],
+    },
+    {
+      id: 'tpl_fullstack_mid',
+      name: 'Fullstack Mid',
+      description: 'Fullstack tasks with moderate coding and MCQ.',
+      tags: ['Node', 'React', 'REST'],
+      blocks: [
+        { kind: 'multiple_choice', label: 'Web MCQ', duration: 12, weight: 4, difficulty: 'beginner' },
+        { kind: 'code', label: 'API Coding', duration: 25, weight: 6, difficulty: 'intermediate' },
+      ],
+    },
+  ];
   
   // Available roles
   const roles = [
@@ -132,9 +246,9 @@ export default function AssessmentsPage() {
     tags: '',
     customMessage: '',
     emailSubject: 'Technical assessment',
-    introTitle: 'Welcome. You\'ve been invited to take a test.',
+    introTitle: 'Welcome. You\'ve been invited to take an assessment.',
     introText: 'Thank you for your interest in our company. We would like to invite you to take a technical assessment.',
-    endTitle: 'Your test has been successfully submitted',
+    endTitle: 'Your assessment has been successfully submitted',
     endText: 'Thank you for completing the assessment. We will review your results and get back to you soon.'
   });
 
@@ -161,6 +275,9 @@ export default function AssessmentsPage() {
     logoFile: null as File | null
   });
 
+  // Generated questions state (from AI)
+  const [generatedQuestions, setGeneratedQuestions] = useState<any[]>([]);
+
   const [testCandidates, setTestCandidates] = useState<Candidate[]>([
     {
       id: '1',
@@ -170,7 +287,7 @@ export default function AssessmentsPage() {
       invitedAt: '2024-06-13T15:41:00Z',
       history: [
         { action: 'Invitation expired', timestamp: '2024-06-13T15:41:00Z' },
-        { action: 'Test sent', timestamp: '2024-05-14T15:41:00Z', location: 'By LEFEBVRE' }
+        { action: 'Assessment sent', timestamp: '2024-05-14T15:41:00Z', location: 'By LEFEBVRE' }
       ]
     },
     {
@@ -194,10 +311,10 @@ export default function AssessmentsPage() {
         { name: 'Reliability', score: 60, maxScore: 60, percentage: 100 }
       ],
       history: [
-        { action: 'Test completed', timestamp: '2024-05-15T08:38:00Z', location: 'France' },
-        { action: 'Test started', timestamp: '2024-05-15T07:36:00Z', location: 'France' },
-        { action: 'Test opened', timestamp: '2024-05-15T04:06:00Z', location: 'France' },
-        { action: 'Test sent', timestamp: '2024-05-14T15:41:00Z', location: 'By LEFEBVRE' }
+        { action: 'Assessment completed', timestamp: '2024-05-15T08:38:00Z', location: 'France' },
+        { action: 'Assessment started', timestamp: '2024-05-15T07:36:00Z', location: 'France' },
+        { action: 'Assessment opened', timestamp: '2024-05-15T04:06:00Z', location: 'France' },
+        { action: 'Assessment sent', timestamp: '2024-05-14T15:41:00Z', location: 'By LEFEBVRE' }
       ]
     },
     {
@@ -225,14 +342,38 @@ export default function AssessmentsPage() {
     }
   ]);
 
-  // Filter and sort assessments
-  const filteredAssessments = testCandidates.filter(candidate => {
-    const matchesSearch = candidate.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         candidate.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         candidate.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesType = selectedType === 'all' || candidate.type === selectedType;
-    const matchesStatus = selectedStatus === 'all' || candidate.status === selectedStatus;
-    
+  // Load candidates from API to link assessments to the database
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch('/api/candidates', {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        // Map API candidates into local Candidate shape (best-effort)
+        const mapped: Candidate[] = (data?.candidates || data || []).slice(0, 25).map((c: any, idx: number) => ({
+          id: String(c.id ?? idx + 1),
+          name: c.name || `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() || 'Candidate',
+          email: c.email || 'unknown@example.com',
+          status: 'invited',
+          invitedAt: new Date().toISOString(),
+          tags: c.technicalSkills || c.tags || [],
+        }));
+        if (mapped.length) setTestCandidates(mapped);
+      } catch {}
+    })();
+  }, [getToken]);
+
+  // Filter real assessments (created by user)
+  const filteredAssessments: Assessment[] = assessments.filter((a) => {
+    const matchesSearch =
+      (a.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (a.description?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (a.tags || []).some((t) => (t || '').toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesType = selectedType === 'all' || a.type === (selectedType as any);
+    const matchesStatus = selectedStatus === 'all' || a.status === (selectedStatus as any);
     return matchesSearch && matchesType && matchesStatus;
   });
 
@@ -275,18 +416,13 @@ export default function AssessmentsPage() {
         emailSubject: 'Technical assessment',
         introTitle: 'Welcome. You\'ve been invited to take a test.',
         introText: 'Thank you for your interest in our company. We would like to invite you to take a technical assessment.',
-        endTitle: 'Your test has been successfully submitted',
+        endTitle: 'Your assessment has been successfully submitted',
         endText: 'Thank you for completing the assessment. We will review your results and get back to you soon.'
       });
       setShowInviteModal(false);
       setInviteStep('form');
       
-      // Update assessment candidates count
-      setTestCandidates(prev => prev.map(a => 
-        a.id === selectedAssessment.id 
-          ? { ...a, candidates: a.candidates + 1 }
-          : a
-      ));
+      // In this demo view, we are not tracking per-assessment candidate counts on candidate items
     }
   };
 
@@ -320,26 +456,65 @@ export default function AssessmentsPage() {
       difficulty: selectedExperience === 'junior' ? 'beginner' : selectedExperience === 'senior' ? 'intermediate' : 'advanced'
     };
     
-    setTestCandidates(prev => [newAssessment, ...prev]);
-    
-    // Reset modal state
-    setCreateStep('role');
-    setSelectedRole('');
-    setSelectedExperience('senior');
-    setSelectedSkills([]);
-    setSkillSearchQuery('');
-    setShowCreateModal(false);
-    
-    // Navigate to the new assessment
-    router.push(`/assessments/${newAssessment.id}`);
+    // Add to local list and navigate to questions
+    setAssessments(prev => [newAssessment, ...prev]);
+    setSelectedAssessment(newAssessment);
+    setCurrentView('questions');
   };
 
   const resetCreateModal = () => {
-    setCreateStep('role');
+    setCreateStep('describe');
     setSelectedRole('');
     setSelectedExperience('senior');
     setSelectedSkills([]);
     setSkillSearchQuery('');
+    setGeneratedQuestions([]);
+    setSelectedTypes([]);
+    setSelectedTemplateId('');
+    setBuilderBlocks([]);
+    setDescribeText('');
+    setIsDictating(false);
+    setAnalyzeError(null);
+    setAnalyzeLoading(false);
+    setEditorFullscreen(false);
+  };
+
+  // Voice dictation handlers (Web Speech API)
+  const startDictation = () => {
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition: any = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Speech recognition not supported in this browser.');
+      return;
+    }
+    if (!recognitionRef.current) {
+      const rec = new SpeechRecognition();
+      rec.lang = 'en-US';
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.onresult = (event: any) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        setDescribeText((prev) => (prev ? prev + ' ' : '') + transcript.trim());
+      };
+      rec.onerror = () => setIsDictating(false);
+      rec.onend = () => setIsDictating(false);
+      recognitionRef.current = rec;
+    }
+    try {
+      recognitionRef.current.start();
+      setIsDictating(true);
+    } catch {}
+  };
+
+  const stopDictation = () => {
+    try {
+      recognitionRef.current?.stop?.();
+    } finally {
+      setIsDictating(false);
+    }
   };
 
   const handleCloseCreateModal = () => {
@@ -355,6 +530,297 @@ export default function AssessmentsPage() {
 
   const removeSkill = (skill: string) => {
     setSelectedSkills(prev => prev.filter(s => s !== skill));
+  };
+
+  const handleGenerateAI = async () => {
+    try {
+      const token = await getToken();
+      const body = {
+        jobTitle: selectedRole || 'Software Engineer',
+        jobDescription: selectedSkills.join(', '),
+        assessmentType: 'technical',
+        skillLevel: selectedExperience === 'junior' ? 'beginner' : selectedExperience === 'senior' ? 'intermediate' : 'advanced',
+        duration: selectedExperience === 'junior' ? 60 : selectedExperience === 'senior' ? 90 : 120,
+        focusAreas: selectedSkills,
+        includeCodeChallenges: true,
+      };
+      const res = await fetch('/api/assessments/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (json?.success && Array.isArray(json.questions)) {
+        // Ensure an assessment is selected for editor view
+        if (!selectedAssessment) {
+          setSelectedAssessment({
+            id: `temp_${Date.now()}`,
+            title: selectedRole || 'Assessment',
+            description: selectedSkills.join(', '),
+            type: 'technical',
+            duration: analyzeDuration,
+            questions: json.questions.length,
+            status: 'draft',
+            candidates: 0,
+            averageScore: 0,
+            createdAt: new Date().toISOString(),
+          } as any);
+        }
+        setGeneratedQuestions(json.questions);
+        setCurrentView('questions');
+      } else {
+        alert('Failed to generate questions');
+      }
+    } catch (e) {
+      alert('AI generation failed');
+    }
+  };
+
+  // Generate questions from Step 2 tags (categories) using OpenAI API
+  const generateFromTags = async (append: boolean = false) => {
+    try {
+      setGeneratingLoading(true);
+      const token = await getToken();
+      const focusAreas = Array.from(
+        new Set(
+          Object.values(categoryMap || {})
+            .flat()
+            .filter(Boolean)
+        )
+      );
+
+      const body = {
+        jobTitle: selectedRole || 'Assessment',
+        jobDescription: Object.entries(categoryMap)
+          .map(([cat, tags]) => `${cat}: ${tags?.join(', ')}`)
+          .join(' | '),
+        assessmentType: 'technical',
+        skillLevel: analyzeDifficulty,
+        duration: analyzeDuration,
+        focusAreas,
+        includeCodeChallenges: true,
+      };
+
+      const res = await fetch('/api/assessments/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      let questions: any[] = [];
+      if (json?.success && Array.isArray(json.questions)) {
+        questions = json.questions as any[];
+      }
+
+      // Assign categories heuristically based on tag matches
+      const lowerCatMap: Record<string, string[]> = Object.fromEntries(
+        Object.entries(categoryMap || {}).map(([cat, tags]) => [
+          cat,
+          (tags || []).map((t) => String(t).toLowerCase()),
+        ])
+      );
+
+      const categorized = (questions || []).map((q: any, idx: number) => {
+        const text = String(q.question || '').toLowerCase();
+        let matched: string | undefined;
+        for (const [cat, tags] of Object.entries(lowerCatMap)) {
+          if (tags.some((t) => t && text.includes(t))) {
+            matched = cat;
+            break;
+          }
+        }
+        return { ...q, id: q.id || `ai_${Date.now()}_${idx}`, category: matched || 'Uncategorized' };
+      });
+
+      if (append) {
+        setGeneratedQuestions(prev => [...prev, ...categorized]);
+      } else {
+        setGeneratedQuestions(categorized);
+      }
+      return categorized;
+    } catch (e) {
+      console.error('generateFromTags failed', e);
+      return [] as any[];
+    }
+    finally {
+      setGeneratingLoading(false);
+    }
+  };
+
+  const addManualQuestionGlobal = () => {
+    setGeneratedQuestions(prev => ([
+      ...prev,
+      { id: `manual_${Date.now()}`,
+        type: 'text',
+        question: '',
+        options: [],
+        weight: 1,
+        difficulty: analyzeDifficulty,
+        category: 'Uncategorized' }
+    ]));
+  };
+
+  const addRandomBlockGlobal = async () => {
+    await generateFromTags(true);
+  };
+
+  // ----- Generated questions editing helpers -----
+  const updateGeneratedQuestion = (idx: number, key: string, value: any) => {
+    setGeneratedQuestions(prev => prev.map((q, i) => i === idx ? { ...q, [key]: value } : q));
+  };
+
+  const computeCategoryCounts = () => {
+    const counts: Record<string, number> = {};
+    (generatedQuestions || []).forEach((q: any) => {
+      const cat = (q.category || 'Uncategorized') as string;
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    return counts;
+  };
+
+  const addGeneratedOption = (idx: number) => {
+    setGeneratedQuestions(prev => prev.map((q, i) => {
+      if (i !== idx) return q;
+      const opts = Array.isArray(q.options) ? q.options : [];
+      return { ...q, options: [...opts, ''] };
+    }));
+  };
+
+  const updateGeneratedOption = (idx: number, optIdx: number, value: string) => {
+    setGeneratedQuestions(prev => prev.map((q, i) => {
+      if (i !== idx) return q;
+      const opts = Array.isArray(q.options) ? [...q.options] : [];
+      opts[optIdx] = value;
+      return { ...q, options: opts };
+    }));
+  };
+
+  const removeGeneratedOption = (idx: number, optIdx: number) => {
+    setGeneratedQuestions(prev => prev.map((q, i) => {
+      if (i !== idx) return q;
+      const opts = Array.isArray(q.options) ? q.options.filter((_: any, oi: number) => oi !== optIdx) : [];
+      return { ...q, options: opts };
+    }));
+  };
+
+  const addGeneratedQuestion = () => {
+    setGeneratedQuestions(prev => ([
+      ...prev,
+      { id: `custom_${Date.now()}`, type: 'text', question: '', options: [], weight: 1, difficulty: 'beginner' }
+    ]));
+  };
+
+  const removeGeneratedQuestion = (idx: number) => {
+    setGeneratedQuestions(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  // ----- Save assessment & Bulk invite -----
+  const [selectedJobId, setSelectedJobId] = useState<string>('');
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set());
+  const [jobsOptions, setJobsOptions] = useState<Array<{ id: string; title: string }>>([]);
+
+  const toggleCandidateSelect = (id: string) => {
+    setSelectedCandidateIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllCandidates = () => {
+    setSelectedCandidateIds(new Set(testCandidates.map(c => c.id)));
+  };
+
+  const clearAllCandidates = () => {
+    setSelectedCandidateIds(new Set());
+  };
+
+  // Load jobs for linking
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch('/api/jobs', {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const arr = Array.isArray(data) ? data : data.jobs || [];
+        setJobsOptions(arr.map((j: any) => ({ id: j.id, title: j.title })));
+      } catch {}
+    })();
+  }, [getToken]);
+
+  const handleSaveAssessment = async () => {
+    try {
+      const token = await getToken();
+      const payload = {
+        title: selectedAssessment?.title || selectedRole,
+        description: selectedAssessment?.description || selectedSkills.join(', '),
+        questions: generatedQuestions,
+        jobId: selectedJobId || null,
+      };
+      const res = await fetch('/api/assessments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (json?.success) {
+        // Update local list so it appears immediately in the homepage
+        const saved: Assessment = {
+          id: json.id || String(Date.now()),
+          title: payload.title || 'Assessment',
+          description: payload.description || '',
+          type: 'technical',
+          duration: analyzeDuration || 0,
+          questions: Array.isArray(generatedQuestions) ? generatedQuestions.length : 0,
+          status: 'draft',
+          candidates: 0,
+          averageScore: 0,
+          createdAt: new Date().toISOString(),
+          tags: selectedSkills,
+          difficulty: analyzeDifficulty || 'intermediate',
+        };
+        setAssessments(prev => [saved, ...prev]);
+        setShowCreateModal(false);
+        setCurrentView('list');
+      } else {
+        alert('Failed to save assessment');
+      }
+    } catch {
+      alert('Failed to save assessment');
+    }
+  };
+
+  const handleBulkInvite = async () => {
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/assessments/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          assessmentId: selectedAssessment?.id || 'temp',
+          candidateIds: Array.from(selectedCandidateIds),
+          jobId: selectedJobId || null,
+          message: inviteForm.customMessage,
+        }),
+      });
+      const json = await res.json();
+      if (json?.success) {
+        alert(`Invitations sent: ${json.invites.length}`);
+      } else {
+        alert('Failed to send invitations');
+      }
+    } catch {
+      alert('Failed to send invitations');
+    }
   };
 
   if (currentView === 'questions' && selectedAssessment) {
@@ -377,16 +843,18 @@ export default function AssessmentsPage() {
                 <p className="text-gray-600 mt-1">{selectedAssessment.description}</p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
-              <Button variant="outline">
-                <Play className="h-4 w-4 mr-2" />
-                Preview
-              </Button>
-              <Button className="btn-primary">
-                Save
-              </Button>
-            </div>
+            <div className="flex items-center space-x-3"></div>
           </div>
+
+          {generatingLoading && (
+            <div className="mb-6 border rounded-xl p-6 bg-primary-50 flex items-start">
+              <div className="mr-3 mt-1"><Loader2 className="h-5 w-5 animate-spin text-primary-600" /></div>
+              <div>
+                <div className="font-medium text-gray-900">Generating your assessment…</div>
+                <div className="text-sm text-gray-700">This will take just a moment while we create questions from your selections.</div>
+              </div>
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="border-b border-gray-200 mb-6">
@@ -419,299 +887,209 @@ export default function AssessmentsPage() {
             </nav>
           </div>
 
-          {/* Test Overview */}
-          <div className="grid grid-cols-4 gap-6 mb-8">
-            <div className="bg-purple-50 p-4 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-purple-900">Spring Framework</p>
-                  <p className="text-xs text-purple-700">~6 questions</p>
+          {/* Assessment Overview (dynamic from categories) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {Object.keys(categoryMap).map((cat) => {
+              const count = generatedQuestions.filter((q: any) => (q.category || 'Uncategorized') === cat).length;
+              const minutes = Math.max(3, Math.round(count * 2));
+              const points = count * 10;
+              return (
+                <div key={cat} className="p-4 rounded-lg border bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{cat}</p>
+                      <p className="text-xs text-gray-600">~{count} questions</p>
+                    </div>
+                    <div className="text-gray-600">
+                      <span className="text-lg font-bold">{points} pts</span>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-gray-600">{minutes} min</div>
                 </div>
-                <div className="text-purple-600">
-                  <span className="text-lg font-bold">-160 pts</span>
-                </div>
-              </div>
-              <div className="mt-2 text-xs text-purple-700">3 to 5 min</div>
-            </div>
-
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-blue-900">React</p>
-                  <p className="text-xs text-blue-700">~5 questions</p>
-                </div>
-                <div className="text-blue-600">
-                  <span className="text-lg font-bold">-490 pts</span>
-                </div>
-              </div>
-              <div className="mt-2 text-xs text-blue-700">17 to 33 min</div>
-            </div>
-
-            <div className="bg-purple-50 p-4 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-purple-900">Java</p>
-                  <p className="text-xs text-purple-700">~5 questions</p>
-                </div>
-                <div className="text-purple-600">
-                  <span className="text-lg font-bold">-640 pts</span>
-                </div>
-              </div>
-              <div className="mt-2 text-xs text-purple-700">17 to 34 min</div>
-            </div>
-
-            <div className="bg-green-50 p-4 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-green-900">JavaScript</p>
-                  <p className="text-xs text-green-700">~9 questions</p>
-                </div>
-                <div className="text-green-600">
-                  <span className="text-lg font-bold">-910 pts</span>
-                </div>
-              </div>
-              <div className="mt-2 text-xs text-green-700">17 to 33 min</div>
-            </div>
+              );
+            })}
           </div>
 
-          {/* Test Summary */}
+          {/* Assessment Summary */}
           <div className="bg-gray-50 p-4 rounded-lg mb-6 flex items-center justify-between">
             <div className="flex items-center space-x-6">
               <div className="flex items-center">
-                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-                  <div className="w-4 h-4 bg-purple-500 rounded-full"></div>
+                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                  <div className="w-4 h-4 bg-gray-500 rounded-full"></div>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Total points: ~2200</p>
-                  <p className="text-xs text-gray-600">Total questions: ~25</p>
+                  <p className="text-sm font-medium text-gray-900">Total points: {generatedQuestions.length * 10}</p>
+                  <p className="text-xs text-gray-600">Total questions: {generatedQuestions.length}</p>
                 </div>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900">Total time: 53 to 105 min</p>
+                <p className="text-sm font-medium text-gray-900">Total time: {Math.max(5, Math.round(generatedQuestions.length * 2))} min</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-gray-900">Expected average score</span>
-                              <span className="text-2xl font-bold text-blue-600">69%</span>
+              <span className="text-2xl font-bold text-blue-600">{Math.max(40, 100 - generatedQuestions.length)}%</span>
               <Button variant="outline" size="sm">
                 <BarChart3 className="h-4 w-4" />
               </Button>
             </div>
           </div>
 
-          {/* Your test section */}
+          {/* Your assessment section */}
           <div className="bg-gray-800 text-white p-6 rounded-lg mb-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
                 <FileText className="h-5 w-5 mr-2" />
-                <span className="font-medium">Your test</span>
+                <span className="font-medium">Your assessment</span>
+              </div>
+              <div className="flex items-center space-x-2"></div>
+            </div>
+
+            {/* Job link and Bulk invite bar */}
+            <div className="bg-gray-700 p-4 rounded-lg mb-4 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <label className="text-sm">Link to job:</label>
+                <select
+                  value={selectedJobId}
+                  onChange={(e) => setSelectedJobId(e.target.value)}
+                  className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm"
+                >
+                  <option value="">None</option>
+                  {jobsOptions.map(j => (
+                    <option key={j.id} value={j.id}>{j.title}</option>
+                  ))}
+                </select>
               </div>
               <div className="flex items-center space-x-2">
-                <Button variant="outline" className="text-white border-white hover:bg-gray-700">
-                  <Play className="h-4 w-4 mr-2" />
+                <Button variant="outline" className="text-white border-white hover:bg-gray-600" onClick={handleSaveAssessment}>
+                  Save Assessment
+                </Button>
+                <Button variant="outline" className="text-white border-white hover:bg-gray-600" onClick={() => {
+                  const token = Math.random().toString(36).slice(2);
+                  sessionStorage.setItem(`assessment_preview_${token}` , JSON.stringify({ title: selectedAssessment?.title || selectedRole, duration: analyzeDuration, questions: generatedQuestions }));
+                  const url = `${window.location.origin}/assessments/take?token=${token}&duration=${analyzeDuration}`;
+                  window.open(url, '_blank');
+                }}>
                   Preview
                 </Button>
-                <Button variant="outline" className="text-white border-white hover:bg-gray-700">
-                  <MoreVertical className="h-4 w-4" />
+                <Button variant="outline" className="text-white border-white hover:bg-gray-600" onClick={() => {
+                  const token = Math.random().toString(36).slice(2);
+                  sessionStorage.setItem(`assessment_preview_${token}` , JSON.stringify({ title: selectedAssessment?.title || selectedRole, duration: analyzeDuration, questions: generatedQuestions }));
+                  const url = `${window.location.origin}/assessments/take?token=${token}&duration=${analyzeDuration}`;
+                  navigator.clipboard.writeText(url).catch(()=>{});
+                }}>
+                  Copy assessment URL
+                </Button>
+                <Button className="bg-green-600 hover:bg-green-500" onClick={() => setCurrentView('details')}>
+                  Invite candidates
                 </Button>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <Button className="bg-gray-700 hover:bg-gray-600 text-white justify-center">
-                Add a question
-              </Button>
-              <Button className="bg-gray-700 hover:bg-gray-600 text-white justify-center">
-                Add a random block
-              </Button>
-            </div>
+            {/* Removed top-level add buttons per request */}
 
-            {/* Question Blocks */}
-            <div className="space-y-4">
-              {/* Spring Framework Block */}
-              <div className="bg-green-100 p-4 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center">
-                    <span className="bg-green-600 text-white px-2 py-1 rounded text-xs font-medium mr-3">
-                      SPRING FRAMEWORK
-                    </span>
-                    <span className="text-gray-800 text-sm">Quiz Spring Framework (Random questions)</span>
-                    <div className="flex ml-2">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <Star className="h-4 w-4 text-yellow-500" />
+            {/* Generated Questions Editor */}
+            {generatedQuestions.length > 0 && (
+              <div className="bg-white text-gray-900 rounded-lg p-4 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-lg">Generated Questions</h3>
+                  <div className="flex items-center space-x-4">
+                    {/* Category summary */}
+                    <div className="hidden md:flex items-center space-x-3 text-sm text-gray-600">
+                      {Object.entries(computeCategoryCounts()).map(([cat, cnt]) => (
+                        <span key={cat} className="px-2 py-0.5 bg-gray-100 rounded">
+                          {cat}: {cnt}
+                        </span>
+                      ))}
                     </div>
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <Clock className="h-4 w-4 mr-1" />
-                    <span className="text-sm">05:00</span>
-                    <Button variant="outline" size="sm" className="ml-2">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
+                    <Button variant="outline" onClick={addGeneratedQuestion}>Add question</Button>
                   </div>
                 </div>
-              </div>
-
-              {/* React Block */}
-              <div className="bg-blue-100 p-4 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center">
-                    <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium mr-3">
-                      REACT
-                    </span>
-                    <span className="text-gray-800 text-sm">Quiz React (Random questions)</span>
-                    <div className="flex ml-2">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <Star className="h-4 w-4 text-gray-300" />
+                <div className="space-y-4">
+                  {generatedQuestions.map((q: any, idx: number) => (
+                    <div key={q.id ?? idx} className="border rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <select
+                            value={q.type}
+                            onChange={(e) => updateGeneratedQuestion(idx, 'type', e.target.value)}
+                            className="border rounded px-2 py-1 text-sm"
+                          >
+                            <option value="multiple_choice">Multiple Choice</option>
+                            <option value="text">Text</option>
+                            <option value="code">Code</option>
+                            <option value="rating">Rating</option>
+                          </select>
+                          <select
+                            value={q.category || ''}
+                            onChange={(e) => updateGeneratedQuestion(idx, 'category', e.target.value)}
+                            className="border rounded px-2 py-1 text-sm"
+                            title="Category"
+                          >
+                            <option value="">Uncategorized</option>
+                            {Object.keys(categoryMap).map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                          <select
+                            value={q.difficulty || 'beginner'}
+                            onChange={(e) => updateGeneratedQuestion(idx, 'difficulty', e.target.value)}
+                            className="border rounded px-2 py-1 text-sm"
+                          >
+                            <option value="beginner">Beginner</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                          </select>
+                          <input
+                            type="number"
+                            min={1}
+                            max={5}
+                            value={q.weight || 1}
+                            onChange={(e) => updateGeneratedQuestion(idx, 'weight', Number(e.target.value))}
+                            className="w-16 border rounded px-2 py-1 text-sm"
+                            title="Weight"
+                          />
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => removeGeneratedQuestion(idx)}>Remove</Button>
+                      </div>
+                      <textarea
+                        className="w-full border rounded p-2 text-sm"
+                        rows={3}
+                        value={q.question || ''}
+                        onChange={(e) => updateGeneratedQuestion(idx, 'question', e.target.value)}
+                        placeholder="Edit question text"
+                      />
+                      {q.type === 'multiple_choice' && (
+                        <div className="mt-2 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Options</span>
+                            <Button variant="outline" size="sm" onClick={() => addGeneratedOption(idx)}>Add option</Button>
+                          </div>
+                          {(q.options || []).map((opt: string, optIdx: number) => (
+                            <div key={optIdx} className="flex items-center space-x-2">
+                              <input
+                                className="flex-1 border rounded px-2 py-1 text-sm"
+                                value={opt}
+                                onChange={(e) => updateGeneratedOption(idx, optIdx, e.target.value)}
+                                placeholder={`Option ${optIdx + 1}`}
+                              />
+                              <Button variant="outline" size="sm" onClick={() => removeGeneratedOption(idx, optIdx)}>Remove</Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <Clock className="h-4 w-4 mr-1" />
-                    <span className="text-sm">04:00</span>
-                    <Button variant="outline" size="sm" className="ml-2">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  ))}
                 </div>
+                {/* Removed grouped-by-category summary per user request */}
               </div>
+            )}
+            {/* Removed candidate selection section for cleaner assessment layout */}
 
-              {/* React Coding Exercise */}
-              <div className="bg-blue-100 p-4 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center">
-                    <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium mr-3">
-                      REACT
-                    </span>
-                    <span className="text-gray-800 text-sm">Coding exercises React (Random questions)</span>
-                    <div className="flex ml-2">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <Star className="h-4 w-4 text-yellow-500" />
-                    </div>
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <Play className="h-4 w-4 mr-1" />
-                    <span className="text-sm">29:00</span>
-                    <Button variant="outline" size="sm" className="ml-2">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Java Quiz */}
-              <div className="bg-purple-100 p-4 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center">
-                    <span className="bg-purple-600 text-white px-2 py-1 rounded text-xs font-medium mr-3">
-                      JAVA
-                    </span>
-                    <span className="text-gray-800 text-sm">Quiz Java (Random questions)</span>
-                    <div className="flex ml-2">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <Star className="h-4 w-4 text-yellow-500" />
-                    </div>
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <Clock className="h-4 w-4 mr-1" />
-                    <span className="text-sm">05:00</span>
-                    <Button variant="outline" size="sm" className="ml-2">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Java Coding Exercise */}
-              <div className="bg-purple-100 p-4 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center">
-                    <span className="bg-purple-600 text-white px-2 py-1 rounded text-xs font-medium mr-3">
-                      JAVA
-                    </span>
-                    <span className="text-gray-800 text-sm">Coding exercises Java (Random questions)</span>
-                    <div className="flex ml-2">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <Star className="h-4 w-4 text-yellow-500" />
-                    </div>
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <Play className="h-4 w-4 mr-1" />
-                    <span className="text-sm">29:00</span>
-                    <Button variant="outline" size="sm" className="ml-2">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* JavaScript Quiz */}
-              <div className="bg-green-100 p-4 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center">
-                    <span className="bg-green-600 text-white px-2 py-1 rounded text-xs font-medium mr-3">
-                      JAVASCRIPT
-                    </span>
-                    <span className="text-gray-800 text-sm">Quiz JavaScript (Random questions)</span>
-                    <div className="flex ml-2">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <Star className="h-4 w-4 text-yellow-500" />
-                    </div>
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <Clock className="h-4 w-4 mr-1" />
-                    <span className="text-sm">04:00</span>
-                    <Button variant="outline" size="sm" className="ml-2">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* JavaScript Coding Exercise */}
-              <div className="bg-green-100 p-4 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center">
-                    <span className="bg-green-600 text-white px-2 py-1 rounded text-xs font-medium mr-3">
-                      JAVASCRIPT
-                    </span>
-                    <span className="text-gray-800 text-sm">Coding exercises JavaScript (Random questions)</span>
-                    <div className="flex ml-2">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <Star className="h-4 w-4 text-yellow-500" />
-                    </div>
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <Play className="h-4 w-4 mr-1" />
-                    <span className="text-sm">29:00</span>
-                    <Button variant="outline" size="sm" className="ml-2">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* Removed static demo blocks */}
           </div>
 
-          {/* Tip Section */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-lg mx-auto mb-4 flex items-center justify-center">
-              <FileText className="h-8 w-8 text-blue-600" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Here is the test you created</h3>
-            <p className="text-gray-600 mb-4">You can customize it!</p>
-            <p className="text-sm text-gray-500">
-              <strong>Tip:</strong> Make your test more relevant to the job you're hiring for by adding your own questions.
-            </p>
-            <Button className="btn-primary mt-4">
-              Save
-            </Button>
-          </div>
+          {/* Removed tip section */}
         </div>
       </Layout>
     );
@@ -801,7 +1179,7 @@ export default function AssessmentsPage() {
                 {/* Test Name */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Name your test
+                    Name your assessment
                   </label>
                   <input
                     type="text"
@@ -1180,11 +1558,11 @@ export default function AssessmentsPage() {
                 {/* End Page Title */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Title of your test's end page
+                    Title of your assessment's end page
                   </label>
                   <input
                     type="text"
-                    defaultValue="Your test has been successfully submitted"
+                    defaultValue="Your assessment has been successfully submitted"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -1192,7 +1570,7 @@ export default function AssessmentsPage() {
                 {/* End Page Text */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Text for your test's end page
+                    Text for your assessment's end page
                   </label>
                   <div className="border border-gray-300 rounded-lg">
                     <div className="bg-gray-50 px-3 py-2 border-b border-gray-300 flex items-center space-x-2">
@@ -1294,16 +1672,16 @@ export default function AssessmentsPage() {
             <div className="flex bg-gray-100 rounded-lg p-1">
               <button className="px-4 py-2 text-sm font-medium bg-white rounded-md shadow-sm text-gray-900">
                 <Users className="h-4 w-4 inline mr-2" />
-                All (8)
+                All ({testCandidates.length})
               </button>
               <button className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">
-                To review (8) <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block"></span>
+                To review ({testCandidates.filter(c => c.status === 'started' || c.status === 'completed').length}) <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block"></span>
               </button>
               <button className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">
-                Rejected (0)
+                Rejected ({testCandidates.filter(c => c.status === 'expired').length})
               </button>
               <button className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">
-                Passed (0)
+                Passed ({testCandidates.filter(c => c.status === 'completed' && (c.score ?? 0) >= 60).length})
               </button>
             </div>
             
@@ -1340,15 +1718,7 @@ export default function AssessmentsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Score
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Java
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      JavaScript
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      React
-                    </th>
+                    {/* Removed tech-specific columns */}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
@@ -1385,15 +1755,16 @@ export default function AssessmentsPage() {
                         {formatDate(candidate.invitedAt)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {candidate.status === 'completed' && candidate.score ? (
+                        {candidate.status === 'completed' && candidate.score !== undefined ? (
                           <span className="text-sm font-medium text-gray-900">{candidate.score}%</span>
+                        ) : candidate.status === 'started' ? (
+                          <span className="text-sm text-gray-600">In progress</span>
+                        ) : candidate.status === 'expired' ? (
+                          <span className="text-sm text-gray-600">Expired</span>
                         ) : (
-                          getStatusBadge(candidate.status)
+                          <span className="text-sm text-gray-600">—</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <Button 
                           variant="outline" 
@@ -2440,55 +2811,217 @@ export default function AssessmentsPage() {
                 <div>
                   <h2 className="text-2xl font-bold text-primary-900">Create a new test</h2>
                   <p className="text-primary-700">
-                    {createStep === 'role' && 'Which role do you want to test?'}
-                    {createStep === 'experience' && 'What is the required experience?'}
-                    {createStep === 'skills' && 'Which skills do you want to test?'}
-                    {createStep === 'ready' && 'Send it to a candidate or edit the selected questions.'}
+                    {createStep === 'describe' && 'Describe the role: paste, drag & drop, or dictate'}
+                    {createStep === 'analyze' && 'AI suggestions: types, skills, duration, difficulty'}
+                    {createStep === 'editor' && 'Preview and edit questions; generate with AI'}
+                    {createStep === 'summary' && 'Review and create your assessment'}
                   </p>
+                  <div className="mt-2 flex items-center text-xs text-gray-600 space-x-2">
+                    <span className={`px-2 py-0.5 rounded ${createStep==='describe'?'bg-primary-100 text-primary-800':'bg-gray-100'}`}>1. Describe</span>
+                    <span>→</span>
+                    <span className={`px-2 py-0.5 rounded ${createStep==='analyze'?'bg-primary-100 text-primary-800':'bg-gray-100'}`}>2. Analyze</span>
+                    <span>→</span>
+                    <span className={`px-2 py-0.5 rounded ${createStep==='editor'?'bg-primary-100 text-primary-800':'bg-gray-100'}`}>3. Editor</span>
+                    <span>→</span>
+                    <span className={`px-2 py-0.5 rounded ${createStep==='summary'?'bg-primary-100 text-primary-800':'bg-gray-100'}`}>4. Summary</span>
+                  </div>
                 </div>
               </div>
-              <button
-                onClick={handleCloseCreateModal}
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="h-6 w-6" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    handleCloseCreateModal();
+                    setCurrentView('list');
+                  }}
+                  className="px-3 py-2 text-sm text-primary-700 hover:bg-primary-100 rounded-lg transition-colors"
+                  title="Back to assessments"
+                >
+                  Back to assessments
+                </button>
+                <button
+                  onClick={handleCloseCreateModal}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Close"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
             </div>
 
             {/* Content */}
             <div className="p-6 max-h-[calc(90vh-200px)] overflow-y-auto">
-              {createStep === 'role' && (
+              {createStep === 'describe' && (
+                <div className="space-y-6">
+                  <div className="bg-primary-50 border border-primary-100 rounded-xl p-5 flex items-start">
+                    <div className="mr-3 mt-1">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-primary-700">✨</span>
+                    </div>
+                  <div>
+                      <h3 className="font-semibold text-gray-900">Hi David!</h3>
+                      <p className="text-gray-700">I'll help you create a new assessment quickly and easily. You can:</p>
+                      <ul className="mt-2 text-sm text-gray-700 space-y-1">
+                        <li className="flex items-center"><span className="mr-2">T</span> Type or paste the role description</li>
+                        <li className="flex items-center">Drag & drop files (PDF, DOCX, TXT)</li>
+                        <li className="flex items-center"><Mic className="h-4 w-4 mr-2" /> Use voice dictation</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <input
+                        type="text"
+                        placeholder="Assessment for (e.g., Senior Frontend Engineer)"
+                        value={selectedRole}
+                        onChange={(e) => setSelectedRole(e.target.value)}
+                        className="md:col-span-2 border border-gray-300 rounded-lg px-3 py-2"
+                      />
+                      <select
+                        value={selectedExperience}
+                        onChange={(e) => setSelectedExperience(e.target.value as any)}
+                        className="border border-gray-300 rounded-lg px-3 py-2"
+                      >
+                        <option value="junior">Junior</option>
+                        <option value="senior">Senior</option>
+                        <option value="expert">Expert</option>
+                      </select>
+                    </div>
+
+                    <div className="relative">
+                      <textarea
+                        placeholder="Paste your description here, or start typing to describe the role…"
+                        value={describeText}
+                        onChange={(e) => setDescribeText(e.target.value)}
+                        className="w-full h-40 border border-dashed border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-primary-500"
+                      />
+                      <div className="absolute right-3 bottom-3 flex items-center gap-2 text-gray-500">
+                        {/* Attachment removed as requested */}
+                        {!isDictating ? (
+                          <button onClick={startDictation} className="p-2 hover:text-gray-700" title="Dictate"><Mic className="h-5 w-5" /></button>
+                        ) : (
+                          <button onClick={stopDictation} className="p-2 text-red-600" title="Stop">Stop</button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {createStep === 'analyze' && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">1. Which role do you want to test?</h3>
-                    <div className="grid grid-cols-3 gap-3">
-                      {roles.map((role) => (
-                        <button
-                          key={role}
-                          onClick={() => setSelectedRole(role)}
-                          className={`p-4 text-left border-2 rounded-lg transition-all ${
-                            selectedRole === role
-                              ? 'border-primary-400 bg-primary-50 text-primary-800'
-                              : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-gray-100'
-                          }`}
-                        >
-                          {role === 'Other' && (
-                            <div className="flex items-center">
-                              <Edit className="h-4 w-4 mr-2 text-primary-600" />
-                              <span className="font-medium">{role}</span>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">2. AI analysis & selections</h3>
+                    {analyzeLoading && (
+                      <div className="border rounded-xl p-6 bg-primary-50 flex items-start">
+                        <div className="mr-3 mt-1"><Loader2 className="h-5 w-5 animate-spin text-primary-600" /></div>
+                        <div>
+                          <div className="font-medium text-gray-900">Analyzing your input…</div>
+                          <div className="text-sm text-gray-700">This will take just a moment while we extract the key information.</div>
+                        </div>
+                      </div>
+                    )}
+                    {analyzeError && <div className="mb-4 text-sm text-red-600">{analyzeError}</div>}
+
+                    {/* Test title */}
+                    <div className="mt-4">
+                      <div className="text-sm font-medium mb-1">Test title</div>
+                      <input
+                        type="text"
+                        value={draftTitle}
+                        onChange={(e) => setDraftTitle(e.target.value)}
+                        placeholder="e.g., Senior Front-end Assessment"
+                        className="w-full border rounded px-3 py-2"
+                      />
+                    </div>
+
+                    <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <div className="text-sm font-medium mb-1">Duration (minutes)</div>
+                        <input type="number" min={10} max={180} value={analyzeDuration} onChange={(e) => setAnalyzeDuration(Number(e.target.value))} className="w-full border rounded px-3 py-2" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium mb-1">Difficulty</div>
+                        <select value={analyzeDifficulty} onChange={(e) => setAnalyzeDifficulty(e.target.value as any)} className="w-full border rounded px-3 py-2">
+                          <option value="beginner">Beginner</option>
+                          <option value="intermediate">Intermediate</option>
+                          <option value="advanced">Advanced</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Organized categories */}
+                    {Object.keys(categoryMap).length > 0 && (
+                      <div className="mt-6 space-y-4">
+                        {Object.entries(categoryMap).map(([cat, items]) => (
+                          <div key={cat} className="border rounded-lg p-3">
+                            <div className="font-semibold text-sm mb-2">{cat}</div>
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {items.map((s) => (
+                                <span key={s} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800 border">
+                                  {s}
+                                  <button className="ml-1 text-gray-500" title="Use in skills" onClick={() => setSelectedSkills((prev) => prev.includes(s) ? prev : [...prev, s])}>+</button>
+                                  <button className="ml-1 text-gray-400" title="Remove" onClick={() => handleRemoveCategoryTag(cat, s)}>×</button>
+                                </span>
+                              ))}
+                            </div>
+                            <div className="flex gap-2">
+                              <input
+                                value={categoryNewTag[cat] || ''}
+                                onChange={(e) => setCategoryNewTag((p) => ({ ...p, [cat]: e.target.value }))}
+                                placeholder={`Add a ${cat.toLowerCase()} tag`}
+                                className="flex-1 border rounded px-3 py-2 text-sm"
+                              />
+                              <button className="px-3 py-2 border rounded text-sm" onClick={() => handleAddCategoryTag(cat)}>Add</button>
+                            </div>
+                          </div>
+                        ))}
                             </div>
                           )}
-                          {role !== 'Other' && (
-                            <span className="font-medium">{role}</span>
-                          )}
-                        </button>
+                  </div>
+                </div>
+              )}
+
+              {false && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">3. Pick a template (optional)</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {assessmentTemplates.map((tpl) => (
+                        <label
+                          key={tpl.id}
+                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                            selectedTemplateId === tpl.id
+                              ? 'border-primary-400 bg-primary-50'
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <div className="font-semibold text-gray-900">{tpl.name}</div>
+                              <div className="text-sm text-gray-600 mb-2">{tpl.description}</div>
+                              <div className="flex flex-wrap gap-2">
+                                {tpl.tags.map((tg) => (
+                                  <span key={tg} className="text-xs bg-gray-100 px-2 py-0.5 rounded">
+                                    {tg}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <input
+                              type="radio"
+                              name="tpl"
+                              checked={selectedTemplateId === tpl.id}
+                              onChange={() => setSelectedTemplateId(tpl.id)}
+                            />
+                          </div>
+                        </label>
                       ))}
                     </div>
                   </div>
                 </div>
               )}
 
-              {createStep === 'experience' && (
+              {false && (
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">2. What is the required experience?</h3>
@@ -2534,7 +3067,7 @@ export default function AssessmentsPage() {
                 </div>
               )}
 
-              {createStep === 'skills' && (
+              {false && (
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -2592,15 +3125,74 @@ export default function AssessmentsPage() {
                 </div>
               )}
 
-              {createStep === 'ready' && (
+              {createStep === 'editor' && (
+                <div className="space-y-6">
+                  {generatingLoading && (
+                    <div className="border rounded-xl p-6 bg-primary-50 flex items-start">
+                      <div className="mr-3 mt-1"><Loader2 className="h-5 w-5 animate-spin text-primary-600" /></div>
+                      <div>
+                        <div className="font-medium text-gray-900">Generating your assessment…</div>
+                        <div className="text-sm text-gray-700">This will take just a moment while we create questions from your selections.</div>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold text-gray-900">3. Editor - preview and modify questions</h3>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => setEditorFullscreen((v) => !v)}>{editorFullscreen ? 'Exit full screen' : 'Full screen'}</Button>
+                      <Button variant="outline" onClick={handleGenerateAI}><Brain className="h-4 w-4 mr-2" />AI Generate</Button>
+                      <Button variant="outline" onClick={() => setGeneratedQuestions([])}>Clear</Button>
+                    </div>
+                  </div>
+                  <div className={`border rounded-lg p-4 bg-gray-50 ${editorFullscreen ? 'fixed inset-4 z-[60] bg-white overflow-y-auto' : 'max-h-[50vh] overflow-y-auto'}`}>
+                    {editorFullscreen && (
+                      <div className="flex justify-end mb-2">
+                        <Button variant="outline" size="sm" onClick={() => setEditorFullscreen(false)}>Close</Button>
+                      </div>
+                    )}
+                    {generatedQuestions.length === 0 && (
+                      <div className="text-sm text-gray-500">No questions yet. Use AI Generate or add manually.</div>
+                    )}
+                    <div className="space-y-3">
+                      {generatedQuestions.map((q, idx) => (
+                        <div key={q.id || idx} className="bg-white border rounded-lg p-3">
+                          <div className="flex justify-between items-center">
+                            <div className="text-sm text-gray-500">{q.type?.toUpperCase()} • weight {q.weight || 1} • {q.difficulty || 'intermediate'}</div>
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" onClick={async () => {
+                                const res = await fetch('/api/assessments/answer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q.question, type: q.type, context: selectedRole }) });
+                                const js = await res.json();
+                                setGeneratedQuestions(prev => prev.map((x, i) => i === idx ? { ...x, _answer: js?.answer || 'N/A' } : x));
+                              }}>View answer</Button>
+                              <Button variant="outline" size="sm" onClick={() => setGeneratedQuestions(prev => prev.filter((_, i) => i !== idx))}>Delete</Button>
+                            </div>
+                          </div>
+                          <Textarea value={q.question} onChange={(e) => setGeneratedQuestions(prev => prev.map((x, i) => i === idx ? { ...x, question: e.target.value } : x))} />
+                          {Array.isArray(q.options) && q.options.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {q.options.map((opt: string, oi: number) => (
+                                <Input key={oi} value={opt} onChange={(e) => setGeneratedQuestions(prev => prev.map((x, i) => i === idx ? { ...x, options: x.options.map((oo: string, ooi: number) => ooi === oi ? e.target.value : oo) } : x))} />
+                              ))}
+                              <Button variant="outline" size="sm" onClick={() => setGeneratedQuestions(prev => prev.map((x, i) => i === idx ? { ...x, options: [...(x.options || []), ''] } : x))}>Add option</Button>
+                            </div>
+                          )}
+                          {q._answer && <div className="mt-2 text-sm text-gray-700"><span className="font-medium">Answer:</span> {q._answer}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {createStep === 'summary' && (
                 <div className="space-y-6">
                   <div className="text-center">
                     <div className="mb-6">
                       <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <CheckCircle className="h-8 w-8 text-primary-600" />
                       </div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-2">Your test is ready!</h3>
-                      <p className="text-gray-600">Send it to a candidate or edit the selected questions.</p>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-2">Review your assessment</h3>
+                      <p className="text-gray-600">Proceed to generate questions or customize blocks.</p>
                     </div>
 
                     {/* Test Details */}
@@ -2651,24 +3243,22 @@ export default function AssessmentsPage() {
                     <div className="text-left">
                       <h4 className="font-semibold text-gray-900 mb-4">Test structure:</h4>
                       <div className="bg-white border border-primary-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
+                        <div className="space-y-2">
+                          {builderBlocks.length === 0 && (
+                            <div className="text-sm text-gray-600">No blocks added yet. Go to Blocks and add sections.</div>
+                          )}
+                          {builderBlocks.map((b, i) => (
+                            <div key={b.id} className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
                             <div className="w-3 h-3 bg-primary-500 rounded-full"></div>
-                            <span className="font-medium text-gray-900">{selectedRole}</span>
+                                <span className="font-medium text-gray-900">{i + 1}. {b.label}</span>
                           </div>
                           <div className="text-sm text-gray-500">
-                            {selectedExperience === 'junior' ? '3-5 min' : selectedExperience === 'senior' ? '3-5 min' : '3-5 min'} 
-                            ({selectedExperience === 'junior' ? '~7' : selectedExperience === 'senior' ? '~7' : '~7'} questions)
+                                {b.duration} min • weight {b.weight} • {b.difficulty}
                           </div>
-                          <div className="text-sm text-gray-500 capitalize">{selectedExperience}</div>
-                          <div className="flex space-x-2">
-                            <button className="p-1 text-gray-400 hover:text-primary-600">
-                              <FileText className="h-4 w-4" />
-                            </button>
-                            <button className="p-1 text-gray-400 hover:text-primary-600">
-                              <Copy className="h-4 w-4" />
-                            </button>
+                              <div className="text-sm text-gray-500 capitalize">{b.kind.replace('_', ' ')}</div>
                           </div>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -2680,13 +3270,13 @@ export default function AssessmentsPage() {
             {/* Footer */}
             <div className="flex justify-between items-center p-6 border-t border-gray-200 bg-primary-50">
               <div className="flex items-center space-x-4">
-                {createStep !== 'role' && (
+                {createStep !== 'describe' && (
                   <Button 
                     variant="outline" 
                     onClick={() => {
-                      if (createStep === 'experience') setCreateStep('role');
-                      else if (createStep === 'skills') setCreateStep('experience');
-                      else if (createStep === 'ready') setCreateStep('skills');
+                      if (createStep === 'analyze') setCreateStep('describe');
+                      else if (createStep === 'editor') setCreateStep('analyze');
+                      else if (createStep === 'summary') setCreateStep('editor');
                     }}
                     className="border-primary-300 text-primary-700 hover:bg-primary-100"
                   >
@@ -2696,36 +3286,67 @@ export default function AssessmentsPage() {
               </div>
 
               <div className="flex items-center space-x-3">
-                {createStep === 'ready' && (
+                {createStep === 'summary' && (
                   <Button variant="outline" className="border-primary-300 text-primary-700 hover:bg-primary-100">
-                    See questions
+                    Share test link
                   </Button>
                 )}
                 
-                {createStep !== 'ready' ? (
+                {createStep !== 'summary' ? (
                   <Button 
                     onClick={() => {
-                      if (createStep === 'role' && selectedRole) setCreateStep('experience');
-                      else if (createStep === 'experience') setCreateStep('skills');
-                      else if (createStep === 'skills' && selectedSkills.length > 0) setCreateStep('ready');
+                      if (createStep === 'describe' && (selectedRole || describeText)) { if (!draftTitle) { const exp = selectedExperience ? selectedExperience.charAt(0).toUpperCase() + selectedExperience.slice(1) : ''; const suggested = selectedRole ? `${exp ? exp + ' ' : ''}${selectedRole} Assessment` : (describeText ? `${(describeText.split(/\n|\.|,/)[0] || '').trim().split(/\s+/).slice(0, 6).join(' ')} - Assessment` : 'New Assessment'); setDraftTitle(suggested); } setCreateStep('analyze'); runAnalyze(); }
+                      else if (createStep === 'analyze') {
+                        // Create draft assessment and seed questions per categories
+                        const draftId = `draft_${Date.now()}`;
+                        if (!selectedAssessment) {
+                          setSelectedAssessment({
+                            id: draftId,
+                            title: draftTitle || selectedRole || 'Assessment',
+                            description: Object.keys(categoryMap).join(', '),
+                            type: 'technical',
+                            duration: analyzeDuration,
+                            questions: 0,
+                            status: 'draft',
+                            candidates: 0,
+                            averageScore: 0,
+                            createdAt: new Date().toISOString(),
+                          } as any);
+                        }
+                        // Generate questions from tags via OpenAI and move to editor
+                        (async () => {
+                          const qs = await generateFromTags();
+                          if (!qs.length) {
+                            // Fallback minimal seed if AI returned nothing
+                            const seed: any[] = Object.keys(categoryMap || {}).map((cat) => ({ id: `seed_${cat}`, type: 'text', question: `Category: ${cat}`, category: cat, weight: 1, difficulty: analyzeDifficulty }));
+                            if (seed.length) setGeneratedQuestions(seed);
+                          }
+                        })();
+                        setCurrentView('questions');
+                      }
+                      else if (createStep === 'editor') setCreateStep('summary');
                     }}
                     disabled={
-                      (createStep === 'role' && !selectedRole) ||
-                      (createStep === 'skills' && selectedSkills.length === 0)
+                      (createStep === 'describe' && !selectedRole && !describeText)
                     }
                     className="bg-primary-600 hover:bg-primary-700 text-white"
                   >
-                    {createStep === 'role' && 'Next step: choose skills'}
-                    {createStep === 'experience' && 'Next step: choose skills'}
-                    {createStep === 'skills' && 'Create my test'}
+                    {createStep === 'describe' && 'Next: analyze'}
+                    {createStep === 'analyze' && 'Next: editor'}
+                    {createStep === 'editor' && 'Next: summary'}
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 ) : (
                   <Button 
-                    onClick={handleCreateAssessment}
+                    onClick={() => {
+                      const token = Math.random().toString(36).slice(2);
+                      const url = `${window.location.origin}/assessments/take?token=${token}&duration=${analyzeDuration}`;
+                      navigator.clipboard.writeText(url).catch(() => {});
+                      alert('Share link copied to clipboard');
+                    }}
                     className="bg-primary-600 hover:bg-primary-700 text-white"
                   >
-                    Invite candidates
+                    Copy share link
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 )}

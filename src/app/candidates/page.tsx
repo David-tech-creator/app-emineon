@@ -9,6 +9,7 @@ import { CandidateProfileModal } from '@/components/candidates/CandidateProfileM
 import { AdvancedFilterDrawer, CandidateFilters } from '@/components/candidates/AdvancedFilterDrawer';
 import { useCandidates } from '@/hooks/useCandidates';
 import { useAuth } from '@clerk/nextjs';
+import { AlgoliaSearchBox } from '@/components/search/AlgoliaSearchBox';
 import { 
   Users, 
   UserPlus, 
@@ -26,12 +27,19 @@ import {
   MoreHorizontal,
   FileText,
   Calendar,
-  MessageSquare
+  MessageSquare,
+  Grid3X3,
+  List,
+  Brain,
+  Edit3,
+  Trash2,
+  ChevronRight
 } from 'lucide-react';
 
 // Candidate interface
 interface Candidate {
   id: number;
+  databaseId?: string;
   name: string;
   location: string;
   experience: string;
@@ -65,12 +73,21 @@ interface Candidate {
     type: string;
     details?: string;
   }>;
+  // CV file information
+  originalCvUrl?: string;
+  originalCvFileName?: string;
+  originalCvUploadedAt?: string;
+  // AI Matching information
+  jobMatches?: any[];
+  averageMatchScore?: number;
+  topMatchingJob?: any;
+  _editMode?: boolean;
 }
 
 export default function CandidatesPage() {
   const { getToken } = useAuth();
   const [token, setToken] = useState<string | null>(null);
-  const { candidates, isLoading, error } = useCandidates();
+  const { candidates, isLoading, error, mutate } = useCandidates();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -80,6 +97,13 @@ export default function CandidatesPage() {
   const [showDrawer, setShowDrawer] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<CandidateFilters | null>(null);
+  const [viewMode, setViewMode] = useState<'detailed' | 'compact'>('detailed');
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
+  const [useAlgoliaSearch, setUseAlgoliaSearch] = useState(false);
+  const [algoliaResults, setAlgoliaResults] = useState<any[]>([]);
+  const [algoliaLoading, setAlgoliaLoading] = useState(false);
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -89,211 +113,52 @@ export default function CandidatesPage() {
     fetchToken();
   }, [getToken]);
 
-  // Mock candidates - SAME AS JOB PIPELINE
-  const allCandidates: Candidate[] = [
-    {
-      id: 1,
-      name: 'Alexandra Schmidt',
-      location: 'Basel, Switzerland',
-      experience: 'Senior Data Engineer (7 years)',
-      currentRole: 'Senior Data Engineer',
-      score: 'Very strong',
-      status: 'Active',
-      avatar: 'AS',
-      skills: ['Python', 'MongoDB', 'TypeScript', 'AWS', 'Docker'],
-      rating: 4.2,
-      email: 'alexandra.schmidt@email.com',
-      phone: '+41 76 123 4567',
-      company: 'DataFlow Innovations AG',
-      summary: 'Strong technical background with MongoDB experience. Based in Basel, open to hybrid work.',
-      education: 'Master of Computer Science, University of Basel (2017)',
-      languages: ['German (Native)', 'English (Fluent)', 'French (Conversational)'],
-      availability: 'Available',
-      expectedSalary: 'CHF 120,000 - 140,000',
-      linkedinUrl: 'https://linkedin.com/in/alexandraschmidt',
-      lastInteraction: '2024-01-16',
-      source: 'LinkedIn',
-      workExperience: [
-        {
-          company: 'Current Data Company',
-          role: 'Senior Data Engineer',
-          duration: '2021 - Present',
-          description: 'Lead data pipeline development using MongoDB and Python, architect cloud solutions with AWS'
-        },
-        {
-          company: 'Tech Solutions AG',
-          role: 'Data Engineer',
-          duration: '2019 - 2021',
-          description: 'Developed ETL processes, worked with various databases including MongoDB'
-        }
-      ],
-      timeline: [
-        { date: '2024-01-15', action: 'Added to pipeline', type: 'created' },
-        { date: '2024-01-16', action: 'CV reviewed', type: 'review' }
-      ]
-    },
-    {
-      id: 2,
-      name: 'Marco Weber',
-      location: 'Bern, Switzerland',
-      experience: 'Data Platform Engineer (5 years)',
-      currentRole: 'Data Platform Engineer',
-      score: 'Strong',
-      status: 'Active',
-      avatar: 'MW',
-      skills: ['MongoDB', 'TypeScript', 'React', 'Node.js', 'Kubernetes'],
-      rating: 3.8,
-      email: 'marco.weber@email.com',
-      phone: '+41 76 234 5678',
-      company: 'Swiss Tech Solutions',
-      summary: 'Good experience with data platforms. Available immediately.',
-      education: 'Bachelor of Engineering, Bern University of Applied Sciences (2019)',
-      languages: ['German (Native)', 'English (Fluent)', 'Italian (Basic)'],
-      availability: 'Available',
-      expectedSalary: 'CHF 100,000 - 120,000',
-      linkedinUrl: 'https://linkedin.com/in/marcoweber',
-      lastInteraction: '2024-01-14',
-      source: 'LinkedIn',
-      workExperience: [
-        {
-          company: 'Swiss Tech Solutions',
-          role: 'Data Platform Engineer',
-          duration: '2020 - Present',
-          description: 'Build and maintain data platforms using modern technologies including MongoDB and Kubernetes'
-        },
-        {
-          company: 'StartupCo',
-          role: 'Full Stack Developer',
-          duration: '2019 - 2020',
-          description: 'Developed web applications using TypeScript and React'
-        }
-      ],
-      timeline: [
-        { date: '2024-01-14', action: 'Added to pipeline', type: 'created' }
-      ]
-    },
-    {
-      id: 3,
-      name: 'Elena Rossi',
-      location: 'Geneva, Switzerland',
-      experience: 'Data Engineer (4 years)',
-      currentRole: 'Data Engineer',
-      score: 'Strong',
-      status: 'Under Review',
-      avatar: 'ER',
-      skills: ['Python', 'MongoDB', 'Apache Spark', 'AWS', 'Kafka'],
-      rating: 4.0,
-      email: 'elena.rossi@email.com',
-      phone: '+41 76 345 6789',
-      company: 'Geneva Analytics',
-      summary: 'Excellent MongoDB skills and data pipeline experience.',
-      education: 'Master of Data Science, University of Geneva (2020)',
-      languages: ['Italian (Native)', 'French (Fluent)', 'English (Fluent)', 'German (Basic)'],
-      availability: 'Available',
-      expectedSalary: 'CHF 95,000 - 115,000',
-      linkedinUrl: 'https://linkedin.com/in/elenarossi',
-      lastInteraction: '2024-01-13',
-      source: 'LinkedIn',
-      workExperience: [
-        {
-          company: 'Geneva Analytics',
-          role: 'Data Engineer',
-          duration: '2021 - Present',
-          description: 'Design and implement data pipelines using MongoDB, Apache Spark, and Kafka'
-        },
-        {
-          company: 'Data Solutions Ltd',
-          role: 'Junior Data Engineer',
-          duration: '2020 - 2021',
-          description: 'Built ETL processes and worked with various data storage solutions'
-        }
-      ],
-      timeline: [
-        { date: '2024-01-13', action: 'Added to pipeline', type: 'created' }
-      ]
-    },
-    {
-      id: 4,
-      name: 'Thomas Andersen',
-      location: 'Oslo, Norway',
-      experience: 'Lead Data Engineer (8 years)',
-      currentRole: 'Lead Data Engineer',
-      score: 'Very strong',
-      status: 'Interview Scheduled',
-      avatar: 'TA',
-      skills: ['Python', 'MongoDB', 'Kubernetes', 'Apache Airflow', 'GCP'],
-      rating: 4.5,
-      email: 'thomas.andersen@email.com',
-      phone: '+47 98 765 432',
-      company: 'Nordic Data Systems',
-      summary: 'Experienced lead engineer with extensive MongoDB and cloud experience.',
-      education: 'Master of Computer Science, Norwegian University of Science and Technology (2016)',
-      languages: ['Norwegian (Native)', 'English (Fluent)', 'German (Conversational)'],
-      availability: 'Available in 2 months',
-      expectedSalary: 'CHF 130,000 - 150,000',
-      linkedinUrl: 'https://linkedin.com/in/thomasandersen',
-      lastInteraction: '2024-01-12',
-      source: 'Referral',
-      workExperience: [
-        {
-          company: 'Nordic Data Systems',
-          role: 'Lead Data Engineer',
-          duration: '2019 - Present',
-          description: 'Lead team of data engineers, architect large-scale data solutions using MongoDB and cloud platforms'
-        },
-        {
-          company: 'Telenor',
-          role: 'Senior Data Engineer',
-          duration: '2017 - 2019',
-          description: 'Developed telecommunications data processing systems'
-        }
-      ],
-      timeline: [
-        { date: '2024-01-12', action: 'Referred by existing employee', type: 'application' },
-        { date: '2024-01-15', action: 'Interview scheduled', type: 'scheduling' }
-      ]
-    },
-    {
-      id: 5,
-      name: 'Isabella Romano',
-      location: 'Milan, Italy',
-      experience: 'Senior Data Engineer (6 years)',
-      currentRole: 'Senior Data Engineer',
-      score: 'Strong',
-      status: 'Long List',
-      avatar: 'IR',
-      skills: ['Python', 'MongoDB', 'Docker', 'Elasticsearch', 'Redis'],
-      rating: 4.1,
-      email: 'isabella.romano@email.com',
-      phone: '+39 335 123 4567',
-      company: 'Milano Tech Hub',
-      summary: 'Solid experience with MongoDB and distributed systems.',
-      education: 'Master of Computer Engineering, Politecnico di Milano (2018)',
-      languages: ['Italian (Native)', 'English (Fluent)', 'Spanish (Conversational)'],
-      availability: 'Available in 1 month',
-      expectedSalary: 'CHF 105,000 - 125,000',
-      linkedinUrl: 'https://linkedin.com/in/isabellaromano',
-      lastInteraction: '2024-01-11',
-      source: 'Job Board',
-      workExperience: [
-        {
-          company: 'Milano Tech Hub',
-          role: 'Senior Data Engineer',
-          duration: '2020 - Present',
-          description: 'Develop high-performance data processing systems using MongoDB and microservices architecture'
-        },
-        {
-          company: 'Italian Fintech',
-          role: 'Data Engineer',
-          duration: '2018 - 2020',
-          description: 'Built financial data processing pipelines'
-        }
-      ],
-      timeline: [
-        { date: '2024-01-11', action: 'Applied via job board', type: 'application' }
-      ]
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openDropdown !== null) {
+        setOpenDropdown(null);
+      }
+    };
+
+    if (openDropdown !== null) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
     }
-  ];
+  }, [openDropdown]);
+
+  // Use real candidates from API or Algolia results
+  const allCandidates = useAlgoliaSearch && algoliaResults.length > 0 
+    ? algoliaResults.map((hit, index) => ({
+        id: index + 1,
+        databaseId: hit.objectID,
+        name: hit.fullName || `${hit.firstName || ''} ${hit.lastName || ''}`.trim(),
+        location: hit.currentLocation || 'Not specified',
+        experience: `${hit.experienceYears || 0} years`,
+        currentRole: hit.currentTitle || 'Not specified',
+        score: 'Strong',
+        status: hit.status || 'NEW',
+        avatar: (hit.firstName?.charAt(0) || 'U') + (hit.lastName?.charAt(0) || 'U'),
+        skills: hit.technicalSkills || [],
+        rating: 4.5, // Default rating
+        email: hit.email || 'no-email@example.com',
+        phone: '',
+        company: 'Not specified',
+        summary: hit.summary || 'No summary available',
+        education: hit.degrees?.join(', ') || 'Not specified',
+        languages: hit.spokenLanguages || [],
+        availability: 'Available',
+        expectedSalary: hit.expectedSalary || 'Not specified',
+        linkedinUrl: undefined,
+        portfolioUrl: undefined,
+        lastInteraction: hit.createdAt || new Date().toISOString(),
+        source: hit.source || 'database',
+        workExperience: [],
+        timeline: [],
+        // Highlight matched terms
+        _highlightResult: hit._highlightResult,
+      }))
+    : candidates || [];
 
   const getScoreColor = (score: string) => {
     switch (score.toLowerCase()) {
@@ -348,12 +213,62 @@ export default function CandidatesPage() {
   };
 
   const handleViewProfile = (candidate: Candidate, openModal = false) => {
+    console.log('handleViewProfile called:', candidate.name, 'openModal:', openModal);
     setSelectedCandidate(candidate);
     if (openModal) {
+      console.log('Setting showModal to true');
       setShowModal(true);
     } else {
+      console.log('Setting showDrawer to true');
       setShowDrawer(true);
     }
+  };
+
+  const handleEditCandidate = (candidate: Candidate) => {
+    setSelectedCandidate({ ...candidate, _editMode: true });
+    setShowModal(true);
+    setOpenDropdown(null);
+  };
+
+  const handleDeleteCandidate = (candidateId: number) => {
+    setShowDeleteConfirm(candidateId);
+    setOpenDropdown(null);
+  };
+
+  const confirmDeleteCandidate = async (candidateId: number) => {
+    setIsDeleting(candidateId);
+    try {
+      const candidate = allCandidates.find(c => c.id === candidateId);
+      if (!candidate?.databaseId) {
+        throw new Error('Database ID not found');
+      }
+
+      const response = await fetch(`/api/candidates/${candidate.databaseId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete candidate');
+      }
+
+      // Refresh the candidates list
+      mutate();
+      setShowDeleteConfirm(null);
+    } catch (error) {
+      console.error('Delete candidate error:', error);
+      alert('Failed to delete candidate. Please try again.');
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const toggleDropdown = (candidateId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenDropdown(openDropdown === candidateId ? null : candidateId);
   };
 
   const handleCloseDrawer = () => {
@@ -368,19 +283,41 @@ export default function CandidatesPage() {
 
   const handleApplyFilters = (filters: CandidateFilters) => {
     setAppliedFilters(filters);
-    // Here you would typically apply the filters to your candidate search/query
     console.log('Applied filters:', filters);
   };
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="text-red-600 text-lg font-semibold mb-2">Error loading candidates</div>
+            <div className="text-gray-600">{error.message}</div>
+            <button 
+              onClick={() => mutate()} 
+              className="mt-4 btn-primary"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-primary-900">Talent Pipeline</h1>
-            <p className="text-secondary-600 mt-1">
-              Manage your candidates with AI-powered insights and intelligent filtering
-            </p>
+          <div className="flex items-center space-x-3">
+            <Users className="h-8 w-8 text-primary-600" />
+            <div>
+              <h1 className="text-3xl font-bold text-primary-900">Candidates</h1>
+              <p className="text-secondary-600 mt-1">
+                Manage your talent pipeline and candidate relationships
+              </p>
+            </div>
           </div>
           <button 
             onClick={() => setShowCreateModal(true)}
@@ -391,8 +328,125 @@ export default function CandidatesPage() {
           </button>
         </div>
 
-        {/* Data Engineer Pipeline Stats */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        {/* Search and Filters */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+          <div className="p-4">
+            <div className="flex flex-col md:flex-row gap-3 items-center">
+              <div className="flex-1 relative w-full">
+                {useAlgoliaSearch ? (
+                  <AlgoliaSearchBox
+                    onResults={setAlgoliaResults}
+                    onLoading={setAlgoliaLoading}
+                    placeholder="Search candidates with AI-powered search..."
+                    className="w-full"
+                  />
+                ) : (
+                  <>
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search candidates by name, skills, or location..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-sm"
+                    />
+                  </>
+                )}
+              </div>
+              
+              <div className="flex items-center space-x-2 shrink-0">
+                <select
+                  value={selectedFilter}
+                  onChange={(e) => setSelectedFilter(e.target.value)}
+                  className="px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-sm bg-white min-w-[120px]"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="interview">Interview Scheduled</option>
+                  <option value="review">Under Review</option>
+                  <option value="longlist">Long List</option>
+                </select>
+                
+                <button
+                  onClick={() => setShowFilters(true)}
+                  className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded-lg transition-colors flex items-center space-x-2 text-sm font-medium"
+                >
+                  <Filter className="h-4 w-4" />
+                  <span>Advanced Filters</span>
+                </button>
+                
+                {/* Algolia Search Toggle */}
+                <button
+                  onClick={() => setUseAlgoliaSearch(!useAlgoliaSearch)}
+                  className={`px-4 py-2.5 border border-gray-300 rounded-lg transition-colors flex items-center space-x-2 text-sm font-medium ${
+                    useAlgoliaSearch 
+                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                  title={useAlgoliaSearch ? 'Using Algolia Search' : 'Switch to Algolia Search'}
+                >
+                  <Search className="h-4 w-4" />
+                  <span className="hidden sm:inline">
+                    {useAlgoliaSearch ? 'AI Search' : 'Basic Search'}
+                  </span>
+                </button>
+                
+                {/* View Toggle */}
+                <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setViewMode('detailed')}
+                    className={`px-3 py-2.5 text-sm font-medium transition-colors flex items-center space-x-1 ${
+                      viewMode === 'detailed' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                    title="Detailed View"
+                  >
+                    <List className="h-4 w-4" />
+                    <span className="hidden sm:inline">Detailed</span>
+                  </button>
+                  <button
+                    onClick={() => setViewMode('compact')}
+                    className={`px-3 py-2.5 text-sm font-medium transition-colors flex items-center space-x-1 ${
+                      viewMode === 'compact' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                    title="Compact View"
+                  >
+                    <Grid3X3 className="h-4 w-4" />
+                    <span className="hidden sm:inline">Compact</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Algolia Search Status */}
+        {useAlgoliaSearch && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center space-x-3">
+              <Search className="h-5 w-5 text-blue-600" />
+              <div>
+                <h4 className="text-sm font-medium text-blue-900">AI-Powered Search Active</h4>
+                <p className="text-xs text-blue-700">
+                  Search results are powered by Algolia for faster, more accurate matching.
+                  {algoliaResults.length > 0 && ` Showing ${algoliaResults.length} search results.`}
+                </p>
+              </div>
+              <button
+                onClick={() => setUseAlgoliaSearch(false)}
+                className="ml-auto text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Switch to Basic Search
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <Card variant="elevated" className="text-center p-4">
             <div className="text-2xl font-bold text-primary-600">{allCandidates.length}</div>
             <div className="text-sm text-gray-600">Pipeline Candidates</div>
@@ -413,126 +467,27 @@ export default function CandidatesPage() {
             <div className="text-2xl font-bold text-yellow-600">
               {allCandidates.filter((c: Candidate) => c.score === 'Very strong').length}
             </div>
-            <div className="text-sm text-gray-600">MongoDB Experts</div>
+            <div className="text-sm text-gray-600">Top Candidates</div>
           </Card>
         </div>
 
-        {/* Enhanced Search & Filter Bar */}
-        <Card variant="elevated" className="shadow-lg border-0">
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-4">
-              {/* Main Search Bar */}
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search by name, title, skills, company, or keywords..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-12 pr-4 py-3.5 w-full border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm transition-all duration-200 text-base bg-gray-50 focus:bg-white"
-                  />
-                </div>
-              </div>
-              
-                             {/* Filter Button */}
-               <div className="flex items-center">
-                 <button
-                   onClick={() => setShowFilters(true)}
-                   className={`flex items-center space-x-2 px-6 py-3.5 border rounded-xl font-medium transition-all duration-200 ${
-                     appliedFilters ? 
-                     'bg-primary-100 border-primary-300 text-primary-700 hover:bg-primary-200' :
-                     'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
-                   }`}
-                 >
-                   <Filter className="h-5 w-5" />
-                   <span>All filters</span>
-                   {appliedFilters && (
-                     <span className="bg-primary-500 text-white text-xs rounded-full px-2 py-0.5">
-                       Active
-                     </span>
-                   )}
-                 </button>
-               </div>
-            </div>
-            
-            {/* Active Filters Display */}
-            {appliedFilters && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-gray-700">Active filters:</span>
-                  <div className="flex flex-wrap gap-2">
-                    {appliedFilters.location.countries.map(country => (
-                      <span key={country} className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                        📍 {country}
-                        <button
-                          onClick={() => {
-                            const newFilters = { ...appliedFilters };
-                            newFilters.location.countries = newFilters.location.countries.filter(c => c !== country);
-                            setAppliedFilters(newFilters);
-                          }}
-                          className="ml-1 text-blue-600 hover:text-blue-800"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                    {appliedFilters.skills.programmingLanguages.map(skill => (
-                      <span key={skill} className="inline-flex items-center px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
-                        💻 {skill}
-                        <button
-                          onClick={() => {
-                            const newFilters = { ...appliedFilters };
-                            newFilters.skills.programmingLanguages = newFilters.skills.programmingLanguages.filter(s => s !== skill);
-                            setAppliedFilters(newFilters);
-                          }}
-                          className="ml-1 text-purple-600 hover:text-purple-800"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                    <button
-                      onClick={() => setAppliedFilters(null)}
-                      className="text-xs text-gray-500 hover:text-gray-700 underline"
-                    >
-                      Clear all
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Bulk Actions Bar */}
+        {/* Bulk Actions */}
         {selectedCandidates.length > 0 && (
-          <Card variant="elevated" className="bg-blue-50 border-blue-200">
+          <Card variant="elevated">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <span className="text-sm font-medium text-blue-900">
-                    {selectedCandidates.length} candidate{selectedCandidates.length > 1 ? 's' : ''} selected
-                  </span>
-                  <button
-                    onClick={() => setSelectedCandidates([])}
-                    className="text-sm text-blue-600 hover:text-blue-700"
-                  >
-                    Clear selection
-                  </button>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <button
+                <span className="text-sm text-gray-600">
+                  {selectedCandidates.length} candidate{selectedCandidates.length > 1 ? 's' : ''} selected
+                </span>
+                <div className="flex space-x-2">
+                  <button 
                     onClick={handleBulkCompetenceFiles}
-                    className="btn-primary flex items-center space-x-2 text-sm"
+                    className="btn-primary text-sm"
                   >
-                    <span>Create Competence Files</span>
+                    Create Competence Files
                   </button>
-                  <button className="bg-white border border-primary-300 text-primary-700 hover:bg-primary-50 px-4 py-2 rounded-lg text-sm font-medium">
-                    Add to Job
-                  </button>
-                  <button className="bg-white border border-primary-300 text-primary-700 hover:bg-primary-50 px-4 py-2 rounded-lg text-sm font-medium">
-                    Send Message
+                  <button className="btn-secondary text-sm">
+                    Export Selected
                   </button>
                 </div>
               </div>
@@ -540,234 +495,377 @@ export default function CandidatesPage() {
           </Card>
         )}
 
-        {/* Select All Option */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              id="select-all"
-              checked={selectedCandidates.length === allCandidates.length && allCandidates.length > 0}
-              onChange={handleSelectAll}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <label htmlFor="select-all" className="text-sm font-medium text-gray-700">
-              Select all candidates
-            </label>
-          </div>
-          <span className="text-sm text-gray-500">
-            {allCandidates.length} candidate{allCandidates.length > 1 ? 's' : ''} found
-          </span>
-        </div>
-
-        {/* Swiss Candidates List */}
-        <div className="space-y-4">
-          {allCandidates.map((candidate: Candidate) => (
-            <Card key={candidate.id} variant="elevated" className={`hover:shadow-xl transition-all duration-300 border-l-4 group cursor-pointer ${
-              selectedCandidates.includes(candidate.id) ? 'border-l-blue-500 bg-blue-50' : 'border-l-primary-500'
-            }`}>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-4 flex-1">
-                    <div className="flex items-start space-x-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedCandidates.includes(candidate.id)}
-                        onChange={() => handleSelectCandidate(candidate.id)}
-                        className="mt-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
-                        {candidate.avatar}
-                      </div>
-                    </div>
-                    
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-xl font-bold text-gray-900 group-hover:text-primary-700 transition-colors">{candidate.name}</h3>
-                        <div className="flex items-center space-x-1 bg-yellow-50 px-2 py-1 rounded-full">
-                          <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                          <span className="text-sm font-bold text-yellow-700">{candidate.rating}</span>
-                        </div>
-                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getScoreColor(candidate.score)}`}>
-                          {candidate.score}
-                        </span>
-                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(candidate.status)}`}>
-                          {candidate.status}
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center space-x-6 text-sm text-gray-600 mb-3">
-                        <div className="flex items-center space-x-1">
-                          <MapPin className="h-4 w-4 text-primary-500" />
-                          <span className="font-medium">{candidate.location}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Briefcase className="h-4 w-4 text-primary-500" />
-                          <span>{candidate.company}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full font-medium">🇨🇭 Swiss Resident</span>
-                        </div>
-                      </div>
-                      
-                      <p className="text-gray-700 font-medium mb-3 text-base">{candidate.experience}</p>
-                      
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {candidate.skills.slice(0, 4).map((skill, index) => (
-                          <span 
-                            key={index}
-                            className="px-3 py-1.5 bg-primary-50 text-primary-700 text-sm rounded-full font-medium border border-primary-200 hover:bg-primary-100 transition-colors"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                        {candidate.skills.length > 4 && (
-                          <span className="px-3 py-1.5 bg-gray-100 text-gray-600 text-sm rounded-full font-medium">
-                            +{candidate.skills.length - 4} more
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Language Skills */}
-                      <div className="flex items-center space-x-2 mb-4">
-                        <span className="text-sm text-gray-600 font-medium">Languages:</span>
-                        {candidate.languages.slice(0, 3).map((lang, index) => (
-                          <span key={index} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded font-medium">
-                            {lang}
-                          </span>
-                        ))}
-                      </div>
-                      
-                      {/* Quick Actions */}
-                      <div className="flex items-center space-x-4 pt-3 border-t border-gray-100">
-                        <button className="text-primary-600 hover:text-primary-700 font-semibold text-sm flex items-center space-x-1">
-                          <span>Add to Job</span>
-                        </button>
-                        <button 
-                          onClick={() => window.location.href = '/competence-files'}
-                          className="text-primary-600 hover:text-primary-700 font-semibold text-sm flex items-center space-x-1"
-                        >
-                          <span>Create Competence File</span>
-                        </button>
-                        <button className="text-primary-600 hover:text-primary-700 font-semibold text-sm flex items-center space-x-1">
-                          <Calendar className="h-4 w-4" />
-                          <span>Schedule Interview</span>
-                        </button>
-                        <button className="text-primary-600 hover:text-primary-700 font-semibold text-sm flex items-center space-x-1">
-                          <MessageSquare className="h-4 w-4" />
-                          <span>Send Message</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col items-end space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <button 
-                        onClick={() => handleViewProfile(candidate, true)}
-                        className="p-3 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors border border-gray-200 hover:border-primary-200"
-                        title="Open in Modal"
-                      >
-                        <FileText className="h-5 w-5" />
-                      </button>
-                      <button className="p-3 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors border border-gray-200 hover:border-primary-200">
-                        <Mail className="h-5 w-5" />
-                      </button>
-                      <button className="p-3 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors border border-gray-200 hover:border-primary-200">
-                        <Phone className="h-5 w-5" />
-                      </button>
-                    </div>
-                    
-                    <div className="flex space-x-2">
-                      <button 
-                        onClick={() => handleViewProfile(candidate)}
-                        className="bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors flex items-center space-x-2 shadow-md"
-                      >
-                        <Eye className="h-4 w-4" />
-                        <span>View Profile</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Loading/Error States */}
-        {isLoading && (
-          <div className="text-center py-8">
-            <p className="text-secondary-600">Loading candidates...</p>
-          </div>
-        )}
-
-        {error && (
-          <div className="text-center py-8">
-            <p className="text-error-600">Error loading candidates: {error.message || String(error)}</p>
+        {/* Loading State */}
+        {(isLoading || algoliaLoading) && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">
+                {useAlgoliaSearch ? 'Searching candidates...' : 'Loading candidates...'}
+              </p>
+            </div>
           </div>
         )}
 
         {/* Empty State */}
-        {!isLoading && !error && candidates.length === 0 && (
+        {!isLoading && !algoliaLoading && allCandidates.length === 0 && (
           <Card variant="elevated">
-            <CardContent>
-              <div className="text-center py-12">
-                <Users className="h-16 w-16 text-secondary-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-secondary-900 mb-2">No candidates yet</h3>
-                <p className="text-secondary-600 mb-6">
-                  Start building your talent pipeline by adding your first candidate.
-                </p>
-                <button 
-                  onClick={() => setShowCreateModal(true)}
-                  className="btn-primary inline-flex items-center space-x-2"
-                >
-                  <UserPlus className="h-4 w-4" />
-                  <span>Add First Candidate</span>
-                </button>
-              </div>
+            <CardContent className="p-12 text-center">
+              <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No candidates found</h3>
+              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                Start building your talent pipeline by adding your first candidate.
+              </p>
+              <button 
+                onClick={() => setShowCreateModal(true)}
+                className="btn-primary inline-flex items-center space-x-2"
+              >
+                <UserPlus className="h-4 w-4" />
+                <span>Add First Candidate</span>
+              </button>
             </CardContent>
           </Card>
         )}
 
-        {/* Talent Insights */}
-        <Card variant="outlined">
-          <CardHeader title="Talent Insights">
-            <div></div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                  <Star className="h-6 w-6 text-blue-600" />
+        {/* Candidates List */}
+        {!isLoading && !algoliaLoading && allCandidates.length > 0 && (
+          <Card variant="elevated">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="select-all"
+                    checked={selectedCandidates.length === allCandidates.length && allCandidates.length > 0}
+                    onChange={handleSelectAll}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <label htmlFor="select-all" className="text-sm font-medium text-gray-700">
+                    Select All
+                  </label>
                 </div>
-                <h4 className="font-medium text-gray-900 mb-1">AI-Powered Matching</h4>
-                <p className="text-sm text-gray-600">Advanced algorithms to find the best talent matches</p>
+                <span className="text-sm text-gray-500">
+                  {allCandidates.length} candidate{allCandidates.length > 1 ? 's' : ''} found
+                </span>
               </div>
-              
-              <div className="text-center p-4">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                  <Filter className="h-6 w-6 text-green-600" />
-                </div>
-                <h4 className="font-medium text-gray-900 mb-1">Smart Filtering</h4>
-                <p className="text-sm text-gray-600">LinkedIn Recruiter-style filters for precise candidate search</p>
+            </CardHeader>
+            <CardContent>
+              <div className={viewMode === 'compact' ? 'space-y-2' : 'space-y-4'}>
+                {allCandidates.map((candidate: Candidate) => (
+                  viewMode === 'compact' ? (
+                    // Compact View
+                    <div key={candidate.id} className={`bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-all duration-200 group cursor-pointer ${
+                      selectedCandidates.includes(candidate.id) ? 'border-blue-500 bg-blue-50' : 'hover:border-gray-300'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3 flex-1 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={selectedCandidates.includes(candidate.id)}
+                            onChange={() => handleSelectCandidate(candidate.id)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          
+                          <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                            {candidate.avatar}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2">
+                              <h3 className="font-semibold text-gray-900 truncate">{candidate.name}</h3>
+                              <div className="flex items-center space-x-1">
+                                <Star className="h-3 w-3 text-yellow-500 fill-current" />
+                                <span className="text-xs font-medium text-yellow-700">{candidate.rating}</span>
+                              </div>
+                              <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getScoreColor(candidate.score)}`}>
+                                {candidate.score}
+                              </span>
+                              <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(candidate.status)}`}>
+                                {candidate.status}
+                              </span>
+                              {candidate.averageMatchScore && (
+                                <span className={`px-2 py-0.5 text-xs font-medium rounded-full flex items-center space-x-1 ${
+                                  candidate.averageMatchScore >= 80 ? 'bg-green-100 text-green-800' :
+                                  candidate.averageMatchScore >= 60 ? 'bg-blue-100 text-blue-800' :
+                                  candidate.averageMatchScore >= 40 ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-red-100 text-red-800'
+                                }`}>
+                                  <Brain className="h-3 w-3" />
+                                  <span>{Math.round(candidate.averageMatchScore)}%</span>
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center space-x-4 text-xs text-gray-500 mt-1">
+                              <span className="flex items-center">
+                                <Briefcase className="h-3 w-3 mr-1" />
+                                {candidate.currentRole}
+                              </span>
+                              <span className="flex items-center">
+                                <MapPin className="h-3 w-3 mr-1" />
+                                {candidate.location}
+                              </span>
+                              <span>{candidate.experience}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-1 ml-4">
+                          <button
+                            onClick={() => handleViewProfile(candidate, true)}
+                            className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                            title="View Profile"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                            title="Send Email"
+                          >
+                            <Mail className="h-4 w-4" />
+                          </button>
+                          <button
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Call"
+                          >
+                            <Phone className="h-4 w-4" />
+                          </button>
+                          <div className="relative">
+                            <button
+                              onClick={(e) => toggleDropdown(candidate.id, e)}
+                              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded transition-colors"
+                              title="More actions"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </button>
+                            
+                            {openDropdown === candidate.id && (
+                              <div className="absolute right-0 top-8 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50">
+                                <button
+                                  onClick={() => handleEditCandidate(candidate)}
+                                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                                >
+                                  <Edit3 className="h-4 w-4" />
+                                  <span>Edit Candidate</span>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteCandidate(candidate.id)}
+                                  className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span>Delete Candidate</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    // Detailed View (Original)
+                    <Card key={candidate.id} variant="elevated" className={`hover:shadow-xl transition-all duration-300 border-l-4 group cursor-pointer ${
+                      selectedCandidates.includes(candidate.id) ? 'border-l-blue-500 bg-blue-50' : 'border-l-primary-500'
+                    }`}>
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedCandidates.includes(candidate.id)}
+                            onChange={() => handleSelectCandidate(candidate.id)}
+                            className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          
+                          <div className="w-16 h-16 bg-primary-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                            {candidate.avatar}
+                          </div>
+                          
+                          <div className="flex-1">
+                            {/* Header with name and badges */}
+                            <div className="flex items-center space-x-3 mb-3">
+                              <h3 className="text-2xl font-bold text-gray-900 group-hover:text-primary-700 transition-colors">{candidate.name}</h3>
+                              <div className="flex items-center space-x-1 bg-yellow-50 px-2 py-1 rounded-full">
+                                <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                                <span className="text-sm font-bold text-yellow-700">{candidate.rating}</span>
+                              </div>
+                              <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getScoreColor(candidate.score)}`}>
+                                {candidate.score}
+                              </span>
+                              <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(candidate.status)}`}>
+                                {candidate.status}
+                              </span>
+                              {candidate.averageMatchScore && (
+                                <span className={`px-3 py-1 text-xs font-semibold rounded-full flex items-center space-x-1 ${
+                                  candidate.averageMatchScore >= 80 ? 'bg-green-100 text-green-800' :
+                                  candidate.averageMatchScore >= 60 ? 'bg-blue-100 text-blue-800' :
+                                  candidate.averageMatchScore >= 40 ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-red-100 text-red-800'
+                                }`}>
+                                  <Brain className="h-3 w-3" />
+                                  <span>{Math.round(candidate.averageMatchScore)}% AI Match</span>
+                                </span>
+                              )}
+                            </div>
+                            
+                            {/* Professional info */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                              <div>
+                                <div className="flex items-center space-x-2 text-lg font-semibold text-gray-800 mb-1">
+                                  <Briefcase className="h-5 w-5 text-gray-500" />
+                                  <span>{candidate.currentRole}</span>
+                                </div>
+                                <p className="text-gray-600 text-sm">{candidate.experience} • {candidate.company}</p>
+                              </div>
+                              <div>
+                                <div className="flex items-center space-x-2 text-sm text-gray-600 mb-1">
+                                  <MapPin className="h-4 w-4" />
+                                  <span className="font-medium">{candidate.location}</span>
+                                </div>
+                                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                                  <Mail className="h-4 w-4" />
+                                  <span>{candidate.email}</span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Summary */}
+                            {candidate.summary && (
+                              <div className="mb-4">
+                                <p className="text-gray-700 text-sm leading-relaxed line-clamp-2">
+                                  {candidate.summary}
+                                </p>
+                              </div>
+                            )}
+                            
+                            {/* Skills */}
+                            <div className="mb-4">
+                              <h4 className="text-sm font-semibold text-gray-700 mb-2">Technical Skills</h4>
+                              <div className="flex flex-wrap gap-2">
+                                {candidate.skills.slice(0, 6).map((skill, index) => (
+                                  <span 
+                                    key={index}
+                                    className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-200"
+                                  >
+                                    {skill}
+                                  </span>
+                                ))}
+                                {candidate.skills.length > 6 && (
+                                  <span className="px-3 py-1 bg-gray-50 text-gray-600 text-xs font-medium rounded-full border border-gray-200">
+                                    +{candidate.skills.length - 6} more
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Additional details */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                              <div>
+                                <span className="font-medium text-gray-700">Availability:</span>
+                                <p className="text-gray-600">{candidate.availability}</p>
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-700">Expected Salary:</span>
+                                <p className="text-gray-600">{candidate.expectedSalary}</p>
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-700">Source:</span>
+                                <p className="text-gray-600">{candidate.source}</p>
+                              </div>
+                            </div>
+                            
+                            {/* Languages */}
+                            {candidate.languages.length > 0 && (
+                              <div className="mt-3">
+                                <div className="flex flex-wrap gap-2">
+                                  {candidate.languages.slice(0, 4).map((lang, index) => (
+                                    <span 
+                                      key={index}
+                                      className="px-2 py-1 bg-green-50 text-green-700 text-xs rounded-full border border-green-200"
+                                    >
+                                      {lang}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleViewProfile(candidate, true)}
+                            className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                            title="View Profile"
+                          >
+                            <Eye className="h-5 w-5" />
+                          </button>
+                          
+                          <button
+                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            title="Send Email"
+                          >
+                            <Mail className="h-5 w-5" />
+                          </button>
+                          
+                          <button
+                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Call"
+                          >
+                            <Phone className="h-5 w-5" />
+                          </button>
+                          
+                          <div className="relative">
+                            <button
+                              onClick={(e) => toggleDropdown(candidate.id, e)}
+                              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                              title="More actions"
+                            >
+                              <MoreHorizontal className="h-5 w-5" />
+                            </button>
+                            
+                            {openDropdown === candidate.id && (
+                              <div className="absolute right-0 top-10 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50">
+                                <button
+                                  onClick={() => handleEditCandidate(candidate)}
+                                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                                >
+                                  <Edit3 className="h-4 w-4" />
+                                  <span>Edit Candidate</span>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteCandidate(candidate.id)}
+                                  className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span>Delete Candidate</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  )
+                ))}
               </div>
-              
-              <div className="text-center p-4">
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                  <Users className="h-6 w-6 text-purple-600" />
-                </div>
-                <h4 className="font-medium text-gray-900 mb-1">Global Network</h4>
-                <p className="text-sm text-gray-600">Connect with top talent from leading companies worldwide</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Create Candidate Modal */}
       <CreateCandidateModal 
         open={showCreateModal} 
-        onClose={() => setShowCreateModal(false)} 
+        onClose={() => setShowCreateModal(false)}
+        onRefreshCandidates={() => mutate()}
+        onViewCandidate={(candidateId) => {
+          // Find the candidate by ID and open the candidate profile modal
+          const candidate = candidates?.find(c => c.id === candidateId);
+          if (candidate) {
+            setSelectedCandidate(candidate);
+            setShowModal(true);
+          }
+        }}
       />
 
       {/* Candidate Profile Drawer */}
@@ -785,7 +883,64 @@ export default function CandidatesPage() {
           candidate={selectedCandidate}
           isOpen={showModal}
           onClose={handleCloseModal}
+          initialEditMode={(selectedCandidate as any)._editMode || false}
+          onRefresh={() => mutate()}
         />
+      )}
+      
+      {/* Debug info */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed bottom-4 right-4 bg-black text-white p-2 text-xs rounded">
+          Modal: {showModal ? 'OPEN' : 'CLOSED'} | Selected: {selectedCandidate?.name || 'NONE'}
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete Candidate</h3>
+                <p className="text-sm text-gray-500">This action cannot be undone</p>
+              </div>
+            </div>
+            
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete this candidate? They will be archived and no longer appear in your candidate list.
+            </p>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                disabled={isDeleting === showDeleteConfirm}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => confirmDeleteCandidate(showDeleteConfirm)}
+                disabled={isDeleting === showDeleteConfirm}
+                className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 flex items-center space-x-2"
+              >
+                {isDeleting === showDeleteConfirm ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    <span>Delete</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Advanced Filter Drawer */}
@@ -796,4 +951,4 @@ export default function CandidatesPage() {
       />
     </Layout>
   );
-} 
+}

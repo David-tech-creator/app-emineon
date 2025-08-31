@@ -317,6 +317,7 @@ export type Segment = {
   visible: boolean;
   type: string; // section type for AI prompts
   experienceData?: ExperienceData | null;
+  htmlContent?: string; // rich HTML captured from Lexical for preview
 };
 
 // Segment Store Interface
@@ -331,6 +332,7 @@ export interface SegmentState {
   removeSegment: (id: string) => void;
   reorderSegments: (fromIndex: number, toIndex: number) => void;
   loadFromAI: (jobData: JobDescription, candidateData: CandidateData) => Promise<void>;
+  loadFromExisting: (existingData: any) => void;
   regenerateSegment: (segmentId: string, jobData: JobDescription, candidateData: CandidateData) => Promise<void>;
   improveSegment: (segmentId: string, jobData: JobDescription, candidateData: CandidateData) => Promise<void>;
   expandSegment: (segmentId: string, jobData: JobDescription, candidateData: CandidateData) => Promise<void>;
@@ -388,27 +390,76 @@ export const useSegmentStore = create<SegmentState>()(
         
         try {
           // ✅ JO VINKENROYE INSPIRED ORDERING - Perfect match to the screenshot
+          // Translate section titles based on language
+          const getLocalizedTitle = (englishTitle: string, lang?: string): string => {
+            if (!lang || lang === 'en') return englishTitle;
+            
+            const translations: Record<string, Record<string, string>> = {
+              'fr': {
+                'HEADER': 'EN-TÊTE',
+                'EXECUTIVE SUMMARY': 'RÉSUMÉ EXÉCUTIF',
+                'CORE COMPETENCIES': 'COMPÉTENCES CLÉS',
+                'ACADEMIC QUALIFICATIONS': 'QUALIFICATIONS ACADÉMIQUES',
+                'PROFESSIONAL CERTIFICATIONS': 'CERTIFICATIONS PROFESSIONNELLES',
+                'PROFESSIONAL EXPERIENCE SUMMARY': 'RÉSUMÉ DE L\'EXPÉRIENCE PROFESSIONNELLE',
+                'TECHNICAL EXPERTISE': 'EXPERTISE TECHNIQUE',
+                'FUNCTIONAL SKILLS': 'COMPÉTENCES FONCTIONNELLES',
+                'LANGUAGES & SKILLS': 'LANGUES ET COMPÉTENCES',
+              },
+              'de': {
+                'HEADER': 'KOPFZEILE',
+                'EXECUTIVE SUMMARY': 'ZUSAMMENFASSUNG',
+                'CORE COMPETENCIES': 'KERNKOMPETENZEN',
+                'ACADEMIC QUALIFICATIONS': 'AKADEMISCHE QUALIFIKATIONEN',
+                'PROFESSIONAL CERTIFICATIONS': 'BERUFLICHE ZERTIFIZIERUNGEN',
+                'PROFESSIONAL EXPERIENCE SUMMARY': 'BERUFSERFAHRUNG ÜBERSICHT',
+                'TECHNICAL EXPERTISE': 'TECHNISCHE EXPERTISE',
+                'FUNCTIONAL SKILLS': 'FUNKTIONALE FÄHIGKEITEN',
+                'LANGUAGES & SKILLS': 'SPRACHEN UND FÄHIGKEITEN',
+              },
+              'nl': {
+                'HEADER': 'HEADER',
+                'EXECUTIVE SUMMARY': 'UITVOERENDE SAMENVATTING',
+                'CORE COMPETENCIES': 'KERNCOMPETENTIES',
+                'ACADEMIC QUALIFICATIONS': 'ACADEMISCHE KWALIFICATIES',
+                'PROFESSIONAL CERTIFICATIONS': 'PROFESSIONELE CERTIFICERINGEN',
+                'PROFESSIONAL EXPERIENCE SUMMARY': 'PROFESSIONELE ERVARING OVERZICHT',
+                'TECHNICAL EXPERTISE': 'TECHNISCHE EXPERTISE',
+                'FUNCTIONAL SKILLS': 'FUNCTIONELE VAARDIGHEDEN',
+                'LANGUAGES & SKILLS': 'TALEN EN VAARDIGHEDEN',
+              }
+            };
+            
+            return translations[lang]?.[englishTitle] || englishTitle;
+          };
+
+          const lang = (jobData as any)?.language;
           const staticSections = [
-            { id: 'header', title: 'HEADER', type: 'HEADER', order: 0 },
-            { id: 'summary', title: 'EXECUTIVE SUMMARY', type: 'PROFESSIONAL SUMMARY', order: 1 },
-            { id: 'core-competencies', title: 'CORE COMPETENCIES', type: 'AREAS OF EXPERTISE', order: 2 },
-            { id: 'education', title: 'ACADEMIC QUALIFICATIONS', type: 'EDUCATION', order: 3 }, // ✅ Right after Core Competencies
-            { id: 'certifications', title: 'PROFESSIONAL CERTIFICATIONS', type: 'CERTIFICATIONS', order: 4 }, // ✅ Right after Education
-            { id: 'experiences-summary', title: 'PROFESSIONAL EXPERIENCE SUMMARY', type: 'PROFESSIONAL EXPERIENCES SUMMARY', order: 5 }, // ✅ Right after Certifications
-            { id: 'technical', title: 'TECHNICAL EXPERTISE', type: 'TECHNICAL SKILLS', order: 6 },
-            { id: 'skills', title: 'FUNCTIONAL SKILLS', type: 'FUNCTIONAL SKILLS', order: 7 },
-            { id: 'languages', title: 'LANGUAGES & SKILLS', type: 'LANGUAGES', order: 8 },
+            { id: 'header', title: getLocalizedTitle('HEADER', lang), type: 'HEADER', order: 0 },
+            { id: 'summary', title: getLocalizedTitle('EXECUTIVE SUMMARY', lang), type: 'PROFESSIONAL SUMMARY', order: 1 },
+            { id: 'core-competencies', title: getLocalizedTitle('CORE COMPETENCIES', lang), type: 'AREAS OF EXPERTISE', order: 2 },
+            { id: 'education', title: getLocalizedTitle('ACADEMIC QUALIFICATIONS', lang), type: 'EDUCATION', order: 3 },
+            { id: 'certifications', title: getLocalizedTitle('PROFESSIONAL CERTIFICATIONS', lang), type: 'CERTIFICATIONS', order: 4 },
+            { id: 'experiences-summary', title: getLocalizedTitle('PROFESSIONAL EXPERIENCE SUMMARY', lang), type: 'PROFESSIONAL EXPERIENCES SUMMARY', order: 5 },
+            { id: 'technical', title: getLocalizedTitle('TECHNICAL EXPERTISE', lang), type: 'TECHNICAL SKILLS', order: 6 },
+            { id: 'skills', title: getLocalizedTitle('FUNCTIONAL SKILLS', lang), type: 'FUNCTIONAL SKILLS', order: 7 },
+            { id: 'languages', title: getLocalizedTitle('LANGUAGES & SKILLS', lang), type: 'LANGUAGES', order: 8 },
           ];
 
           // 🔁 Dynamic PROFESSIONAL EXPERIENCES - Generate based on candidate's work history
           const experienceSections: Segment[] = [];
-          const candidateExperiences = candidateData.experience || [];
+          const candidateExperiences = Array.isArray(candidateData.experience) ? candidateData.experience : [];
           
           if (candidateExperiences.length > 0) {
             candidateExperiences.forEach((exp: any, index: number) => {
+              const experienceTitle = lang === 'fr' ? `EXPÉRIENCE PROFESSIONNELLE ${index + 1}` :
+                                    lang === 'de' ? `BERUFSERFAHRUNG ${index + 1}` :
+                                    lang === 'nl' ? `PROFESSIONELE ERVARING ${index + 1}` :
+                                    `PROFESSIONAL EXPERIENCE ${index + 1}`;
+              
               experienceSections.push({
                 id: `experience-${index}`,
-                title: `PROFESSIONAL EXPERIENCE ${index + 1}`,
+                title: experienceTitle,
                 type: `PROFESSIONAL EXPERIENCE ${index + 1}`,
                 content: '',
                 status: 'idle' as const,
@@ -419,21 +470,8 @@ export const useSegmentStore = create<SegmentState>()(
               });
             });
           } else {
-            // Fallback: If no experience data, create 2 generic experience sections
-            console.log('⚠️ No work history found, creating generic experience sections');
-            for (let i = 0; i < 2; i++) {
-              experienceSections.push({
-                id: `experience-${i}`,
-                title: `PROFESSIONAL EXPERIENCE ${i + 1}`,
-                type: `PROFESSIONAL EXPERIENCE ${i + 1}`,
-                content: '',
-                status: 'idle' as const,
-                editable: true,
-                order: 9 + i,
-                visible: true,
-                experienceData: null
-              });
-            }
+            // No generic placeholders; skip professional experience sections when no data
+            console.warn('⚠️ No work history found, skipping generic experience sections');
           }
 
           // Combine all sections
@@ -499,7 +537,7 @@ export const useSegmentStore = create<SegmentState>()(
               console.error(`❌ ${section.title} - Generation failed:`, result.reason);
               segments.push({
                 ...section,
-                content: `Generation failed. Try regenerating this section.`,
+                content: '',
                 status: 'error' as const,
               });
             }
@@ -730,6 +768,66 @@ export const useSegmentStore = create<SegmentState>()(
       },
       
       clearSegments: () => set({ segments: [], isLoading: false, error: null }),
+
+      loadFromExisting: (existingData) => {
+        console.log('📝 Loading segments from existing competence file:', existingData);
+        
+        try {
+          const existingSegments: Segment[] = [];
+          
+          // Load segments from sectionsConfig if available
+          if (existingData.sectionsConfig && Array.isArray(existingData.sectionsConfig)) {
+            existingData.sectionsConfig.forEach((section: any, index: number) => {
+              const segment: Segment = {
+                id: section.id || `section-${index}`,
+                title: section.title || `Section ${index + 1}`,
+                content: section.content || '',
+                status: 'done',
+                editable: true,
+                order: section.order || index,
+                visible: section.visible !== false,
+                type: section.type || 'general',
+                htmlContent: section.htmlContent || null
+              };
+              existingSegments.push(segment);
+            });
+          } else if (existingData.metadata?.sections) {
+            // Fallback: load from metadata.sections
+            Object.entries(existingData.metadata.sections).forEach(([key, value]: [string, any], index) => {
+              const segment: Segment = {
+                id: `section-${index}`,
+                title: key.toUpperCase(),
+                content: typeof value === 'string' ? value : JSON.stringify(value),
+                status: 'done',
+                editable: true,
+                order: index,
+                visible: true,
+                type: key.toLowerCase().replace(/\s+/g, '_'),
+                htmlContent: null
+              };
+              existingSegments.push(segment);
+            });
+          }
+          
+          // Sort by order and set segments
+          existingSegments.sort((a, b) => a.order - b.order);
+          
+          set({ 
+            segments: existingSegments, 
+            isLoading: false, 
+            error: null 
+          });
+          
+          console.log('✅ Loaded', existingSegments.length, 'segments from existing file');
+        } catch (error) {
+          console.error('❌ Error loading existing segments:', error);
+          set({ 
+            segments: [], 
+            isLoading: false, 
+            error: 'Failed to load existing content' 
+          });
+        }
+      },
       
       // Getters
       getSegmentByType: (type) => get().segments.find(s => s.type === type),

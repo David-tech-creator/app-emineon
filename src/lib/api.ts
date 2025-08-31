@@ -1,5 +1,5 @@
 const BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://app-emineon.vercel.app'
+  ? '' // Use relative URLs in production to work with any domain
   : 'http://localhost:3000';
 
 export interface CreateCandidateRequest {

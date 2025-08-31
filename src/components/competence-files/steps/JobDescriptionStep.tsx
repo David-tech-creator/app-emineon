@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React from 'react';
+import { useDropzone } from 'react-dropzone';
 import { useAuth } from '@clerk/nextjs';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -67,7 +68,38 @@ export function JobDescriptionStep({
   managerPhone,
   onManagerPhoneChange
 }: JobDescriptionStepProps) {
-  const jobFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Job description file dropzone
+  const { getRootProps: getJobRootProps, getInputProps: getJobInputProps, isDragActive: isJobDragActive, isDragReject: isJobDragReject } = useDropzone({
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'text/plain': ['.txt']
+    },
+    maxSize: 25 * 1024 * 1024, // 25MB
+    onDrop: (acceptedFiles) => {
+      if (acceptedFiles.length > 0) {
+        console.log('📁 Files dropped:', acceptedFiles.map(f => f.name));
+        
+        // Create a proper FileList-like object
+        const fileList = {
+          length: acceptedFiles.length,
+          item: (index: number) => acceptedFiles[index] || null,
+          ...acceptedFiles
+        };
+        
+        // Create a synthetic event for compatibility
+        const syntheticEvent = {
+          target: { 
+            files: fileList as FileList
+          }
+        } as React.ChangeEvent<HTMLInputElement>;
+        
+        onJobFileSelect(syntheticEvent);
+      }
+    }
+  });
 
   const handleJobTextChange = (text: string) => {
     onJobDescriptionUpdate({
@@ -130,28 +162,39 @@ export function JobDescriptionStep({
               </div>
             )}
             
-            {/* File Upload */}
+            {/* File Upload with Drag & Drop */}
             {jobInputMethod === 'file' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Upload Job Description File
                 </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <input
-                    type="file"
-                    ref={jobFileInputRef}
-                    onChange={onJobFileSelect}
-                    accept=".pdf,.doc,.docx,.txt"
-                    className="hidden"
-                    multiple
-                  />
-                  <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                <div 
+                  {...getJobRootProps()}
+                  className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                    isJobDragActive 
+                      ? 'border-blue-400 bg-blue-50' 
+                      : isJobDragReject 
+                        ? 'border-red-400 bg-red-50' 
+                        : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  <input {...getJobInputProps()} />
+                  <Upload className={`h-8 w-8 mx-auto mb-2 ${
+                    isJobDragActive ? 'text-blue-500' : 'text-gray-400'
+                  }`} />
                   <p className="text-sm text-gray-600 mb-2">
-                    Upload job description files
+                    {isJobDragActive 
+                      ? 'Drop job description files here...' 
+                      : 'Drag & drop job description files here, or click to browse'
+                    }
+                  </p>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Supports PDF, DOC, DOCX, TXT (max 25MB)
                   </p>
                   <Button
                     onClick={() => jobFileInputRef.current?.click()}
                     disabled={isParsing}
+                    type="button"
                   >
                     {isParsing ? (
                       <>

@@ -55,7 +55,7 @@ export async function addToQueue<T>(
   const { priority = 'normal', maxRetries = 3, operationName = 'AI Operation' } = options;
   const queue = priority === 'high' ? highPriorityQueue : normalPriorityQueue;
   
-  return queue.add(async () => {
+  const result = await queue.add(async () => {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`🤖 ${operationName} - Attempt ${attempt}/${maxRetries} (Queue: ${priority})`);
@@ -78,6 +78,7 @@ export async function addToQueue<T>(
     }
     throw new Error(`${operationName}: Maximum retries exceeded`);
   });
+  return result as T;
 }
 
 // Export queue instance for direct access if needed
