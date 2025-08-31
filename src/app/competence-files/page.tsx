@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
+import { UniversalAlgoliaSearch } from '@/components/search/UniversalAlgoliaSearch';
 import { 
   Plus, 
   Search, 
@@ -72,6 +73,11 @@ export default function CompetenceFilesPage() {
   const [activeTab, setActiveTab] = useState('files');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
+  
+  // Algolia search state
+  const [algoliaResults, setAlgoliaResults] = useState<any[]>([]);
+  const [algoliaLoading, setAlgoliaLoading] = useState(false);
+  const [hasSearchQuery, setHasSearchQuery] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreateTemplateModalOpen, setIsCreateTemplateModalOpen] = useState(false);
   const [competenceFiles, setCompetenceFiles] = useState<CompetenceFile[]>([]);
@@ -458,12 +464,20 @@ export default function CompetenceFilesPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
+              <UniversalAlgoliaSearch
+                onResults={(results) => {
+                  // Handle results based on active tab
+                  if (activeTab === 'files') {
+                    // For competence files search
+                    setAlgoliaResults(results);
+                    setHasSearchQuery(results.length > 0);
+                  }
+                }}
+                onLoading={setAlgoliaLoading}
                 placeholder={activeTab === 'files' ? "Search candidates, clients, jobs..." : "Search templates..."}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                searchType="competence-files"
+                className="w-full"
+                showStats={false}
               />
             </div>
             

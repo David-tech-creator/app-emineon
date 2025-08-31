@@ -101,9 +101,10 @@ export default function CandidatesPage() {
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
-  const [useAlgoliaSearch, setUseAlgoliaSearch] = useState(false);
+  // Algolia search is now the default - no toggle needed
   const [algoliaResults, setAlgoliaResults] = useState<any[]>([]);
   const [algoliaLoading, setAlgoliaLoading] = useState(false);
+  const [hasSearchQuery, setHasSearchQuery] = useState(false);
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -127,8 +128,8 @@ export default function CandidatesPage() {
     }
   }, [openDropdown]);
 
-  // Use real candidates from API or Algolia results
-  const allCandidates = useAlgoliaSearch && algoliaResults.length > 0 
+  // Use Algolia results when searching, otherwise show all candidates from API
+  const allCandidates = hasSearchQuery && algoliaResults.length > 0 
     ? algoliaResults.map((hit, index) => ({
         id: index + 1,
         databaseId: hit.objectID,
@@ -333,25 +334,15 @@ export default function CandidatesPage() {
           <div className="p-4">
             <div className="flex flex-col md:flex-row gap-3 items-center">
               <div className="flex-1 relative w-full">
-                {useAlgoliaSearch ? (
-                  <AlgoliaSearchBox
-                    onResults={setAlgoliaResults}
-                    onLoading={setAlgoliaLoading}
-                    placeholder="Search candidates with AI-powered search..."
-                    className="w-full"
-                  />
-                ) : (
-                  <>
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search candidates by name, skills, or location..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-sm"
-                    />
-                  </>
-                )}
+                <AlgoliaSearchBox
+                  onResults={(results) => {
+                    setAlgoliaResults(results);
+                    setHasSearchQuery(results.length > 0);
+                  }}
+                  onLoading={setAlgoliaLoading}
+                  placeholder="Search candidates by name, skills, location, or any other criteria..."
+                  className="w-full"
+                />
               </div>
               
               <div className="flex items-center space-x-2 shrink-0">
@@ -373,22 +364,6 @@ export default function CandidatesPage() {
                 >
                   <Filter className="h-4 w-4" />
                   <span>Advanced Filters</span>
-                </button>
-                
-                {/* Algolia Search Toggle */}
-                <button
-                  onClick={() => setUseAlgoliaSearch(!useAlgoliaSearch)}
-                  className={`px-4 py-2.5 border border-gray-300 rounded-lg transition-colors flex items-center space-x-2 text-sm font-medium ${
-                    useAlgoliaSearch 
-                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                  title={useAlgoliaSearch ? 'Using Algolia Search' : 'Switch to Algolia Search'}
-                >
-                  <Search className="h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    {useAlgoliaSearch ? 'AI Search' : 'Basic Search'}
-                  </span>
                 </button>
                 
                 {/* View Toggle */}
@@ -423,27 +398,7 @@ export default function CandidatesPage() {
           </div>
         </div>
 
-        {/* Algolia Search Status */}
-        {useAlgoliaSearch && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center space-x-3">
-              <Search className="h-5 w-5 text-blue-600" />
-              <div>
-                <h4 className="text-sm font-medium text-blue-900">AI-Powered Search Active</h4>
-                <p className="text-xs text-blue-700">
-                  Search results are powered by Algolia for faster, more accurate matching.
-                  {algoliaResults.length > 0 && ` Showing ${algoliaResults.length} search results.`}
-                </p>
-              </div>
-              <button
-                onClick={() => setUseAlgoliaSearch(false)}
-                className="ml-auto text-blue-600 hover:text-blue-800 text-sm font-medium"
-              >
-                Switch to Basic Search
-              </button>
-            </div>
-          </div>
-        )}
+
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -514,7 +469,7 @@ export default function CandidatesPage() {
               <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-900 mb-2">No candidates found</h3>
               <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                Start building your talent pipeline by adding your first candidate.
+                {hasSearchQuery ? 'No candidates match your search criteria. Try adjusting your search terms.' : 'Start building your talent pipeline by adding your first candidate.'}
               </p>
               <button 
                 onClick={() => setShowCreateModal(true)}
@@ -546,6 +501,7 @@ export default function CandidatesPage() {
                 </div>
                 <span className="text-sm text-gray-500">
                   {allCandidates.length} candidate{allCandidates.length > 1 ? 's' : ''} found
+                  {hasSearchQuery && ' (filtered by search)'}
                 </span>
               </div>
             </CardHeader>

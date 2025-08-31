@@ -10,6 +10,7 @@ import { CreateJobModal } from '@/components/jobs/CreateJobModal';
 import { CreateCandidateModal } from '@/components/candidates/CreateCandidateModal';
 import { AddCandidateDropdown } from '@/components/jobs/AddCandidateDropdown';
 import { AddExistingCandidateModal } from '@/components/jobs/AddExistingCandidateModal';
+import { AlgoliaJobSearchBox } from '@/components/search/AlgoliaSearchBox';
 import {
   Plus,
   Search,
@@ -41,7 +42,6 @@ import {
 
 export default function JobsPage() {
   const router = useRouter();
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -55,6 +55,11 @@ export default function JobsPage() {
   const [editingJob, setEditingJob] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
+  
+  // Algolia search is now the default
+  const [algoliaResults, setAlgoliaResults] = useState<any[]>([]);
+  const [algoliaLoading, setAlgoliaLoading] = useState(false);
+  const [hasSearchQuery, setHasSearchQuery] = useState(false);
 
   // Fetch jobs from API
   useEffect(() => {
@@ -214,11 +219,31 @@ export default function JobsPage() {
 
   const transformedJobs = jobs.map(transformJob);
   
-  const filteredJobs = transformedJobs.filter((job: any) => {
-    const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         job.location.toLowerCase().includes(searchTerm.toLowerCase());
-    
+  // Use Algolia results when searching, otherwise show all jobs from API
+  const displayJobs = hasSearchQuery && algoliaResults.length > 0 
+    ? algoliaResults.map((hit, index) => ({
+        id: hit.objectID,
+        title: hit.title,
+        company: hit.company || 'Emineon ATS',
+        location: hit.location,
+        contractType: hit.employmentType || 'Permanent',
+        workMode: hit.remote ? 'Remote' : 'Hybrid',
+        status: hit.status,
+        priority: hit.urgent ? 'High' : 'Medium',
+        candidates: 0, // Will be populated from actual data if needed
+        applications: 0,
+        daysToFill: Math.floor((new Date().getTime() - new Date(hit.createdAt).getTime()) / (1000 * 60 * 60 * 24)),
+        slaProgress: 50,
+        skills: hit.skills || [],
+        salary: hit.salaryRange || 'Not specified',
+        posted: new Date(hit.createdAt).toLocaleDateString(),
+        owner: 'Admin',
+        description: hit.description,
+        _highlightResult: hit._highlightResult,
+      }))
+    : transformedJobs;
+  
+  const filteredJobs = displayJobs.filter((job: any) => {
     let matchesFilter = true;
     
     switch (selectedFilter) {
@@ -239,7 +264,7 @@ export default function JobsPage() {
         matchesFilter = job.status.toLowerCase() === selectedFilter.toLowerCase();
     }
     
-    return matchesSearch && matchesFilter;
+    return matchesFilter;
   });
 
   const getStatusColor = (status: string) => {
@@ -329,15 +354,15 @@ export default function JobsPage() {
         <CardContent className="p-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
             <div className="flex-1 max-w-lg">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search jobs, companies, or locations..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+              <AlgoliaJobSearchBox
+                onResults={(results) => {
+                  setAlgoliaResults(results);
+                  setHasSearchQuery(results.length > 0);
+                }}
+                onLoading={setAlgoliaLoading}
+                placeholder="Search jobs, companies, locations, or any other criteria..."
+                className="w-full"
+              />
             </div>
             
             <div className="flex items-center space-x-4">
@@ -373,15 +398,17 @@ export default function JobsPage() {
         </CardContent>
       </Card>
 
-      {/* Loading State */}
-      {loading && (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading jobs...</p>
+              {/* Loading State */}
+        {(loading || algoliaLoading) && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">
+                {algoliaLoading ? 'Searching jobs...' : 'Loading jobs...'}
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Error State */}
       {error && (
@@ -394,14 +421,16 @@ export default function JobsPage() {
       )}
 
       {/* Empty State */}
-      {!loading && !error && filteredJobs.length === 0 && (
+      {!loading && !algoliaLoading && !error && filteredJobs.length === 0 && (
         <div className="text-center py-12">
           <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
           <p className="text-gray-600 mb-6">
-            {jobs.length === 0 
-              ? "Get started by creating your first job posting." 
-              : "Try adjusting your search criteria or filters."}
+            {hasSearchQuery 
+              ? "No jobs match your search criteria. Try adjusting your search terms." 
+              : jobs.length === 0 
+                ? "Get started by creating your first job posting." 
+                : "Try adjusting your filters."}
           </p>
           {jobs.length === 0 && (
             <Button
@@ -416,7 +445,7 @@ export default function JobsPage() {
       )}
 
       {/* Jobs List */}
-      {!loading && !error && filteredJobs.length > 0 && (
+      {!loading && !algoliaLoading && !error && filteredJobs.length > 0 && (
         <div className={viewMode === 'grid' ? 'grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6' : 'space-y-4'}>
           {filteredJobs.map((job) => (
           <Card key={job.id} className={`bg-white shadow-sm hover:shadow-md transition-shadow ${viewMode === 'grid' ? 'h-fit' : ''}`}>

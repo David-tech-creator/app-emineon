@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
+import { UniversalAlgoliaSearch } from '@/components/search/UniversalAlgoliaSearch';
 import { 
   Plus, 
   Search, 
@@ -227,6 +228,11 @@ export default function ProjectsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [urgencyFilter, setUrgencyFilter] = useState<string>('');
+  
+  // Algolia search state
+  const [algoliaResults, setAlgoliaResults] = useState<any[]>([]);
+  const [algoliaLoading, setAlgoliaLoading] = useState(false);
+  const [hasSearchQuery, setHasSearchQuery] = useState(false);
 
   useEffect(() => {
     fetchProjects();
@@ -251,12 +257,28 @@ export default function ProjectsPage() {
     }
   };
 
-  const filteredProjects = projects.filter(project => {
-    const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.skillsRequired.some(skill => 
-        skill.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+  // Use Algolia results when searching, otherwise show all projects from API
+  const displayProjects = hasSearchQuery && algoliaResults.length > 0 
+    ? algoliaResults.map((hit, index) => ({
+        id: hit.objectID || hit.id,
+        name: hit.name,
+        clientName: hit.clientName,
+        description: hit.description,
+        status: hit.status,
+        urgency: hit.urgency,
+        skillsRequired: hit.skills || hit.skillsRequired || [],
+        startDate: hit.startDate,
+        endDate: hit.endDate,
+        budget: hit.budget,
+        progress: hit.progress || 0,
+        teamSize: hit.teamSize || 0,
+        _highlightResult: hit._highlightResult,
+      }))
+    : projects;
+
+  const filteredProjects = displayProjects.filter(project => {
+    // Remove search logic since Algolia handles it
+    const matchesSearch = true;
     
     let matchesFilter = true;
     
@@ -410,15 +432,16 @@ export default function ProjectsPage() {
         <div className="flex flex-col lg:flex-row gap-4 mb-6">
           {/* Search */}
           <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search projects, clients, or skills..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <UniversalAlgoliaSearch
+              onResults={(results) => {
+                setAlgoliaResults(results);
+                setHasSearchQuery(results.length > 0);
+              }}
+              onLoading={setAlgoliaLoading}
+              placeholder="Search projects, clients, or skills..."
+              searchType="projects"
+              className="w-full"
+            />
           </div>
           
           {/* Filters and Actions */}
